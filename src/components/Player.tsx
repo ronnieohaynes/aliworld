@@ -16,12 +16,11 @@ import {
   PLAYER_START_Y,
   WORLD_HEIGHT,
   WORLD_WIDTH,
-} from '../constants/tileAssets'
-import { drawWorldMap } from '../game/drawWorldMap'
-import { canMoveTo, getTileMap } from '../game/TileMap'
+} from '../constants/worldAssets'
+import { drawWorldBackground } from '../game/drawWorldBackground'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { SpriteSheet, type Direction } from '../game/SpriteSheet'
-import { getTileset } from '../game/Tileset'
+import { loadWorldBackground } from '../game/WorldBackground'
 import './Player.css'
 
 const MOVE_SPEED = 120
@@ -37,8 +36,6 @@ const KEY_TO_DIR: Record<string, Direction> = {
 }
 
 type Vec = { x: number; y: number }
-
-const tileMap = getTileMap()
 
 type DebugInfo = {
   direction: Direction
@@ -78,6 +75,11 @@ function drawDebugOverlay(ctx: CanvasRenderingContext2D, info: DebugInfo) {
   })
 }
 
+/** Open-world movement (world bounds enforced via clamped next position). */
+function canMoveTo(_worldX: number, _worldY: number): boolean {
+  return true
+}
+
 export function Player() {
   const { ctx, width, height, registerLoop, unregisterLoop, setDebugHud } =
     useGameCanvas()
@@ -106,9 +108,7 @@ export function Player() {
     )
     sheetRef.current = sheet
     void sheet.load().catch((err) => console.error(err))
-    void getTileset()
-      .load()
-      .catch((err) => console.error(err))
+    void loadWorldBackground().catch((err) => console.error(err))
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key in KEY_TO_DIR) {
@@ -218,9 +218,9 @@ export function Player() {
           Math.min(WORLD_HEIGHT - halfH, worldPos.current.y + vy * dt),
         )
 
-        const tryX = canMoveTo(tileMap, nextX, worldPos.current.y)
-        const tryY = canMoveTo(tileMap, worldPos.current.x, nextY)
-        const tryBoth = canMoveTo(tileMap, nextX, nextY)
+        const tryX = canMoveTo(nextX, worldPos.current.y)
+        const tryY = canMoveTo(worldPos.current.x, nextY)
+        const tryBoth = canMoveTo(nextX, nextY)
 
         if (tryBoth) {
           worldPos.current.x = nextX
@@ -242,7 +242,7 @@ export function Player() {
       )
 
       ctx.imageSmoothingEnabled = false
-      drawWorldMap(ctx, tileMap, cameraX, cameraY, width, height)
+      drawWorldBackground(ctx, cameraX, cameraY, width, height)
 
       const facing = direction.current
       const frame = isMoving ? animFrame.current : MIDNIGHT_WALK_IDLE_FRAME
