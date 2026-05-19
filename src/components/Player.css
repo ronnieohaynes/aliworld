@@ -1,0 +1,75 @@
+.player-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.player-dpad {
+  position: absolute;
+  left: 16px;
+  bottom: max(24px, env(safe-area-inset-bottom, 0px));
+  width: 132px;
+  height: 132px;
+  display: grid;
+  grid-template-columns: 44px 44px 44px;
+  grid-template-rows: 44px 44px 44px;
+  gap: 0;
+  pointer-events: auto;
+}
+
+.player-dpad-btn {
+  margin: 0;
+  padding: 0;
+  border: 2px solid #3a3a52;
+  background: rgba(18, 18, 28, 0.88);
+  color: #9b87d4;
+  font-family: var(--font-pixel, monospace);
+  font-size: 10px;
+  cursor: pointer;
+  touch-action: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.player-dpad-btn:active {
+  background: rgba(91, 33, 182, 0.45);
+  border-color: #6d28d9;
+}
+
+.player-dpad-btn--up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.player-dpad-btn--left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.player-dpad-btn--right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.player-dpad-btn--down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.player-dpad-btn--up::after {
+  content: '▲';
+}
+
+.player-dpad-btn--down::after {
+  content: '▼';
+}
+
+.player-dpad-btn--left::after {
+  content: '◀';
+}
+
+.player-dpad-btn--right::after {
+  content: '▶';
+}

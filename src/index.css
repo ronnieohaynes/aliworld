@@ -1,0 +1,646 @@
+:root {
+  color-scheme: dark;
+  --void: #030303;
+  --void-up: #0a0a0a;
+  --line: #1a1a1a;
+  --text: #e8e8e8;
+  --muted: #5c5c5c;
+  --muted-log: #6a6a6a;
+  --amber: #f5a623;
+  --amber-dim: rgba(245, 166, 35, 0.35);
+  --ghost: #7c3aed;
+  --ghost-dim: rgba(124, 58, 237, 0.45);
+  --watcher-hp: #ef4444;
+  --watcher-hp-dim: #7f1d1d;
+  --mdnght-hp: #6d28d9;
+  --mdnght-hp-dim: #3b0764;
+  --font-pixel: 'Press Start 2P', ui-monospace, monospace;
+  --font-ui: 'DM Sans', system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
+  background: var(--void);
+}
+
+/* —— Battle shell —— */
+.battle {
+  position: relative;
+  isolation: isolate;
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  min-height: 100svh;
+  overflow: hidden;
+  background-color: #050505;
+}
+
+.battle-surface {
+  position: relative;
+  min-height: 100dvh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0) 14px 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Pixel art + veil only behind the avatar / arena strip */
+.battle-stage {
+  position: relative;
+  isolation: isolate;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  /* Keep fighters in the lower half of the stage card */
+  padding-top: max(10vh, 36px);
+  padding-bottom: 2px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.battle-pixel-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.battle-stage-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* —— Status bar —— */
+.status-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.status-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.status-bar-right {
+  flex: 0 0 auto;
+  width: 56px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.status-bar-right--dual {
+  width: auto;
+  gap: 6px;
+}
+
+.status-bar-right-spacer {
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+}
+
+.status-bar-nav {
+  font-family: var(--font-pixel);
+  font-size: 6px;
+  padding: 6px 8px;
+  border: 1px solid #2a2a2a;
+  background: #0a0a0a;
+  color: #9a9a9a;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+}
+
+.status-bar-nav:active {
+  background: #111;
+}
+
+.status-bar-ep {
+  color: #8a8a8a;
+}
+
+.status-bar-dot {
+  opacity: 0.5;
+  user-select: none;
+}
+
+.status-bar-track {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  color: #b0b0b0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* —— Arena: side by side + dots (compact — sits above battle log) —— */
+.arena {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 4px;
+  min-height: 0;
+}
+
+.arena-fighter {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Full-body PNG sprites — sharp when scaled */
+.sprite-img {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Same footprint for Watcher (ASCII) and MDNGHT (PNG) — bottom-aligned, symmetric row */
+.arena-char-slot {
+  width: min(96px, 26vw);
+  height: min(132px, 34vw);
+  max-height: min(132px, 34vw);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.arena-sprite {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.arena-sprite-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.arena-char-slot .pixel-char-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.arena-char-slot .pixel-char {
+  flex-shrink: 0;
+}
+
+/* MDNGHT is a wide full-body PNG — give more horizontal room than the ASCII slot */
+.arena-fighter--mdnght .arena-char-slot {
+  width: min(128px, 38vw);
+  height: min(136px, 36vw);
+  max-height: min(136px, 36vw);
+}
+
+.arena-sprite--flip {
+  transform: scaleX(-1);
+}
+
+/* Full-body MDNGHT PNG + editable head pixel layer (rows 0–8 only) */
+.arena-mdnght-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.arena-mdnght-body {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.arena-mdnght-face {
+  position: absolute;
+  left: 50%;
+  top: 5%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.arena-mdnght-face .pixel-char-wrap {
+  align-items: center;
+}
+
+.arena-mdnght-face-pixel .pixel-char {
+  box-shadow: none;
+}
+
+.arena-dots {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  padding: 0 2px 2px;
+  align-self: flex-end;
+}
+
+.arena-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.arena-name {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #9a9a9a;
+}
+
+.arena-fighter--watcher .arena-name {
+  color: #c45c5c;
+}
+
+.arena-fighter--mdnght .arena-name {
+  color: #9b87d4;
+}
+
+.pixel-char-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pixel-char {
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px #000;
+}
+
+.pixel-char-label {
+  display: none;
+}
+
+/* —— HP —— */
+.hp-bar {
+  width: 100%;
+  max-width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.hp-bar-track {
+  height: 6px;
+  background: #111;
+  border-radius: 1px;
+  overflow: hidden;
+  border: 1px solid #0d0d0d;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 0;
+  will-change: width;
+}
+
+.hp-bar--watcher .hp-bar-fill {
+  background: linear-gradient(90deg, var(--watcher-hp-dim), var(--watcher-hp));
+}
+
+.hp-bar--mdnght .hp-bar-fill {
+  background: linear-gradient(90deg, var(--mdnght-hp-dim), var(--mdnght-hp));
+}
+
+.hp-bar-numbers {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  text-align: center;
+  color: #a3a3a3;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hp-bar-max {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* —— Battle log —— */
+.battle-log {
+  flex-shrink: 0;
+  margin: 0 0 12px;
+  padding: 6px 0 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--muted-log);
+  text-align: center;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.battle-log--ended {
+  color: #8a8a8a;
+}
+
+/* —— Moves —— */
+.move-grid {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(72px, auto) minmax(72px, auto);
+  grid-template-areas:
+    'slap fade'
+    'hype ghost';
+  gap: 10px;
+  padding-bottom: 12px;
+}
+
+.move-btn {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  line-height: 1.5;
+  padding: 12px 8px 14px;
+  margin: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  color: #d4d4d4;
+  background: #0c0c0c;
+  border: 2px solid #262626;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.move-btn-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.move-btn-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.move-btn-blurb {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #5a5a5a;
+  text-transform: lowercase;
+  letter-spacing: 0.01em;
+  padding: 0 2px;
+  max-width: 100%;
+}
+
+.move-btn--ghost .move-btn-blurb {
+  color: #5c5270;
+}
+
+.move-btn-luck-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+  flex-shrink: 0;
+}
+
+.move-btn--neutral:active:not(:disabled) {
+  background: #141414;
+}
+
+.move-btn--luck {
+  border-color: var(--amber-dim);
+  box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.08);
+}
+
+.move-btn--luck:active:not(:disabled) {
+  background: #120d08;
+}
+
+.move-btn--ghost {
+  border-color: var(--ghost-dim);
+  color: #d4c4f5;
+  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.12);
+}
+
+.move-btn--ghost:active:not(:disabled) {
+  background: #0f0a18;
+}
+
+.move-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.battle-reboot {
+  flex-shrink: 0;
+  margin: 0 0 10px;
+  padding: 10px;
+  font-family: var(--font-pixel);
+  font-size: 6px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  cursor: pointer;
+}
+
+.battle-reboot:active {
+  background: #111;
+}
+
+/* —— Mini player (pinned bottom) —— */
+.mini-player {
+  flex-shrink: 0;
+  margin-top: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px calc(12px + env(safe-area-inset-bottom, 0));
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(3, 3, 3, 0.92) 0%, rgba(5, 5, 5, 0.97) 100%);
+  backdrop-filter: blur(8px);
+}
+
+.mini-player-art {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #1a0a2e 0%, #3b0764 40%, #450a0a 100%);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #222;
+}
+
+.mini-player-art-rim {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -18deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(255, 255, 255, 0.03) 3px
+  );
+}
+
+.mini-player-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-player-track {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-player-artist {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-player-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mini-player-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #2a2a2a;
+  border-radius: 50%;
+  background: #0a0a0a;
+  color: #c0c0c0;
+  cursor: pointer;
+}
+
+.mini-player-btn--main {
+  width: 44px;
+  height: 44px;
+  background: #111;
+  color: #eee;
+  border-color: #333;
+}
+
+.mini-player-btn:active {
+  background: #161616;
+}
+
+.mini-player-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mini-player-btn--main .mini-player-svg {
+  width: 20px;
+  height: 20px;
+}

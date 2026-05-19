@@ -1,0 +1,38 @@
+.game-canvas-wrap {
+  position: relative;
+  width: min(100vw, 390px);
+  margin: 0 auto;
+  background: #0a0a12;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.game-canvas-wrap {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-canvas-wrap .game-canvas,
+.game-canvas-wrap .player-dpad-btn {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-canvas {
+  display: block;
+  width: 390px;
+  height: 844px;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-canvas-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}

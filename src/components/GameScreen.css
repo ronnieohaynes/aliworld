@@ -1,0 +1,57 @@
+.game-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #030303;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-screen-header {
+  width: min(100vw, 390px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: env(safe-area-inset-top, 8px) 12px 8px;
+}
+
+.game-screen-back {
+  font-family: var(--font-pixel, monospace);
+  font-size: 7px;
+  padding: 8px 10px;
+  border: 1px solid #2a2a2a;
+  background: #0a0a0a;
+  color: #9a9a9a;
+  cursor: pointer;
+}
+
+.game-screen-title {
+  font-family: var(--font-pixel, monospace);
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  color: #9b87d4;
+}
+
+.game-screen-play {
+  position: relative;
+  width: min(100vw, 390px);
+}
+
+.game-screen-debug-hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 9999;
+  margin: 0;
+  padding: 8px 10px;
+  min-width: 210px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 18px;
+  color: #ffffff;
+  background: #000000;
+  border: 2px solid #ffffff;
+  pointer-events: none;
+  white-space: pre;
+}
