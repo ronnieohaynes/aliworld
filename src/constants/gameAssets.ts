@@ -23,14 +23,24 @@ export const MIDNIGHT_WALK_FRAMES_PER_DIRECTION = 4
 /** Neutral standing pose (second column) — held while idle. */
 export const MIDNIGHT_WALK_IDLE_FRAME = 1
 
+/** On-canvas scale relative to the original 96px-tall overworld size. */
+export const MIDNIGHT_WALK_DISPLAY_SCALE = 0.6
+
+const MIDNIGHT_WALK_BASE_DISPLAY_HEIGHT = 96
+const MIDNIGHT_WALK_BASE_DRAW_OFFSET_Y = 10
+
 /** Drawn size on canvas (scaled down from 256×256 source frames). */
-export const MIDNIGHT_WALK_DISPLAY_HEIGHT = 96
-export const MIDNIGHT_WALK_DISPLAY_WIDTH = Math.floor(
+export const MIDNIGHT_WALK_DISPLAY_HEIGHT = Math.round(
+  MIDNIGHT_WALK_BASE_DISPLAY_HEIGHT * MIDNIGHT_WALK_DISPLAY_SCALE,
+)
+export const MIDNIGHT_WALK_DISPLAY_WIDTH = Math.round(
   (MIDNIGHT_WALK_FRAME_WIDTH / MIDNIGHT_WALK_FRAME_HEIGHT) * MIDNIGHT_WALK_DISPLAY_HEIGHT,
 )
 
 /** Shift sprite down on canvas so hair is not clipped at the top edge. */
-export const MIDNIGHT_WALK_DRAW_OFFSET_Y = 10
+export const MIDNIGHT_WALK_DRAW_OFFSET_Y = Math.round(
+  MIDNIGHT_WALK_BASE_DRAW_OFFSET_Y * MIDNIGHT_WALK_DISPLAY_SCALE,
+)
 
 export const DANNY_ALI_WALK_SRC = `${CHAR_DIR}/danny-ali/danny-ali-walk.png`
 export const DANNY_ALI_FULL_SRC = `${CHAR_DIR}/danny-ali/danny-ali-full.png`

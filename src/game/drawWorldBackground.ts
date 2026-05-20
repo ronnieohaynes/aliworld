@@ -25,3 +25,12 @@ export function drawWorldBackground(
   ctx.drawImage(image, 0, 0, WORLD_WIDTH, WORLD_HEIGHT)
   ctx.restore()
 }
+
+/** Draw the full map at world origin (caller applies world transform). */
+export function drawWorldMap(ctx: CanvasRenderingContext2D): void {
+  if (!isWorldBackgroundLoaded()) return
+  const image = getWorldBackground()
+  if (!image) return
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(image, 0, 0, WORLD_WIDTH, WORLD_HEIGHT)
+}
