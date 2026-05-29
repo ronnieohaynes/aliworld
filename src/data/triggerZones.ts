@@ -1,4 +1,8 @@
-export type TriggerAction = 'OPEN_13GALLONS' | 'OPEN_DARKLINE' | 'OPEN_ONE_LOVE_CAFE'
+export type TriggerAction =
+  | 'OPEN_13GALLONS'
+  | 'OPEN_DARKLINE'
+  | 'OPEN_ONE_LOVE_CAFE'
+  | 'START_BATTLE_MARK'
 
 export type TriggerZone = {
   id: string
@@ -25,6 +29,14 @@ export const TRIGGER_ZONES: TriggerZone[] = [
     width: 70,
     height: 20,
     action: 'OPEN_DARKLINE',
+  },
+  {
+    id: 'mark-battle',
+    x: 300,
+    y: 560,
+    width: 100,
+    height: 100,
+    action: 'START_BATTLE_MARK',
   },
 ]
 

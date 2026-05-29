@@ -17,6 +17,7 @@ import type { TriggerAction } from '../data/triggerZones'
 import type { CityConfig } from '../data/cityConfig'
 import { drawWorldMap } from '../game/drawWorldBackground'
 import { useGameCanvas } from '../game/GameCanvasContext'
+import { playerScreenAnchor } from '../game/playerScreenAnchor'
 import { SpriteSheet, type Direction } from '../game/SpriteSheet'
 import { loadWorldBackgroundForSrc } from '../game/WorldBackground'
 import './Player.css'
@@ -903,6 +904,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       const worldDrawY = Math.floor(worldY - dh / 2) - PLAYER_DRAW_Y_SHIFT_UP
       const dw = Math.floor(PLAYER_DISPLAY_WIDTH)
       const worldDrawX = Math.floor(worldX - dw / 2)
+
+      playerScreenAnchor.x = (worldX - focus.x) * zoom + width / 2
+      playerScreenAnchor.y = (worldDrawY - focus.y) * zoom + height / 2 - 14
+      playerScreenAnchor.active = true
+
       const midnightSheet = midnightSheetRef.current
 
       type Renderable = { sortY: number; kind: 'midnight' } | { sortY: number; kind: 'npc'; npc: typeof cfg.npcs[number] }

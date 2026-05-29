@@ -1,0 +1,49 @@
+.player-level-overhead {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 15;
+  visibility: hidden;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.player-level-overhead .player-level-badge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+}
+
+.player-level-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #afa9ec;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
+
+.player-level-badge--flash {
+  animation: playerLevelFlash 700ms ease-out;
+}
+
+@keyframes playerLevelFlash {
+  0% {
+    color: #ffffff;
+    text-shadow: 0 0 12px #afa9ec;
+    transform: scale(1.15);
+  }
+  40% {
+    color: #afa9ec;
+    text-shadow: 0 0 8px #afa9ec;
+  }
+  100% {
+    color: #afa9ec;
+    text-shadow: none;
+    transform: scale(1);
+  }
+}

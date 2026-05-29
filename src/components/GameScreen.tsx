@@ -3,6 +3,8 @@ import type { TriggerAction } from '../data/triggerZones'
 import { MANDO_NPC, type NpcData } from '../data/npcs'
 import { CITY_CONFIGS, type CityId } from '../data/cityConfig'
 import { publicAsset } from '../utils/publicAsset'
+import { BattleScreen } from './BattleScreen'
+import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { DarklineScreen } from './DarklineScreen'
 import { DialogueBox } from './DialogueBox'
 import { GameCanvas } from './GameCanvas'
@@ -29,6 +31,7 @@ export function GameScreen() {
   const [showDarkline, setShowDarkline] = useState(false)
   const [cafeFade, setCafeFade] = useState<'none' | 'in' | 'out'>('none')
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
+  const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
 
   const cityConfig = CITY_CONFIGS[currentCity]
 
@@ -51,6 +54,8 @@ export function GameScreen() {
       setShowDarkline(true)
     } else if (action === 'OPEN_ONE_LOVE_CAFE') {
       setCafeFade('in')
+    } else if (action === 'START_BATTLE_MARK') {
+      setBattleNpcId('mark')
     }
   }, [])
 
@@ -95,6 +100,10 @@ export function GameScreen() {
     }
   }, [dialogue, advanceDialogue, currentCity])
 
+  const handleBattleEnd = useCallback((_result: 'win' | 'lose') => {
+    setBattleNpcId(null)
+  }, [])
+
   const handleInteriorClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (dialogue) {
@@ -119,6 +128,7 @@ export function GameScreen() {
             dialogueActive={!!dialogue}
             dialogueNpcId={dialogue?.npc.id ?? null}
           />
+          {!battleNpcId && <PlayerLevelOverhead />}
         </GameCanvas>
         {showInterior && (
           <div className="game-screen-interior" onClick={handleInteriorClick}>
@@ -156,6 +166,9 @@ export function GameScreen() {
                 : 'cafeFadeOut 400ms ease-out forwards',
             }}
           />
+        )}
+        {battleNpcId && (
+          <BattleScreen npcId={battleNpcId} onBattleEnd={handleBattleEnd} />
         )}
       </div>
     </div>
