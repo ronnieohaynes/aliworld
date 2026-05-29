@@ -1,24 +1,25 @@
-import { DALY_CITY_MAP_SRC } from '../constants/worldAssets'
 import { loadImage } from './loadImage'
 
-let mapImage: HTMLImageElement | null = null
-let loadPromise: Promise<HTMLImageElement> | null = null
+const imageCache = new Map<string, HTMLImageElement>()
+const loadingCache = new Map<string, Promise<HTMLImageElement>>()
 
-export function loadWorldBackground(): Promise<HTMLImageElement> {
-  if (loadPromise) return loadPromise
+export function loadWorldBackgroundForSrc(src: string): Promise<HTMLImageElement> {
+  const existing = loadingCache.get(src)
+  if (existing) return existing
 
-  loadPromise = loadImage(DALY_CITY_MAP_SRC).then((img) => {
-    mapImage = img
+  const promise = loadImage(src).then((img) => {
+    imageCache.set(src, img)
     return img
   })
-
-  return loadPromise
+  loadingCache.set(src, promise)
+  return promise
 }
 
-export function getWorldBackground(): HTMLImageElement | null {
-  return mapImage
+export function getWorldBackgroundForSrc(src: string): HTMLImageElement | null {
+  return imageCache.get(src) ?? null
 }
 
-export function isWorldBackgroundLoaded(): boolean {
-  return mapImage !== null && mapImage.complete && mapImage.naturalWidth > 0
+export function isWorldBackgroundLoadedForSrc(src: string): boolean {
+  const img = imageCache.get(src)
+  return img !== null && img !== undefined && img.complete && img.naturalWidth > 0
 }

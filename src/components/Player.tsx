@@ -1,26 +1,24 @@
-import { useEffect, useRef, useSyncExternalStore, type PointerEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, type PointerEvent } from 'react'
 import {
-  MIDNIGHT_WALK_COLUMNS,
   MIDNIGHT_WALK_FRAME_HEIGHT,
   MIDNIGHT_WALK_FRAME_WIDTH,
   MIDNIGHT_WALK_FRAMES_PER_DIRECTION,
   MIDNIGHT_WALK_IDLE_FRAME,
-  MIDNIGHT_WALK_ROWS,
+  MIDNIGHT_WALK_SRC,
 } from '../constants/gameAssets'
-import { getPlayerWalkSrc, subscribeCharacterStore } from '../store/characterStore'
 import {
-  PLAYER_START_X,
-  PLAYER_START_Y,
-  WORLD_CANVAS_FILL,
-  WORLD_HEIGHT,
-  WORLD_WIDTH,
-} from '../constants/worldAssets'
-import { COLLISION_ZONES, type CollisionZone } from '../data/collisionZones'
-import { TRIGGER_ZONES, type TriggerAction } from '../data/triggerZones'
+  drawSheetFrame,
+  loadSpriteSheetWithFallback,
+} from '../game/characterLayers'
+import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
+import type { CollisionZone } from '../data/collisionZones'
+import { NPC_SIZE } from '../data/npcs'
+import type { TriggerAction } from '../data/triggerZones'
+import type { CityConfig } from '../data/cityConfig'
 import { drawWorldMap } from '../game/drawWorldBackground'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { SpriteSheet, type Direction } from '../game/SpriteSheet'
-import { loadWorldBackground } from '../game/WorldBackground'
+import { loadWorldBackgroundForSrc } from '../game/WorldBackground'
 import './Player.css'
 
 const MOVE_SPEED = 120
@@ -29,26 +27,41 @@ const ANIM_INTERVAL = 1 / ANIM_FPS
 const WALK_FRAME_COUNT = MIDNIGHT_WALK_FRAMES_PER_DIRECTION
 
 const PLAYER_DISPLAY_HEIGHT = 72
-const PLAYER_DISPLAY_WIDTH = Math.floor(
+const MIDNIGHT_DISPLAY_WIDTH = Math.floor(
   (MIDNIGHT_WALK_FRAME_WIDTH / MIDNIGHT_WALK_FRAME_HEIGHT) * PLAYER_DISPLAY_HEIGHT,
 )
-
-/** Inset within each 256px sheet row (sy = row * frameHeight + pad, then crop sh). */
-const PLAYER_SOURCE_ROW_PADDING = 4
-/** Tall enough to include shoe highlights at the bottom of up/down frames. */
-const PLAYER_SOURCE_FRAME_HEIGHT = 252
-/** Left row: bleed from the row below. */
-const PLAYER_LEFT_SOURCE_ROW_PADDING = 12
-const PLAYER_LEFT_SOURCE_FRAME_HEIGHT = 232
-/** Right row crop. */
-const PLAYER_RIGHT_SOURCE_ROW_PADDING = -10
-const PLAYER_RIGHT_SOURCE_FRAME_HEIGHT = 232
+const PLAYER_DISPLAY_WIDTH = MIDNIGHT_DISPLAY_WIDTH
 
 const SPRITE_SHEET_ROW: Record<Direction, number> = {
   down: 0,
   up: 1,
   left: 2,
   right: 3,
+}
+
+const NPC_SPRITE_COL: Record<Direction, number> = {
+  down: 0,
+  up: 1,
+  left: 2,
+  right: 3,
+}
+
+const NPC_DISPLAY_W = 48
+const NPC_DISPLAY_H = 120
+const NPC_INTERACT_POINT_RADIUS = 20
+
+type InteractPoint = { x: number; y: number; npcFacing: Direction }
+
+function getNpcInteractPoints(npc: { x: number; y: number }): InteractPoint[] {
+  const half = NPC_SIZE / 2
+  const drawX = npc.x - NPC_DISPLAY_W / 2
+  const drawY = npc.y + half - NPC_DISPLAY_H
+  return [
+    { x: drawX + NPC_DISPLAY_W / 2, y: drawY, npcFacing: 'up' },
+    { x: drawX + NPC_DISPLAY_W / 2, y: drawY + NPC_DISPLAY_H, npcFacing: 'down' },
+    { x: drawX - 10, y: drawY + NPC_DISPLAY_H / 2 + 10, npcFacing: 'right' },
+    { x: drawX + NPC_DISPLAY_W + 10, y: drawY + NPC_DISPLAY_H / 2 + 10, npcFacing: 'left' },
+  ]
 }
 
 /** Subtract from centered Y to shift sprite up and show full hair. */
@@ -62,21 +75,22 @@ const ZOOM_DEFAULT = 1.0
 const ZOOM_STEP = 0.1
 const COORD_GRID_SPACING = 100
 
-function getMinZoom(screenW: number, screenH: number): number {
-  return Math.min(screenW / WORLD_WIDTH, screenH / WORLD_HEIGHT)
+function getMinZoom(screenW: number, screenH: number, worldW: number, worldH: number): number {
+  return Math.min(screenW / worldW, screenH / worldH)
 }
 
-function clampZoom(zoom: number, screenW: number, screenH: number): number {
-  return Math.max(getMinZoom(screenW, screenH), Math.min(ZOOM_MAX, zoom))
+function clampZoom(zoom: number, screenW: number, screenH: number, worldW: number, worldH: number): number {
+  return Math.max(getMinZoom(screenW, screenH, worldW, worldH), Math.min(ZOOM_MAX, zoom))
 }
 
-/** Camera focus: follows Midnight when zoomed in; locks when full map is visible. */
 function getWorldFocusPoint(
   worldX: number,
   worldY: number,
   zoom: number,
   screenW: number,
   screenH: number,
+  worldW: number,
+  worldH: number,
 ): Vec {
   const visibleW = screenW / zoom
   const visibleH = screenH / zoom
@@ -84,18 +98,18 @@ function getWorldFocusPoint(
   let focusX = worldX
   let focusY = worldY
 
-  if (visibleW >= WORLD_WIDTH) {
-    focusX = WORLD_WIDTH / 2
+  if (visibleW >= worldW) {
+    focusX = worldW / 2
   } else {
     const halfVisibleW = visibleW / 2
-    focusX = Math.max(halfVisibleW, Math.min(WORLD_WIDTH - halfVisibleW, worldX))
+    focusX = Math.max(halfVisibleW, Math.min(worldW - halfVisibleW, worldX))
   }
 
-  if (visibleH >= WORLD_HEIGHT) {
-    focusY = WORLD_HEIGHT / 2
+  if (visibleH >= worldH) {
+    focusY = worldH / 2
   } else {
     const halfVisibleH = visibleH / 2
-    focusY = Math.max(halfVisibleH, Math.min(WORLD_HEIGHT - halfVisibleH, worldY))
+    focusY = Math.max(halfVisibleH, Math.min(worldH - halfVisibleH, worldY))
   }
 
   return { x: focusX, y: focusY }
@@ -136,6 +150,8 @@ function drawCoordinateGrid(
   focusY: number,
   screenW: number,
   screenH: number,
+  worldW: number,
+  worldH: number,
 ): void {
   const visibleW = screenW / zoom
   const visibleH = screenH / zoom
@@ -146,12 +162,12 @@ function drawCoordinateGrid(
 
   const startX = Math.max(0, Math.floor(minX / COORD_GRID_SPACING) * COORD_GRID_SPACING)
   const endX = Math.min(
-    WORLD_WIDTH,
+    worldW,
     Math.ceil(maxX / COORD_GRID_SPACING) * COORD_GRID_SPACING,
   )
   const startY = Math.max(0, Math.floor(minY / COORD_GRID_SPACING) * COORD_GRID_SPACING)
   const endY = Math.min(
-    WORLD_HEIGHT,
+    worldH,
     Math.ceil(maxY / COORD_GRID_SPACING) * COORD_GRID_SPACING,
   )
 
@@ -167,9 +183,9 @@ function drawCoordinateGrid(
   ctx.textBaseline = 'top'
 
   const clipMinY = Math.max(0, minY)
-  const clipMaxY = Math.min(WORLD_HEIGHT, maxY)
+  const clipMaxY = Math.min(worldH, maxY)
   const clipMinX = Math.max(0, minX)
-  const clipMaxX = Math.min(WORLD_WIDTH, maxX)
+  const clipMaxX = Math.min(worldW, maxX)
 
   for (let x = startX; x <= endX; x += COORD_GRID_SPACING) {
     ctx.beginPath()
@@ -284,7 +300,6 @@ function rectsOverlap(a: CollisionZone, b: CollisionZone): boolean {
   )
 }
 
-/** Feet-centered hitbox in world space (worldPos is the character anchor at screen center). */
 function getFeetHitbox(worldX: number, worldY: number): CollisionZone {
   const feetY = worldY + PLAYER_DISPLAY_HEIGHT / 2
   return {
@@ -295,13 +310,14 @@ function getFeetHitbox(worldX: number, worldY: number): CollisionZone {
   }
 }
 
-function collidesAt(worldX: number, worldY: number): boolean {
-  const hitbox = getFeetHitbox(worldX, worldY)
-  return COLLISION_ZONES.some((zone) => rectsOverlap(hitbox, zone))
+const NPC_COLLISION_RADIUS = 30
+
+function getNpcCollisionRect(npc: { x: number; y: number }): CollisionZone {
+  return { x: npc.x - NPC_COLLISION_RADIUS + 15, y: npc.y - NPC_COLLISION_RADIUS - 20, width: 45, height: NPC_COLLISION_RADIUS * 2 + 15 }
 }
 
-function drawCollisionZonesDebug(ctx: CanvasRenderingContext2D): void {
-  for (const zone of COLLISION_ZONES) {
+function drawCollisionZonesDebug(ctx: CanvasRenderingContext2D, collisionZones: CollisionZone[], npcs: { x: number; y: number; id: string }[]): void {
+  for (const zone of collisionZones) {
     ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
     ctx.fillRect(
       Math.floor(zone.x),
@@ -317,6 +333,24 @@ function drawCollisionZonesDebug(ctx: CanvasRenderingContext2D): void {
       Math.floor(zone.width),
       Math.floor(zone.height),
     )
+  }
+  for (const npc of npcs) {
+    const r = getNpcCollisionRect(npc)
+    ctx.fillStyle = 'rgba(0, 100, 255, 0.2)'
+    ctx.fillRect(Math.floor(r.x), Math.floor(r.y), Math.floor(r.width), Math.floor(r.height))
+    ctx.strokeStyle = 'rgba(0, 100, 255, 0.8)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(Math.floor(r.x), Math.floor(r.y), Math.floor(r.width), Math.floor(r.height))
+
+    for (const pt of getNpcInteractPoints(npc)) {
+      ctx.strokeStyle = 'rgba(0, 255, 100, 0.8)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.arc(Math.floor(pt.x), Math.floor(pt.y), NPC_INTERACT_POINT_RADIUS, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = 'rgba(0, 255, 100, 0.15)'
+      ctx.fill()
+    }
   }
 }
 
@@ -345,19 +379,34 @@ function drawDebugOverlay(
   })
 }
 
-type PlayerProps = {
-  onTrigger?: (action: TriggerAction) => void
+export type PlayerHandle = {
+  setPosition: (x: number, y: number) => void
+  getNearbyNpcId: () => string | null
 }
 
-export function Player({ onTrigger }: PlayerProps) {
+type PlayerProps = {
+  cityConfig: CityConfig
+  onTrigger?: (action: TriggerAction) => void
+  onTriggerExit?: (action: TriggerAction) => void
+  dialogueActive?: boolean
+  dialogueNpcId?: string | null
+}
+
+export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
+  { cityConfig, onTrigger, onTriggerExit, dialogueActive, dialogueNpcId },
+  ref,
+) {
   const { canvas, ctx, width, height, registerLoop, unregisterLoop, setDebugHud } =
     useGameCanvas()
   const onTriggerRef = useRef(onTrigger)
+  const onTriggerExitRef = useRef(onTriggerExit)
   const activeTriggerIds = useRef(new Set<string>())
   const loopId = useRef(Symbol('player-loop'))
-  const sheetRef = useRef<SpriteSheet | null>(null)
+  const midnightSheetRef = useRef<SpriteSheet | null>(null)
 
-  const worldPos = useRef<Vec>({ x: PLAYER_START_X, y: PLAYER_START_Y })
+  const cityConfigRef = useRef(cityConfig)
+
+  const worldPos = useRef<Vec>({ x: cityConfig.spawnX, y: cityConfig.spawnY })
   const direction = useRef<Direction>('down')
   const animFrame = useRef(MIDNIGHT_WALK_IDLE_FRAME)
   const animElapsed = useRef(0)
@@ -370,8 +419,8 @@ export function Player({ onTrigger }: PlayerProps) {
   const pointerWorldPos = useRef<PointerWorldState>({ x: 0, y: 0, active: false })
   const cameraRef = useRef({
     zoom: ZOOM_DEFAULT,
-    focusX: PLAYER_START_X,
-    focusY: PLAYER_START_Y,
+    focusX: cityConfig.spawnX,
+    focusY: cityConfig.spawnY,
     width,
     height,
   })
@@ -379,42 +428,112 @@ export function Player({ onTrigger }: PlayerProps) {
   const pinchStartSpan = useRef(0)
   const pinchStartZoom = useRef(ZOOM_DEFAULT)
   const screenSizeRef = useRef({ width, height })
-  const walkSrc = useSyncExternalStore(
-    subscribeCharacterStore,
-    getPlayerWalkSrc,
-    getPlayerWalkSrc,
-  )
+  const nearbyNpcIdRef = useRef<string | null>(null)
+  const dialogueActiveRef = useRef(false)
+  const dialogueNpcIdRef = useRef<string | null>(null)
+  const npcFacingMap = useRef(new Map<string, Direction>())
+  const npcSpritesRef = useRef(new Map<string, HTMLImageElement>())
+  const npcIdleTimers = useRef(new Map<string, { elapsed: number; interval: number }>())
+  const triggerCooldown = useRef(0)
+
+  useEffect(() => {
+    cityConfigRef.current = cityConfig
+    activeTriggerIds.current.clear()
+    triggerCooldown.current = 1
+
+    void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
+
+    npcFacingMap.current.clear()
+    npcIdleTimers.current.clear()
+
+    const sprites = npcSpritesRef.current
+    for (const npc of cityConfig.npcs) {
+      if (!npc.spriteSrc) continue
+      if (sprites.has(npc.id)) continue
+      const src = npc.spriteSrc
+      const img = new Image()
+      img.onload = () => {
+        for (const n of cityConfig.npcs) {
+          if (n.spriteSrc === src) sprites.set(n.id, img)
+        }
+      }
+      img.onerror = (err) => {
+        console.error(`[NPC sprite FAILED] ${src}`, err)
+      }
+      img.src = src
+    }
+  }, [cityConfig])
+
+  useImperativeHandle(ref, () => ({
+    setPosition(x: number, y: number) {
+      worldPos.current = { x, y }
+      activeTriggerIds.current.clear()
+      triggerCooldown.current = 1
+    },
+    getNearbyNpcId() {
+      return nearbyNpcIdRef.current
+    },
+  }))
+
+  useEffect(() => {
+    dialogueActiveRef.current = !!dialogueActive
+  }, [dialogueActive])
+
+  useEffect(() => {
+    const prevId = dialogueNpcIdRef.current
+    dialogueNpcIdRef.current = dialogueNpcId ?? null
+
+    if (dialogueNpcId) {
+      const cfg = cityConfigRef.current
+      const npc = cfg.npcs.find((n) => n.id === dialogueNpcId)
+      if (npc) {
+        const px = worldPos.current.x
+        const py = worldPos.current.y
+        let bestFacing: Direction = 'down'
+        let bestDist = Infinity
+        for (const pt of getNpcInteractPoints(npc)) {
+          const dist = Math.hypot(px - pt.x, py - pt.y)
+          if (dist < bestDist) {
+            bestDist = dist
+            bestFacing = pt.npcFacing
+          }
+        }
+        npcFacingMap.current.set(dialogueNpcId, bestFacing)
+      }
+    } else if (prevId) {
+      npcFacingMap.current.delete(prevId)
+    }
+  }, [dialogueNpcId])
 
   useEffect(() => {
     onTriggerRef.current = onTrigger
   }, [onTrigger])
 
   useEffect(() => {
+    onTriggerExitRef.current = onTriggerExit
+  }, [onTriggerExit])
+
+  useEffect(() => {
     screenSizeRef.current = { width, height }
   }, [width, height])
 
   useEffect(() => {
-    const sheet = new SpriteSheet(
-      walkSrc,
-      MIDNIGHT_WALK_COLUMNS,
-      MIDNIGHT_WALK_ROWS,
-      MIDNIGHT_WALK_FRAME_WIDTH,
-      MIDNIGHT_WALK_FRAME_HEIGHT,
-      {
-        chromaKey: true,
-        removeGroundShadow: false,
-        framesPerDirection: MIDNIGHT_WALK_FRAMES_PER_DIRECTION,
-      },
-    )
-    sheetRef.current = sheet
-    void sheet.load().catch((err) => console.error(err))
+    let cancelled = false
+    midnightSheetRef.current = null
+
+    void loadSpriteSheetWithFallback(MIDNIGHT_WALK_SRC).then((sheet) => {
+      if (cancelled) return
+      midnightSheetRef.current = sheet
+    })
+
     return () => {
-      sheetRef.current = null
+      cancelled = true
+      midnightSheetRef.current = null
     }
-  }, [walkSrc])
+  }, [])
 
   useEffect(() => {
-    void loadWorldBackground().catch((err) => console.error(err))
+    void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'c' || e.key === 'C') {
@@ -431,13 +550,15 @@ export function Player({ onTrigger }: PlayerProps) {
       if (e.key === '+' || e.key === '=' || e.key === 'Equal') {
         e.preventDefault()
         const { width: sw, height: sh } = screenSizeRef.current
-        zoomLevel.current = clampZoom(zoomLevel.current + ZOOM_STEP, sw, sh)
+        const cfg = cityConfigRef.current
+        zoomLevel.current = clampZoom(zoomLevel.current + ZOOM_STEP, sw, sh, cfg.worldWidth, cfg.worldHeight)
         return
       }
       if (e.key === '-' || e.key === 'Minus') {
         e.preventDefault()
         const { width: sw, height: sh } = screenSizeRef.current
-        zoomLevel.current = clampZoom(zoomLevel.current - ZOOM_STEP, sw, sh)
+        const cfg = cityConfigRef.current
+        zoomLevel.current = clampZoom(zoomLevel.current - ZOOM_STEP, sw, sh, cfg.worldWidth, cfg.worldHeight)
         return
       }
       if (e.key in KEY_TO_DIR) {
@@ -456,13 +577,14 @@ export function Player({ onTrigger }: PlayerProps) {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [])
+  }, [cityConfig.mapSrc])
 
   useEffect(() => {
     const el = canvas
     if (!el) return
 
     el.style.touchAction = 'none'
+    el.style.imageRendering = 'pixelated'
 
     const pinchSpan = (touches: TouchList) => {
       if (touches.length < 2) return 0
@@ -484,10 +606,13 @@ export function Player({ onTrigger }: PlayerProps) {
         const span = pinchSpan(e.touches)
         if (span > 0) {
           const { width: sw, height: sh } = screenSizeRef.current
+          const cfg = cityConfigRef.current
           zoomLevel.current = clampZoom(
             pinchStartZoom.current * (span / pinchStartSpan.current),
             sw,
             sh,
+            cfg.worldWidth,
+            cfg.worldHeight,
           )
         }
         e.preventDefault()
@@ -568,16 +693,18 @@ export function Player({ onTrigger }: PlayerProps) {
     const id = loopId.current
 
     const step = (dt: number) => {
-      const sheet = sheetRef.current
+      const cfg = cityConfigRef.current
+      const frozen = dialogueActiveRef.current
+      const walkSheet = midnightSheetRef.current
       let vx = 0
       let vy = 0
 
-      const touch = touchDir.current
+      const touch = frozen ? null : touchDir.current
       if (touch) {
         vx = touch === 'left' ? -1 : touch === 'right' ? 1 : 0
         vy = touch === 'up' ? -1 : touch === 'down' ? 1 : 0
         direction.current = touch
-      } else {
+      } else if (!frozen) {
         const left = keysDown.current.has('ArrowLeft')
         const right = keysDown.current.has('ArrowRight')
         const up = keysDown.current.has('ArrowUp')
@@ -606,21 +733,19 @@ export function Player({ onTrigger }: PlayerProps) {
       }
 
       const facing = direction.current
-      const isMoving =
+      const isMoving = !frozen && (
         touchDir.current !== null ||
         keysDown.current.has('ArrowLeft') ||
         keysDown.current.has('ArrowRight') ||
         keysDown.current.has('ArrowUp') ||
         keysDown.current.has('ArrowDown')
-      const frameCount = sheet?.framesPerDirection ?? WALK_FRAME_COUNT
+      )
+      const frameCount = walkSheet?.framesPerDirection ?? WALK_FRAME_COUNT
 
       if (isMoving && (!wasMoving.current || lastFacing.current !== facing)) {
         animFrame.current = 0
         animElapsed.current = 0
       }
-      wasMoving.current = isMoving
-      lastFacing.current = facing
-
       if (isMoving) {
         animElapsed.current += dt
         while (animElapsed.current >= ANIM_INTERVAL) {
@@ -631,6 +756,8 @@ export function Player({ onTrigger }: PlayerProps) {
         animFrame.current = MIDNIGHT_WALK_IDLE_FRAME
         animElapsed.current = 0
       }
+      wasMoving.current = isMoving
+      lastFacing.current = facing
 
       const rightOnly =
         facing === 'right' &&
@@ -642,7 +769,13 @@ export function Player({ onTrigger }: PlayerProps) {
             !keysDown.current.has('ArrowUp') &&
             !keysDown.current.has('ArrowDown')))
 
-      if (isMoving && sheet?.loaded) {
+      const collidesAt = (wx: number, wy: number): boolean => {
+        const hitbox = getFeetHitbox(wx, wy)
+        if (cfg.collisionZones.some((zone) => rectsOverlap(hitbox, zone))) return true
+        return cfg.npcs.some((npc) => rectsOverlap(hitbox, getNpcCollisionRect(npc)))
+      }
+
+      if (isMoving && walkSheet?.loaded) {
         let speedX = 0
         let speedY = 0
         if (rightOnly) {
@@ -669,11 +802,11 @@ export function Player({ onTrigger }: PlayerProps) {
 
         const nextX = Math.max(
           halfW,
-          Math.min(WORLD_WIDTH - halfW, worldPos.current.x + dx),
+          Math.min(cfg.worldWidth - halfW, worldPos.current.x + dx),
         )
         const nextY = Math.max(
           halfH,
-          Math.min(WORLD_HEIGHT - halfH, worldPos.current.y + dy),
+          Math.min(cfg.worldHeight - halfH, worldPos.current.y + dy),
         )
 
         if (dx !== 0 && !collidesAt(nextX, worldPos.current.y)) {
@@ -684,25 +817,60 @@ export function Player({ onTrigger }: PlayerProps) {
         }
       }
 
-      const zoom = clampZoom(zoomLevel.current, width, height)
+      const zoom = clampZoom(zoomLevel.current, width, height, cfg.worldWidth, cfg.worldHeight)
       zoomLevel.current = zoom
       const worldX = worldPos.current.x
       const worldY = worldPos.current.y
 
-      for (const zone of TRIGGER_ZONES) {
-        const hitbox = getFeetHitbox(worldX, worldY)
-        const inside = rectsOverlap(hitbox, zone)
-        if (inside) {
-          if (!activeTriggerIds.current.has(zone.id)) {
-            activeTriggerIds.current.add(zone.id)
-            onTriggerRef.current?.(zone.action)
+      if (triggerCooldown.current > 0) {
+        triggerCooldown.current = Math.max(0, triggerCooldown.current - dt)
+      } else if (!frozen) {
+        for (const zone of cfg.triggerZones) {
+          const hitbox = getFeetHitbox(worldX, worldY)
+          const inside = rectsOverlap(hitbox, zone)
+          if (inside) {
+            if (!activeTriggerIds.current.has(zone.id)) {
+              activeTriggerIds.current.add(zone.id)
+              onTriggerRef.current?.(zone.action)
+            }
+          } else if (activeTriggerIds.current.has(zone.id)) {
+            activeTriggerIds.current.delete(zone.id)
+            onTriggerExitRef.current?.(zone.action)
           }
-        } else {
-          activeTriggerIds.current.delete(zone.id)
         }
       }
 
-      const focus = getWorldFocusPoint(worldX, worldY, zoom, width, height)
+      const dirs: Direction[] = ['down', 'up', 'left', 'right']
+      const activeDialogueNpc = dialogueNpcIdRef.current
+      for (const npc of cfg.npcs) {
+        if (npc.id === activeDialogueNpc) continue
+        let timer = npcIdleTimers.current.get(npc.id)
+        if (!timer) {
+          timer = { elapsed: 0, interval: 2 + Math.random() * 2 }
+          npcIdleTimers.current.set(npc.id, timer)
+        }
+        timer.elapsed += dt
+        if (timer.elapsed >= timer.interval) {
+          timer.elapsed = 0
+          timer.interval = 2 + Math.random() * 2
+          npcFacingMap.current.set(npc.id, dirs[Math.floor(Math.random() * 4)]!)
+        }
+      }
+
+      let closestNpcId: string | null = null
+      let closestDist = Infinity
+      for (const npc of cfg.npcs) {
+        for (const pt of getNpcInteractPoints(npc)) {
+          const dist = Math.hypot(worldX - pt.x, worldY - pt.y)
+          if (dist < NPC_INTERACT_POINT_RADIUS && dist < closestDist) {
+            closestDist = dist
+            closestNpcId = npc.id
+          }
+        }
+      }
+      nearbyNpcIdRef.current = closestNpcId
+
+      const focus = getWorldFocusPoint(worldX, worldY, zoom, width, height, cfg.worldWidth, cfg.worldHeight)
       cameraRef.current = {
         zoom,
         focusX: focus.x,
@@ -719,10 +887,10 @@ export function Player({ onTrigger }: PlayerProps) {
       ctx.imageSmoothingEnabled = false
       applyWorldTransform(ctx, zoom, focus.x, focus.y, width, height)
 
-      drawWorldMap(ctx)
+      drawWorldMap(ctx, cfg.mapSrc, cfg.worldWidth, cfg.worldHeight)
 
       if (showCollisionDebug.current) {
-        drawCollisionZonesDebug(ctx)
+        drawCollisionZonesDebug(ctx, cfg.collisionZones, cfg.npcs)
       }
 
       const frame = isMoving ? animFrame.current : MIDNIGHT_WALK_IDLE_FRAME
@@ -731,35 +899,85 @@ export function Player({ onTrigger }: PlayerProps) {
       let sx = 0
       let sy = 0
 
-      if (sheet?.loaded) {
-        const source = (sheet as unknown as { drawSource: CanvasImageSource | null })
-          .drawSource
-        if (source) {
-          const dw = Math.floor(PLAYER_DISPLAY_WIDTH)
-          const dh = Math.floor(PLAYER_DISPLAY_HEIGHT)
-          const worldDrawX = Math.floor(worldX - dw / 2)
-          const worldDrawY = Math.floor(worldY - dh / 2) - PLAYER_DRAW_Y_SHIFT_UP
-          const rect = sheet.getFrameRect(facing, frame)
-          sx = Math.floor(rect.sx)
-          const rowIndex = SPRITE_SHEET_ROW[facing]
-          let rowPad = PLAYER_SOURCE_ROW_PADDING
-          let srcH = PLAYER_SOURCE_FRAME_HEIGHT
-          if (facing === 'left') {
-            rowPad = PLAYER_LEFT_SOURCE_ROW_PADDING
-            srcH = PLAYER_LEFT_SOURCE_FRAME_HEIGHT
-          } else if (facing === 'right') {
-            rowPad = PLAYER_RIGHT_SOURCE_ROW_PADDING
-            srcH = PLAYER_RIGHT_SOURCE_FRAME_HEIGHT
+      const dh = Math.floor(PLAYER_DISPLAY_HEIGHT)
+      const worldDrawY = Math.floor(worldY - dh / 2) - PLAYER_DRAW_Y_SHIFT_UP
+      const dw = Math.floor(PLAYER_DISPLAY_WIDTH)
+      const worldDrawX = Math.floor(worldX - dw / 2)
+      const midnightSheet = midnightSheetRef.current
+
+      type Renderable = { sortY: number; kind: 'midnight' } | { sortY: number; kind: 'npc'; npc: typeof cfg.npcs[number] }
+      const midnightBottomY = worldDrawY + dh
+      const renderables: Renderable[] = [{ sortY: midnightBottomY, kind: 'midnight' }]
+      for (const npc of cfg.npcs) {
+        const half = NPC_SIZE / 2
+        const npcDisplayH = 120
+        const npcBottomY = (npc.y + half - npcDisplayH) + npcDisplayH
+        renderables.push({ sortY: npcBottomY, kind: 'npc', npc })
+      }
+      renderables.sort((a, b) => a.sortY - b.sortY)
+
+      for (const entry of renderables) {
+        if (entry.kind === 'midnight') {
+          if (midnightSheet?.loaded) {
+            const rect = midnightSheet.getFrameRect(facing, frame)
+            sx = Math.floor(rect.sx)
+            sy = Math.floor(SPRITE_SHEET_ROW[facing] * MIDNIGHT_WALK_FRAME_HEIGHT)
+            drawSheetFrame(ctx, midnightSheet, facing, frame, worldDrawX, worldDrawY, dw, dh)
           }
-          sy = Math.floor(rowIndex * MIDNIGHT_WALK_FRAME_HEIGHT + rowPad)
-          const sw = Math.floor(rect.sw)
-          const sh = Math.floor(srcH)
-          ctx.drawImage(source, sx, sy, sw, sh, worldDrawX, worldDrawY, dw, dh)
+        } else {
+          const npc = entry.npc
+          const half = NPC_SIZE / 2
+          const npcFacing = npcFacingMap.current.get(npc.id) ?? 'down'
+          const spriteImg = npcSpritesRef.current.get(npc.id)
+
+          if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
+            const cols = npc.spriteColumns ?? 4
+            const frameW = Math.floor(spriteImg.naturalWidth / cols)
+            const frameH = spriteImg.naturalHeight
+            const col = NPC_SPRITE_COL[npcFacing]
+            const nsx = Math.floor(col * frameW)
+            const displayW = 48
+            const displayH = 120
+            const dx = Math.floor(npc.x - displayW / 2)
+            const dy = Math.floor(npc.y + half - displayH)
+
+            ctx.imageSmoothingEnabled = false
+            ctx.drawImage(
+              spriteImg,
+              nsx,
+              0,
+              frameW,
+              frameH,
+              Math.floor(dx),
+              Math.floor(dy),
+              Math.floor(displayW),
+              Math.floor(displayH),
+            )
+          } else {
+            const nx = Math.floor(npc.x - half)
+            const ny = Math.floor(npc.y - half)
+            ctx.fillStyle = npc.color
+            ctx.fillRect(nx, ny, NPC_SIZE, NPC_SIZE)
+
+            const cx = Math.floor(npc.x)
+            const cy = Math.floor(npc.y)
+            ctx.fillStyle = 'rgba(255,255,255,0.8)'
+            if (npcFacing === 'down') {
+              ctx.fillRect(cx - 5, cy + 1, 3, 3)
+              ctx.fillRect(cx + 3, cy + 1, 3, 3)
+            } else if (npcFacing === 'left') {
+              ctx.fillRect(cx - 8, cy - 2, 3, 3)
+              ctx.fillRect(cx - 8, cy + 3, 3, 3)
+            } else if (npcFacing === 'right') {
+              ctx.fillRect(cx + 6, cy - 2, 3, 3)
+              ctx.fillRect(cx + 6, cy + 3, 3, 3)
+            }
+          }
         }
       }
 
       if (showCoordinateOverlay.current) {
-        drawCoordinateGrid(ctx, zoom, focus.x, focus.y, width, height)
+        drawCoordinateGrid(ctx, zoom, focus.x, focus.y, width, height, cfg.worldWidth, cfg.worldHeight)
         drawMidnightCrosshair(ctx, worldX, worldY, zoom)
       }
 
@@ -783,7 +1001,7 @@ export function Player({ onTrigger }: PlayerProps) {
   }, [ctx, width, height, registerLoop, unregisterLoop, setDebugHud])
 
   return (
-    <div className="player-controls" aria-hidden={false}>
+    <div className="player-controls" aria-hidden={false} onClick={(e) => e.stopPropagation()}>
       <div className="player-dpad">
         <button
           type="button"
@@ -812,4 +1030,4 @@ export function Player({ onTrigger }: PlayerProps) {
       </div>
     </div>
   )
-}
+})

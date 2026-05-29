@@ -1,4 +1,4 @@
-export type TriggerAction = 'OPEN_13GALLONS'
+export type TriggerAction = 'OPEN_13GALLONS' | 'OPEN_DARKLINE' | 'OPEN_ONE_LOVE_CAFE'
 
 export type TriggerZone = {
   id: string
@@ -18,4 +18,16 @@ export const TRIGGER_ZONES: TriggerZone[] = [
     height: 60,
     action: 'OPEN_13GALLONS',
   },
+  {
+    id: 'darkline-entrance',
+    x: 580,
+    y: 850,
+    width: 70,
+    height: 20,
+    action: 'OPEN_DARKLINE',
+  },
 ]
+
+/** Spawn point when returning from Darkline — south sidewalk in front of the entrance. */
+export const DARKLINE_SPAWN_X = 512
+export const DARKLINE_SPAWN_Y = 620

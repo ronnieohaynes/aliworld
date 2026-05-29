@@ -1,9 +1,18 @@
+/**
+ * Character customization store — DISABLED for V1.1.
+ * Exports are retained so CustomizationScreen.tsx (kept for V2) still compiles.
+ * Nothing in the active V1.1 game imports from this module.
+ */
+
 import { MIDNIGHT_WALK_SRC } from '../constants/gameAssets'
+import { publicAsset } from '../utils/publicAsset'
 
 export type SkinTone = 1 | 2 | 3 | 4 | 5 | 6
 
+export const DEFAULT_CUSTOMIZATION_PREVIEW_TONE: SkinTone = 3
+
 export type CharacterState = {
-  /** Set only after the player picks a tone in the customization screen. */
+  hasCustomized: boolean
   skinTone: SkinTone | null
 }
 
@@ -16,36 +25,53 @@ export const SKIN_TONE_SWATCHES: ReadonlyArray<{ tone: SkinTone; color: string }
   { tone: 6, color: '#3B1F0A' },
 ]
 
-const BODY_BASE_SRC = '/Assets/Characters/base-body/male'
+const BODY_BASE_SRC = publicAsset('Assets/Characters/base-body/male')
 
-let characterState: CharacterState = { skinTone: null }
-const listeners = new Set<() => void>()
+const SKIN_TONE_IDLE_SRC: Record<SkinTone, string> = {
+  1: `${BODY_BASE_SRC}/tone1-Idle.png`,
+  2: `${BODY_BASE_SRC}/tone2-idle.png`,
+  3: `${BODY_BASE_SRC}/tone3-idle.png`,
+  4: `${BODY_BASE_SRC}/tone4-idle.png`,
+  5: `${BODY_BASE_SRC}/tone5-idle.png`,
+  6: `${BODY_BASE_SRC}/tone6-idle.png`,
+}
 
 export function getCharacterState(): CharacterState {
-  return characterState
+  return { hasCustomized: false, skinTone: null }
 }
 
-export function setSkinTone(skinTone: SkinTone): void {
-  if (characterState.skinTone === skinTone) return
-  characterState = { ...characterState, skinTone }
-  for (const listener of listeners) {
-    listener()
-  }
+export function hasCustomizedCharacter(): boolean {
+  return false
 }
+
+export function setSkinTone(_skinTone: SkinTone): void {}
+export function completeCustomization(): void {}
 
 export function subscribeCharacterStore(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
+  void listener
+  return () => {}
+}
+
+export function getEffectiveSkinTone(): SkinTone {
+  return 1
+}
+
+export function getCustomizationPreviewTone(): SkinTone {
+  return DEFAULT_CUSTOMIZATION_PREVIEW_TONE
+}
+
+export function getSkinToneFullSrc(skinTone: SkinTone): string {
+  return `${BODY_BASE_SRC}/tone${skinTone}-full.png`
 }
 
 export function getSkinToneWalkSrc(skinTone: SkinTone): string {
   return `${BODY_BASE_SRC}/tone${skinTone}-walk.png`
 }
 
-/** Walk sheet for overworld and store: Midnight until a skin tone is chosen. */
-export function getPlayerWalkSrc(): string {
-  if (characterState.skinTone === null) {
-    return MIDNIGHT_WALK_SRC
-  }
-  return getSkinToneWalkSrc(characterState.skinTone)
+export function getSkinToneIdleSrc(skinTone: SkinTone): string {
+  return SKIN_TONE_IDLE_SRC[skinTone]
+}
+
+export function getDefaultMidnightWalkSrc(): string {
+  return MIDNIGHT_WALK_SRC
 }

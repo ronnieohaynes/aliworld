@@ -1,9 +1,9 @@
+import { publicAsset } from '../utils/publicAsset'
+
 /**
- * Vite serves `public/` at site root.
- * On disk the folder is `public/Assets/Characters/` — URLs must match that casing
- * (lowercase `/assets/...` returns the SPA HTML shell, not PNGs).
+ * On disk: `public/Assets/Characters/` — use `publicAsset()` so paths respect Vite `base`.
  */
-const CHAR_DIR = '/Assets/Characters'
+const CHAR_DIR = publicAsset('Assets/Characters')
 
 export const GAME_CANVAS_WIDTH = 390
 export const GAME_CANVAS_HEIGHT = 844
