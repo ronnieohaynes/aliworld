@@ -1,0 +1,9 @@
+# cloudflare pages routing rules
+# format: source destination [status]
+
+# /blnt routes to the existing BLNT game (via the redirect html)
+/blnt              /blnt-redirect.html              200
+/blnt/             /blnt-redirect.html              200
+
+# the splash chooser is at root
+# /aliworld is its own folder with its own index.html (auto-routed)
