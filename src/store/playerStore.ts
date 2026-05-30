@@ -12,6 +12,37 @@ import {
   type SkillsState,
 } from './skillStore'
 
+const STORAGE_KEY = 'aliworld:player-progression:v1'
+
+type PersistedProgression = {
+  archetype: PlayerStoreState['archetype']
+  skills: PlayerStoreState['skills']
+  equippedMoves: PlayerStoreState['equippedMoves']
+}
+
+function loadProgression(): Partial<PersistedProgression> | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as Partial<PersistedProgression>
+  } catch {
+    return null
+  }
+}
+
+function saveProgression(s: PlayerStoreState): void {
+  try {
+    const data: PersistedProgression = {
+      archetype: s.archetype,
+      skills: s.skills,
+      equippedMoves: s.equippedMoves,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch {
+    // storage unavailable — progression still lives for this session
+  }
+}
+
 export type PlayerStoreState = {
   archetype: ArchetypeId
   accessories: AccessoryBonuses[]
@@ -23,11 +54,13 @@ export type PlayerStoreState = {
   showDebug: boolean
 }
 
+const savedProgression = loadProgression()
+
 let state: PlayerStoreState = {
-  archetype: 'atk',
+  archetype: savedProgression?.archetype ?? 'atk',
   accessories: [],
-  skills: createDefaultSkills(),
-  equippedMoves: ['STRIKE', 'SLIP', 'HOLD', 'WHISPER'],
+  skills: savedProgression?.skills ?? createDefaultSkills(),
+  equippedMoves: savedProgression?.equippedMoves ?? ['STRIKE', 'SLIP', 'HOLD', 'WHISPER'],
   hp: null,
   showDebug: false,
 }
@@ -35,6 +68,7 @@ let state: PlayerStoreState = {
 const listeners = new Set<() => void>()
 
 function emit(): void {
+  saveProgression(state)
   for (const listener of listeners) {
     listener()
   }
