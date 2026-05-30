@@ -80,6 +80,10 @@ export type DeathClock = {
   target: 'enemy' | 'player'
   /** Log fragment when the clock fires (e.g. "sealed fate"). */
   label?: string
+  /** 1 = always hits; below 1 rolls on resolve (sealed fate). */
+  hitChance?: number
+  /** On miss, fraction of player's current HP lost (sealed fate). */
+  missSelfDamagePct?: number
 }
 
 export type MoveCost =

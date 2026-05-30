@@ -1,6 +1,6 @@
 import { createBattleMoveState, type BattleMoveState } from '../data/battleMoveState'
 import { applyMoveCostAfterResolve, consumeTurnFlag } from '../data/combatTurnCosts'
-import { BLACKOUT_INTERRUPTIBLE, SEALED_FATE_MISS_SELF_DAMAGE_PCT } from '../data/moveBalance'
+import { BLACKOUT_INTERRUPTIBLE } from '../data/moveBalance'
 import {
   createEmptyCombatStatus,
   enemyLosesTurn,
@@ -449,24 +449,20 @@ function processTurnStart(state: BattleState): BattleState {
   let log = state.log
 
   for (const hit of hits) {
-    const hpBefore = hit.target === 'enemy' ? enemyHp : playerHp
+    if (hit.missed) {
+      const pct = hit.clock.missSelfDamagePct ?? 0.8
+      const selfDmg = Math.floor(state.playerHp * pct)
+      playerHp = Math.max(0, playerHp - selfDmg)
+      log = appendLog(log, 'sealed fate slips. it cost you.')
+      continue
+    }
+
     if (hit.target === 'enemy') {
       enemyHp = Math.max(0, enemyHp - hit.damage)
     } else {
       playerHp = Math.max(0, playerHp - hit.damage)
     }
     log = appendLog(log, deathClockHitLogLine(hit, state.npc.displayName))
-
-    if (
-      hit.clock.label === 'sealed fate' &&
-      hit.target === 'enemy' &&
-      enemyHp > 0 &&
-      hpBefore > 0
-    ) {
-      const selfDmg = Math.floor(state.playerStats.maxHp * SEALED_FATE_MISS_SELF_DAMAGE_PCT)
-      playerHp = Math.max(0, playerHp - selfDmg)
-      log = appendLog(log, `sealed fate missed. you take ${selfDmg}.`)
-    }
   }
 
   return { ...state, deathClocks: clocks, enemyHp, playerHp, log }

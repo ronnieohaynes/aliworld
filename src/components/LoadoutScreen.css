@@ -1,0 +1,208 @@
+.loadout-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  opacity: 0;
+  animation: loadout-fade-in var(--loadout-fade-ms, 300ms) ease forwards;
+}
+
+.loadout-screen--closing {
+  animation: loadout-fade-out var(--loadout-fade-ms, 300ms) ease forwards;
+}
+
+@keyframes loadout-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loadout-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.loadout-screen__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  pointer-events: auto;
+}
+
+.loadout-screen__panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 18px 14px 16px;
+  pointer-events: none;
+}
+
+.loadout-screen__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  pointer-events: auto;
+}
+
+.loadout-screen__title {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #fff;
+}
+
+.loadout-screen__close {
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(14, 14, 24, 0.85);
+  color: #a0a0b8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+/* 2×2 equipped grid — reuses .battle-screen__moves + .battle-screen__move from BattleScreen.css */
+.loadout-screen__slots {
+  flex-shrink: 0;
+  min-height: 120px;
+  margin-bottom: 16px;
+  pointer-events: auto;
+}
+
+.loadout-screen__slot--selected {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px rgba(124, 58, 237, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.55);
+}
+
+.loadout-screen__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  pointer-events: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.loadout-screen__section-title {
+  flex-shrink: 0;
+  margin: 0 0 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: #7a7a96;
+}
+
+.loadout-screen__note {
+  margin: 0 0 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #f59e0b;
+}
+
+.loadout-screen__pool {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.loadout-screen__pool-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: rgba(14, 14, 24, 0.92);
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.loadout-screen__pool-item:active {
+  filter: brightness(1.1);
+}
+
+.loadout-screen__pool-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.loadout-screen__pool-desc {
+  font-size: 10px;
+  line-height: 13px;
+  color: #a0a0b8;
+  text-transform: lowercase;
+}
+
+.loadout-screen__pool-meta {
+  font-size: 9px;
+  color: #6d6d88;
+  text-transform: lowercase;
+}
+
+.loadout-screen__empty-pool {
+  margin: 0 0 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 15px;
+  color: #7a7a96;
+  text-transform: lowercase;
+}
+
+.loadout-screen__locked {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.loadout-screen__locked-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  background: rgba(10, 10, 18, 0.65);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.loadout-screen__locked-item .loadout-screen__pool-name,
+.loadout-screen__locked-item .loadout-screen__pool-desc {
+  color: #7a7a96;
+}

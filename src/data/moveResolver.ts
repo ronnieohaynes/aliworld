@@ -17,6 +17,8 @@ import {
   PHENOMENA_HEAL_PCT_MIN,
   REFRACT_DAMAGE_MULT,
   SEALED_FATE_DAMAGE_MULT,
+  SEALED_FATE_HIT_CHANCE,
+  SEALED_FATE_MISS_SELF_DAMAGE_PCT,
   SEALED_FATE_TURN_MAX,
   SEALED_FATE_TURN_MIN,
 } from './moveBalance'
@@ -350,7 +352,10 @@ export function applyMoveBehavior(
     case 'sealed-fate': {
       const turns = randomInt(SEALED_FATE_TURN_MIN, SEALED_FATE_TURN_MAX)
       const dmg = Math.floor(ctx.atk * SEALED_FATE_DAMAGE_MULT)
-      post.deathClocks = scheduleDeathClock([], dmg, turns, 'enemy', 'sealed fate')
+      post.deathClocks = scheduleDeathClock([], dmg, turns, 'enemy', 'sealed fate', {
+        hitChance: SEALED_FATE_HIT_CHANCE,
+        missSelfDamagePct: SEALED_FATE_MISS_SELF_DAMAGE_PCT,
+      })
       out.playerDmg = 0
       out.incoming = enemyAttacks ? eDmg : 0
       break

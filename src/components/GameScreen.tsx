@@ -5,6 +5,7 @@ import { CITY_CONFIGS, type CityId } from '../data/cityConfig'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
+import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe } from './BattleEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { DarklineScreen } from './DarklineScreen'
@@ -36,6 +37,7 @@ export function GameScreen() {
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
+  const [showLoadout, setShowLoadout] = useState(false)
 
   const cityConfig = CITY_CONFIGS[currentCity]
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
@@ -135,6 +137,14 @@ export function GameScreen() {
     setBattleNpcId(null)
   }, [])
 
+  const handleFannyPack = useCallback(() => {
+    setShowLoadout(true)
+  }, [])
+
+  const handleLoadoutClose = useCallback(() => {
+    setShowLoadout(false)
+  }, [])
+
   const handleInteriorClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (dialogue) {
@@ -146,7 +156,7 @@ export function GameScreen() {
 
   return (
     <div className="game-screen">
-      <GameShell onSelect={handleToggleDebug}>
+      <GameShell onSelect={handleToggleDebug} onFannyPack={handleFannyPack}>
         <div
           className={`game-screen-play${battleEntryWipe ? ' game-screen-play--battle-wipe' : ''}`}
           onClick={handlePlayAreaClick}
@@ -162,7 +172,7 @@ export function GameScreen() {
               cityConfig={cityConfig}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
-              dialogueActive={!!dialogue || !!battleEntryWipe}
+              dialogueActive={!!dialogue || !!battleEntryWipe || showLoadout}
               dialogueNpcId={dialogue?.npc.id ?? null}
             />
             {!battleNpcId && <PlayerLevelOverhead />}
@@ -213,6 +223,7 @@ export function GameScreen() {
               onComplete={handleBattleEntryComplete}
             />
           )}
+          {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
         </div>
       </GameShell>
     </div>

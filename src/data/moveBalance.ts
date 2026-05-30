@@ -44,6 +44,8 @@ export const INVINCIBLE_BLOCK_COUNT = 3
 export const SEALED_FATE_TURN_MIN = 1
 export const SEALED_FATE_TURN_MAX = 3
 export const SEALED_FATE_DAMAGE_MULT = 3
+/** Death clock lands this often; on miss, player pays missSelfDamagePct of current HP. */
+export const SEALED_FATE_HIT_CHANCE = 0.99
 export const SEALED_FATE_MISS_SELF_DAMAGE_PCT = 0.8
 
 export const PHENOMENA_DAMAGE_MULT_MIN = 0.35

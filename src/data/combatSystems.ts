@@ -15,6 +15,8 @@ export type DeathClockHit = {
   clock: DeathClock
   damage: number
   target: 'enemy' | 'player'
+  /** True when hitChance roll failed (self-damage applied instead). */
+  missed?: boolean
 }
 
 let deathClockSeq = 0
@@ -24,13 +26,19 @@ export function nextDeathClockId(): string {
   return `death-clock-${deathClockSeq}`
 }
 
-/** Schedule a guaranteed hit N turns from now (0 = next turn start). */
+export type ScheduleDeathClockOptions = {
+  hitChance?: number
+  missSelfDamagePct?: number
+}
+
+/** Schedule a hit N turns from now (0 = next turn start). */
 export function scheduleDeathClock(
   clocks: DeathClock[],
   damage: number,
   turnsUntil: number,
   target: DeathClock['target'] = 'enemy',
   label?: string,
+  options?: ScheduleDeathClockOptions,
 ): DeathClock[] {
   return [
     ...clocks,
@@ -40,6 +48,8 @@ export function scheduleDeathClock(
       damage: Math.max(0, damage),
       target,
       label,
+      hitChance: options?.hitChance,
+      missSelfDamagePct: options?.missSelfDamagePct,
     },
   ]
 }
@@ -54,7 +64,17 @@ export function resolveDeathClocksAtTurnStart(clocks: DeathClock[]): {
 
   for (const clock of clocks) {
     if (clock.turnsRemaining <= 0) {
-      hits.push({ clock, damage: clock.damage, target: clock.target })
+      const chance = clock.hitChance ?? 1
+      if (Math.random() < chance) {
+        hits.push({ clock, damage: clock.damage, target: clock.target })
+      } else {
+        hits.push({
+          clock,
+          damage: 0,
+          target: 'player',
+          missed: true,
+        })
+      }
       continue
     }
     remaining.push({ ...clock, turnsRemaining: clock.turnsRemaining - 1 })

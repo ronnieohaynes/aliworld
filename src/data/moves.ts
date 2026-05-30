@@ -101,12 +101,21 @@ export function xpGrantsForMove(r: MoveXpContext): { skill: SkillId; amount: num
   }))
 }
 
+import type { MoveSkill } from './moveTypes'
+
+const SKILL_MOVE_COLOR_CLASS: Record<MoveSkill, string> = {
+  attack: 'battle-screen__move--strike',
+  speed: 'battle-screen__move--slip',
+  defense: 'battle-screen__move--hold',
+  luck: 'battle-screen__move--whisper',
+}
+
 export function getMoveUiMeta(id: PlayerMoveId) {
   const m = MOVES[id]
   return {
     move: id,
     label: m.displayName,
     description: m.uiDescription,
-    className: m.uiClassName,
+    className: SKILL_MOVE_COLOR_CLASS[m.skill],
   }
 }
