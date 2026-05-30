@@ -172,7 +172,7 @@ export function GameScreen() {
               cityConfig={cityConfig}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
-              dialogueActive={!!dialogue || !!battleEntryWipe || showLoadout}
+              dialogueActive={!!dialogue || !!battleEntryWipe}
               dialogueNpcId={dialogue?.npc.id ?? null}
             />
             {!battleNpcId && <PlayerLevelOverhead />}
@@ -223,9 +223,9 @@ export function GameScreen() {
               onComplete={handleBattleEntryComplete}
             />
           )}
-          {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
         </div>
       </GameShell>
+      {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
     </div>
   )
 }
