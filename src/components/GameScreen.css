@@ -3,6 +3,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
   background: #030303;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -10,8 +12,15 @@
 
 .game-screen-play {
   position: relative;
-  width: min(100vw, 390px);
+  width: 100%;
+  height: 100%;
 }
+
+.game-screen-play--battle-wipe {
+  pointer-events: none;
+  touch-action: none;
+}
+
 
 /* 13 Gallons interior overlay (V1.1 — view only, no customization) */
 .game-screen-interior {

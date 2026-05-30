@@ -1,0 +1,390 @@
+/* Screen viewport — internal canvas is 390×844, CSS stretches to fill the bezel slot */
+:root {
+  --game-shell-viewport-w: 358px;
+  --game-shell-shift-x: -24px;
+}
+
+.game-shell {
+  box-sizing: border-box;
+  width: 390px;
+  height: 844px;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: 0 auto;
+  transform: translateX(var(--game-shell-shift-x));
+  padding: 8px 16px 10px;
+  display: grid;
+  grid-template-rows: 36px 1fr 110px 40px;
+  gap: 4px;
+  background: #1a1525;
+  border: 1.5px solid #2e2840;
+  border-radius: 16px 16px 40px 40px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-shell__topbar {
+  display: grid;
+  grid-template-columns: 22px 1fr 44px;
+  align-items: center;
+  height: 36px;
+}
+
+.game-shell__sigil {
+  display: block;
+}
+
+.game-shell__brand {
+  justify-self: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  line-height: 1.4;
+  color: #3c3489;
+  letter-spacing: 0.5px;
+}
+
+.game-shell__clock {
+  justify-self: end;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #534ab7;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-shell__bezel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 0;
+  background: #0a0812;
+  border: 2px solid #2e2840;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.game-shell__viewport {
+  width: 100%;
+  max-width: var(--game-shell-viewport-w);
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.game-shell__viewport-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-shell__viewport-inner,
+.game-shell__viewport-inner * {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-shell__controls {
+  display: grid;
+  grid-template-columns: 80px 1fr 72px;
+  align-items: center;
+  gap: 8px;
+  height: 110px;
+}
+
+.game-shell__dpad {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.game-shell__dpad-body {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.game-shell__dpad-bar {
+  position: absolute;
+  background: #2e2840;
+  border: 1px solid #3d3660;
+  border-radius: 3px;
+}
+
+.game-shell__dpad-bar--h {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 26px;
+  transform: translateY(-50%);
+}
+
+.game-shell__dpad-bar--v {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 26px;
+  transform: translateX(-50%);
+}
+
+.game-shell__dpad-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+.game-shell__dpad-arrow--up {
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 5px 7px 5px;
+  border-color: transparent transparent #534ab7 transparent;
+}
+
+.game-shell__dpad-arrow--down {
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 7px 5px 0 5px;
+  border-color: #534ab7 transparent transparent transparent;
+}
+
+.game-shell__dpad-arrow--left {
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px 7px 5px 0;
+  border-color: transparent #534ab7 transparent transparent;
+}
+
+.game-shell__dpad-arrow--right {
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px 0 5px 7px;
+  border-color: transparent transparent transparent #534ab7;
+}
+
+.game-shell__dpad-hit {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-shell__dpad-hit--up {
+  top: 0;
+  left: 22px;
+  width: 36px;
+  height: 28px;
+}
+
+.game-shell__dpad-hit--down {
+  bottom: 0;
+  left: 22px;
+  width: 36px;
+  height: 28px;
+}
+
+.game-shell__dpad-hit--left {
+  left: 0;
+  top: 22px;
+  width: 28px;
+  height: 36px;
+}
+
+.game-shell__dpad-hit--right {
+  right: 0;
+  top: 22px;
+  width: 28px;
+  height: 36px;
+}
+
+.game-shell__dpad-hit:active {
+  background: rgba(83, 74, 183, 0.15);
+  border-radius: 3px;
+}
+
+.game-shell__center-btns {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.game-shell__pill-btn {
+  width: 36px;
+  height: 10px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #3d3660;
+  border-radius: 99px;
+  background: #252035;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 5px;
+  line-height: 8px;
+  color: #534ab7;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+}
+
+.game-shell__actions {
+  display: grid;
+  grid-template-columns: 28px 28px;
+  grid-template-rows: 28px 28px;
+  gap: 8px;
+  justify-content: end;
+}
+
+.game-shell__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-shell__action--interact {
+  grid-column: 2;
+  grid-row: 1;
+  background: #534ab7;
+  border: none;
+  box-shadow: 0 2px 0 #3c3489;
+}
+
+.game-shell__action--interact:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #3c3489;
+}
+
+.game-shell__action--script {
+  grid-column: 1;
+  grid-row: 2;
+  background: #1a2540;
+  border: 1.5px solid #378add;
+}
+
+.game-shell__action--pack {
+  grid-column: 2;
+  grid-row: 2;
+  background: #2a1f40;
+  border: 1.5px solid #534ab7;
+}
+
+.game-shell__action:hover {
+  filter: brightness(1.12);
+}
+
+.game-shell__music {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 8px;
+  background: #0f0d1a;
+  border: 1px solid #2e2840;
+  border-radius: 6px;
+}
+
+.game-shell__album-art {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  background: #534ab7;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.game-shell__album-hole {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #0f0d1a;
+}
+
+.game-shell__track {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.game-shell__track-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 6px;
+  color: #afa9ec;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.3px;
+}
+
+.game-shell__track-artist {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 5px;
+  color: #534ab7;
+}
+
+.game-shell__progress {
+  height: 2px;
+  background: #2e2840;
+  border-radius: 1px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.game-shell__progress-fill {
+  width: 38%;
+  height: 100%;
+  background: #534ab7;
+  border-radius: 1px;
+}
+
+.game-shell__transport {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.game-shell__transport-btn {
+  margin: 0;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  line-height: 1;
+  color: #534ab7;
+  cursor: pointer;
+}
+
+.game-shell__transport-btn:hover {
+  color: #7f77dd;
+}

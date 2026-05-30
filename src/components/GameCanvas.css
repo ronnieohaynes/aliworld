@@ -8,6 +8,22 @@
   -webkit-user-select: none;
 }
 
+/* Inside GameShell — stretch display to fill the bezel viewport (internal res unchanged) */
+.game-shell__viewport .game-canvas-wrap {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.game-shell__viewport .game-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+}
+
 .game-canvas-wrap {
   image-rendering: pixelated;
   image-rendering: crisp-edges;

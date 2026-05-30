@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, type PointerEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import {
   MIDNIGHT_WALK_FRAME_HEIGHT,
   MIDNIGHT_WALK_FRAME_WIDTH,
@@ -18,6 +18,7 @@ import type { CityConfig } from '../data/cityConfig'
 import { drawWorldMap } from '../game/drawWorldBackground'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { playerScreenAnchor } from '../game/playerScreenAnchor'
+import { getShowDebug } from '../store/playerStore'
 import { SpriteSheet, type Direction } from '../game/SpriteSheet'
 import { loadWorldBackgroundForSrc } from '../game/WorldBackground'
 import './Player.css'
@@ -141,6 +142,38 @@ function screenToWorld(
   return {
     x: (screenX - screenW / 2) / zoom + focusX,
     y: (screenY - screenH / 2) / zoom + focusY,
+  }
+}
+
+/** Map pointer position on the CSS-sized canvas to internal canvas coordinates. */
+function displayPointToLogical(
+  canvasEl: HTMLCanvasElement,
+  logicalW: number,
+  logicalH: number,
+  displayX: number,
+  displayY: number,
+): Vec {
+  const dw = canvasEl.clientWidth || logicalW
+  const dh = canvasEl.clientHeight || logicalH
+  return {
+    x: (displayX / dw) * logicalW,
+    y: (displayY / dh) * logicalH,
+  }
+}
+
+/** Map internal canvas coordinates to CSS display pixels (overlays). */
+function logicalPointToDisplay(
+  canvasEl: HTMLCanvasElement,
+  logicalW: number,
+  logicalH: number,
+  logicalX: number,
+  logicalY: number,
+): Vec {
+  const dw = canvasEl.clientWidth || logicalW
+  const dh = canvasEl.clientHeight || logicalH
+  return {
+    x: (logicalX / logicalW) * dw,
+    y: (logicalY / logicalH) * dh,
   }
 }
 
@@ -412,7 +445,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const animFrame = useRef(MIDNIGHT_WALK_IDLE_FRAME)
   const animElapsed = useRef(0)
   const keysDown = useRef(new Set<string>())
-  const touchDir = useRef<Direction | null>(null)
   const wasMoving = useRef(false)
   const lastFacing = useRef<Direction>('down')
   const showCollisionDebug = useRef(false)
@@ -629,10 +661,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     const updatePointerFromClient = (clientX: number, clientY: number) => {
       if (!showCoordinateOverlay.current) return
       const rect = el.getBoundingClientRect()
-      const screenX = clientX - rect.left
-      const screenY = clientY - rect.top
+      const displayX = clientX - rect.left
+      const displayY = clientY - rect.top
       const { zoom, focusX, focusY, width: sw, height: sh } = cameraRef.current
-      const world = screenToWorld(screenX, screenY, zoom, focusX, focusY, sw, sh)
+      const logical = displayPointToLogical(el, sw, sh, displayX, displayY)
+      const world = screenToWorld(logical.x, logical.y, zoom, focusX, focusY, sw, sh)
       pointerWorldPos.current = { x: world.x, y: world.y, active: true }
     }
 
@@ -667,29 +700,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     }
   }, [canvas])
 
-  const setTouchDirection = (dir: Direction | null) => {
-    touchDir.current = dir
-  }
-
-  const bindDpadPointer = (dir: Direction) => ({
-    onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
-      e.currentTarget.setPointerCapture(e.pointerId)
-      setTouchDirection(dir)
-    },
-    onPointerUp: (e: PointerEvent<HTMLButtonElement>) => {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId)
-      }
-      setTouchDirection(null)
-    },
-    onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId)
-      }
-      setTouchDirection(null)
-    },
-  })
-
   useEffect(() => {
     const id = loopId.current
 
@@ -700,12 +710,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       let vx = 0
       let vy = 0
 
-      const touch = frozen ? null : touchDir.current
-      if (touch) {
-        vx = touch === 'left' ? -1 : touch === 'right' ? 1 : 0
-        vy = touch === 'up' ? -1 : touch === 'down' ? 1 : 0
-        direction.current = touch
-      } else if (!frozen) {
+      if (!frozen) {
         const left = keysDown.current.has('ArrowLeft')
         const right = keysDown.current.has('ArrowRight')
         const up = keysDown.current.has('ArrowUp')
@@ -735,7 +740,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
       const facing = direction.current
       const isMoving = !frozen && (
-        touchDir.current !== null ||
         keysDown.current.has('ArrowLeft') ||
         keysDown.current.has('ArrowRight') ||
         keysDown.current.has('ArrowUp') ||
@@ -764,11 +768,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         facing === 'right' &&
         vx > 0 &&
         vy === 0 &&
-        (touch === 'right' ||
-          (keysDown.current.has('ArrowRight') &&
-            !keysDown.current.has('ArrowLeft') &&
-            !keysDown.current.has('ArrowUp') &&
-            !keysDown.current.has('ArrowDown')))
+        keysDown.current.has('ArrowRight') &&
+        !keysDown.current.has('ArrowLeft') &&
+        !keysDown.current.has('ArrowUp') &&
+        !keysDown.current.has('ArrowDown')
 
       const collidesAt = (wx: number, wy: number): boolean => {
         const hitbox = getFeetHitbox(wx, wy)
@@ -905,8 +908,17 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       const dw = Math.floor(PLAYER_DISPLAY_WIDTH)
       const worldDrawX = Math.floor(worldX - dw / 2)
 
-      playerScreenAnchor.x = (worldX - focus.x) * zoom + width / 2
-      playerScreenAnchor.y = (worldDrawY - focus.y) * zoom + height / 2 - 14
+      const logicalAnchorX = (worldX - focus.x) * zoom + width / 2
+      const logicalAnchorY = (worldDrawY - focus.y) * zoom + height / 2 - 14
+      const anchorDisplay = logicalPointToDisplay(
+        canvas,
+        width,
+        height,
+        logicalAnchorX,
+        logicalAnchorY,
+      )
+      playerScreenAnchor.x = anchorDisplay.x
+      playerScreenAnchor.y = anchorDisplay.y
       playerScreenAnchor.active = true
 
       const midnightSheet = midnightSheetRef.current
@@ -998,42 +1010,17 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             pointer: pointerWorldPos.current,
           }
         : null
-      drawDebugOverlay(ctx, debugInfo, coordReadout)
-      setDebugHud(formatDebugText(debugInfo, coordReadout))
+      if (getShowDebug()) {
+        drawDebugOverlay(ctx, debugInfo, coordReadout)
+        setDebugHud(formatDebugText(debugInfo, coordReadout))
+      } else {
+        setDebugHud('')
+      }
     }
 
     registerLoop(id, step)
     return () => unregisterLoop(id)
   }, [ctx, width, height, registerLoop, unregisterLoop, setDebugHud])
 
-  return (
-    <div className="player-controls" aria-hidden={false} onClick={(e) => e.stopPropagation()}>
-      <div className="player-dpad">
-        <button
-          type="button"
-          className="player-dpad-btn player-dpad-btn--up"
-          aria-label="Move up"
-          {...bindDpadPointer('up')}
-        />
-        <button
-          type="button"
-          className="player-dpad-btn player-dpad-btn--left"
-          aria-label="Move left"
-          {...bindDpadPointer('left')}
-        />
-        <button
-          type="button"
-          className="player-dpad-btn player-dpad-btn--right"
-          aria-label="Move right"
-          {...bindDpadPointer('right')}
-        />
-        <button
-          type="button"
-          className="player-dpad-btn player-dpad-btn--down"
-          aria-label="Move down"
-          {...bindDpadPointer('down')}
-        />
-      </div>
-    </div>
-  )
+  return null
 })

@@ -1,40 +1,80 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useSyncExternalStore } from 'react'
+import { MIDNIGHT_WALK_SRC } from '../constants/gameAssets'
 import {
-  MIDNIGHT_WALK_FRAME_HEIGHT,
-  MIDNIGHT_WALK_FRAME_WIDTH,
-  MIDNIGHT_WALK_IDLE_FRAME,
-  MIDNIGHT_WALK_SRC,
-} from '../constants/gameAssets'
+  DEFAULT_BATTLE_LOCATION,
+  getBattleBackgroundSrc,
+  type BattleLocationId,
+} from '../data/battleBackgrounds'
 import { publicAsset } from '../utils/publicAsset'
-import { chromaKeyImage } from '../game/chromaKeyImage'
+import { loadSpriteSheetWithFallback } from '../game/characterLayers'
+import type { SpriteSheet } from '../game/SpriteSheet'
+import {
+  BATTLE_ENEMY_DISPLAY_H,
+  BATTLE_ENEMY_DISPLAY_W,
+  BATTLE_ENEMY_DRAW_Y,
+  BATTLE_ENEMY_PLACEMENT,
+  BATTLE_PLAYER_DRAW_Y,
+  BATTLE_PLAYER_PLACEMENT,
+} from '../game/battlePlacement'
+import {
+  drawWorldPlayerSprite,
+  getIdleFrameIndex,
+  WORLD_PLAYER_DISPLAY_HEIGHT,
+  WORLD_PLAYER_DISPLAY_WIDTH,
+} from '../game/worldSpriteRender'
 import {
   applyBattleEndHealing,
+  BATTLE_END_LOSE_DELAY_MS,
+  BATTLE_MOVE_GAP_MS,
+  BATTLE_ROUND_END_GAP_MS,
   battleReducer,
   createInitialBattleState,
   getEnemyStatusText,
   getTelegraphText,
   type PlayerMove,
 } from '../store/battleStore'
-import { getOverworldPlayerHp, getPlayerLevel, setOverworldPlayerHp } from '../store/playerStore'
+import {
+  getPlayerLevel,
+  setOverworldPlayerHp,
+  subscribePlayerStore,
+  getShowDebug,
+} from '../store/playerStore'
+import { BattlePlacementGrid } from './BattlePlacementGrid'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
-const RESOLVE_DELAY_MS = 650
-const END_WIN_DELAY_MS = 600
-const END_LOSE_DELAY_MS = 500
 
-const IDLE_SX = MIDNIGHT_WALK_IDLE_FRAME * MIDNIGHT_WALK_FRAME_WIDTH
-const IDLE_SY = 0
-const PLAYER_SPRITE_PX = 96
-const ENEMY_SPRITE_W = 80
-const ENEMY_SPRITE_H = 110
-
-const MOVES: { move: PlayerMove; label: string; className: string }[] = [
-  { move: 'STRIKE', label: 'STRIKE', className: 'battle-screen__move--strike' },
-  { move: 'SLIP', label: 'SLIP', className: 'battle-screen__move--slip' },
-  { move: 'HOLD', label: 'HOLD', className: 'battle-screen__move--hold' },
-  { move: 'WHISPER', label: 'WHISPER', className: 'battle-screen__move--whisper' },
+const MOVES: {
+  move: PlayerMove
+  label: string
+  description: string
+  className: string
+}[] = [
+  {
+    move: 'STRIKE',
+    label: 'STRIKE',
+    description: 'hit the opening. trade if they swing.',
+    className: 'battle-screen__move--strike',
+  },
+  {
+    move: 'SLIP',
+    label: 'SLIP',
+    description: 'dodge and counter. break their rhythm.',
+    className: 'battle-screen__move--slip',
+  },
+  {
+    move: 'HOLD',
+    label: 'HOLD',
+    description: 'brace. take less. set your feet.',
+    className: 'battle-screen__move--hold',
+  },
+  {
+    move: 'WHISPER',
+    label: 'WHISPER',
+    description: 'rattle them. soften their next hit.',
+    className: 'battle-screen__move--whisper',
+  },
 ]
 
 type Props = {
@@ -42,18 +82,94 @@ type Props = {
   onBattleEnd: (result: 'win' | 'lose') => void
 }
 
+function StageBackground({ location }: { location: BattleLocationId }) {
+  const src = getBattleBackgroundSrc(location)
+
+  useEffect(() => {
+    console.log('[BattleScreen] stage background src:', src)
+  }, [src])
+
+  const handleLoad = useCallback(() => {
+    console.log('[BattleScreen] stage background loaded:', src)
+  }, [src])
+
+  const handleError = useCallback(() => {
+    console.error('[BattleScreen] Failed to load battle background:', src)
+  }, [src])
+
+  return (
+    <div className="battle-screen__stage-bg" aria-hidden>
+      <div className="battle-screen__stage-bg-fallback" />
+      <img
+        className="battle-screen__stage-bg-img"
+        src={src}
+        alt=""
+        draggable={false}
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+    </div>
+  )
+}
+
+function drawPlayerBattleSprite(canvas: HTMLCanvasElement, sheet: SpriteSheet): void {
+  const ctx = canvas.getContext('2d', { alpha: true })
+  if (!ctx) return
+
+  const dw = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH)
+  const dh = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT)
+  canvas.width = dw
+  canvas.height = dh
+  ctx.clearRect(0, 0, dw, dh)
+  drawWorldPlayerSprite(ctx, sheet, 'left', getIdleFrameIndex(), 0, 0)
+}
+
+function drawEnemyBattleSprite(
+  canvas: HTMLCanvasElement,
+  spriteImg: HTMLImageElement,
+  spriteColumns: number,
+): void {
+  const ctx = canvas.getContext('2d', { alpha: true })
+  if (!ctx) return
+
+  const dw = BATTLE_ENEMY_DISPLAY_W
+  const dh = BATTLE_ENEMY_DISPLAY_H
+  canvas.width = dw
+  canvas.height = dh
+  ctx.clearRect(0, 0, dw, dh)
+
+  const cols = spriteColumns
+  const frameW = Math.floor(spriteImg.naturalWidth / cols)
+  const frameH = Math.floor(spriteImg.naturalHeight)
+  const col = 2 // left frame, flipped to face right via CSS
+  const nsx = Math.floor(col * frameW)
+
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(
+    spriteImg,
+    nsx,
+    0,
+    frameW,
+    frameH,
+    0,
+    0,
+    dw,
+    dh,
+  )
+}
+
 export function BattleScreen({ npcId, onBattleEnd }: Props) {
   const playerCanvasRef = useRef<HTMLCanvasElement>(null)
-  const enemyCanvasRef = useRef<HTMLCanvasElement>(null)
+  const enemyWrapRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLElement>(null)
+  const midnightSheetRef = useRef<SpriteSheet | null>(null)
   const endHandledRef = useRef(false)
+  const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
 
   const [state, dispatch] = useReducer(
     battleReducer,
     npcId,
-    (id) =>
-      createInitialBattleState(id, {
-        carryHp: getOverworldPlayerHp() ?? undefined,
-      }),
+    (id) => createInitialBattleState(id),
   )
 
   const busy = state.phase !== 'player'
@@ -61,6 +177,20 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
   const enemyHpPct = Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)
   const enemyStatus = getEnemyStatusText(state)
   const playerLevel = getPlayerLevel()
+  const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
+  const showWinNarration = state.phase === 'ended' && state.result === 'win'
+  const logLines = state.log.slice(-3)
+
+  const finishBattle = useCallback(
+    (result: 'win' | 'lose') => {
+      if (endHandledRef.current) return
+      endHandledRef.current = true
+      const healed = applyBattleEndHealing(result, state.playerStats.maxHp, state.playerHp)
+      setOverworldPlayerHp(healed)
+      onBattleEnd(result)
+    },
+    [onBattleEnd, state.playerHp, state.playerStats.maxHp],
+  )
 
   const handleMove = useCallback(
     (move: PlayerMove) => {
@@ -70,160 +200,182 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
     [state.phase],
   )
 
-  useEffect(() => {
-    if (state.phase !== 'busy' && state.phase !== 'ended') return
-
-    const delay = state.result
-      ? state.result === 'win'
-        ? END_WIN_DELAY_MS
-        : END_LOSE_DELAY_MS
-      : RESOLVE_DELAY_MS
-
-    const timer = window.setTimeout(() => {
-      if (state.result) {
-        if (endHandledRef.current) return
-        endHandledRef.current = true
-        const healed = applyBattleEndHealing(
-          state.result,
-          state.playerStats.maxHp,
-          state.playerHp,
-        )
-        setOverworldPlayerHp(healed)
-        onBattleEnd(state.result)
-        return
-      }
-      dispatch({ type: 'RESOLVE_COMPLETE' })
-    }, delay)
-
-    return () => window.clearTimeout(timer)
-  }, [state.phase, state.result, state.playerHp, state.playerStats.maxHp, onBattleEnd])
+  const handleNarrationContinue = useCallback(() => {
+    if (!showWinNarration) return
+    finishBattle('win')
+  }, [finishBattle, showWinNarration])
 
   useEffect(() => {
-    const canvas = playerCanvasRef.current
-    if (!canvas) return
+    if (state.phase === 'ended' && state.result === 'lose') {
+      const timer = window.setTimeout(() => finishBattle('lose'), BATTLE_END_LOSE_DELAY_MS)
+      return () => window.clearTimeout(timer)
+    }
+  }, [state.phase, state.result, finishBattle])
 
-    const ctx = canvas.getContext('2d', { alpha: true })
-    if (!ctx) return
+  useEffect(() => {
+    if (state.phase !== 'busy') return
 
-    const img = new Image()
-    img.src = MIDNIGHT_WALK_SRC
-    img.onload = () => {
-      const keyed = chromaKeyImage(img, { edgeConnected: true })
-      ctx.imageSmoothingEnabled = false
-      ctx.clearRect(0, 0, PLAYER_SPRITE_PX, PLAYER_SPRITE_PX)
-      ctx.drawImage(
-        keyed,
-        IDLE_SX,
-        IDLE_SY,
-        MIDNIGHT_WALK_FRAME_WIDTH,
-        MIDNIGHT_WALK_FRAME_HEIGHT,
-        0,
-        0,
-        PLAYER_SPRITE_PX,
-        PLAYER_SPRITE_PX,
-      )
+    if (state.resolveStep === 'pause_after_first') {
+      const timer = window.setTimeout(() => {
+        dispatch({ type: 'RESOLVE_SECOND' })
+      }, BATTLE_MOVE_GAP_MS)
+      return () => window.clearTimeout(timer)
+    }
+
+    if (state.resolveStep === 'pause_after_second') {
+      const timer = window.setTimeout(() => {
+        dispatch({ type: 'RESOLVE_FINISH' })
+      }, BATTLE_ROUND_END_GAP_MS)
+      return () => window.clearTimeout(timer)
+    }
+  }, [state.phase, state.resolveStep])
+
+  useEffect(() => {
+    let cancelled = false
+
+    loadSpriteSheetWithFallback(MIDNIGHT_WALK_SRC).then((sheet) => {
+      if (cancelled || !sheet?.loaded) return
+      midnightSheetRef.current = sheet
+      const canvas = playerCanvasRef.current
+      if (canvas) drawPlayerBattleSprite(canvas, sheet)
+    })
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
   useEffect(() => {
-    const canvas = enemyCanvasRef.current
+    const canvas = enemyWrapRef.current?.querySelector('canvas')
     if (!canvas) return
-
-    const ctx = canvas.getContext('2d', { alpha: true })
-    if (!ctx) return
 
     const spriteSrc = state.npc.spriteSrc ?? MARK_SPRITE_SRC
     const img = new Image()
     img.src = spriteSrc
     img.onload = () => {
-      ctx.imageSmoothingEnabled = false
-      ctx.clearRect(0, 0, ENEMY_SPRITE_W, ENEMY_SPRITE_H)
-      const frameW = Math.floor(img.width / 4)
-      const frameH = img.height
-      ctx.drawImage(img, 0, 0, frameW, frameH, 0, 0, ENEMY_SPRITE_W, ENEMY_SPRITE_H)
+      drawEnemyBattleSprite(canvas, img, 4)
     }
     img.onerror = () => {
-      ctx.clearRect(0, 0, ENEMY_SPRITE_W, ENEMY_SPRITE_H)
+      const ctx = canvas.getContext('2d', { alpha: true })
+      if (!ctx) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
     }
   }, [state.npc.spriteSrc])
 
   return (
     <div className="battle-screen" aria-label={`Battle vs ${state.npc.displayName}`}>
-      <section className="battle-screen__enemy">
-        <span className="battle-screen__enemy-name">{state.npc.displayName}</span>
-        <div className="battle-screen__hp-track">
-          <div
-            className="battle-screen__hp-fill battle-screen__hp-fill--enemy"
-            style={{ width: `${enemyHpPct}%` }}
-          />
-        </div>
-        <div className="battle-screen__status">{enemyStatus || '\u00a0'}</div>
-        <div className="battle-screen__enemy-sprite">
-          <canvas
-            ref={enemyCanvasRef}
-            className="battle-screen__enemy-sprite-canvas"
-            width={ENEMY_SPRITE_W}
-            height={ENEMY_SPRITE_H}
-          />
-        </div>
-      </section>
+      <div className="battle-screen__content">
+        <section className="battle-screen__enemy-hud">
+          <span className="battle-screen__enemy-name">{state.npc.displayName}</span>
+          <div className="battle-screen__hp-track">
+            <div
+              className="battle-screen__hp-fill battle-screen__hp-fill--enemy"
+              style={{ width: `${enemyHpPct}%` }}
+            />
+          </div>
+          <div className="battle-screen__status">{enemyStatus || '\u00a0'}</div>
+        </section>
 
-      <div className="battle-screen__divider" role="separator" />
+        <section className="battle-screen__telegraph-row" aria-live="polite">
+          <p className="battle-screen__telegraph">{getTelegraphText(state)}</p>
+        </section>
 
-      <section className="battle-screen__middle">
-        <p className="battle-screen__telegraph">{getTelegraphText(state)}</p>
-        <div className="battle-screen__log" aria-live="polite">
-          {state.log.map((line, i) => (
+        <section className="battle-screen__stage" ref={stageRef} aria-hidden>
+          <StageBackground location={battleLocation} />
+          <div className="battle-screen__arena">
+            <div
+              className="battle-screen__fighter battle-screen__fighter--enemy"
+              style={{ left: BATTLE_ENEMY_PLACEMENT.x, top: BATTLE_ENEMY_DRAW_Y }}
+            >
+              <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
+                <canvas
+                  className="battle-screen__enemy-sprite-canvas"
+                  width={BATTLE_ENEMY_DISPLAY_W}
+                  height={BATTLE_ENEMY_DISPLAY_H}
+                />
+              </div>
+            </div>
+            <div
+              className="battle-screen__fighter battle-screen__fighter--player"
+              style={{ left: BATTLE_PLAYER_PLACEMENT.x, top: BATTLE_PLAYER_DRAW_Y }}
+            >
+              <canvas
+                ref={playerCanvasRef}
+                className="battle-screen__player-sprite-canvas"
+                width={WORLD_PLAYER_DISPLAY_WIDTH}
+                height={WORLD_PLAYER_DISPLAY_HEIGHT}
+              />
+            </div>
+          </div>
+          {showDebug && (
+            <BattlePlacementGrid
+              stageRef={stageRef}
+              enemyRef={enemyWrapRef}
+              playerRef={playerCanvasRef}
+              enemyPlacement={BATTLE_ENEMY_PLACEMENT}
+              playerPlacement={BATTLE_PLAYER_PLACEMENT}
+            />
+          )}
+        </section>
+
+        <section className="battle-screen__log" aria-live="polite">
+          {logLines.map((line, i) => (
             <div key={`${i}-${line}`} className="battle-screen__log-line">
               {line}
             </div>
           ))}
-        </div>
-      </section>
+        </section>
 
-      <section className="battle-screen__player">
-        <canvas
-          ref={playerCanvasRef}
-          className="battle-screen__player-sprite-canvas"
-          width={PLAYER_SPRITE_PX}
-          height={PLAYER_SPRITE_PX}
-        />
-        <div className="battle-screen__player-label">
-          <span>YOU</span>
-          <span
-            className={`player-level-badge battle-screen__player-level${state.playerLevelFlash ? ' player-level-badge--flash' : ''}`}
-          >
-            LVL {playerLevel}
-          </span>
-          {state.playerBrace > 0 && (
-            <span className="battle-screen__brace">braced</span>
-          )}
-        </div>
-        <div className="battle-screen__hp-track">
-          <div
-            className="battle-screen__hp-fill battle-screen__hp-fill--player"
-            style={{ width: `${playerHpPct}%` }}
-          />
-        </div>
-        <div className="battle-screen__hp-numbers">
-          {state.playerHp} / {state.playerStats.maxHp}
-        </div>
-      </section>
-
-      <div className="battle-screen__wheel">
-        <div className="battle-screen__wheel-inner">
-          {MOVES.map(({ move, label, className }) => (
-            <button
-              key={move}
-              type="button"
-              className={`battle-screen__move ${className}${busy ? ' battle-screen__move--busy' : ''}`}
-              disabled={busy}
-              onClick={() => handleMove(move)}
+        <section className="battle-screen__player-hud">
+          <div className="battle-screen__player-label">
+            <span>YOU</span>
+            <span
+              className={`player-level-badge battle-screen__player-level${state.playerLevelFlash ? ' player-level-badge--flash' : ''}`}
             >
-              {label}
+              LVL {playerLevel}
+            </span>
+            {state.playerBrace > 0 && (
+              <span className="battle-screen__brace">braced</span>
+            )}
+          </div>
+          <div className="battle-screen__hp-track">
+            <div
+              className="battle-screen__hp-fill battle-screen__hp-fill--player"
+              style={{ width: `${playerHpPct}%` }}
+            />
+          </div>
+          <div className="battle-screen__hp-numbers">
+            {state.playerHp} / {state.playerStats.maxHp}
+          </div>
+        </section>
+
+        <section className="battle-screen__action">
+          {showWinNarration ? (
+            <button
+              type="button"
+              className="battle-screen__narration"
+              onClick={handleNarrationContinue}
+            >
+              <p className="battle-screen__narration-text">{state.npc.losingLine}</p>
+              <span className="battle-screen__narration-continue">tap to continue ▸</span>
             </button>
-          ))}
-        </div>
+          ) : (
+            <div className="battle-screen__moves" role="group" aria-label="Battle moves">
+              {MOVES.map(({ move, label, description, className }) => (
+                <button
+                  key={move}
+                  type="button"
+                  className={`battle-screen__move ${className}${busy ? ' battle-screen__move--busy' : ''}`}
+                  disabled={busy}
+                  onClick={() => handleMove(move)}
+                >
+                  <span className="battle-screen__move-name">{label}</span>
+                  <span className="battle-screen__move-desc">{description}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )

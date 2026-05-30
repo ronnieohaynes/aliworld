@@ -1,4 +1,5 @@
 import { publicAsset } from '../utils/publicAsset'
+import type { BattleLocationId } from './battleBackgrounds'
 
 export type EnemyMove = 'STRIKE' | 'LOOP' | 'SLIP' | 'WHISPER' | 'HOLD'
 
@@ -17,6 +18,7 @@ export type NpcCombatEntry = {
   moves: EnemyMove[]
   losingLine: string
   spriteSrc?: string
+  battleLocation: BattleLocationId
 }
 
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
@@ -29,6 +31,7 @@ const WALKER: NpcCombatEntry = {
   losingLine:
     "You're kinda strong. Maybe Danny does have something to fear after all.",
   spriteSrc: MARK_SPRITE,
+  battleLocation: 'daly_city',
 }
 
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {

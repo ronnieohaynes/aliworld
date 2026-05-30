@@ -1,0 +1,61 @@
+.battle-entry-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.battle-entry-wipe__panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 108%;
+  max-width: none;
+  background: linear-gradient(
+    102deg,
+    #0d0b14 0%,
+    #1a1525 42%,
+    #3a2f6e 78%,
+    #534ab7 100%
+  );
+  clip-path: polygon(0 0, 90% 0, 100% 100%, 0 100%);
+  will-change: transform;
+  animation: battle-entry-wipe-sweep 1000ms ease-in-out forwards;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.battle-entry-wipe__sigil {
+  position: absolute;
+  left: 42%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.battle-entry-wipe__sigil-mark {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 22px solid transparent;
+  border-right: 22px solid transparent;
+  border-bottom: 38px solid rgba(244, 232, 193, 0.92);
+  filter: drop-shadow(0 0 12px rgba(83, 74, 183, 0.65));
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+@keyframes battle-entry-wipe-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}

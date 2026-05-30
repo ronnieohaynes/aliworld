@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
 import { MANDO_NPC, type NpcData } from '../data/npcs'
 import { CITY_CONFIGS, type CityId } from '../data/cityConfig'
 import { publicAsset } from '../utils/publicAsset'
+import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
+import { BattleEntryWipe } from './BattleEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { DarklineScreen } from './DarklineScreen'
 import { DialogueBox } from './DialogueBox'
 import { GameCanvas } from './GameCanvas'
 import { Player, type PlayerHandle } from './Player'
+import { getShowDebug, subscribePlayerStore, toggleShowDebug } from '../store/playerStore'
 import './GameScreen.css'
 
 export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
@@ -32,8 +35,24 @@ export function GameScreen() {
   const [cafeFade, setCafeFade] = useState<'none' | 'in' | 'out'>('none')
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
+  const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
 
   const cityConfig = CITY_CONFIGS[currentCity]
+  const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== '`' && e.code !== 'Backquote') return
+      e.preventDefault()
+      toggleShowDebug()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const handleToggleDebug = useCallback(() => {
+    toggleShowDebug()
+  }, [])
 
   useEffect(() => {
     if (cafeFade === 'none') return
@@ -55,7 +74,8 @@ export function GameScreen() {
     } else if (action === 'OPEN_ONE_LOVE_CAFE') {
       setCafeFade('in')
     } else if (action === 'START_BATTLE_MARK') {
-      setBattleNpcId('mark')
+      setDialogue(null)
+      setBattleEntryWipe('mark')
     }
   }, [])
 
@@ -100,6 +120,17 @@ export function GameScreen() {
     }
   }, [dialogue, advanceDialogue, currentCity])
 
+  const handleBattleEntryMidpoint = useCallback(() => {
+    setBattleEntryWipe((pendingNpcId) => {
+      if (pendingNpcId) setBattleNpcId(pendingNpcId)
+      return pendingNpcId
+    })
+  }, [])
+
+  const handleBattleEntryComplete = useCallback(() => {
+    setBattleEntryWipe(null)
+  }, [])
+
   const handleBattleEnd = useCallback((_result: 'win' | 'lose') => {
     setBattleNpcId(null)
   }, [])
@@ -115,62 +146,75 @@ export function GameScreen() {
 
   return (
     <div className="game-screen">
-      <div className="game-screen-play" onClick={handlePlayAreaClick}>
-        <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
-          {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
-        </pre>
-        <GameCanvas debugHudId={GAME_DEBUG_HUD_ID}>
-          <Player
-            ref={playerRef}
-            cityConfig={cityConfig}
-            onTrigger={handleTrigger}
-            onTriggerExit={handleExitTrigger}
-            dialogueActive={!!dialogue}
-            dialogueNpcId={dialogue?.npc.id ?? null}
-          />
-          {!battleNpcId && <PlayerLevelOverhead />}
-        </GameCanvas>
-        {showInterior && (
-          <div className="game-screen-interior" onClick={handleInteriorClick}>
-            <img
-              className="game-screen-interior__bg"
-              src={INTERIOR_BG_SRC}
-              alt="13 Gallons interior"
-              draggable={false}
+      <GameShell onSelect={handleToggleDebug}>
+        <div
+          className={`game-screen-play${battleEntryWipe ? ' game-screen-play--battle-wipe' : ''}`}
+          onClick={handlePlayAreaClick}
+        >
+          {showDebug && (
+            <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
+              {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
+            </pre>
+          )}
+          <GameCanvas debugHudId={GAME_DEBUG_HUD_ID}>
+            <Player
+              ref={playerRef}
+              cityConfig={cityConfig}
+              onTrigger={handleTrigger}
+              onTriggerExit={handleExitTrigger}
+              dialogueActive={!!dialogue || !!battleEntryWipe}
+              dialogueNpcId={dialogue?.npc.id ?? null}
             />
-            {!dialogue && (
-              <div className="game-screen-interior__mando" aria-label="Mando" />
-            )}
-          </div>
-        )}
-        {showDarkline && (
-          <DarklineScreen
-            currentCity={currentCity}
-            onClose={handleDarklineClose}
-            onTravel={handleDarklineTravel}
-          />
-        )}
-        {dialogue && (
-          <DialogueBox
-            name={dialogue.npc.name}
-            line={dialogue.npc.lines[dialogue.lineIndex]!}
-            onAdvance={advanceDialogue}
-          />
-        )}
-        {cafeFade !== 'none' && (
-          <div
-            className="game-screen-cafe-fade"
-            style={{
-              animation: cafeFade === 'in'
-                ? 'cafeFadeIn 400ms ease-in forwards'
-                : 'cafeFadeOut 400ms ease-out forwards',
-            }}
-          />
-        )}
-        {battleNpcId && (
-          <BattleScreen npcId={battleNpcId} onBattleEnd={handleBattleEnd} />
-        )}
-      </div>
+            {!battleNpcId && <PlayerLevelOverhead />}
+          </GameCanvas>
+          {showInterior && (
+            <div className="game-screen-interior" onClick={handleInteriorClick}>
+              <img
+                className="game-screen-interior__bg"
+                src={INTERIOR_BG_SRC}
+                alt="13 Gallons interior"
+                draggable={false}
+              />
+              {!dialogue && (
+                <div className="game-screen-interior__mando" aria-label="Mando" />
+              )}
+            </div>
+          )}
+          {showDarkline && (
+            <DarklineScreen
+              currentCity={currentCity}
+              onClose={handleDarklineClose}
+              onTravel={handleDarklineTravel}
+            />
+          )}
+          {dialogue && !battleNpcId && (
+            <DialogueBox
+              name={dialogue.npc.name}
+              line={dialogue.npc.lines[dialogue.lineIndex]!}
+              onAdvance={advanceDialogue}
+            />
+          )}
+          {cafeFade !== 'none' && (
+            <div
+              className="game-screen-cafe-fade"
+              style={{
+                animation: cafeFade === 'in'
+                  ? 'cafeFadeIn 400ms ease-in forwards'
+                  : 'cafeFadeOut 400ms ease-out forwards',
+              }}
+            />
+          )}
+          {battleNpcId && (
+            <BattleScreen npcId={battleNpcId} onBattleEnd={handleBattleEnd} />
+          )}
+          {battleEntryWipe && (
+            <BattleEntryWipe
+              onMidpoint={handleBattleEntryMidpoint}
+              onComplete={handleBattleEntryComplete}
+            />
+          )}
+        </div>
+      </GameShell>
     </div>
   )
 }

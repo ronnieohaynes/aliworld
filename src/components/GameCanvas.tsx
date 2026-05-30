@@ -57,7 +57,6 @@ export function GameCanvas({ children, className, debugHudId }: Props) {
     }
 
     setContextValue(value)
-    setDebugHud('debug: canvas ready')
 
     let raf = 0
     let last = performance.now()

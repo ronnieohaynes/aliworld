@@ -13,6 +13,7 @@ export type PlayerStoreState = {
   skills: SkillsState
   /** Overworld / between-battle HP; null = use computed max on next battle. */
   hp: number | null
+  showDebug: boolean
 }
 
 let state: PlayerStoreState = {
@@ -20,6 +21,7 @@ let state: PlayerStoreState = {
   accessories: [],
   skills: createDefaultSkills(),
   hp: null,
+  showDebug: false,
 }
 
 const listeners = new Set<() => void>()
@@ -86,6 +88,15 @@ export function applyCombatSkillXp(r: ResolveResult): CombatXpResult {
 
 export function getPlayerLevel(): number {
   return computePlayerLevel(state.skills)
+}
+
+export function getShowDebug(): boolean {
+  return state.showDebug
+}
+
+export function toggleShowDebug(): void {
+  state = { ...state, showDebug: !state.showDebug }
+  emit()
 }
 
 export { computePlayerLevel, createDefaultSkills }

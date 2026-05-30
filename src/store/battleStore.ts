@@ -8,7 +8,6 @@ import {
 } from '../data/npcRegistry'
 import {
   applyCombatSkillXp,
-  getOverworldPlayerHp,
   getPlayerSkills,
   getPlayerStoreState,
 } from './playerStore'
@@ -19,6 +18,19 @@ export type ArchetypeId = 'lck' | 'atk' | 'def' | 'spd'
 export type BattlePhase = 'player' | 'busy' | 'ended'
 export type BattleResult = 'win' | 'lose'
 export type UpcomingMove = EnemyMove | 'STUNNED'
+
+/** Pause between first and second actor resolution each round. */
+export const BATTLE_MOVE_GAP_MS = 1000
+
+/** Pause after both actors resolve before the next turn telegraph. */
+export const BATTLE_ROUND_END_GAP_MS = 1000
+
+export type BattleResolveStep = 'idle' | 'pause_after_first' | 'pause_after_second'
+
+export type PendingResolve = {
+  r: ResolveResult
+  enemyFirst: boolean
+}
 
 export type PlayerCombatStats = {
   maxHp: number
@@ -42,6 +54,13 @@ export const ARCHETYPE_STATS: Record<
 
 export const DEFAULT_ARCHETYPE: ArchetypeId = 'atk'
 
+/** Scale all battle UI pacing delays (+65% duration ≈ ×2.85). */
+export const BATTLE_PACE_SCALE = 2.85
+
+export const BATTLE_RESOLVE_DELAY_MS = Math.round(650 * BATTLE_PACE_SCALE)
+export const BATTLE_END_LOSE_DELAY_MS = Math.round(500 * BATTLE_PACE_SCALE)
+export const BATTLE_END_WIN_DELAY_MS = Math.round(600 * BATTLE_PACE_SCALE)
+
 export type BattleState = {
   npc: NpcCombatEntry
   playerStats: PlayerCombatStats
@@ -59,6 +78,9 @@ export type BattleState = {
   log: string[]
   phase: BattlePhase
   result: BattleResult | null
+  /** Staged turn resolution — player move is chosen before steps run. */
+  pendingResolve: PendingResolve | null
+  resolveStep: BattleResolveStep
   /** True for one turn after combat level increases (battle UI flash). */
   playerLevelFlash: boolean
 }
@@ -72,7 +94,8 @@ export type BattleAction =
       carryHp?: number
     }
   | { type: 'PLAYER_MOVE'; move: PlayerMove }
-  | { type: 'RESOLVE_COMPLETE' }
+  | { type: 'RESOLVE_SECOND' }
+  | { type: 'RESOLVE_FINISH' }
   | { type: 'END_BATTLE'; result: BattleResult }
 
 /** Port of CombatScene._computeStats (archetype + accessories only). */
@@ -248,6 +271,93 @@ function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'enemyStun'>): 
   return chooseMove(state.npc.id, state.turn)
 }
 
+function enemyActsFirstInResolution(state: BattleState): boolean {
+  return state.npc.stats.spd > state.playerStats.spd
+}
+
+function applyEnemyResolutionPhase(
+  state: BattleState,
+  r: ResolveResult,
+  playerHp: number,
+  log: string[],
+): { playerHp: number; log: string[]; ended: boolean; result?: BattleResult } {
+  const lower = state.npc.displayName.toLowerCase()
+  let nextLog = log
+  let nextHp = playerHp
+
+  if (r.enemyStunned) {
+    nextLog = appendLog(nextLog, `${lower} can't move.`)
+  } else if (r.enemyAttacks && r.incoming > 0) {
+    nextHp = Math.max(0, nextHp - r.incoming)
+  }
+
+  if (nextHp <= 0) {
+    return { playerHp: nextHp, log: nextLog, ended: true, result: 'lose' }
+  }
+  return { playerHp: nextHp, log: nextLog, ended: false }
+}
+
+function applyPlayerResolutionPhase(
+  state: BattleState,
+  r: ResolveResult,
+  enemyHp: number,
+  playerHp: number,
+  log: string[],
+): {
+  enemyHp: number
+  playerHp: number
+  log: string[]
+  working: BattleState
+  ended: boolean
+  result?: BattleResult
+} {
+  const lower = state.npc.displayName.toLowerCase()
+  let nextEnemyHp = enemyHp
+  let nextPlayerHp = playerHp
+  let nextLog = log
+  let working: BattleState = state
+
+  if (r.playerDmg > 0) {
+    nextEnemyHp = Math.max(0, nextEnemyHp - r.playerDmg)
+  }
+  nextLog = appendLog(nextLog, playerLogLine(r, state.npc.displayName))
+
+  const afterXp = applySkillXpToState(
+    { ...working, enemyHp: nextEnemyHp, playerHp: nextPlayerHp, log: nextLog },
+    r,
+    nextLog,
+  )
+  working = afterXp.state
+  nextLog = afterXp.log
+  nextPlayerHp = working.playerHp
+
+  if (state.enemyBleed > 0 && nextEnemyHp > 0) {
+    const b = Math.max(1, Math.floor(state.enemyMaxHp * 0.06))
+    nextEnemyHp = Math.max(0, nextEnemyHp - b)
+    nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
+  }
+
+  if (nextEnemyHp <= 0) {
+    nextLog = appendLog(nextLog, `${lower} is finished.`)
+    return {
+      enemyHp: nextEnemyHp,
+      playerHp: nextPlayerHp,
+      log: nextLog,
+      working,
+      ended: true,
+      result: 'win',
+    }
+  }
+
+  return {
+    enemyHp: nextEnemyHp,
+    playerHp: nextPlayerHp,
+    log: nextLog,
+    working,
+    ended: false,
+  }
+}
+
 function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
   let playerBrace = state.playerBrace
   let enemyShake = state.enemyShake
@@ -318,68 +428,136 @@ function applySkillXpToState(
   }
 }
 
-function runFullTurn(state: BattleState, pMove: PlayerMove): BattleState {
-  const eMove = state.upcomingMove
-  const r = resolveMoves(state, pMove, eMove)
-  const lower = state.npc.displayName.toLowerCase()
+function beginTurnResolve(state: BattleState, pMove: PlayerMove): BattleState {
+  const r = resolveMoves(state, pMove, state.upcomingMove)
+  const enemyFirst = enemyActsFirstInResolution(state)
+  const pending: PendingResolve = { r, enemyFirst }
 
-  let enemyHp = state.enemyHp
-  let playerHp = state.playerHp
-  let log = state.log
-  let working = state
-
-  // Player phase
-  if (r.playerDmg > 0) {
-    enemyHp = Math.max(0, enemyHp - r.playerDmg)
-  }
-  log = appendLog(log, playerLogLine(r, state.npc.displayName))
-
-  const afterXp = applySkillXpToState({ ...working, enemyHp, playerHp, log }, r, log)
-  working = afterXp.state
-  log = afterXp.log
-  playerHp = working.playerHp
-
-  if (state.enemyBleed > 0 && enemyHp > 0) {
-    const b = Math.max(1, Math.floor(state.enemyMaxHp * 0.06))
-    enemyHp = Math.max(0, enemyHp - b)
-    log = appendLog(log, `${lower} bleeds. ${b} damage.`)
-  }
-
-  if (enemyHp <= 0) {
-    log = appendLog(log, `${lower} is finished.`)
+  if (enemyFirst) {
+    const enemyPhase = applyEnemyResolutionPhase(state, r, state.playerHp, state.log)
+    if (enemyPhase.ended) {
+      return {
+        ...state,
+        playerHp: enemyPhase.playerHp,
+        log: enemyPhase.log,
+        pendingResolve: null,
+        resolveStep: 'idle',
+        phase: 'ended',
+        result: enemyPhase.result ?? 'lose',
+      }
+    }
     return {
-      ...working,
-      enemyHp,
-      playerHp,
-      log,
-      phase: 'ended',
-      result: 'win',
+      ...state,
+      playerHp: enemyPhase.playerHp,
+      log: enemyPhase.log,
+      pendingResolve: pending,
+      resolveStep: 'pause_after_first',
+      phase: 'busy',
     }
   }
 
-  // Enemy phase
-  if (r.enemyStunned) {
-    log = appendLog(log, `${lower} can't move.`)
-  } else if (r.enemyAttacks && r.incoming > 0) {
-    playerHp = Math.max(0, playerHp - r.incoming)
-  }
-
-  if (playerHp <= 0) {
-    return {
-      ...working,
-      enemyHp,
-      playerHp,
-      log,
-      phase: 'ended',
-      result: 'lose',
-    }
-  }
-
-  const finalized = finalizeTurn(
-    { ...working, enemyHp, playerHp, log },
+  const playerPhase = applyPlayerResolutionPhase(
+    state,
     r,
+    state.enemyHp,
+    state.playerHp,
+    state.log,
   )
-  return { ...finalized, phase: 'busy' }
+
+  if (playerPhase.ended) {
+    return {
+      ...playerPhase.working,
+      enemyHp: playerPhase.enemyHp,
+      playerHp: playerPhase.playerHp,
+      log: playerPhase.log,
+      pendingResolve: null,
+      resolveStep: 'idle',
+      phase: 'ended',
+      result: playerPhase.result ?? 'win',
+    }
+  }
+
+  return {
+    ...playerPhase.working,
+    enemyHp: playerPhase.enemyHp,
+    playerHp: playerPhase.playerHp,
+    log: playerPhase.log,
+    pendingResolve: pending,
+    resolveStep: 'pause_after_first',
+    phase: 'busy',
+  }
+}
+
+function applySecondResolve(state: BattleState): BattleState {
+  const pending = state.pendingResolve
+  if (!pending || state.phase !== 'busy') return state
+
+  const { r, enemyFirst } = pending
+
+  if (enemyFirst) {
+    const playerPhase = applyPlayerResolutionPhase(
+      state,
+      r,
+      state.enemyHp,
+      state.playerHp,
+      state.log,
+    )
+    if (playerPhase.ended) {
+      return {
+        ...playerPhase.working,
+        enemyHp: playerPhase.enemyHp,
+        playerHp: playerPhase.playerHp,
+        log: playerPhase.log,
+        pendingResolve: null,
+        resolveStep: 'idle',
+        phase: 'ended',
+        result: playerPhase.result ?? 'win',
+      }
+    }
+    return {
+      ...playerPhase.working,
+      enemyHp: playerPhase.enemyHp,
+      playerHp: playerPhase.playerHp,
+      log: playerPhase.log,
+      pendingResolve: pending,
+      resolveStep: 'pause_after_second',
+      phase: 'busy',
+    }
+  }
+
+  const enemyPhase = applyEnemyResolutionPhase(state, r, state.playerHp, state.log)
+  if (enemyPhase.ended) {
+    return {
+      ...state,
+      playerHp: enemyPhase.playerHp,
+      log: enemyPhase.log,
+      pendingResolve: null,
+      resolveStep: 'idle',
+      phase: 'ended',
+      result: enemyPhase.result ?? 'lose',
+    }
+  }
+  return {
+    ...state,
+    playerHp: enemyPhase.playerHp,
+    log: enemyPhase.log,
+    pendingResolve: pending,
+    resolveStep: 'pause_after_second',
+    phase: 'busy',
+  }
+}
+
+function finishTurnResolve(state: BattleState): BattleState {
+  const pending = state.pendingResolve
+  if (!pending || state.phase !== 'busy') return state
+
+  const finalized = finalizeTurn(state, pending.r)
+  return {
+    ...finalized,
+    pendingResolve: null,
+    resolveStep: 'idle',
+    phase: 'player',
+  }
 }
 
 export function getEnemyStatusText(state: BattleState): string {
@@ -417,8 +595,7 @@ export function createInitialBattleState(
   const accessories = options?.accessories ?? player.accessories ?? []
   const skills = getPlayerSkills()
   const playerStats = computePlayerStats(archetype, accessories, skills)
-  const carryHp = options?.carryHp ?? getOverworldPlayerHp()
-  const playerHp = carryHp != null ? Math.min(playerStats.maxHp, carryHp) : playerStats.maxHp
+  const playerHp = playerStats.maxHp
   const upcomingMove = showTelegraph({ npc, turn: 0, enemyStun: 0 })
 
   return {
@@ -438,6 +615,8 @@ export function createInitialBattleState(
     log: [],
     phase: 'player',
     result: null,
+    pendingResolve: null,
+    resolveStep: 'idle',
     playerLevelFlash: false,
   }
 }
@@ -453,11 +632,13 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
 
     case 'PLAYER_MOVE':
       if (state.phase !== 'player') return state
-      return runFullTurn(state, action.move)
+      return beginTurnResolve(state, action.move)
 
-    case 'RESOLVE_COMPLETE':
-      if (state.phase !== 'busy' || state.result) return state
-      return { ...state, phase: 'player', playerLevelFlash: false }
+    case 'RESOLVE_SECOND':
+      return applySecondResolve(state)
+
+    case 'RESOLVE_FINISH':
+      return finishTurnResolve(state)
 
     case 'END_BATTLE':
       return { ...state, phase: 'ended', result: action.result }
