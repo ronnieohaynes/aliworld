@@ -1,7 +1,14 @@
 import { publicAsset } from '../utils/publicAsset'
 import type { BattleLocationId } from './battleBackgrounds'
+import {
+  type EnemyMoveId,
+  isAttackingEnemyMove,
+  telegraphLineForEnemyMove,
+  type UpcomingMove,
+} from './enemyMoves'
 
-export type EnemyMove = 'STRIKE' | 'LOOP' | 'SLIP' | 'WHISPER' | 'HOLD'
+export type EnemyMove = EnemyMoveId
+export type { UpcomingMove }
 
 export type CombatStats = {
   hp: number
@@ -39,18 +46,8 @@ const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   mark: { ...WALKER, id: 'mark' },
 }
 
-const TELEGRAPH_LINES: Record<EnemyMove, string> = {
-  STRIKE: 'winds a strike.',
-  LOOP: 'loops the rhythm.',
-  SLIP: 'feints a slip.',
-  WHISPER: 'murmurs something.',
-  HOLD: 'holds ground.',
-}
-
-export const ATTACKING_MOVES: ReadonlySet<EnemyMove> = new Set(['STRIKE', 'LOOP', 'SLIP'])
-
 export function isAttackingMove(move: EnemyMove): boolean {
-  return ATTACKING_MOVES.has(move)
+  return isAttackingEnemyMove(move)
 }
 
 export function getNpcCombatEntry(npcId: string): NpcCombatEntry | undefined {
@@ -61,22 +58,26 @@ export function getAllNpcCombatIds(): string[] {
   return Object.keys(NPC_REGISTRY)
 }
 
-/** Mirrors NPCRegistry.chooseMove — picks from the NPC move pool. */
-export function chooseMove(npcId: string, _turn: number): EnemyMove {
+/** Picks from the NPC move pool (enemy move ids are data-driven in enemyMoves.ts). */
+export function chooseMove(
+  npcId: string,
+  _turn: number,
+  forced?: EnemyMoveId | null,
+): EnemyMove {
+  if (forced) return forced
   const npc = getNpcCombatEntry(npcId)
   if (!npc || npc.moves.length === 0) return 'STRIKE'
   const idx = Math.floor(Math.random() * npc.moves.length)
   return npc.moves[idx]!
 }
 
-/** Mirrors NPCRegistry.telegraphFor — flavor line for a telegraphed move. */
 export function telegraphFor(_npcId: string, move: EnemyMove): string {
-  return TELEGRAPH_LINES[move] ?? ''
+  return telegraphLineForEnemyMove(move)
 }
 
 export function formatTelegraph(
   displayName: string,
-  upcomingMove: EnemyMove | 'STUNNED',
+  upcomingMove: UpcomingMove,
   enemyStunned: boolean,
 ): string {
   const lower = displayName.toLowerCase()
@@ -86,3 +87,6 @@ export function formatTelegraph(
   const line = telegraphFor('', upcomingMove)
   return line ? `${lower}: ${line}` : ''
 }
+
+/** Re-export for snag / steal mechanics — full enemy move vocabulary. */
+export { ENEMY_MOVE_IDS, ENEMY_MOVES, getEnemyMoveDef } from './enemyMoves'

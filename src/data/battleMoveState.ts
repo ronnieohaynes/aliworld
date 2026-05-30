@@ -1,0 +1,47 @@
+import type { EnemyMoveId } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
+
+export type BlackoutPhase = 'idle' | 'loading' | 'armed' | 'recharging'
+
+/** Per-fight state for cap moves and steal — reset on battle INIT. */
+export type BattleMoveState = {
+  blackoutPhase: BlackoutPhase
+  hyperdriveArmed: boolean
+  hyperdriveSpent: boolean
+  anchorBlocksStatus: boolean
+  playerNextAttackImmune: boolean
+  playerInvincibleBlocks: number
+  enemyAccuracyMult: number
+  enemyAccuracyTurns: number
+  enemyDefShattered: boolean
+  forceEnemyMove: EnemyMoveId | null
+  lastEnemyMove: EnemyMoveId | null
+  lastEnemyDamage: number
+  /** SNAG: stolen enemy move per slot (replaces SNAG in that slot). */
+  snagStolen: Partial<Record<number, EnemyMoveId>>
+  oncePerBattleUsed: Partial<Record<PlayerMoveId, boolean>>
+  /** Pending counterweight mitigation for incoming this turn. */
+  counterweightBlockPct: number | null
+  counterweightReflectPct: number | null
+}
+
+export function createBattleMoveState(): BattleMoveState {
+  return {
+    blackoutPhase: 'idle',
+    hyperdriveArmed: false,
+    hyperdriveSpent: false,
+    anchorBlocksStatus: false,
+    playerNextAttackImmune: false,
+    playerInvincibleBlocks: 0,
+    enemyAccuracyMult: 1,
+    enemyAccuracyTurns: 0,
+    enemyDefShattered: false,
+    forceEnemyMove: null,
+    lastEnemyMove: null,
+    lastEnemyDamage: 0,
+    snagStolen: {},
+    oncePerBattleUsed: {},
+    counterweightBlockPct: null,
+    counterweightReflectPct: null,
+  }
+}

@@ -37,45 +37,16 @@ import {
   getPlayerLevel,
   setOverworldPlayerHp,
   subscribePlayerStore,
+  getEquippedMoves,
   getShowDebug,
 } from '../store/playerStore'
+import { getMoveUiMeta } from '../data/moves'
 import { BattlePlacementGrid } from './BattlePlacementGrid'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
 
-const MOVES: {
-  move: PlayerMove
-  label: string
-  description: string
-  className: string
-}[] = [
-  {
-    move: 'STRIKE',
-    label: 'STRIKE',
-    description: 'hit the opening. trade if they swing.',
-    className: 'battle-screen__move--strike',
-  },
-  {
-    move: 'SLIP',
-    label: 'SLIP',
-    description: 'dodge and counter. break their rhythm.',
-    className: 'battle-screen__move--slip',
-  },
-  {
-    move: 'HOLD',
-    label: 'HOLD',
-    description: 'brace. take less. set your feet.',
-    className: 'battle-screen__move--hold',
-  },
-  {
-    move: 'WHISPER',
-    label: 'WHISPER',
-    description: 'rattle them. soften their next hit.',
-    className: 'battle-screen__move--whisper',
-  },
-]
 
 type Props = {
   npcId: string
@@ -192,10 +163,18 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
     [onBattleEnd, state.playerHp, state.playerStats.maxHp],
   )
 
+  const equippedMoves = useSyncExternalStore(
+    subscribePlayerStore,
+    getEquippedMoves,
+    getEquippedMoves,
+  )
+
+  const battleMoveButtons = equippedMoves.map((move) => getMoveUiMeta(move))
+
   const handleMove = useCallback(
-    (move: PlayerMove) => {
+    (move: PlayerMove, slot: number) => {
       if (state.phase !== 'player') return
-      dispatch({ type: 'PLAYER_MOVE', move })
+      dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
     [state.phase],
   )
@@ -334,7 +313,7 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
             >
               LVL {playerLevel}
             </span>
-            {state.playerBrace > 0 && (
+            {state.combatStatus.playerBrace > 0 && (
               <span className="battle-screen__brace">braced</span>
             )}
           </div>
@@ -361,18 +340,24 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
             </button>
           ) : (
             <div className="battle-screen__moves" role="group" aria-label="Battle moves">
-              {MOVES.map(({ move, label, description, className }) => (
-                <button
-                  key={move}
-                  type="button"
-                  className={`battle-screen__move ${className}${busy ? ' battle-screen__move--busy' : ''}`}
-                  disabled={busy}
-                  onClick={() => handleMove(move)}
-                >
-                  <span className="battle-screen__move-name">{label}</span>
-                  <span className="battle-screen__move-desc">{description}</span>
-                </button>
-              ))}
+              {battleMoveButtons.map(({ move, label, description, className }, slot) => {
+                const stolen = state.battleMove.snagStolen[slot]
+                const displayLabel = stolen
+                  ? stolen.replace('_', ' ')
+                  : label
+                return (
+                  <button
+                    key={`${slot}-${move}-${stolen ?? ''}`}
+                    type="button"
+                    className={`battle-screen__move ${className}${busy ? ' battle-screen__move--busy' : ''}`}
+                    disabled={busy}
+                    onClick={() => handleMove(move, slot)}
+                  >
+                    <span className="battle-screen__move-name">{displayLabel}</span>
+                    <span className="battle-screen__move-desc">{description}</span>
+                  </button>
+                )
+              })}
             </div>
           )}
         </section>

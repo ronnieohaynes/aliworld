@@ -1,3 +1,4 @@
+import { xpGrantsForMove, type MoveXpContext } from '../data/moves'
 import type { ResolveResult } from './battleStore'
 
 export type SkillId = 'attack' | 'speed' | 'defense' | 'luck' | 'hp'
@@ -131,6 +132,16 @@ function mergeGrant(
   }
 }
 
+function toMoveXpContext(r: ResolveResult): MoveXpContext {
+  return {
+    pMove: r.pMove,
+    playerDmg: r.playerDmg,
+    incoming: r.incoming,
+    dodged: r.dodged,
+    enemyAttacks: r.enemyAttacks,
+  }
+}
+
 /** Award move-based XP from a resolved combat turn. */
 export function awardMoveXp(skills: SkillsState, r: ResolveResult): {
   skills: SkillsState
@@ -139,37 +150,14 @@ export function awardMoveXp(skills: SkillsState, r: ResolveResult): {
   let next = skills
   let lines: string[] = []
 
-  switch (r.pMove) {
-    case 'STRIKE': {
-      const dealt = r.playerDmg
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'attack', dealt * 4))
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'hp', dealt * 1.3))
-      break
-    }
-    case 'SLIP': {
-      const speedXp = r.dodged ? 10 : 5
-      const luckXp = r.dodged && r.playerDmg > 0 ? 10 : 5
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'speed', speedXp))
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'luck', luckXp))
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'hp', 3))
-      break
-    }
-    case 'HOLD': {
-      const defenseXp =
-        r.enemyAttacks && r.incoming > 0 ? r.incoming * 4 : 3
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'defense', defenseXp))
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'hp', 3))
-      break
-    }
-    case 'WHISPER': {
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'luck', 4))
-      ;({ skills: next, lines } = mergeGrant(next, lines, 'hp', 2))
-      break
-    }
+  for (const grant of xpGrantsForMove(toMoveXpContext(r))) {
+    ;({ skills: next, lines } = mergeGrant(next, lines, grant.skill, grant.amount))
   }
 
   return { skills: next, levelUpLines: lines }
 }
+
+export { isMoveUnlocked } from '../data/moves'
 
 export function getSkillLabels(): ReadonlyArray<{ id: SkillId; label: string }> {
   return SKILL_IDS.map((id) => ({
