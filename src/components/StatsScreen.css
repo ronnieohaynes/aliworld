@@ -1,0 +1,165 @@
+.stats-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  opacity: 0;
+  animation: stats-fade-in var(--stats-fade-ms, 300ms) ease forwards;
+}
+
+.stats-screen--closing {
+  animation: stats-fade-out var(--stats-fade-ms, 300ms) ease forwards;
+}
+
+@keyframes stats-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes stats-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.stats-screen__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  pointer-events: auto;
+}
+
+.stats-screen__panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 18px 14px 16px;
+  pointer-events: none;
+}
+
+.stats-screen__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  pointer-events: auto;
+}
+
+.stats-screen__title {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #fff;
+}
+
+.stats-screen__close {
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(14, 14, 24, 0.85);
+  color: #a0a0b8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.stats-screen__hero {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  pointer-events: auto;
+}
+
+.stats-screen__portrait {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.65));
+}
+
+.stats-screen__level {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: #f4e8c1;
+}
+
+.stats-screen__stats {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stats-screen__stat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stats-screen__stat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stats-screen__stat-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #fff;
+}
+
+.stats-screen__stat-level {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #7a7a96;
+}
+
+.stats-screen__bar {
+  margin: 0;
+}
+
+.stats-screen__bar-fill {
+  background: #7c58ed;
+}
+
+.stats-screen__stat-xp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #6d6d88;
+  text-align: right;
+}

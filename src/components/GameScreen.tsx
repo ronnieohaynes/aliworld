@@ -6,6 +6,7 @@ import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
 import { LoadoutScreen } from './LoadoutScreen'
+import { StatsScreen } from './StatsScreen'
 import { BattleEntryWipe } from './BattleEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { DarklineScreen } from './DarklineScreen'
@@ -38,6 +39,7 @@ export function GameScreen() {
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
   const [showLoadout, setShowLoadout] = useState(false)
+  const [showStats, setShowStats] = useState(false)
 
   const cityConfig = CITY_CONFIGS[currentCity]
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
@@ -145,6 +147,14 @@ export function GameScreen() {
     setShowLoadout(false)
   }, [])
 
+  const handleOpenStats = useCallback(() => {
+    setShowStats(true)
+  }, [])
+
+  const handleStatsClose = useCallback(() => {
+    setShowStats(false)
+  }, [])
+
   const handleInteriorClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (dialogue) {
@@ -156,7 +166,7 @@ export function GameScreen() {
 
   return (
     <div className="game-screen">
-      <GameShell onSelect={handleToggleDebug} onFannyPack={handleFannyPack}>
+      <GameShell onSelect={handleToggleDebug} onFannyPack={handleFannyPack} onScript={handleOpenStats}>
         <div
           className={`game-screen-play${battleEntryWipe ? ' game-screen-play--battle-wipe' : ''}`}
           onClick={handlePlayAreaClick}
@@ -226,6 +236,7 @@ export function GameScreen() {
         </div>
       </GameShell>
       {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
+      {showStats && <StatsScreen onClose={handleStatsClose} />}
     </div>
   )
 }
