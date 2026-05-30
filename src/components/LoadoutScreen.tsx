@@ -54,7 +54,10 @@ export function LoadoutScreen({ onClose }: Props) {
 
   const skills = usePlayerStore(getPlayerSkills)
   const equipped = usePlayerStore(getEquippedMoves)
-  const pool = usePlayerStore(getUnequippedUnlockedMoves)
+  const pool = useMemo(
+    () => getUnequippedUnlockedMoves(),
+    [skills, equipped],
+  )
   const locked = useMemo(() => lockedMovesInLadderOrder(skills), [skills])
 
   const requestClose = useCallback(() => {
