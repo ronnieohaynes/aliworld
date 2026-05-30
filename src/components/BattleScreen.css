@@ -365,3 +365,66 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+/* --- battle juice --- */
+.battle-screen__fighter--hit {
+  animation: battle-hit-shake 0.32s ease;
+}
+.battle-screen__fighter--hit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 40, 40, 0.55);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: battle-flash-fade 0.32s ease forwards;
+}
+.battle-screen__fighter--attack {
+  animation: battle-attack-lunge 0.24s ease;
+}
+.battle-screen__fighter--attack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: battle-flash-fade 0.24s ease forwards;
+}
+
+@keyframes battle-hit-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+@keyframes battle-attack-lunge {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-10px); }
+  100% { transform: translateX(0); }
+}
+@keyframes battle-flash-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.battle-screen__floater {
+  position: absolute;
+  top: 30%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ff4d4d;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  animation: battle-floater-rise 0.9s ease-out forwards;
+  z-index: 20;
+}
+.battle-screen__floater--enemy { left: 28%; }
+.battle-screen__floater--player { left: 64%; }
+@keyframes battle-floater-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.8); }
+  20% { opacity: 1; transform: translateY(-10px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-48px) scale(1); }
+}

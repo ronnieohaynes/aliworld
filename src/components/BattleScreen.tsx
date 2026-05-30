@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
 import { MIDNIGHT_WALK_SRC } from '../constants/gameAssets'
 import {
   DEFAULT_BATTLE_LOCATION,
@@ -143,6 +143,15 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
     (id) => createInitialBattleState(id),
   )
 
+  const prevEnemyHpRef = useRef(state.enemyHp)
+  const prevPlayerHpRef = useRef(state.playerHp)
+  const [enemyHitFx, setEnemyHitFx] = useState(false)
+  const [playerHitFx, setPlayerHitFx] = useState(false)
+  const [playerAtkFx, setPlayerAtkFx] = useState(false)
+  const [floaters, setFloaters] = useState<
+    { id: number; amount: number; target: 'enemy' | 'player' }[]
+  >([])
+
   const busy = state.phase !== 'player'
   const playerHpPct = Math.max(0, (state.playerHp / state.playerStats.maxHp) * 100)
   const enemyHpPct = Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)
@@ -190,6 +199,31 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
       return () => window.clearTimeout(timer)
     }
   }, [state.phase, state.result, finishBattle])
+
+  useEffect(() => {
+    const enemyDelta = prevEnemyHpRef.current - state.enemyHp
+    const playerDelta = prevPlayerHpRef.current - state.playerHp
+
+    if (enemyDelta > 0) {
+      setEnemyHitFx(true)
+      setPlayerAtkFx(true)
+      const id = Date.now() + Math.random()
+      setFloaters((f) => [...f, { id, amount: enemyDelta, target: 'enemy' }])
+      window.setTimeout(() => setEnemyHitFx(false), 320)
+      window.setTimeout(() => setPlayerAtkFx(false), 240)
+      window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+    }
+    if (playerDelta > 0) {
+      setPlayerHitFx(true)
+      const id = Date.now() + Math.random()
+      setFloaters((f) => [...f, { id, amount: playerDelta, target: 'player' }])
+      window.setTimeout(() => setPlayerHitFx(false), 320)
+      window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+    }
+
+    prevEnemyHpRef.current = state.enemyHp
+    prevPlayerHpRef.current = state.playerHp
+  }, [state.enemyHp, state.playerHp])
 
   useEffect(() => {
     if (state.phase !== 'busy') return
@@ -263,7 +297,7 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
           <StageBackground location={battleLocation} />
           <div className="battle-screen__arena">
             <div
-              className="battle-screen__fighter battle-screen__fighter--enemy"
+              className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}`}
               style={{ left: BATTLE_ENEMY_PLACEMENT.x, top: BATTLE_ENEMY_DRAW_Y }}
             >
               <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
@@ -275,7 +309,7 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
               </div>
             </div>
             <div
-              className="battle-screen__fighter battle-screen__fighter--player"
+              className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ' battle-screen__fighter--attack' : ''}`}
               style={{ left: BATTLE_PLAYER_PLACEMENT.x, top: BATTLE_PLAYER_DRAW_Y }}
             >
               <canvas
@@ -285,6 +319,14 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
                 height={WORLD_PLAYER_DISPLAY_HEIGHT}
               />
             </div>
+            {floaters.map((f) => (
+              <span
+                key={f.id}
+                className={`battle-screen__floater battle-screen__floater--${f.target}`}
+              >
+                -{f.amount}
+              </span>
+            ))}
           </div>
           {showDebug && (
             <BattlePlacementGrid
