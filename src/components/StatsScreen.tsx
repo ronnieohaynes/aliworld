@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { MIDNIGHT_WALK_SRC } from '../constants/gameAssets'
+import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
 import { loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
 import {
@@ -8,6 +8,10 @@ import {
   WORLD_PLAYER_DISPLAY_HEIGHT,
   WORLD_PLAYER_DISPLAY_WIDTH,
 } from '../game/worldSpriteRender'
+import {
+  getSelectedMidnightVariant,
+  subscribeCharacterStore,
+} from '../store/characterStore'
 import { getPlayerLevel, getPlayerSkills, subscribePlayerStore } from '../store/playerStore'
 import {
   MAX_SKILL_LEVEL,
@@ -35,7 +39,11 @@ function usePlayerStore<T>(selector: () => T): T {
   return useSyncExternalStore(subscribePlayerStore, selector, selector)
 }
 
-function drawPlayerPortraitSprite(canvas: HTMLCanvasElement, sheet: SpriteSheet): void {
+function drawPlayerPortraitSprite(
+  canvas: HTMLCanvasElement,
+  sheet: SpriteSheet,
+  tuning: ReturnType<typeof getMidnightVariantRenderTuning>,
+): void {
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
 
@@ -44,7 +52,7 @@ function drawPlayerPortraitSprite(canvas: HTMLCanvasElement, sheet: SpriteSheet)
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
-  drawWorldPlayerSprite(ctx, sheet, 'down', getIdleFrameIndex(), 0, 0)
+  drawWorldPlayerSprite(ctx, sheet, 'down', getIdleFrameIndex(), 0, tuning.feetOffset, tuning)
 }
 
 export function StatsScreen({ onClose }: Props) {
@@ -52,6 +60,11 @@ export function StatsScreen({ onClose }: Props) {
   const portraitRef = useRef<HTMLCanvasElement>(null)
 
   const skills = usePlayerStore(getPlayerSkills)
+  const selectedMidnightVariant = useSyncExternalStore(
+    subscribeCharacterStore,
+    getSelectedMidnightVariant,
+    getSelectedMidnightVariant,
+  )
   const playerLevel = useMemo(() => getPlayerLevel(), [skills])
 
   const statRows = useMemo(
@@ -79,15 +92,18 @@ export function StatsScreen({ onClose }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    void loadSpriteSheetWithFallback(MIDNIGHT_WALK_SRC).then((sheet) => {
+    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
+    const tuning = getMidnightVariantRenderTuning(selectedMidnightVariant)
+
+    void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
       if (cancelled || !sheet?.loaded) return
       const canvas = portraitRef.current
-      if (canvas) drawPlayerPortraitSprite(canvas, sheet)
+      if (canvas) drawPlayerPortraitSprite(canvas, sheet, tuning)
     })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [selectedMidnightVariant])
 
   return (
     <div
@@ -97,7 +113,6 @@ export function StatsScreen({ onClose }: Props) {
       aria-label="Player stats"
       style={{ ['--stats-fade-ms' as string]: `${FADE_MS}ms` }}
     >
-      <div className="stats-screen__backdrop" onClick={requestClose} aria-hidden />
       <div className="stats-screen__panel">
         <header className="stats-screen__header">
           <h1 className="stats-screen__title">you</h1>

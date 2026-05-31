@@ -1,10 +1,17 @@
 .stats-screen {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 10000;
+  z-index: 120;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   overflow: hidden;
+  box-sizing: border-box;
+  background: #0a0a12;
   opacity: 0;
   animation: stats-fade-in var(--stats-fade-ms, 300ms) ease forwards;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .stats-screen--closing {
@@ -29,21 +36,16 @@
   }
 }
 
-.stats-screen__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.78);
-  pointer-events: auto;
-}
-
 .stats-screen__panel {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 18px 14px 16px;
-  pointer-events: none;
+  padding: 8px 10px 10px;
+  background: #0a0a12;
+  overflow: hidden;
+  pointer-events: auto;
 }
 
 .stats-screen__header {
@@ -51,15 +53,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 14px;
-  pointer-events: auto;
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
 .stats-screen__title {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: lowercase;
@@ -67,14 +68,15 @@
 }
 
 .stats-screen__close {
+  flex-shrink: 0;
   margin: 0;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 4px;
-  background: rgba(14, 14, 24, 0.85);
+  background: rgba(14, 14, 24, 0.95);
   color: #a0a0b8;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: lowercase;
   cursor: pointer;
@@ -85,22 +87,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 18px;
-  pointer-events: auto;
+  gap: 2px;
+  margin-bottom: 6px;
 }
 
 .stats-screen__portrait {
   display: block;
+  width: auto;
+  height: 48px;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.65));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.65));
 }
 
 .stats-screen__level {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 16px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: lowercase;
@@ -110,45 +113,46 @@
 .stats-screen__stats {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  pointer-events: auto;
-  -webkit-overflow-scrolling: touch;
+  justify-content: space-between;
+  gap: 3px;
+  overflow: hidden;
 }
 
 .stats-screen__stat-row {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
 }
 
 .stats-screen__stat-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
 .stats-screen__stat-label {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: #fff;
 }
 
 .stats-screen__stat-level {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.04em;
   text-transform: lowercase;
   color: #7a7a96;
 }
 
-.stats-screen__bar {
-  margin: 0;
+.stats-screen__bar.battle-screen__hp-track {
+  height: 6px;
+  border-width: 1px;
 }
 
 .stats-screen__bar-fill {
@@ -157,9 +161,10 @@
 
 .stats-screen__stat-xp {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 0.04em;
   text-transform: lowercase;
   color: #6d6d88;
   text-align: right;
+  line-height: 1.1;
 }

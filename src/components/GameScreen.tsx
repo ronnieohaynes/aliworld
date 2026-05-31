@@ -182,7 +182,7 @@ export function GameScreen() {
               cityConfig={cityConfig}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
-              dialogueActive={!!dialogue || !!battleEntryWipe}
+              dialogueActive={!!dialogue || !!battleEntryWipe || showStats}
               dialogueNpcId={dialogue?.npc.id ?? null}
             />
             {!battleNpcId && <PlayerLevelOverhead />}
@@ -233,10 +233,10 @@ export function GameScreen() {
               onComplete={handleBattleEntryComplete}
             />
           )}
+          {showStats && <StatsScreen onClose={handleStatsClose} />}
         </div>
       </GameShell>
       {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
-      {showStats && <StatsScreen onClose={handleStatsClose} />}
     </div>
   )
 }

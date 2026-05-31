@@ -1,15 +1,23 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useSyncExternalStore } from 'react'
 import {
   MIDNIGHT_WALK_FRAME_HEIGHT,
   MIDNIGHT_WALK_FRAME_WIDTH,
   MIDNIGHT_WALK_FRAMES_PER_DIRECTION,
   MIDNIGHT_WALK_IDLE_FRAME,
-  MIDNIGHT_WALK_SRC,
 } from '../constants/gameAssets'
+import {
+  formatMidnightVariantTuningDebug,
+  getMidnightVariantRenderTuning,
+  getMidnightWalkSrc,
+} from '../data/midnightVariants'
 import {
   drawSheetFrame,
   loadSpriteSheetWithFallback,
 } from '../game/characterLayers'
+import {
+  getSelectedMidnightVariant,
+  subscribeCharacterStore,
+} from '../store/characterStore'
 import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
 import type { CollisionZone } from '../data/collisionZones'
 import { NPC_SIZE } from '../data/npcs'
@@ -65,9 +73,6 @@ function getNpcInteractPoints(npc: { x: number; y: number }): InteractPoint[] {
     { x: drawX + NPC_DISPLAY_W + 10, y: drawY + NPC_DISPLAY_H / 2 + 10, npcFacing: 'left' },
   ]
 }
-
-/** Subtract from centered Y to shift sprite up and show full hair. */
-const PLAYER_DRAW_Y_SHIFT_UP = 12
 
 const HITBOX_WIDTH = 30
 const HITBOX_HEIGHT = 20
@@ -306,6 +311,7 @@ type CoordinateReadout = {
 function formatDebugText(
   { direction, frame, sx, sy, state }: DebugInfo,
   coords?: CoordinateReadout | null,
+  tuningLines?: string,
 ): string {
   const lines = [
     `direction: ${direction}`,
@@ -313,6 +319,9 @@ function formatDebugText(
     `sx: ${sx.toFixed(1)}  sy: ${sy.toFixed(1)}`,
     `state: ${state}`,
   ]
+  if (tuningLines) {
+    lines.push('--- mdnght tune ---', tuningLines)
+  }
   if (coords) {
     lines.push(
       `Midnight: (${coords.worldX.toFixed(1)}, ${coords.worldY.toFixed(1)})`,
@@ -437,6 +446,12 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const activeTriggerIds = useRef(new Set<string>())
   const loopId = useRef(Symbol('player-loop'))
   const midnightSheetRef = useRef<SpriteSheet | null>(null)
+  const selectedMidnightVariant = useSyncExternalStore(
+    subscribeCharacterStore,
+    getSelectedMidnightVariant,
+    getSelectedMidnightVariant,
+  )
+  const selectedMidnightVariantRef = useRef(selectedMidnightVariant)
 
   const cityConfigRef = useRef(cityConfig)
 
@@ -539,6 +554,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   }, [dialogueNpcId])
 
   useEffect(() => {
+    selectedMidnightVariantRef.current = selectedMidnightVariant
+  }, [selectedMidnightVariant])
+
+  useEffect(() => {
     onTriggerRef.current = onTrigger
   }, [onTrigger])
 
@@ -553,8 +572,9 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   useEffect(() => {
     let cancelled = false
     midnightSheetRef.current = null
+    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
 
-    void loadSpriteSheetWithFallback(MIDNIGHT_WALK_SRC).then((sheet) => {
+    void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
       if (cancelled) return
       midnightSheetRef.current = sheet
     })
@@ -563,7 +583,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       cancelled = true
       midnightSheetRef.current = null
     }
-  }, [])
+  }, [selectedMidnightVariant])
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
@@ -903,8 +923,12 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       let sx = 0
       let sy = 0
 
+      const variantId = selectedMidnightVariantRef.current ?? 'default'
+      const renderTuning = getMidnightVariantRenderTuning(variantId)
       const dh = Math.floor(PLAYER_DISPLAY_HEIGHT)
-      const worldDrawY = Math.floor(worldY - dh / 2) - PLAYER_DRAW_Y_SHIFT_UP
+      const worldDrawY = Math.floor(
+        worldY - dh / 2 - renderTuning.drawShiftUp + renderTuning.feetOffset,
+      )
       const dw = Math.floor(PLAYER_DISPLAY_WIDTH)
       const worldDrawX = Math.floor(worldX - dw / 2)
 
@@ -940,7 +964,18 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             const rect = midnightSheet.getFrameRect(facing, frame)
             sx = Math.floor(rect.sx)
             sy = Math.floor(SPRITE_SHEET_ROW[facing] * MIDNIGHT_WALK_FRAME_HEIGHT)
-            drawSheetFrame(ctx, midnightSheet, facing, frame, worldDrawX, worldDrawY, dw, dh)
+            drawSheetFrame(
+              ctx,
+              midnightSheet,
+              facing,
+              frame,
+              worldDrawX,
+              worldDrawY,
+              dw,
+              dh,
+              1,
+              renderTuning,
+            )
           }
         } else {
           const npc = entry.npc
@@ -1011,8 +1046,9 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
           }
         : null
       if (getShowDebug()) {
+        const tuningLines = formatMidnightVariantTuningDebug(variantId, renderTuning)
         drawDebugOverlay(ctx, debugInfo, coordReadout)
-        setDebugHud(formatDebugText(debugInfo, coordReadout))
+        setDebugHud(formatDebugText(debugInfo, coordReadout, tuningLines))
       } else {
         setDebugHud('')
       }
