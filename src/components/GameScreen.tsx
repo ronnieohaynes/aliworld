@@ -5,8 +5,8 @@ import { CITY_CONFIGS, type CityId } from '../data/cityConfig'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
-import { LoadoutScreen } from './LoadoutScreen'
 import { StatsScreen } from './StatsScreen'
+import { FannyPackScreen } from './FannyPackScreen'
 import { BattleEntryWipe } from './BattleEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { DarklineScreen } from './DarklineScreen'
@@ -38,7 +38,7 @@ export function GameScreen() {
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
-  const [showLoadout, setShowLoadout] = useState(false)
+  const [showFannyPack, setShowFannyPack] = useState(false)
   const [showStats, setShowStats] = useState(false)
 
   const cityConfig = CITY_CONFIGS[currentCity]
@@ -53,6 +53,29 @@ export function GameScreen() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
+
+  const handleFannyPack = useCallback(() => {
+    setShowFannyPack((open) => !open)
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'f' && e.key !== 'F') return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const target = e.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        return
+      }
+      e.preventDefault()
+      handleFannyPack()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleFannyPack])
 
   const handleToggleDebug = useCallback(() => {
     toggleShowDebug()
@@ -139,12 +162,8 @@ export function GameScreen() {
     setBattleNpcId(null)
   }, [])
 
-  const handleFannyPack = useCallback(() => {
-    setShowLoadout(true)
-  }, [])
-
-  const handleLoadoutClose = useCallback(() => {
-    setShowLoadout(false)
+  const handleFannyPackClose = useCallback(() => {
+    setShowFannyPack(false)
   }, [])
 
   const handleOpenStats = useCallback(() => {
@@ -182,7 +201,7 @@ export function GameScreen() {
               cityConfig={cityConfig}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
-              dialogueActive={!!dialogue || !!battleEntryWipe || showStats}
+              dialogueActive={!!dialogue || !!battleEntryWipe || showStats || showFannyPack}
               dialogueNpcId={dialogue?.npc.id ?? null}
             />
             {!battleNpcId && <PlayerLevelOverhead />}
@@ -234,9 +253,9 @@ export function GameScreen() {
             />
           )}
           {showStats && <StatsScreen onClose={handleStatsClose} />}
+          {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
         </div>
       </GameShell>
-      {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
     </div>
   )
 }
