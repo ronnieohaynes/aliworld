@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
-import { MIDNIGHT_WALK_SRC } from '../constants/gameAssets'
+import { getMidnightWalkSrc } from '../data/midnightVariants'
 import {
   DEFAULT_BATTLE_LOCATION,
   getBattleBackgroundSrc,
@@ -33,6 +33,10 @@ import {
   getTelegraphText,
   type PlayerMove,
 } from '../store/battleStore'
+import {
+  getSelectedMidnightVariant,
+  subscribeCharacterStore,
+} from '../store/characterStore'
 import {
   getPlayerLevel,
   setOverworldPlayerHp,
@@ -136,6 +140,11 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
   const midnightSheetRef = useRef<SpriteSheet | null>(null)
   const endHandledRef = useRef(false)
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
+  const selectedMidnightVariant = useSyncExternalStore(
+    subscribeCharacterStore,
+    getSelectedMidnightVariant,
+    getSelectedMidnightVariant,
+  )
 
   const [state, dispatch] = useReducer(
     battleReducer,
@@ -245,8 +254,9 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
 
   useEffect(() => {
     let cancelled = false
+    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
 
-    loadSpriteSheetWithFallback(MIDNIGHT_WALK_SRC).then((sheet) => {
+    loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
       if (cancelled || !sheet?.loaded) return
       midnightSheetRef.current = sheet
       const canvas = playerCanvasRef.current
@@ -255,8 +265,9 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
 
     return () => {
       cancelled = true
+      midnightSheetRef.current = null
     }
-  }, [])
+  }, [selectedMidnightVariant])
 
   useEffect(() => {
     const canvas = enemyWrapRef.current?.querySelector('canvas')

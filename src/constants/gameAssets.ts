@@ -13,7 +13,8 @@ export const GAME_VIEWPORT_WIDTH = 358
 /** Approximate viewport height when shell is 844px tall (flex-filled bezel). */
 export const GAME_VIEWPORT_HEIGHT = 616
 
-export const MIDNIGHT_WALK_SRC = `${CHAR_DIR}/midnight/midnight-walk.png`
+/** Default MDNGHT walk sheet (was midnight-walk.png → midnight-default.png). */
+export const MIDNIGHT_DEFAULT_WALK_SRC = `${CHAR_DIR}/midnight/midnight-default.png`
 export const MIDNIGHT_FULL_SRC = `${CHAR_DIR}/midnight/midnight-full.png`
 
 /** Midnight walk sheet: 1024×1024 px, 4×4 grid (down, up, left, right). */

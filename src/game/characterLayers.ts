@@ -11,7 +11,7 @@ import {
   MIDNIGHT_WALK_FRAMES_PER_DIRECTION,
   MIDNIGHT_WALK_IDLE_FRAME,
   MIDNIGHT_WALK_ROWS,
-  MIDNIGHT_WALK_SRC,
+  MIDNIGHT_DEFAULT_WALK_SRC,
 } from '../constants/gameAssets'
 import {
   getSkinToneFullSrc,
@@ -78,9 +78,16 @@ async function tryLoadSheet(src: string): Promise<SpriteSheet | null> {
   }
 }
 
+/** Load a single sheet URL with no fallback (e.g. variant select previews). */
+export async function loadSpriteSheetPrimary(
+  src: string,
+): Promise<SpriteSheet | null> {
+  return tryLoadSheet(src)
+}
+
 export async function loadSpriteSheetWithFallback(
   primarySrc: string,
-  fallbackSrc = MIDNIGHT_WALK_SRC,
+  fallbackSrc = MIDNIGHT_DEFAULT_WALK_SRC,
 ): Promise<SpriteSheet | null> {
   const primary = await tryLoadSheet(primarySrc)
   if (primary) return primary

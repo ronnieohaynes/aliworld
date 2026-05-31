@@ -131,7 +131,7 @@ const toneColors = [
 ensureDir(assets)
 
 await writeWalkSheet(
-  path.join(assets, 'characters/midnight/midnight-walk.png'),
+  path.join(assets, 'characters/midnight/midnight-default.png'),
   [91, 33, 182],
   [220, 38, 127],
 )

@@ -1,15 +1,19 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useSyncExternalStore } from 'react'
 import {
   MIDNIGHT_WALK_FRAME_HEIGHT,
   MIDNIGHT_WALK_FRAME_WIDTH,
   MIDNIGHT_WALK_FRAMES_PER_DIRECTION,
   MIDNIGHT_WALK_IDLE_FRAME,
-  MIDNIGHT_WALK_SRC,
 } from '../constants/gameAssets'
+import { getMidnightWalkSrc } from '../data/midnightVariants'
 import {
   drawSheetFrame,
   loadSpriteSheetWithFallback,
 } from '../game/characterLayers'
+import {
+  getSelectedMidnightVariant,
+  subscribeCharacterStore,
+} from '../store/characterStore'
 import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
 import type { CollisionZone } from '../data/collisionZones'
 import { NPC_SIZE } from '../data/npcs'
@@ -437,6 +441,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const activeTriggerIds = useRef(new Set<string>())
   const loopId = useRef(Symbol('player-loop'))
   const midnightSheetRef = useRef<SpriteSheet | null>(null)
+  const selectedMidnightVariant = useSyncExternalStore(
+    subscribeCharacterStore,
+    getSelectedMidnightVariant,
+    getSelectedMidnightVariant,
+  )
 
   const cityConfigRef = useRef(cityConfig)
 
@@ -553,8 +562,9 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   useEffect(() => {
     let cancelled = false
     midnightSheetRef.current = null
+    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
 
-    void loadSpriteSheetWithFallback(MIDNIGHT_WALK_SRC).then((sheet) => {
+    void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
       if (cancelled) return
       midnightSheetRef.current = sheet
     })
@@ -563,7 +573,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       cancelled = true
       midnightSheetRef.current = null
     }
-  }, [])
+  }, [selectedMidnightVariant])
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
