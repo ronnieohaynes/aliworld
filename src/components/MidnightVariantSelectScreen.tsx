@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  getMidnightVariantRenderTuning,
   getMidnightWalkSrc,
   MIDNIGHT_VARIANTS,
   type MidnightVariantDef,
@@ -25,16 +26,21 @@ const PLACEHOLDER_ACCENT: Record<MidnightVariantId, { skin: string; accent: stri
   'filipino-m': { skin: '#c9a882', accent: '#6b4f3a' },
 }
 
-function drawVariantPreview(canvas: HTMLCanvasElement, sheet: SpriteSheet): void {
+function drawVariantPreview(
+  canvas: HTMLCanvasElement,
+  sheet: SpriteSheet,
+  variantId: MidnightVariantId,
+): void {
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
 
+  const tuning = getMidnightVariantRenderTuning(variantId)
   const dw = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH)
   const dh = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT)
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
-  drawWorldPlayerSprite(ctx, sheet, 'down', getIdleFrameIndex(), 0, 0)
+  drawWorldPlayerSprite(ctx, sheet, 'down', getIdleFrameIndex(), 0, tuning.feetOffset, tuning)
 }
 
 function VariantPreviewPlaceholder({ id }: { id: MidnightVariantId }) {
@@ -95,7 +101,7 @@ function VariantCard({
   useEffect(() => {
     if (previewMode !== 'sheet' || !sheetRef.current) return
     const canvas = canvasRef.current
-    if (canvas) drawVariantPreview(canvas, sheetRef.current)
+    if (canvas) drawVariantPreview(canvas, sheetRef.current, variant.id)
   }, [previewMode])
 
   const showPlaceholder = previewMode !== 'sheet'

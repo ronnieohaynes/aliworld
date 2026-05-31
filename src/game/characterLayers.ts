@@ -14,6 +14,10 @@ import {
   MIDNIGHT_DEFAULT_WALK_SRC,
 } from '../constants/gameAssets'
 import {
+  MIDNIGHT_DEFAULT_RENDER_TUNING,
+  type MidnightVariantRenderTuning,
+} from '../data/midnightVariants'
+import {
   getSkinToneFullSrc,
   getSkinToneIdleSrc,
   getSkinToneWalkSrc,
@@ -37,13 +41,6 @@ const SPRITE_SHEET_ROW: Record<Direction, number> = {
   left: 2,
   right: 3,
 }
-
-const PLAYER_SOURCE_ROW_PADDING = 4
-const PLAYER_SOURCE_FRAME_HEIGHT = 252
-const PLAYER_LEFT_SOURCE_ROW_PADDING = 12
-const PLAYER_LEFT_SOURCE_FRAME_HEIGHT = 232
-const PLAYER_RIGHT_SOURCE_ROW_PADDING = -10
-const PLAYER_RIGHT_SOURCE_FRAME_HEIGHT = 232
 
 /* ── Midnight sheet creation / loading ──────────────────────────── */
 
@@ -97,27 +94,66 @@ export async function loadSpriteSheetWithFallback(
 
 /* ── Midnight draw helpers ──────────────────────────────────────── */
 
-function getSourceCrop(direction: Direction): {
+function getRowPadding(direction: Direction, tuning: MidnightVariantRenderTuning): number {
+  switch (direction) {
+    case 'down':
+      return tuning.rowPaddingDown
+    case 'up':
+      return tuning.rowPaddingUp
+    case 'left':
+      return tuning.rowPaddingLeft
+    case 'right':
+      return tuning.rowPaddingRight
+  }
+}
+
+function getCropHeight(direction: Direction, tuning: MidnightVariantRenderTuning): number {
+  switch (direction) {
+    case 'down':
+      return tuning.cropHeightDown
+    case 'up':
+      return tuning.cropHeightUp
+    case 'left':
+      return tuning.cropHeightLeft
+    case 'right':
+      return tuning.cropHeightRight
+  }
+}
+
+function getFrameInsetTop(direction: Direction, tuning: MidnightVariantRenderTuning): number {
+  switch (direction) {
+    case 'down':
+      return tuning.frameInsetTopDown
+    case 'up':
+      return tuning.frameInsetTopUp
+    case 'left':
+      return tuning.frameInsetTopLeft
+    case 'right':
+      return tuning.frameInsetTopRight
+  }
+}
+
+export function getSourceCrop(
+  direction: Direction,
+  tuning: MidnightVariantRenderTuning = MIDNIGHT_DEFAULT_RENDER_TUNING,
+): {
   sx: number
   sy: number
   sw: number
   sh: number
 } {
   const rowIndex = SPRITE_SHEET_ROW[direction]
-  let rowPad = PLAYER_SOURCE_ROW_PADDING
-  let srcH = PLAYER_SOURCE_FRAME_HEIGHT
-  if (direction === 'left') {
-    rowPad = PLAYER_LEFT_SOURCE_ROW_PADDING
-    srcH = PLAYER_LEFT_SOURCE_FRAME_HEIGHT
-  } else if (direction === 'right') {
-    rowPad = PLAYER_RIGHT_SOURCE_ROW_PADDING
-    srcH = PLAYER_RIGHT_SOURCE_FRAME_HEIGHT
-  }
+  const rowPad = getRowPadding(direction, tuning)
+  const srcH = getCropHeight(direction, tuning)
+  const sy = Math.floor(
+    rowIndex * MIDNIGHT_WALK_FRAME_HEIGHT + rowPad + getFrameInsetTop(direction, tuning),
+  )
+  const sh = Math.max(1, Math.floor(srcH - tuning.frameInsetBottom))
   return {
     sx: 0,
-    sy: Math.floor(rowIndex * MIDNIGHT_WALK_FRAME_HEIGHT + rowPad),
+    sy,
     sw: MIDNIGHT_WALK_FRAME_WIDTH,
-    sh: Math.floor(srcH),
+    sh,
   }
 }
 
@@ -131,12 +167,13 @@ export function drawSheetFrame(
   dw: number,
   dh: number,
   alpha = 1,
+  tuning: MidnightVariantRenderTuning = MIDNIGHT_DEFAULT_RENDER_TUNING,
 ): void {
   const source = getSheetDrawSource(sheet)
   if (!source) return
 
   const rect = sheet.getFrameRect(direction, frameIndex)
-  const crop = getSourceCrop(direction)
+  const crop = getSourceCrop(direction, tuning)
   const sx = Math.floor(rect.sx)
   const sy = Math.floor(crop.sy)
   const sw = Math.floor(rect.sw)

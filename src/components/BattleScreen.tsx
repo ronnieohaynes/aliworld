@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
-import { getMidnightWalkSrc } from '../data/midnightVariants'
+import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
 import {
   DEFAULT_BATTLE_LOCATION,
   getBattleBackgroundSrc,
@@ -87,7 +87,11 @@ function StageBackground({ location }: { location: BattleLocationId }) {
   )
 }
 
-function drawPlayerBattleSprite(canvas: HTMLCanvasElement, sheet: SpriteSheet): void {
+function drawPlayerBattleSprite(
+  canvas: HTMLCanvasElement,
+  sheet: SpriteSheet,
+  tuning: ReturnType<typeof getMidnightVariantRenderTuning>,
+): void {
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
 
@@ -96,7 +100,7 @@ function drawPlayerBattleSprite(canvas: HTMLCanvasElement, sheet: SpriteSheet): 
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
-  drawWorldPlayerSprite(ctx, sheet, 'left', getIdleFrameIndex(), 0, 0)
+  drawWorldPlayerSprite(ctx, sheet, 'left', getIdleFrameIndex(), 0, tuning.feetOffset, tuning)
 }
 
 function drawEnemyBattleSprite(
@@ -256,11 +260,13 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
     let cancelled = false
     const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
 
+    const tuning = getMidnightVariantRenderTuning(selectedMidnightVariant)
+
     loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
       if (cancelled || !sheet?.loaded) return
       midnightSheetRef.current = sheet
       const canvas = playerCanvasRef.current
-      if (canvas) drawPlayerBattleSprite(canvas, sheet)
+      if (canvas) drawPlayerBattleSprite(canvas, sheet, tuning)
     })
 
     return () => {

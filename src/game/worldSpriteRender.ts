@@ -7,6 +7,8 @@ import {
   MIDNIGHT_WALK_FRAME_HEIGHT,
   MIDNIGHT_WALK_FRAME_WIDTH,
 } from '../constants/gameAssets'
+import { MIDNIGHT_DEFAULT_RENDER_TUNING } from '../data/midnightVariants'
+import type { MidnightVariantRenderTuning } from '../data/midnightVariants'
 import { drawSheetFrame, getIdleFrameIndex } from './characterLayers'
 import type { Direction, SpriteSheet } from './SpriteSheet'
 
@@ -38,10 +40,11 @@ export function drawWorldPlayerSprite(
   frameIndex: number,
   dx: number,
   dy: number,
+  tuning: MidnightVariantRenderTuning = MIDNIGHT_DEFAULT_RENDER_TUNING,
 ): void {
   const dw = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH)
   const dh = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT)
-  drawSheetFrame(ctx, sheet, direction, frameIndex, dx, dy, dw, dh)
+  drawSheetFrame(ctx, sheet, direction, frameIndex, dx, dy, dw, dh, 1, tuning)
 }
 
 export function drawWorldNpcSprite(
