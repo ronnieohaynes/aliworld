@@ -6,24 +6,103 @@ import {
   type MidnightVariantDef,
   type MidnightVariantId,
 } from '../data/midnightVariants'
-import { loadSpriteSheetPrimary } from '../game/characterLayers'
+import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetPrimary } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
 import {
-  drawWorldPlayerSprite,
-  getIdleFrameIndex,
   WORLD_PLAYER_DISPLAY_HEIGHT,
   WORLD_PLAYER_DISPLAY_WIDTH,
 } from '../game/worldSpriteRender'
+import { getBattleBackgroundSrc } from '../data/battleBackgrounds'
 import { clearMidnightVariant, setMidnightVariant } from '../store/characterStore'
 import { GameShell } from './GameShell'
 import './MidnightVariantSelectScreen.css'
 
-const PLACEHOLDER_ACCENT: Record<MidnightVariantId, { skin: string; accent: string }> = {
-  default: { skin: '#b8a8c8', accent: '#534ab7' },
-  'asian-f': { skin: '#f0d4c8', accent: '#c97b8a' },
-  'latino-m': { skin: '#d4a574', accent: '#8b5a2e' },
-  'white-f': { skin: '#f0e6d8', accent: '#9b8ec4' },
-  'filipino-m': { skin: '#c9a882', accent: '#6b4f3a' },
+const ENTRANCE_MS = 1000
+const DALY_CITY_BG_SRC = getBattleBackgroundSrc('daly_city')
+/** Carousel preview display is 2× world size — bitmap matches CSS so pixels stay crisp. */
+const PREVIEW_PIXEL_SCALE = 2
+const PREVIEW_DISPLAY_W = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH * PREVIEW_PIXEL_SCALE)
+const PREVIEW_DISPLAY_H = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT * PREVIEW_PIXEL_SCALE)
+const PREVIEW_ALPHA_MIN = 12
+
+type PreloadedSheets = Partial<Record<MidnightVariantId, SpriteSheet>>
+
+type OpaqueBounds = {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+let previewScratchCanvas: HTMLCanvasElement | null = null
+
+function getPreviewScratchCanvas(width: number, height: number): HTMLCanvasElement {
+  if (!previewScratchCanvas) previewScratchCanvas = document.createElement('canvas')
+  previewScratchCanvas.width = width
+  previewScratchCanvas.height = height
+  return previewScratchCanvas
+}
+
+function getOpaqueBounds(imageData: ImageData): OpaqueBounds | null {
+  const { data, width, height } = imageData
+  let minX = width
+  let minY = height
+  let maxX = -1
+  let maxY = -1
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const a = data[(y * width + x) * 4 + 3]!
+      if (a <= PREVIEW_ALPHA_MIN) continue
+      if (x < minX) minX = x
+      if (y < minY) minY = y
+      if (x > maxX) maxX = x
+      if (y > maxY) maxY = y
+    }
+  }
+
+  if (maxX < 0) return null
+  return { minX, minY, maxX, maxY }
+}
+
+function centerOpaqueContentInPreview(
+  targetCtx: CanvasRenderingContext2D,
+  source: HTMLCanvasElement,
+  width: number,
+  height: number,
+): void {
+  const sourceCtx = source.getContext('2d', { alpha: true })
+  if (!sourceCtx) return
+
+  const bounds = getOpaqueBounds(sourceCtx.getImageData(0, 0, width, height))
+  targetCtx.clearRect(0, 0, width, height)
+  targetCtx.imageSmoothingEnabled = false
+
+  if (!bounds) {
+    targetCtx.drawImage(source, 0, 0)
+    return
+  }
+
+  const contentW = bounds.maxX - bounds.minX + 1
+  const contentH = bounds.maxY - bounds.minY + 1
+  const dx = Math.floor((width - contentW) / 2) - bounds.minX
+  const dy = Math.floor((height - contentH) / 2) - bounds.minY
+  targetCtx.drawImage(source, dx, dy)
+}
+
+async function preloadAllVariantSheets(): Promise<PreloadedSheets> {
+  const pairs = await Promise.all(
+    MIDNIGHT_VARIANTS.map(async (variant) => {
+      const sheet = await loadSpriteSheetPrimary(getMidnightWalkSrc(variant.id))
+      return [variant.id, sheet] as const
+    }),
+  )
+
+  const sheets: PreloadedSheets = {}
+  for (const [id, sheet] of pairs) {
+    if (sheet?.loaded) sheets[id] = sheet
+  }
+  return sheets
 }
 
 function drawVariantPreview(
@@ -35,76 +114,55 @@ function drawVariantPreview(
   if (!ctx) return
 
   const tuning = getMidnightVariantRenderTuning(variantId)
-  const dw = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH)
-  const dh = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT)
+  const dw = PREVIEW_DISPLAY_W
+  const dh = PREVIEW_DISPLAY_H
   canvas.width = dw
   canvas.height = dh
-  ctx.clearRect(0, 0, dw, dh)
-  drawWorldPlayerSprite(ctx, sheet, 'down', getIdleFrameIndex(), 0, tuning.feetOffset, tuning)
-}
 
-function VariantPreviewPlaceholder({ id }: { id: MidnightVariantId }) {
-  const colors = PLACEHOLDER_ACCENT[id]
-  return (
-    <div
-      className="midnight-select-screen__placeholder"
-      style={
-        {
-          '--placeholder-skin': colors.skin,
-          '--placeholder-accent': colors.accent,
-        } as React.CSSProperties
-      }
-      aria-hidden
-    >
-      <span className="midnight-select-screen__placeholder-sigil" />
-      <span className="midnight-select-screen__placeholder-body" />
-    </div>
+  const scratch = getPreviewScratchCanvas(dw, dh)
+  const scratchCtx = scratch.getContext('2d', { alpha: true })
+  if (!scratchCtx) return
+
+  scratchCtx.clearRect(0, 0, dw, dh)
+  scratchCtx.imageSmoothingEnabled = false
+  drawSheetFrame(
+    scratchCtx,
+    sheet,
+    'down',
+    getIdleFrameIndex(),
+    0,
+    tuning.feetOffset,
+    dw,
+    dh,
+    1,
+    tuning,
   )
+
+  centerOpaqueContentInPreview(ctx, scratch, dw, dh)
 }
 
 function VariantCard({
   variant,
+  sheet,
   isFocused,
   cardRef,
   onActivate,
 }: {
   variant: MidnightVariantDef
+  sheet: SpriteSheet | undefined
   isFocused: boolean
   cardRef: (el: HTMLDivElement | null) => void
   onActivate: () => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const sheetRef = useRef<SpriteSheet | null>(null)
-  const [previewMode, setPreviewMode] = useState<'loading' | 'sheet' | 'placeholder'>('loading')
 
   useEffect(() => {
-    let cancelled = false
-    setPreviewMode('loading')
-    const src = getMidnightWalkSrc(variant.id)
-
-    void loadSpriteSheetPrimary(src).then((sheet) => {
-      if (cancelled) return
-      if (!sheet?.loaded) {
-        sheetRef.current = null
-        setPreviewMode('placeholder')
-        return
-      }
-      sheetRef.current = sheet
-      setPreviewMode('sheet')
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [variant.id])
-
-  useEffect(() => {
-    if (previewMode !== 'sheet' || !sheetRef.current) return
+    if (!sheet?.loaded) return
     const canvas = canvasRef.current
-    if (canvas) drawVariantPreview(canvas, sheetRef.current, variant.id)
-  }, [previewMode])
+    if (canvas) drawVariantPreview(canvas, sheet, variant.id)
+  }, [sheet, variant.id])
 
-  const showPlaceholder = previewMode !== 'sheet'
+  const hasSprite = Boolean(sheet?.loaded)
 
   return (
     <div
@@ -122,25 +180,58 @@ function VariantCard({
       }}
     >
       <div className="midnight-select-screen__preview">
-        {showPlaceholder ? (
-          <VariantPreviewPlaceholder id={variant.id} />
-        ) : (
+        {hasSprite ? (
           <canvas
             ref={canvasRef}
             className="midnight-select-screen__canvas"
-            width={WORLD_PLAYER_DISPLAY_WIDTH}
-            height={WORLD_PLAYER_DISPLAY_HEIGHT}
+            width={PREVIEW_DISPLAY_W}
+            height={PREVIEW_DISPLAY_H}
           />
+        ) : (
+          <div className="midnight-select-screen__preview-empty" aria-hidden />
         )}
       </div>
     </div>
   )
 }
 
+function MidnightSelectBackground() {
+  const [bgVisible, setBgVisible] = useState(true)
+
+  return (
+    <div className="midnight-select-screen__bg" aria-hidden>
+      <div className="midnight-select-screen__bg-fallback" />
+      {bgVisible ? (
+        <img
+          className="midnight-select-screen__bg-img"
+          src={DALY_CITY_BG_SRC}
+          alt=""
+          draggable={false}
+          onError={() => setBgVisible(false)}
+        />
+      ) : null}
+      <div className="midnight-select-screen__bg-overlay" />
+    </div>
+  )
+}
+
 export function MidnightVariantSelectScreen() {
+  const [preloadedSheets, setPreloadedSheets] = useState<PreloadedSheets | null>(null)
   const [focusedIndex, setFocusedIndex] = useState(0)
   const trackRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void preloadAllVariantSheets().then((sheets) => {
+      if (!cancelled) setPreloadedSheets(sheets)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handlePick = useCallback((id: MidnightVariantId) => {
     setMidnightVariant(id)
@@ -178,6 +269,8 @@ export function MidnightVariantSelectScreen() {
   }, [])
 
   useEffect(() => {
+    if (!preloadedSheets) return
+
     const track = trackRef.current
     if (!track) return
 
@@ -195,7 +288,7 @@ export function MidnightVariantSelectScreen() {
       track.removeEventListener('scroll', onScroll)
       if (scrollEndTimer !== undefined) window.clearTimeout(scrollEndTimer)
     }
-  }, [updateFocusedFromScroll])
+  }, [preloadedSheets, updateFocusedFromScroll])
 
   const focusedVariant = MIDNIGHT_VARIANTS[focusedIndex]!
 
@@ -212,52 +305,79 @@ export function MidnightVariantSelectScreen() {
 
   const canScrollPrev = focusedIndex > 0
   const canScrollNext = focusedIndex < MIDNIGHT_VARIANTS.length - 1
+  const isReady = preloadedSheets !== null
 
   return (
     <div className="midnight-select-app">
       <GameShell>
-        <div className="midnight-select-screen" role="dialog" aria-modal="true" aria-label="Choose MDNGHT">
+        <div
+          className={`midnight-select-screen${
+            isReady ? ' midnight-select-screen--enter' : ' midnight-select-screen--boot'
+          }`}
+          style={{ ['--midnight-select-enter-ms' as string]: `${ENTRANCE_MS}ms` }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose your MIDNIGHT"
+          aria-busy={!isReady}
+        >
+          <MidnightSelectBackground />
+
+          <div className="midnight-select-screen__content">
+          <header className="midnight-select-screen__header">
+            <h1 className="midnight-select-screen__title">Choose your MIDNIGHT</h1>
+          </header>
+
           <section className="midnight-select-screen__carousel" aria-label="MDNGHT appearances">
             <button
               type="button"
               className="midnight-select-screen__arrow midnight-select-screen__arrow--prev"
               aria-label="Previous appearance"
-              disabled={!canScrollPrev}
+              disabled={!isReady || !canScrollPrev}
               onClick={() => scrollToIndex(focusedIndex - 1)}
             >
               ‹
             </button>
 
             <div className="midnight-select-screen__carousel-viewport">
-              <div ref={trackRef} className="midnight-select-screen__track">
-                {MIDNIGHT_VARIANTS.map((variant, index) => (
-                  <VariantCard
-                    key={variant.id}
-                    variant={variant}
-                    isFocused={index === focusedIndex}
-                    cardRef={(el) => {
-                      cardRefs.current[index] = el
-                    }}
-                    onActivate={() => handleCardActivate(index)}
-                  />
-                ))}
-              </div>
+              {isReady ? (
+                <div ref={trackRef} className="midnight-select-screen__track">
+                  {MIDNIGHT_VARIANTS.map((variant, index) => (
+                    <VariantCard
+                      key={variant.id}
+                      variant={variant}
+                      sheet={preloadedSheets[variant.id]}
+                      isFocused={index === focusedIndex}
+                      cardRef={(el) => {
+                        cardRefs.current[index] = el
+                      }}
+                      onActivate={() => handleCardActivate(index)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="midnight-select-screen__track midnight-select-screen__track--boot" />
+              )}
             </div>
 
             <button
               type="button"
               className="midnight-select-screen__arrow midnight-select-screen__arrow--next"
               aria-label="Next appearance"
-              disabled={!canScrollNext}
+              disabled={!isReady || !canScrollNext}
               onClick={() => scrollToIndex(focusedIndex + 1)}
             >
               ›
             </button>
           </section>
 
+          <div className="midnight-select-screen__tagline-slot">
+            <p className="midnight-select-screen__tagline">ALIWORLD awaits</p>
+          </div>
+
           <button
             type="button"
             className="midnight-select-screen__confirm"
+            disabled={!isReady}
             onClick={() => handlePick(focusedVariant.id)}
           >
             select
@@ -273,6 +393,7 @@ export function MidnightVariantSelectScreen() {
             </button>
             <p className="midnight-select-screen__debug-hint">press M in game to return here</p>
           </footer>
+          </div>
         </div>
       </GameShell>
     </div>

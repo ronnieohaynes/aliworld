@@ -62,7 +62,13 @@ const BASELINE_RENDER = MIDNIGHT_DEFAULT_RENDER_TUNING
 
 export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   { id: 'default', render: BASELINE_RENDER },
-  { id: 'asian-f', render: { ...BASELINE_RENDER } },
+  {
+    id: 'asian-f',
+    render: {
+      ...BASELINE_RENDER,
+      frameInsetTopUp: 4,
+    },
+  },
   {
     id: 'latino-m',
     render: {
