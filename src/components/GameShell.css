@@ -361,10 +361,23 @@
 }
 
 .game-shell__progress-fill {
-  width: 38%;
+  width: 0%;
   height: 100%;
   background: #534ab7;
   border-radius: 1px;
+}
+
+.game-shell__music--playing .game-shell__progress-fill {
+  animation: game-shell-music-progress 48s linear infinite;
+}
+
+@keyframes game-shell-music-progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
 }
 
 .game-shell__transport {

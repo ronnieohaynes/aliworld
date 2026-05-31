@@ -3,7 +3,7 @@ import type { CollisionZone } from './collisionZones'
 import { COLLISION_ZONES } from './collisionZones'
 import type { TriggerZone } from './triggerZones'
 import { TRIGGER_ZONES, DARKLINE_SPAWN_X, DARKLINE_SPAWN_Y } from './triggerZones'
-import { WORLD_NPCS, type NpcData } from './npcs'
+import { DALY_CITY_OVERWORLD_NPCS, type NpcData } from './npcs'
 
 export type CityId = 'daly-city' | 'san-bruno'
 
@@ -82,7 +82,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnY: DARKLINE_SPAWN_Y,
     collisionZones: COLLISION_ZONES,
     triggerZones: TRIGGER_ZONES,
-    npcs: WORLD_NPCS,
+    npcs: [...DALY_CITY_OVERWORLD_NPCS],
   },
   'san-bruno': {
     id: 'san-bruno',

@@ -1,4 +1,16 @@
-import { useCallback, useEffect, useState, type PointerEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
+import {
+  isSoundtrackPlaying,
+  subscribeMusicStore,
+  toggleSoundtrackPlaying,
+} from '../store/musicStore'
 import './GameShell.css'
 
 const ARROW_KEYS = {
@@ -27,6 +39,7 @@ type Props = {
   onScript?: () => void
   onFannyPack?: () => void
   onSelect?: () => void
+  onStart?: () => void
 }
 
 function CultSigil({ size = 22 }: { size?: number }) {
@@ -91,12 +104,17 @@ export function GameShell({
   onScript = () => {},
   onFannyPack = () => {},
   onSelect = () => {},
+  onStart = () => {},
 }: Props) {
   const clock = useLiveClock()
-  const [playing, setPlaying] = useState(true)
+  const playing = useSyncExternalStore(
+    subscribeMusicStore,
+    isSoundtrackPlaying,
+    isSoundtrackPlaying,
+  )
 
   const togglePlay = useCallback(() => {
-    setPlaying((p) => !p)
+    toggleSoundtrackPlaying()
   }, [])
 
   return (
@@ -155,7 +173,7 @@ export function GameShell({
           <button type="button" className="game-shell__pill-btn" onClick={onSelect}>
             SELECT
           </button>
-          <button type="button" className="game-shell__pill-btn">
+          <button type="button" className="game-shell__pill-btn" onClick={onStart}>
             START
           </button>
         </div>
@@ -214,7 +232,10 @@ export function GameShell({
         </div>
       </div>
 
-      <div className="game-shell__music">
+      <div
+        className={`game-shell__music${playing ? ' game-shell__music--playing' : ''}`}
+        aria-live="polite"
+      >
         <div className="game-shell__album-art" aria-hidden>
           <span className="game-shell__album-hole" />
         </div>

@@ -1,3 +1,4 @@
+import type { Direction } from '../game/SpriteSheet'
 import { publicAsset } from '../utils/publicAsset'
 
 export type NpcData = {
@@ -11,6 +12,8 @@ export type NpcData = {
   spriteSrc?: string
   /** Number of direction columns in the sprite sheet (default 4). */
   spriteColumns?: number
+  /** When set, overworld sprite always faces this direction (no idle rotation). */
+  fixedFacing?: Direction
 }
 
 const NPC1_SPRITE = publicAsset('Assets/Characters/npcs/npc1-idle-sheet.png')
@@ -18,64 +21,101 @@ const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const NPC3_SPRITE = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
 const NPC4_SPRITE = publicAsset('Assets/Characters/npcs/npc4-idle-sheet.png')
 
-/** NPCs rendered on the Daly City overworld map. */
-export const WORLD_NPCS: NpcData[] = [
-  {
-    id: 'npc-playita',
-    name: '',
-    x: 150,
-    y: 380,
-    lines: [
-      "you're him.",
-      "thought you'd be taller.",
-      "san bruno's waiting on you.",
-    ],
-    color: '#7a7a96',
-    spriteSrc: NPC1_SPRITE,
-    spriteColumns: 4,
-  },
-  {
-    id: 'npc-crosswalk',
-    name: '',
-    x: 650,
-    y: 620,
-    lines: [
-      "the darkline's been quiet lately.",
-      'too quiet.',
-      'that changes when you go down.',
-    ],
-    color: '#7a7a96',
-    spriteSrc: NPC2_SPRITE,
-    spriteColumns: 4,
-  },
-  {
-    id: 'npc-south',
-    name: '',
-    x: 350,
-    y: 620,
-    lines: [
-      "mark knows you're coming.",
-      "he's been telling everybody.",
-      'everybody already knew.',
-    ],
-    color: '#7a7a96',
-    spriteSrc: NPC3_SPRITE,
-    spriteColumns: 4,
-  },
-  {
-    id: 'npc-donuts',
-    name: '',
-    x: 750,
-    y: 330,
-    lines: [
-      'you got the jacket on.',
-      "that means it's real.",
-      "don't come back without getting through.",
-    ],
-    color: '#7a7a96',
-    spriteSrc: NPC4_SPRITE,
-    spriteColumns: 4,
-  },
+/** Quest 1 gating NPC — near laundromat (left storefront). */
+export const GATING_NPC_1: NpcData = {
+  id: 'npc1',
+  name: '',
+  x: 220,
+  y: 360,
+  lines: [
+    "Everybody out here telegraphs. Watch what they do before they do it, and you'll never get caught slippin.",
+  ],
+  color: '#7a7a96',
+  spriteSrc: NPC1_SPRITE,
+  spriteColumns: 4,
+}
+
+/** Quest 1 gating NPC — near 13 Gallons (center). */
+export const GATING_NPC_2: NpcData = {
+  id: 'npc2',
+  name: '',
+  x: 540,
+  y: 400,
+  lines: [
+    'You get better at what you do over and over. Nobody starts strong out here.',
+  ],
+  color: '#7a7a96',
+  spriteSrc: NPC2_SPRITE,
+  spriteColumns: 4,
+}
+
+/** Quest 1 gating NPC — near dental (right storefront). */
+export const GATING_NPC_3: NpcData = {
+  id: 'npc3',
+  name: '',
+  x: 880,
+  y: 360,
+  lines: [
+    "Funny how the things you carry tell you who you used to be. I used to wear a fanny pack too.",
+  ],
+  color: '#7a7a96',
+  spriteSrc: NPC3_SPRITE,
+  spriteColumns: 4,
+}
+
+/** Quest 1 gating NPC — lower / mid-map between districts. */
+export const GATING_NPC_4: NpcData = {
+  id: 'npc4',
+  name: '',
+  x: 420,
+  y: 580,
+  lines: [
+    "Out here, half of it's you and half of it's the dice. Some days the crowd's with you, some days it ain't.",
+  ],
+  color: '#7a7a96',
+  spriteSrc: NPC4_SPRITE,
+  spriteColumns: 4,
+}
+
+export const GATING_NPCS: readonly NpcData[] = [
+  GATING_NPC_1,
+  GATING_NPC_2,
+  GATING_NPC_3,
+  GATING_NPC_4,
+]
+
+/** Mark — Darkline guard; blocks stairs until Quest 1 complete. */
+export const MARK_NPC: NpcData = {
+  id: 'mark',
+  name: 'mark',
+  x: 598,
+  y: 795,
+  lines: ['You must not of heard about me. You better ask around.'],
+  color: '#c084fc',
+  // TODO: Replace with dedicated Mark idle sprite sheet when art is ready.
+  spriteSrc: NPC3_SPRITE,
+  spriteColumns: 4,
+  fixedFacing: 'up',
+}
+
+/** Adam — Prelude MP3 player handoff, placed near Daly City spawn (see cityConfig). */
+export const ADAM_NPC: NpcData = {
+  id: 'adam',
+  name: 'adam',
+  x: 560,
+  y: 480,
+  lines: ["you'll need this."],
+  color: '#afa9ec',
+  // TODO: Swap in dedicated Adam idle sprite sheet when art is ready.
+  spriteSrc: NPC1_SPRITE,
+  spriteColumns: 4,
+}
+
+/** Daly City overworld NPCs (spawn → block → Darkline gate). */
+export const DALY_CITY_OVERWORLD_NPCS: readonly NpcData[] = [
+  ADAM_NPC,
+  ...GATING_NPCS,
+  MARK_NPC,
 ]
 
 /** Mando — renders inside the 13 Gallons interior overlay. */
@@ -84,7 +124,7 @@ export const MANDO_NPC: NpcData = {
   name: 'mando',
   x: 0,
   y: 0,
-  lines: ['that\'s a fye red jacket though.', 'like the X-Men.'],
+  lines: ["That's a fye red jacket. Like the X-Men."],
   color: '#c084fc',
 }
 

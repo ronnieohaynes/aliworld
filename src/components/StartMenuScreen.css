@@ -1,0 +1,146 @@
+.start-menu-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  box-sizing: border-box;
+  background: rgba(3, 3, 8, 0.72);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: auto;
+}
+
+.start-menu-screen__panel {
+  width: min(100%, 240px);
+  padding: 14px 12px 12px;
+  border: 2px solid #534ab7;
+  border-radius: 8px;
+  background: rgba(10, 10, 18, 0.96);
+  box-shadow:
+    0 0 0 1px rgba(127, 119, 221, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+}
+
+.start-menu-screen__title {
+  margin: 0 0 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: #afa9ec;
+  text-align: center;
+}
+
+.start-menu-screen__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.start-menu-screen__item {
+  margin: 0;
+}
+
+.start-menu-screen__btn {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #3d3660;
+  border-radius: 4px;
+  background: #12101c;
+  color: #a0a0b8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.start-menu-screen__btn:hover,
+.start-menu-screen__btn--selected {
+  border-color: #7f77dd;
+  color: #afa9ec;
+  background: #1a1528;
+}
+
+.start-menu-screen__btn--selected {
+  box-shadow: 0 0 0 1px rgba(127, 119, 221, 0.35);
+}
+
+.start-menu-screen__btn--danger.start-menu-screen__btn--selected {
+  border-color: #8b4a6a;
+  color: #e8b4c8;
+}
+
+.start-menu-screen__hint {
+  margin: 8px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 8px;
+  color: #534ab7;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.start-menu-screen__confirm {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #2e2840;
+}
+
+.start-menu-screen__confirm-text {
+  margin: 0 0 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #afa9ec;
+  text-align: center;
+}
+
+.start-menu-screen__confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.start-menu-screen__confirm-btn {
+  flex: 1;
+  margin: 0;
+  padding: 7px 8px;
+  border: 1px solid #3d3660;
+  border-radius: 4px;
+  background: #12101c;
+  color: #a0a0b8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.start-menu-screen__confirm-btn--primary {
+  border-color: #534ab7;
+  color: #afa9ec;
+}
+
+.start-menu-screen__confirm-btn--primary:hover,
+.start-menu-screen__confirm-btn--primary.start-menu-screen__confirm-btn--selected {
+  border-color: #7f77dd;
+  background: #252035;
+}
+
+.start-menu-screen__confirm-btn--selected {
+  border-color: #7f77dd;
+  color: #fff;
+}

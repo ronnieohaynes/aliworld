@@ -493,6 +493,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
     npcFacingMap.current.clear()
     npcIdleTimers.current.clear()
+    for (const npc of cityConfig.npcs) {
+      if (npc.fixedFacing) {
+        npcFacingMap.current.set(npc.id, npc.fixedFacing)
+      }
+    }
 
     const sprites = npcSpritesRef.current
     for (const npc of cityConfig.npcs) {
@@ -534,7 +539,9 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     if (dialogueNpcId) {
       const cfg = cityConfigRef.current
       const npc = cfg.npcs.find((n) => n.id === dialogueNpcId)
-      if (npc) {
+      if (npc?.fixedFacing) {
+        npcFacingMap.current.set(dialogueNpcId, npc.fixedFacing)
+      } else if (npc) {
         const px = worldPos.current.x
         const py = worldPos.current.y
         let bestFacing: Direction = 'down'
@@ -868,6 +875,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       const activeDialogueNpc = dialogueNpcIdRef.current
       for (const npc of cfg.npcs) {
         if (npc.id === activeDialogueNpc) continue
+        if (npc.fixedFacing) {
+          npcFacingMap.current.set(npc.id, npc.fixedFacing)
+          continue
+        }
         let timer = npcIdleTimers.current.get(npc.id)
         if (!timer) {
           timer = { elapsed: 0, interval: 2 + Math.random() * 2 }
@@ -980,7 +991,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         } else {
           const npc = entry.npc
           const half = NPC_SIZE / 2
-          const npcFacing = npcFacingMap.current.get(npc.id) ?? 'down'
+          const npcFacing = npc.fixedFacing ?? npcFacingMap.current.get(npc.id) ?? 'down'
           const spriteImg = npcSpritesRef.current.get(npc.id)
 
           if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {

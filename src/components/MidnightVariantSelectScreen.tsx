@@ -15,9 +15,11 @@ import {
 import { getBattleBackgroundSrc } from '../data/battleBackgrounds'
 import { clearMidnightVariant, setMidnightVariant } from '../store/characterStore'
 import { GameShell } from './GameShell'
+import { MIDNIGHT_SELECT_TRANSITION_MS } from '../constants/midnightSelectTransition'
+import './MidnightSelectTransition.css'
 import './MidnightVariantSelectScreen.css'
 
-const ENTRANCE_MS = 1000
+const ENTRANCE_MS = MIDNIGHT_SELECT_TRANSITION_MS
 const DALY_CITY_BG_SRC = getBattleBackgroundSrc('daly_city')
 /** Carousel preview display is 2× world size — bitmap matches CSS so pixels stay crisp. */
 const PREVIEW_PIXEL_SCALE = 2

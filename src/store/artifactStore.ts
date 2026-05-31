@@ -6,10 +6,17 @@ import {
 
 const STORAGE_KEY = 'aliworld:artifacts:v1'
 export const ARTIFACT_COLLECT_ANIM_MS = 650
+export const ARTIFACT_TOAST_VISIBLE_MS = 2500
+
+export type ArtifactToastItem = {
+  token: number
+  artifactId: CollectibleArtifactId
+}
 
 type ArtifactStoreState = {
   collected: Record<CollectibleArtifactId, boolean>
   newlyCollected: CollectibleArtifactId | null
+  toastQueue: ArtifactToastItem[]
 }
 
 function emptyCollectedMap(): Record<CollectibleArtifactId, boolean> {
@@ -50,9 +57,11 @@ function saveCollectedToStorage(collected: Record<CollectibleArtifactId, boolean
 let state: ArtifactStoreState = {
   collected: loadCollectedFromStorage(),
   newlyCollected: null,
+  toastQueue: [],
 }
 
 let collectAnimTimer: number | undefined
+let nextToastToken = 1
 
 const listeners = new Set<() => void>()
 
@@ -102,6 +111,20 @@ export function getNewlyCollectedArtifact(): CollectibleArtifactId | null {
   return state.newlyCollected
 }
 
+export function getArtifactToastQueue(): readonly ArtifactToastItem[] {
+  return state.toastQueue
+}
+
+/** Remove a toast after its dismiss animation (UI layer). */
+export function dismissArtifactToast(token: number): void {
+  if (!state.toastQueue.some((t) => t.token === token)) return
+  state = {
+    ...state,
+    toastQueue: state.toastQueue.filter((t) => t.token !== token),
+  }
+  emit()
+}
+
 /**
  * Mark an artifact collected and trigger brief reveal feedback (Fanny Pack slot lights up).
  * Safe to call from world pickups, NPC handoffs, or debug tools.
@@ -110,8 +133,10 @@ export function collectArtifact(id: CollectibleArtifactId): boolean {
   if (!isCollectibleArtifactId(id) || state.collected[id]) return false
 
   state = {
+    ...state,
     collected: { ...state.collected, [id]: true },
     newlyCollected: id,
+    toastQueue: [...state.toastQueue, { token: nextToastToken++, artifactId: id }],
   }
   saveCollectedToStorage(state.collected)
   emit()
@@ -125,6 +150,7 @@ export function resetArtifactsForDebug(): void {
   state = {
     collected: emptyCollectedMap(),
     newlyCollected: null,
+    toastQueue: [],
   }
   try {
     localStorage.removeItem(STORAGE_KEY)

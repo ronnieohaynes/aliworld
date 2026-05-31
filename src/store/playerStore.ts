@@ -170,6 +170,24 @@ export function toggleShowDebug(): void {
   emit()
 }
 
+/** Reset skills, level, and loadout for START menu New Game. */
+export function resetPlayerProgressForNewGame(): void {
+  state = {
+    archetype: 'atk',
+    accessories: [],
+    skills: createDefaultSkills(),
+    equippedMoves: ['STRIKE', 'SLIP', 'HOLD', 'WHISPER'],
+    hp: null,
+    showDebug: false,
+  }
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // ignore
+  }
+  emit()
+}
+
 export { computePlayerLevel, createDefaultSkills }
 export type { SkillsState, SkillId } from './skillStore'
 export type { PlayerMoveId } from '../data/moves'

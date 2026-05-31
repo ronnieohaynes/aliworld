@@ -1,0 +1,60 @@
+.quest-helper {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 3px 8px;
+  box-sizing: border-box;
+  border: 1px solid #3d3660;
+  border-radius: 4px;
+  background: rgba(10, 10, 18, 0.9);
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.quest-helper__label {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: #7f77dd;
+}
+
+.quest-helper__text {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  color: #afa9ec;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quest-helper--flash {
+  animation: quest-helper-flash 600ms ease-out;
+}
+
+@keyframes quest-helper-flash {
+  0%,
+  100% {
+    border-color: #3d3660;
+    box-shadow: none;
+  }
+  35% {
+    border-color: #7f77dd;
+    box-shadow: 0 0 10px rgba(127, 119, 221, 0.4);
+    background: rgba(26, 21, 40, 0.95);
+  }
+}
