@@ -40,11 +40,11 @@ const WALKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 /** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
 export const JASON_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 
-/** Quest 1 gating NPC — near laundromat (left storefront). */
+/** Quest 1 gating NPC — Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
   id: 'npc1',
   name: '',
-  x: 220,
+  x: 130,
   y: 360,
   lines: [
     "you're up. okay. okay okay okay.",
@@ -55,12 +55,12 @@ export const GATING_NPC_1: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — near 13 Gallons (center). */
+/** Quest 1 gating NPC — main road, left of center. */
 export const GATING_NPC_2: NpcData = {
   id: 'npc2',
   name: '',
-  x: 540,
-  y: 400,
+  x: 340,
+  y: 505,
   lines: [
     "everybody here's waiting on something. is it you?",
   ],
@@ -69,12 +69,12 @@ export const GATING_NPC_2: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — near dental (right storefront). */
+/** Quest 1 gating NPC — far east sidewalk. */
 export const GATING_NPC_3: NpcData = {
   id: 'npc3',
   name: '',
-  x: 880,
-  y: 360,
+  x: 1140,
+  y: 520,
   lines: [
     "there's a man. don't say his name loud? okay.",
     "they put up notices about him. you'll find one.",
@@ -84,11 +84,11 @@ export const GATING_NPC_3: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — lower / mid-map between districts. */
+/** Quest 1 gating NPC — west sidewalk. */
 export const GATING_NPC_4: NpcData = {
   id: 'npc4',
   name: '',
-  x: 420,
+  x: 70,
   y: 580,
   lines: [
     "the darkline's how you get anywhere. it goes through Mark, though.",
@@ -109,8 +109,8 @@ export const GATING_NPCS: readonly NpcData[] = [
 export const WALKER_NPC: NpcData = {
   id: 'walker',
   name: 'walker',
-  x: 680,
-  y: 520,
+  x: 800,
+  y: 508,
   lines: [
     'i heard you spawned. cute.',
     "everybody thinks they're the one.",
@@ -126,12 +126,12 @@ export const WALKER_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 — second conversion fight in Daly City. */
+/** Quest 1 — second conversion fight; Sunset Bakery sidewalk (upper-right). */
 export const JACLYN_NPC: NpcData = {
   id: 'jaclyn',
   name: 'jaclyn',
-  x: 820,
-  y: 500,
+  x: 1060,
+  y: 358,
   lines: [
     'i know what you did to walker.',
     "he was annoying but he was HIM. now he's... different.",
@@ -166,7 +166,7 @@ export const MARK_NPC: NpcData = {
   fixedFacing: 'up',
 }
 
-/** Adam — Prelude MP3 player handoff, placed near Daly City spawn (see cityConfig). */
+/** Adam — Prelude MP3 player handoff, placed near five spawn (see cityConfig). */
 export const ADAM_NPC: NpcData = {
   id: 'adam',
   name: 'adam',
@@ -178,8 +178,8 @@ export const ADAM_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Daly City overworld NPCs (spawn → block → Darkline gate). */
-export const DALY_CITY_OVERWORLD_NPCS: readonly NpcData[] = [
+/** the 5ive overworld NPCs (spawn → block → Darkline gate). */
+export const FIVE_OVERWORLD_NPCS: readonly NpcData[] = [
   ADAM_NPC,
   ...GATING_NPCS,
   WALKER_NPC,

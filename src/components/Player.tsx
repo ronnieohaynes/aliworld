@@ -19,7 +19,7 @@ import {
   subscribeCharacterStore,
 } from '../store/characterStore'
 import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
-import type { CollisionZone } from '../data/collisionZones'
+import { getCollisionZones, type CollisionZone } from '../data/collisionZones'
 import { NPC_SIZE } from '../data/npcs'
 import { drawStoryIdleNpcPose, type StoryIdlePoses } from '../game/npcIdleSprites'
 import {
@@ -104,8 +104,9 @@ function resolveNpcFacingTowardPlayer(
   return bestFacing
 }
 
-const HITBOX_WIDTH = 30
-const HITBOX_HEIGHT = 20
+/** Feet hitbox size — tweak for how tight collision feels (world pixels). */
+const FEET_HITBOX_WIDTH = 30
+const FEET_HITBOX_HEIGHT = 20
 
 const ZOOM_MAX = 2.0
 const ZOOM_DEFAULT = 1.0
@@ -373,13 +374,20 @@ function rectsOverlap(a: CollisionZone, b: CollisionZone): boolean {
   )
 }
 
+function getMapCollisionZones(cfg: CityConfig): CollisionZone[] {
+  if (cfg.collisionMapId) return getCollisionZones(cfg.collisionMapId)
+  return cfg.collisionZones
+}
+
 function getFeetHitbox(worldX: number, worldY: number): CollisionZone {
-  const feetY = worldY + PLAYER_DISPLAY_HEIGHT / 2
+  const wx = Math.floor(worldX)
+  const wy = Math.floor(worldY)
+  const feetY = wy + Math.floor(PLAYER_DISPLAY_HEIGHT / 2)
   return {
-    x: worldX - HITBOX_WIDTH / 2,
-    y: feetY - HITBOX_HEIGHT / 2,
-    width: HITBOX_WIDTH,
-    height: HITBOX_HEIGHT,
+    x: Math.floor(wx - FEET_HITBOX_WIDTH / 2),
+    y: Math.floor(feetY - FEET_HITBOX_HEIGHT / 2),
+    width: FEET_HITBOX_WIDTH,
+    height: FEET_HITBOX_HEIGHT,
   }
 }
 
@@ -838,9 +846,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         !keysDown.current.has('ArrowUp') &&
         !keysDown.current.has('ArrowDown')
 
+      const mapCollisionZones = getMapCollisionZones(cfg)
       const collidesAt = (wx: number, wy: number): boolean => {
         const hitbox = getFeetHitbox(wx, wy)
-        if (cfg.collisionZones.some((zone) => rectsOverlap(hitbox, zone))) return true
+        if (mapCollisionZones.some((zone) => rectsOverlap(hitbox, zone))) return true
         return cfg.npcs.some((npc) => rectsOverlap(hitbox, getNpcCollisionRect(npc)))
       }
 
@@ -879,10 +888,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         )
 
         if (dx !== 0 && !collidesAt(nextX, worldPos.current.y)) {
-          worldPos.current.x = nextX
+          worldPos.current.x = Math.floor(nextX)
         }
         if (dy !== 0 && !collidesAt(worldPos.current.x, nextY)) {
-          worldPos.current.y = nextY
+          worldPos.current.y = Math.floor(nextY)
         }
       }
 
@@ -972,7 +981,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       drawWorldMap(ctx, cfg.mapSrc, cfg.worldWidth, cfg.worldHeight)
 
       if (showCollisionDebug.current) {
-        drawCollisionZonesDebug(ctx, cfg.collisionZones, cfg.npcs)
+        drawCollisionZonesDebug(ctx, getMapCollisionZones(cfg), cfg.npcs)
       }
 
       const frame = isMoving ? animFrame.current : MIDNIGHT_WALK_IDLE_FRAME

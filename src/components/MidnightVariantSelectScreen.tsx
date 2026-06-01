@@ -20,7 +20,7 @@ import './MidnightSelectTransition.css'
 import './MidnightVariantSelectScreen.css'
 
 const ENTRANCE_MS = MIDNIGHT_SELECT_TRANSITION_MS
-const DALY_CITY_BG_SRC = getBattleBackgroundSrc('daly_city')
+const FIVE_BG_SRC = getBattleBackgroundSrc('five')
 /** Carousel preview display is 2× world size — bitmap matches CSS so pixels stay crisp. */
 const PREVIEW_PIXEL_SCALE = 2
 const PREVIEW_DISPLAY_W = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH * PREVIEW_PIXEL_SCALE)
@@ -206,7 +206,7 @@ function MidnightSelectBackground() {
       {bgVisible ? (
         <img
           className="midnight-select-screen__bg-img"
-          src={DALY_CITY_BG_SRC}
+          src={FIVE_BG_SRC}
           alt=""
           draggable={false}
           onError={() => setBgVisible(false)}

@@ -68,7 +68,7 @@ function findNpcInCity(id: string, cityId: CityId): NpcData | undefined {
 
 export function GameScreen() {
   const playerRef = useRef<PlayerHandle>(null)
-  const [currentCity, setCurrentCity] = useState<CityId>('daly-city')
+  const [currentCity, setCurrentCity] = useState<CityId>('five')
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
   const [cafeFade, setCafeFade] = useState<'none' | 'in' | 'out'>('none')
@@ -102,7 +102,7 @@ export function GameScreen() {
   useEffect(() => {
     let cancelled = false
     setWorldEntryReady(false)
-    const entryCity = CITY_CONFIGS['daly-city']
+    const entryCity = CITY_CONFIGS.five
     void preloadWorldEntry(entryCity, selectedMidnightVariant).then(() => {
       if (!cancelled) setWorldEntryReady(true)
     })
@@ -116,7 +116,7 @@ export function GameScreen() {
   }, [])
 
   const cityConfig = useMemo((): CityConfig => {
-    if (currentCity !== 'daly-city') return baseCityConfig
+    if (currentCity !== 'five') return baseCityConfig
     if (!markDefeated) return baseCityConfig
     return {
       ...baseCityConfig,
