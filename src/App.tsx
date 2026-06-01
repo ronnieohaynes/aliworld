@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { GameScreen } from './components/GameScreen'
 import { MidnightVariantSelectScreen } from './components/MidnightVariantSelectScreen'
+import { supabase } from './lib/supabaseClient'
 import {
   clearMidnightVariant,
   getSelectedMidnightVariant,
@@ -13,6 +14,14 @@ export default function App() {
     getSelectedMidnightVariant,
     getSelectedMidnightVariant,
   )
+
+  useEffect(() => {
+    // TEMP connection test — remove when auth UI lands.
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) console.error('[supabase] session check failed:', error.message)
+      else console.log('[supabase] connected. session:', data.session ? 'active' : 'none')
+    })
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
