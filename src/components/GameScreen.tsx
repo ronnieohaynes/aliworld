@@ -283,6 +283,22 @@ export function GameScreen() {
     return hasTalkedToAllGatingNpcs() && hasArtifact(ADAM_MP3_ARTIFACT_ID)
   }, [])
 
+  const canApproachMark = useCallback(() => {
+    return (
+      hasTalkedToAllGatingNpcs() &&
+      isWalkerConverted() &&
+      isJaclynConverted()
+    )
+  }, [])
+
+  const showMarkBlockedDialogue = useCallback(() => {
+    if (!hasTalkedToAllGatingNpcs()) {
+      showMarkGateDialogue()
+      return
+    }
+    showNotYetDialogue(MARK_NPC, 'you skipped somebody. go finish it.')
+  }, [showMarkGateDialogue, showNotYetDialogue])
+
   const handleTrigger = useCallback(
     (action: TriggerAction) => {
       if (action === 'OPEN_13GALLONS') {
@@ -368,11 +384,15 @@ export function GameScreen() {
     }
 
     if (nearbyId === JACLYN_NPC_ID) {
-      beginNpcDialogue(JACLYN_NPC, {
-        onComplete: isJaclynConverted()
-          ? undefined
-          : () => startNpcBattle(JACLYN_NPC_ID),
-      })
+      if (isJaclynConverted()) {
+        beginNpcDialogue(JACLYN_NPC)
+        return
+      }
+      if (!isWalkerConverted()) {
+        showNotYetDialogue(JACLYN_NPC, 'walker first. i want to see if it sticks.')
+        return
+      }
+      beginNpcDialogue(JACLYN_NPC, { onComplete: () => startNpcBattle(JACLYN_NPC_ID) })
       return
     }
 
