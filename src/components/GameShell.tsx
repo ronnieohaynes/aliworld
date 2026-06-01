@@ -35,6 +35,8 @@ function dispatchArrowKey(key: string, type: 'keydown' | 'keyup') {
 
 type Props = {
   children: ReactNode
+  /** When false, the D-pad does not dispatch movement keys (e.g. login / world entry). */
+  controlsEnabled?: boolean
   onInteract?: () => void
   onScript?: () => void
   onFannyPack?: () => void
@@ -75,11 +77,12 @@ function useLiveClock(): string {
   return time
 }
 
-function bindDpadKey(dir: Direction) {
+function bindDpadKey(dir: Direction, controlsEnabled: boolean) {
   const key = ARROW_KEYS[dir]
   return {
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
       e.preventDefault()
+      if (!controlsEnabled) return
       e.currentTarget.setPointerCapture(e.pointerId)
       dispatchArrowKey(key, 'keydown')
     },
@@ -87,12 +90,14 @@ function bindDpadKey(dir: Direction) {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
+      if (!controlsEnabled) return
       dispatchArrowKey(key, 'keyup')
     },
     onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
+      if (!controlsEnabled) return
       dispatchArrowKey(key, 'keyup')
     },
   }
@@ -100,6 +105,7 @@ function bindDpadKey(dir: Direction) {
 
 export function GameShell({
   children,
+  controlsEnabled = false,
   onInteract = () => {},
   onScript = () => {},
   onFannyPack = () => {},
@@ -147,25 +153,25 @@ export function GameShell({
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--up"
             aria-label="Move up"
-            {...bindDpadKey('up')}
+            {...bindDpadKey('up', controlsEnabled)}
           />
           <button
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--down"
             aria-label="Move down"
-            {...bindDpadKey('down')}
+            {...bindDpadKey('down', controlsEnabled)}
           />
           <button
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--left"
             aria-label="Move left"
-            {...bindDpadKey('left')}
+            {...bindDpadKey('left', controlsEnabled)}
           />
           <button
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--right"
             aria-label="Move right"
-            {...bindDpadKey('right')}
+            {...bindDpadKey('right', controlsEnabled)}
           />
         </div>
 

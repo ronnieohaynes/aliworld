@@ -15,11 +15,15 @@ type Props = {
   className?: string
   /** DOM id of the <pre> in GameScreen that shows debug text. */
   debugHudId?: string
+  /** When true, game loops do not run (canvas keeps the last frame). */
+  paused?: boolean
 }
 
-export function GameCanvas({ children, className, debugHudId }: Props) {
+export function GameCanvas({ children, className, debugHudId, paused = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const loopsRef = useRef(new Map<symbol, GameLoopFn>())
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const [contextValue, setContextValue] = useState<GameCanvasContextValue | null>(
     null,
   )
@@ -64,8 +68,10 @@ export function GameCanvas({ children, className, debugHudId }: Props) {
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05)
       last = now
-      for (const fn of loopsRef.current.values()) {
-        fn(dt)
+      if (!pausedRef.current) {
+        for (const fn of loopsRef.current.values()) {
+          fn(dt)
+        }
       }
       raf = requestAnimationFrame(tick)
     }

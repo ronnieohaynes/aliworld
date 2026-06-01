@@ -1,0 +1,29 @@
+.menu-entry-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 205;
+  overflow: hidden;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Opaque full viewport — map must not show through during hold or exit. */
+.menu-entry-cover__panel {
+  position: absolute;
+  inset: 0;
+  background: #0a0a12;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  will-change: opacity, transform;
+}
+
+.menu-entry-cover__panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 11, 20, 0.6);
+  pointer-events: none;
+}

@@ -429,6 +429,8 @@ export type PlayerHandle = {
 
 type PlayerProps = {
   cityConfig: CityConfig
+  /** When false, movement/debug keys are not listened for (world entry / pre-map). */
+  inputEnabled?: boolean
   onTrigger?: (action: TriggerAction) => void
   onTriggerExit?: (action: TriggerAction) => void
   dialogueActive?: boolean
@@ -436,7 +438,7 @@ type PlayerProps = {
 }
 
 export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
-  { cityConfig, onTrigger, onTriggerExit, dialogueActive, dialogueNpcId },
+  { cityConfig, inputEnabled = false, onTrigger, onTriggerExit, dialogueActive, dialogueNpcId },
   ref,
 ) {
   const { canvas, ctx, width, height, registerLoop, unregisterLoop, setDebugHud } =
@@ -528,9 +530,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     },
   }))
 
-  useEffect(() => {
-    dialogueActiveRef.current = !!dialogueActive
-  }, [dialogueActive])
+  dialogueActiveRef.current = !!dialogueActive
 
   useEffect(() => {
     const prevId = dialogueNpcIdRef.current
@@ -594,6 +594,13 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
+  }, [cityConfig.mapSrc])
+
+  useEffect(() => {
+    if (!inputEnabled) {
+      keysDown.current.clear()
+      return
+    }
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'c' || e.key === 'C') {
@@ -634,10 +641,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     window.addEventListener('keyup', onKeyUp)
 
     return () => {
+      keysDown.current.clear()
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [cityConfig.mapSrc])
+  }, [inputEnabled])
 
   useEffect(() => {
     const el = canvas
@@ -733,45 +741,48 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     const step = (dt: number) => {
       const cfg = cityConfigRef.current
       const frozen = dialogueActiveRef.current
+
+      // Pause / dialogue: keep the last painted frame on the canvas (no clear/redraw).
+      if (frozen) {
+        return
+      }
+
       const walkSheet = midnightSheetRef.current
       let vx = 0
       let vy = 0
 
-      if (!frozen) {
-        const left = keysDown.current.has('ArrowLeft')
-        const right = keysDown.current.has('ArrowRight')
-        const up = keysDown.current.has('ArrowUp')
-        const down = keysDown.current.has('ArrowDown')
-        const horizontalOnly = (left || right) && !up && !down
-        const verticalOnly = (up || down) && !left && !right
+      const left = keysDown.current.has('ArrowLeft')
+      const right = keysDown.current.has('ArrowRight')
+      const up = keysDown.current.has('ArrowUp')
+      const down = keysDown.current.has('ArrowDown')
+      const horizontalOnly = (left || right) && !up && !down
+      const verticalOnly = (up || down) && !left && !right
 
-        vx = (left ? -1 : 0) + (right ? 1 : 0)
-        vy = (up ? -1 : 0) + (down ? 1 : 0)
+      vx = (left ? -1 : 0) + (right ? 1 : 0)
+      vy = (up ? -1 : 0) + (down ? 1 : 0)
 
-        if (horizontalOnly) {
-          vy = 0
+      if (horizontalOnly) {
+        vy = 0
+        direction.current = vx < 0 ? 'left' : 'right'
+      } else if (verticalOnly) {
+        vx = 0
+        direction.current = vy < 0 ? 'up' : 'down'
+      } else if (vx !== 0 || vy !== 0) {
+        if (Math.abs(vx) > Math.abs(vy)) {
           direction.current = vx < 0 ? 'left' : 'right'
-        } else if (verticalOnly) {
-          vx = 0
+        } else if (Math.abs(vy) > Math.abs(vx)) {
           direction.current = vy < 0 ? 'up' : 'down'
-        } else if (vx !== 0 || vy !== 0) {
-          if (Math.abs(vx) > Math.abs(vy)) {
-            direction.current = vx < 0 ? 'left' : 'right'
-          } else if (Math.abs(vy) > Math.abs(vx)) {
-            direction.current = vy < 0 ? 'up' : 'down'
-          } else {
-            direction.current = vy < 0 ? 'up' : 'down'
-          }
+        } else {
+          direction.current = vy < 0 ? 'up' : 'down'
         }
       }
 
       const facing = direction.current
-      const isMoving = !frozen && (
+      const isMoving =
         keysDown.current.has('ArrowLeft') ||
         keysDown.current.has('ArrowRight') ||
         keysDown.current.has('ArrowUp') ||
         keysDown.current.has('ArrowDown')
-      )
       const frameCount = walkSheet?.framesPerDirection ?? WALK_FRAME_COUNT
 
       if (isMoving && (!wasMoving.current || lastFacing.current !== facing)) {
@@ -855,7 +866,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
       if (triggerCooldown.current > 0) {
         triggerCooldown.current = Math.max(0, triggerCooldown.current - dt)
-      } else if (!frozen) {
+      } else {
         for (const zone of cfg.triggerZones) {
           const hitbox = getFeetHitbox(worldX, worldY)
           const inside = rectsOverlap(hitbox, zone)

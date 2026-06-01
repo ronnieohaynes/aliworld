@@ -12,6 +12,7 @@ import {
   getSelectedMidnightVariant,
   subscribeCharacterStore,
 } from '../store/characterStore'
+import { getAuthState, subscribeAuthStore } from '../store/authStore'
 import { getPlayerLevel, getPlayerSkills, subscribePlayerStore } from '../store/playerStore'
 import {
   MAX_SKILL_LEVEL,
@@ -60,6 +61,11 @@ export function StatsScreen({ onClose }: Props) {
   const portraitRef = useRef<HTMLCanvasElement>(null)
 
   const skills = usePlayerStore(getPlayerSkills)
+  const playerHandle = useSyncExternalStore(
+    subscribeAuthStore,
+    () => getAuthState().profile?.handle ?? '',
+    () => getAuthState().profile?.handle ?? '',
+  )
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
     getSelectedMidnightVariant,
@@ -110,12 +116,12 @@ export function StatsScreen({ onClose }: Props) {
       className={`stats-screen${closing ? ' stats-screen--closing' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Player stats"
+      aria-label={playerHandle ? `${playerHandle} stats` : 'Player stats'}
       style={{ ['--stats-fade-ms' as string]: `${FADE_MS}ms` }}
     >
       <div className="stats-screen__panel">
         <header className="stats-screen__header">
-          <h1 className="stats-screen__title">you</h1>
+          <h1 className="stats-screen__title">{playerHandle || 'you'}</h1>
           <button type="button" className="stats-screen__close" onClick={requestClose}>
             close
           </button>

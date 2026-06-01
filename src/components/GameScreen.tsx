@@ -22,6 +22,7 @@ import { StatsScreen } from './StatsScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { BattleEntryWipe } from './BattleEntryWipe'
+import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { DarklineScreen } from './DarklineScreen'
@@ -71,9 +72,9 @@ export function GameScreen() {
   const [showStats, setShowStats] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
-  const [menuEntryWipe, setMenuEntryWipe] = useState<'fanny-pack' | 'stats' | null>(null)
+  const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
   const startMenuRef = useRef<StartMenuHandle>(null)
-  const menuEntryTargetRef = useRef<'fanny-pack' | 'stats' | null>(null)
+  const menuTransitionRef = useRef<MenuTransitionTarget | null>(null)
   const [worldEntryActive, setWorldEntryActive] = useState(true)
   const [worldEntryReady, setWorldEntryReady] = useState(false)
 
@@ -116,7 +117,10 @@ export function GameScreen() {
     return { ...baseCityConfig, npcs }
   }, [baseCityConfig, currentCity, quest1Revision])
 
+  const mapReady = !worldEntryActive
+
   useEffect(() => {
+    if (!mapReady) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== '`' && e.code !== 'Backquote') return
       e.preventDefault()
@@ -124,33 +128,81 @@ export function GameScreen() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [mapReady])
+
+  useEffect(() => {
+    if (!mapReady) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'm' && e.key !== 'M') return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      e.preventDefault()
+      clearMidnightVariant()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [mapReady])
 
   const canOpenStartMenu = useCallback(() => {
     return (
       !worldEntryActive &&
       !battleNpcId &&
       !battleEntryWipe &&
-      !menuEntryWipe &&
+      !menuTransition &&
       !dialogue
     )
-  }, [worldEntryActive, battleNpcId, battleEntryWipe, menuEntryWipe, dialogue])
+  }, [worldEntryActive, battleNpcId, battleEntryWipe, menuTransition, dialogue])
+
+  const beginMenuTransition = useCallback((target: MenuTransitionTarget) => {
+    menuTransitionRef.current = target
+    setMenuTransition(target)
+  }, [])
+
+  const closeStartMenu = useCallback(() => {
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+  }, [])
+
+  /** Leave pause flow and return to gameplay (same as choosing resume). */
+  const resumeFromPauseMenu = useCallback(() => {
+    setShowFannyPack(false)
+    setShowStats(false)
+    closeStartMenu()
+  }, [closeStartMenu])
 
   const toggleStartMenu = useCallback(() => {
+    if (menuTransition) return
     if (showStartMenu) {
-      setShowStartMenu(false)
+      closeStartMenu()
+      return
+    }
+    if (menuReturnPending && (showFannyPack || showStats)) {
+      resumeFromPauseMenu()
       return
     }
     if (!canOpenStartMenu()) return
     setShowStartMenu(true)
-  }, [canOpenStartMenu, showStartMenu])
+  }, [
+    canOpenStartMenu,
+    closeStartMenu,
+    menuReturnPending,
+    menuTransition,
+    resumeFromPauseMenu,
+    showFannyPack,
+    showStartMenu,
+    showStats,
+  ])
 
   const handleFannyPack = useCallback(() => {
-    if (worldEntryActive || showStartMenu) return
+    if (menuTransition || worldEntryActive || showStartMenu) return
+    if (menuReturnPending) {
+      resumeFromPauseMenu()
+      return
+    }
     setShowFannyPack((open) => !open)
-  }, [showStartMenu])
+  }, [menuReturnPending, menuTransition, resumeFromPauseMenu, showStartMenu])
 
   useEffect(() => {
+    if (!mapReady) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'f' && e.key !== 'F') return
       if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -162,15 +214,16 @@ export function GameScreen() {
       ) {
         return
       }
-      if (worldEntryActive || showStartMenu) return
+      if (showStartMenu) return
       e.preventDefault()
       handleFannyPack()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleFannyPack, showStartMenu])
+  }, [handleFannyPack, mapReady, showStartMenu])
 
   useEffect(() => {
+    if (!mapReady) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== 'Escape') return
       if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -182,16 +235,15 @@ export function GameScreen() {
       ) {
         return
       }
-      if (
-        worldEntryActive ||
-        showStats ||
-        showFannyPack ||
-        battleNpcId ||
-        battleEntryWipe ||
-        menuEntryWipe
-      )
+      if (showStats || showFannyPack) {
+        if (menuReturnPending) {
+          e.preventDefault()
+          resumeFromPauseMenu()
+        }
         return
-      if (worldEntryActive || showStartMenu) return
+      }
+      if (battleNpcId || battleEntryWipe || menuTransition) return
+      if (showStartMenu) return
       if (!canOpenStartMenu()) return
       e.preventDefault()
       setShowStartMenu(true)
@@ -202,11 +254,13 @@ export function GameScreen() {
     battleEntryWipe,
     battleNpcId,
     canOpenStartMenu,
+    mapReady,
+    menuReturnPending,
+    resumeFromPauseMenu,
     showFannyPack,
     showStartMenu,
     showStats,
-    menuEntryWipe,
-    worldEntryActive,
+    menuTransition,
   ])
 
   const handleToggleDebug = useCallback(() => {
@@ -322,7 +376,7 @@ export function GameScreen() {
   }, [currentCity, showMarkGateDialogue, startMarkBattle])
 
   const handleInteract = useCallback(() => {
-    if (worldEntryActive) return
+    if (worldEntryActive || menuTransition) return
     if (showStartMenu) {
       startMenuRef.current?.activate()
       return
@@ -331,7 +385,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleEntryWipe || menuEntryWipe || battleNpcId || showStats || showFannyPack)
+    if (battleEntryWipe || menuTransition || battleNpcId || showStats || showFannyPack)
       return
     openNearbyNpcDialogue()
   }, [
@@ -342,19 +396,19 @@ export function GameScreen() {
     showStats,
     showFannyPack,
     showStartMenu,
-    menuEntryWipe,
+    menuTransition,
     worldEntryActive,
     openNearbyNpcDialogue,
   ])
 
   const handlePlayAreaClick = useCallback(() => {
-    if (worldEntryActive || showStartMenu) return
+    if (worldEntryActive || menuTransition || showStartMenu) return
     if (dialogue) {
       advanceDialogue()
       return
     }
     openNearbyNpcDialogue()
-  }, [dialogue, advanceDialogue, openNearbyNpcDialogue, showStartMenu])
+  }, [dialogue, advanceDialogue, openNearbyNpcDialogue, menuTransition, showStartMenu])
 
   useEffect(() => {
     resumeSoundtrackIfNeeded(hasArtifact(ADAM_MP3_ARTIFACT_ID))
@@ -384,65 +438,63 @@ export function GameScreen() {
     })
   }, [])
 
-  const returnToStartMenuIfPending = useCallback(() => {
-    if (menuReturnPending) {
-      setMenuReturnPending(false)
-      setShowStartMenu(true)
-    }
-  }, [menuReturnPending])
-
   const handleFannyPackClose = useCallback(() => {
+    if (menuReturnPending) {
+      resumeFromPauseMenu()
+      return
+    }
     setShowFannyPack(false)
-    returnToStartMenuIfPending()
-  }, [returnToStartMenuIfPending])
+  }, [menuReturnPending, resumeFromPauseMenu])
 
   const handleOpenStats = useCallback(() => {
-    if (worldEntryActive || showStartMenu) return
+    if (worldEntryActive || showStartMenu || menuTransition) return
     setShowStats(true)
-  }, [showStartMenu])
+  }, [menuTransition, showStartMenu])
 
   const handleStatsClose = useCallback(() => {
+    if (menuReturnPending) {
+      resumeFromPauseMenu()
+      return
+    }
     setShowStats(false)
-    returnToStartMenuIfPending()
-  }, [returnToStartMenuIfPending])
+  }, [menuReturnPending, resumeFromPauseMenu])
 
   const beginMenuEntryTransition = useCallback(
-    (target: 'fanny-pack' | 'stats') => {
-      menuEntryTargetRef.current = target
+    (screen: 'fanny-pack' | 'stats') => {
       setShowStartMenu(false)
       setMenuReturnPending(true)
-      setMenuEntryWipe(target)
+      beginMenuTransition({ kind: 'to-screen', screen })
     },
-    [],
+    [beginMenuTransition],
   )
 
-  const handleMenuEntryMidpoint = useCallback(() => {
-    const target = menuEntryTargetRef.current
-    if (target === 'fanny-pack') setShowFannyPack(true)
-    else if (target === 'stats') setShowStats(true)
+  const handleMenuTransitionMidpoint = useCallback(() => {
+    const target = menuTransitionRef.current
+    if (!target) return
+    switch (target.kind) {
+      case 'to-screen':
+        if (target.screen === 'fanny-pack') setShowFannyPack(true)
+        else setShowStats(true)
+        break
+    }
   }, [])
 
-  const handleMenuEntryComplete = useCallback(() => {
-    menuEntryTargetRef.current = null
-    setMenuEntryWipe(null)
+  const handleMenuTransitionComplete = useCallback(() => {
+    menuTransitionRef.current = null
+    setMenuTransition(null)
   }, [])
 
   const handleStartMenuAction = useCallback(
     (action: StartMenuAction) => {
       switch (action) {
         case 'resume':
-          setShowStartMenu(false)
+          resumeFromPauseMenu()
           break
         case 'fanny-pack':
           beginMenuEntryTransition('fanny-pack')
           break
         case 'stats':
           beginMenuEntryTransition('stats')
-          break
-        case 'choose-midnight':
-          setShowStartMenu(false)
-          setMenuReturnPending(false)
-          clearMidnightVariant()
           break
         case 'new-game':
           break
@@ -453,7 +505,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition],
+    [beginMenuEntryTransition, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -462,12 +514,14 @@ export function GameScreen() {
     performNewGameReset()
   }, [])
 
+  const isGamePaused =
+    showStartMenu || menuReturnPending || menuTransition !== null
+
   const showQuestHelper =
     !worldEntryActive &&
     !battleNpcId &&
     !battleEntryWipe &&
-    !menuEntryWipe &&
-    !showStartMenu &&
+    !isGamePaused &&
     !showStats &&
     !showFannyPack &&
     !showDarkline &&
@@ -485,6 +539,7 @@ export function GameScreen() {
   return (
     <div className="game-screen">
       <GameShell
+        controlsEnabled={mapReady}
         onSelect={handleToggleDebug}
         onFannyPack={handleFannyPack}
         onScript={handleOpenStats}
@@ -493,7 +548,9 @@ export function GameScreen() {
       >
         <div
           className={`game-screen-play${
-            battleEntryWipe || menuEntryWipe ? ' game-screen-play--battle-wipe' : ''
+            battleEntryWipe ? ' game-screen-play--battle-wipe' : ''
+          }${isGamePaused ? ' game-screen-play--paused' : ''}${
+            menuTransition ? ' game-screen-play--menu-transition' : ''
           }${worldEntryActive ? ' game-screen-play--world-entry' : ''}`}
           onClick={handlePlayAreaClick}
         >
@@ -503,20 +560,20 @@ export function GameScreen() {
             </pre>
           )}
           {showQuestHelper && <QuestHelper />}
-          <GameCanvas debugHudId={GAME_DEBUG_HUD_ID}>
+          <GameCanvas debugHudId={GAME_DEBUG_HUD_ID} paused={isGamePaused}>
             <Player
               ref={playerRef}
               cityConfig={cityConfig}
+              inputEnabled={mapReady}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
               dialogueActive={
                 !!dialogue ||
                 worldEntryActive ||
                 !!battleEntryWipe ||
-                !!menuEntryWipe ||
+                isGamePaused ||
                 showStats ||
-                showFannyPack ||
-                showStartMenu
+                showFannyPack
               }
               dialogueNpcId={dialogue?.npc.id ?? null}
             />
@@ -568,18 +625,19 @@ export function GameScreen() {
               onComplete={handleBattleEntryComplete}
             />
           )}
-          {menuEntryWipe && (
-            <BattleEntryWipe
-              onMidpoint={handleMenuEntryMidpoint}
-              onComplete={handleMenuEntryComplete}
+          {showStats && <StatsScreen onClose={handleStatsClose} />}
+          {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
+          {menuTransition && (
+            <MenuEntryCover
+              onMidpoint={handleMenuTransitionMidpoint}
+              onComplete={handleMenuTransitionComplete}
             />
           )}
           {worldEntryActive && (
             <WorldEntryWipe ready={worldEntryReady} onComplete={handleWorldEntryComplete} />
           )}
           <ArtifactAcquisitionToasts />
-          {showStats && <StatsScreen onClose={handleStatsClose} />}
-          {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
+          {showStartMenu && <div className="game-screen-pause-scrim" aria-hidden />}
           {showStartMenu && (
             <StartMenuScreen
               ref={startMenuRef}
