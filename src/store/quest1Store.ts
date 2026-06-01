@@ -104,6 +104,37 @@ export function setMarkDefeated(): void {
   emit()
 }
 
+export type Quest1Serialized = {
+  markDefeated: boolean
+  talkedGatingNpcs: Record<GatingNpcId, boolean>
+}
+
+export function serialize(): Quest1Serialized {
+  return {
+    markDefeated: state.markDefeated,
+    talkedGatingNpcs: { ...state.talked },
+  }
+}
+
+export function applyState(data: Partial<Quest1Serialized>): void {
+  const talked = emptyTalked()
+  if (data.talkedGatingNpcs) {
+    for (const id of GATING_NPC_IDS) {
+      if (data.talkedGatingNpcs[id] === true) talked[id] = true
+    }
+  }
+  state = {
+    markDefeated: data.markDefeated === true,
+    talked,
+  }
+  emit()
+}
+
+export function resetState(): void {
+  state = { talked: emptyTalked(), markDefeated: false }
+  emit()
+}
+
 /** Clear Quest 1 progress (debug / re-test). */
 export function resetQuest1ForDebug(): void {
   state = { talked: emptyTalked(), markDefeated: false }

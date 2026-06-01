@@ -1,0 +1,100 @@
+/**
+ * World memory — bosses cleared and cities visited.
+ */
+
+const STORAGE_KEY = 'aliworld:world-memory:v1'
+
+export type WorldMemoryState = {
+  bossesCleared: string[]
+  citiesVisited: string[]
+}
+
+function emptyState(): WorldMemoryState {
+  return { bossesCleared: [], citiesVisited: [] }
+}
+
+function loadWorldMemoryFromStorage(): WorldMemoryState {
+  const base = emptyState()
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return base
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return base
+    const o = parsed as Partial<WorldMemoryState>
+    return {
+      bossesCleared: Array.isArray(o.bossesCleared)
+        ? o.bossesCleared.filter((id): id is string => typeof id === 'string')
+        : [],
+      citiesVisited: Array.isArray(o.citiesVisited)
+        ? o.citiesVisited.filter((id): id is string => typeof id === 'string')
+        : [],
+    }
+  } catch {
+    return base
+  }
+}
+
+function saveWorldMemoryToStorage(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // storage unavailable
+  }
+}
+
+let state: WorldMemoryState = loadWorldMemoryFromStorage()
+
+const listeners = new Set<() => void>()
+
+function emit(): void {
+  for (const listener of listeners) {
+    listener()
+  }
+}
+
+export function subscribeWorldMemoryStore(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+export function getWorldMemorySnapshot(): WorldMemoryState {
+  return state
+}
+
+export function markBossCleared(bossId: string): void {
+  if (state.bossesCleared.includes(bossId)) return
+  state = { ...state, bossesCleared: [...state.bossesCleared, bossId] }
+  saveWorldMemoryToStorage()
+  emit()
+}
+
+export function markCityVisited(cityId: string): void {
+  if (state.citiesVisited.includes(cityId)) return
+  state = { ...state, citiesVisited: [...state.citiesVisited, cityId] }
+  saveWorldMemoryToStorage()
+  emit()
+}
+
+export function serialize(): WorldMemoryState {
+  return {
+    bossesCleared: [...state.bossesCleared],
+    citiesVisited: [...state.citiesVisited],
+  }
+}
+
+export function applyState(data: Partial<WorldMemoryState>): void {
+  state = {
+    bossesCleared: Array.isArray(data.bossesCleared)
+      ? data.bossesCleared.filter((id): id is string => typeof id === 'string')
+      : [],
+    citiesVisited: Array.isArray(data.citiesVisited)
+      ? data.citiesVisited.filter((id): id is string => typeof id === 'string')
+      : [],
+  }
+  emit()
+}
+
+export function resetState(): void {
+  state = emptyState()
+  emit()
+}

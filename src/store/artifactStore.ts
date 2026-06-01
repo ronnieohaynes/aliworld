@@ -144,6 +144,34 @@ export function collectArtifact(id: CollectibleArtifactId): boolean {
   return true
 }
 
+export function serialize(): CollectibleArtifactId[] {
+  return getCollectedArtifactIds()
+}
+
+export function applyState(ids: readonly CollectibleArtifactId[]): void {
+  const collected = emptyCollectedMap()
+  for (const id of ids) {
+    if (isCollectibleArtifactId(id)) collected[id] = true
+  }
+  clearCollectAnimTimer()
+  state = {
+    collected,
+    newlyCollected: null,
+    toastQueue: [],
+  }
+  emit()
+}
+
+export function resetState(): void {
+  clearCollectAnimTimer()
+  state = {
+    collected: emptyCollectedMap(),
+    newlyCollected: null,
+    toastQueue: [],
+  }
+  emit()
+}
+
 /** Clear all collected artifacts (debug / re-test). */
 export function resetArtifactsForDebug(): void {
   clearCollectAnimTimer()
