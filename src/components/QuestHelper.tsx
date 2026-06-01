@@ -5,6 +5,7 @@ import {
 } from '../data/questObjectives'
 import { getArtifactStoreSnapshot, subscribeArtifactStore } from '../store/artifactStore'
 import { getQuest1Snapshot, subscribeQuest1Store } from '../store/quest1Store'
+import { getWorldMemorySnapshot, subscribeWorldMemoryStore } from '../store/worldMemory'
 import './QuestHelper.css'
 
 export function QuestHelper() {
@@ -18,12 +19,18 @@ export function QuestHelper() {
     getQuest1Snapshot,
     getQuest1Snapshot,
   )
+  const worldRevision = useSyncExternalStore(
+    subscribeWorldMemoryStore,
+    getWorldMemorySnapshot,
+    getWorldMemorySnapshot,
+  )
 
   const objective = useMemo(() => {
     void artifactRevision
     void quest1Revision
+    void worldRevision
     return resolvePrimaryQuestObjective(buildQuestObjectiveContext())
-  }, [artifactRevision, quest1Revision])
+  }, [artifactRevision, quest1Revision, worldRevision])
 
   const prevStepIdRef = useRef(objective.stepId)
   const [flash, setFlash] = useState(false)

@@ -7,27 +7,48 @@ import {
   GATING_NPC_IDS,
   getQuest1Snapshot,
   hasTalkedToAllGatingNpcs,
+  isJaclynConverted,
   isMarkDefeated,
+  isWalkerConverted,
 } from '../store/quest1Store'
+import { getWorldMemorySnapshot } from '../store/worldMemory'
 import { ADAM_MP3_ARTIFACT_ID } from './adamMp3Handoff'
 
+/** PART 2: wire to notice artifact id when collectible exists. */
+export const NOTICE_ARTIFACT_ID = 'notice' as const
+
 export type QuestObjectiveContext = {
+  /** Spawn tutorial — Adam MP3 handoff. */
   hasMp3: boolean
   gatingTalkedCount: number
-  gatingTalkedTotal: number
   allGatingTalked: boolean
+  /** PART 2: hasArtifact(NOTICE_ARTIFACT_ID) once notice is a real collectible. */
+  hasNotice: boolean
+  walkerConverted: boolean
+  jaclynConverted: boolean
   markDefeated: boolean
+  /** PART 2: ensure markCityVisited('san-bruno') on darkline travel. */
+  inSanBruno: boolean
+  /** PART 2: set when cafe / danny beat is seen. */
+  cafeSeen: boolean
 }
 
 export function buildQuestObjectiveContext(): QuestObjectiveContext {
   const quest1 = getQuest1Snapshot()
+  const world = getWorldMemorySnapshot()
   const gatingTalkedCount = GATING_NPC_IDS.filter((id) => quest1.talked[id]).length
   return {
     hasMp3: hasArtifact(ADAM_MP3_ARTIFACT_ID),
     gatingTalkedCount,
-    gatingTalkedTotal: GATING_NPC_IDS.length,
     allGatingTalked: hasTalkedToAllGatingNpcs(),
+    // PART 2: notice artifact hook — stub reads false until wired.
+    hasNotice: false,
+    walkerConverted: isWalkerConverted(),
+    jaclynConverted: isJaclynConverted(),
     markDefeated: isMarkDefeated(),
+    inSanBruno: world.citiesVisited.includes('san-bruno'),
+    // PART 2: cafe beat hook — stub reads false until wired.
+    cafeSeen: false,
   }
 }
 
@@ -47,25 +68,49 @@ export type QuestDefinition = {
 
 const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
-    id: 'find-adam',
-    isComplete: (ctx) => ctx.hasMp3,
-    getText: () => 'Find Adam',
+    id: 'wake',
+    isComplete: (ctx) => ctx.hasMp3 || ctx.gatingTalkedCount >= 1,
+    getText: () => 'wake up.',
   },
   {
-    id: 'ask-around',
+    id: 'find-self',
     isComplete: (ctx) => ctx.allGatingTalked,
-    getText: (ctx) =>
-      `Ask around the neighborhood (${ctx.gatingTalkedCount}/${ctx.gatingTalkedTotal})`,
+    getText: () => 'find out what you are.',
   },
   {
-    id: 'confront-mark',
+    id: 'read-notice',
+    isComplete: (ctx) => ctx.hasNotice,
+    getText: () => 'read the notice.',
+  },
+  {
+    id: 'walker',
+    isComplete: (ctx) => ctx.walkerConverted,
+    getText: () => 'convert walker.',
+  },
+  {
+    id: 'jaclyn',
+    isComplete: (ctx) => ctx.jaclynConverted,
+    getText: () => 'convert jaclyn.',
+  },
+  {
+    id: 'mark',
     isComplete: (ctx) => ctx.markDefeated,
-    getText: () => 'Confront Mark at the Darkline',
+    getText: () => 'confront mark at the darkline.',
   },
   {
-    id: 'take-darkline',
+    id: 'san-bruno',
+    isComplete: (ctx) => ctx.inSanBruno,
+    getText: () => 'take the darkline to san bruno.',
+  },
+  {
+    id: 'cafe',
+    isComplete: (ctx) => ctx.cafeSeen,
+    getText: () => "the cafe. someone's there.",
+  },
+  {
+    id: 'darkline',
     isComplete: () => false,
-    getText: () => 'Take the Darkline',
+    getText: () => 'take the darkline.',
   },
 ]
 
