@@ -92,14 +92,7 @@ export type PlayerStoreState = {
   showDebug: boolean
 }
 
-let state: PlayerStoreState = {
-  archetype: 'atk',
-  accessories: [],
-  skills: createDefaultSkills(),
-  equippedMoves: DEFAULT_EQUIPPED_MOVES,
-  hp: null,
-  showDebug: false,
-}
+let state: PlayerStoreState = createDefaultPlayerState()
 
 const listeners = new Set<() => void>()
 let skipAccountSave = false
@@ -126,6 +119,27 @@ export async function hydrateFromAccount(): Promise<void> {
       ? data.equippedMoves
       : state.equippedMoves,
   }
+  for (const listener of listeners) {
+    listener()
+  }
+  skipAccountSave = false
+}
+
+function createDefaultPlayerState(): PlayerStoreState {
+  return {
+    archetype: 'atk',
+    accessories: [],
+    skills: createDefaultSkills(),
+    equippedMoves: DEFAULT_EQUIPPED_MOVES,
+    hp: null,
+    showDebug: false,
+  }
+}
+
+/** Reset to defaults in memory only — used on logout so the next user starts clean. */
+export function resetProgression(): void {
+  skipAccountSave = true
+  state = createDefaultPlayerState()
   for (const listener of listeners) {
     listener()
   }
@@ -230,14 +244,7 @@ export function toggleShowDebug(): void {
 
 /** Reset skills, level, and loadout for START menu New Game. */
 export function resetPlayerProgressForNewGame(): void {
-  state = {
-    archetype: 'atk',
-    accessories: [],
-    skills: createDefaultSkills(),
-    equippedMoves: DEFAULT_EQUIPPED_MOVES,
-    hp: null,
-    showDebug: false,
-  }
+  state = createDefaultPlayerState()
   emit()
 }
 

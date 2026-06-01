@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { hydrateFromAccount, resetProgression } from './playerStore'
 
 export type AuthStatus = 'loading' | 'signed-out' | 'signed-in'
 
@@ -66,6 +67,7 @@ async function loadProfileInternal(): Promise<void> {
   }
 
   setState({ profile: profileFromHandle(data?.handle) })
+  void hydrateFromAccount()
 }
 
 void supabase.auth.getSession().then(({ data: { session } }) => {
@@ -113,6 +115,7 @@ export async function signIn(email: string, password: string): Promise<AuthResul
 
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut()
+  resetProgression()
 }
 
 export async function loadProfile(): Promise<AuthResult> {
