@@ -4,6 +4,7 @@ import {
   type PlayerMoveId,
 } from '../data/moves'
 import { MOVES } from '../data/moveDefinitions'
+import type { CityId } from '../data/cityConfig'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
 import { isCollectibleArtifactId, type CollectibleArtifactId } from '../data/artifacts'
@@ -43,6 +44,9 @@ type AccountProgression = {
   quest1?: Partial<Quest1Serialized>
   worldMemory?: Partial<WorldMemoryState>
   artifacts?: CollectibleArtifactId[]
+  lastCity?: CityId
+  lastX?: number
+  lastY?: number
 }
 
 type AccountAvatarConfig = {
@@ -51,6 +55,38 @@ type AccountAvatarConfig = {
   quest1?: Partial<Quest1Serialized>
   worldMemory?: Partial<WorldMemoryState>
   artifacts?: unknown
+  lastCity?: unknown
+  lastX?: unknown
+  lastY?: unknown
+}
+
+type LastLocation = {
+  city: CityId
+  x: number
+  y: number
+}
+
+/** Latest overworld location — updated by GameScreen; not part of reactive player state. */
+let lastLocation: LastLocation | null = null
+
+const VALID_CITY_IDS: readonly CityId[] = ['daly-city', 'san-bruno']
+
+function normalizeLastCity(raw: unknown): CityId | undefined {
+  if (typeof raw !== 'string') return undefined
+  return VALID_CITY_IDS.includes(raw as CityId) ? (raw as CityId) : undefined
+}
+
+function normalizeWorldCoord(raw: unknown): number | undefined {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined
+  return raw
+}
+
+/** Hold the latest city + position for the next account save (no save loop). */
+export function setLastLocation(city: string, x: number, y: number): void {
+  const cityId = normalizeLastCity(city)
+  if (!cityId) return
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return
+  lastLocation = { city: cityId, x, y }
 }
 
 function normalizeArtifacts(raw: unknown): CollectibleArtifactId[] {
@@ -99,6 +135,13 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<voi
         quest1: quest1Serialize(),
         worldMemory: worldMemorySerialize(),
         artifacts: artifactSerialize(),
+        ...(lastLocation
+          ? {
+              lastCity: lastLocation.city,
+              lastX: lastLocation.x,
+              lastY: lastLocation.y,
+            }
+          : {}),
       },
       updated_at: new Date().toISOString(),
     })
@@ -122,6 +165,9 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
     if (error || !data) return null
 
     const avatarConfig = data.avatar_config as AccountAvatarConfig | null
+    const lastCity = normalizeLastCity(avatarConfig?.lastCity)
+    const lastX = normalizeWorldCoord(avatarConfig?.lastX)
+    const lastY = normalizeWorldCoord(avatarConfig?.lastY)
 
     return {
       equippedMoves: normalizeEquippedMoves(data.moves_equipped),
@@ -130,6 +176,9 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
       quest1: avatarConfig?.quest1,
       worldMemory: avatarConfig?.worldMemory,
       artifacts: normalizeArtifacts(avatarConfig?.artifacts),
+      ...(lastCity !== undefined && lastX !== undefined && lastY !== undefined
+        ? { lastCity, lastX, lastY }
+        : {}),
     }
   } catch {
     return null
@@ -193,6 +242,10 @@ export async function hydrateFromAccount(): Promise<void> {
   applyWorldMemoryState(data.worldMemory ?? {})
   applyArtifactState(data.artifacts ?? [])
 
+  if (data.lastCity !== undefined && data.lastX !== undefined && data.lastY !== undefined) {
+    lastLocation = { city: data.lastCity, x: data.lastX, y: data.lastY }
+  }
+
   skipAccountSave = false
 }
 
@@ -210,6 +263,7 @@ function createDefaultPlayerState(): PlayerStoreState {
 /** Reset to defaults in memory only — used on logout so the next user starts clean. */
 export function resetProgression(): void {
   skipAccountSave = true
+  lastLocation = null
   state = createDefaultPlayerState()
   for (const listener of listeners) {
     listener()
