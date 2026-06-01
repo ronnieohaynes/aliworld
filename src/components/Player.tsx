@@ -21,6 +21,11 @@ import {
 import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
 import type { CollisionZone } from '../data/collisionZones'
 import { NPC_SIZE } from '../data/npcs'
+import { drawStoryIdleNpcPose, type StoryIdlePoses } from '../game/npcIdleSprites'
+import {
+  assignStripSpriteToNpc,
+  ensureStoryIdleCached,
+} from '../game/npcSpriteCache'
 import type { TriggerAction } from '../data/triggerZones'
 import type { CityConfig } from '../data/cityConfig'
 import { drawWorldMap } from '../game/drawWorldBackground'
@@ -60,6 +65,12 @@ const NPC_DISPLAY_W = 48
 const NPC_DISPLAY_H = 120
 const NPC_INTERACT_POINT_RADIUS = 20
 
+function getNpcRosterKey(city: CityConfig): string {
+  return `${city.id}|${city.npcs
+    .map((n) => `${n.id}:${n.spriteSrc ?? ''}:${n.spriteLayout ?? 'strip-columns'}`)
+    .join(';')}`
+}
+
 type InteractPoint = { x: number; y: number; npcFacing: Direction }
 
 function getNpcInteractPoints(npc: { x: number; y: number }): InteractPoint[] {
@@ -72,6 +83,25 @@ function getNpcInteractPoints(npc: { x: number; y: number }): InteractPoint[] {
     { x: drawX - 10, y: drawY + NPC_DISPLAY_H / 2 + 10, npcFacing: 'right' },
     { x: drawX + NPC_DISPLAY_W + 10, y: drawY + NPC_DISPLAY_H / 2 + 10, npcFacing: 'left' },
   ]
+}
+
+/** Face the player using the nearest interact anchor (same for all overworld NPCs). */
+function resolveNpcFacingTowardPlayer(
+  npc: { x: number; y: number; fixedFacing?: Direction },
+  playerX: number,
+  playerY: number,
+): Direction {
+  if (npc.fixedFacing) return npc.fixedFacing
+  let bestFacing: Direction = 'down'
+  let bestDist = Infinity
+  for (const pt of getNpcInteractPoints(npc)) {
+    const dist = Math.hypot(playerX - pt.x, playerY - pt.y)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestFacing = pt.npcFacing
+    }
+  }
+  return bestFacing
 }
 
 const HITBOX_WIDTH = 30
@@ -481,16 +511,28 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const dialogueNpcIdRef = useRef<string | null>(null)
   const npcFacingMap = useRef(new Map<string, Direction>())
   const npcSpritesRef = useRef(new Map<string, HTMLImageElement>())
+  const npcStoryIdleRef = useRef(
+    new Map<string, { image: HTMLImageElement; poses: StoryIdlePoses }>(),
+  )
   const npcIdleTimers = useRef(new Map<string, { elapsed: number; interval: number }>())
   const triggerCooldown = useRef(0)
+  const npcRosterKeyRef = useRef('')
 
   useEffect(() => {
     cityConfigRef.current = cityConfig
+  }, [cityConfig])
+
+  useEffect(() => {
+    void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
+  }, [cityConfig.mapSrc])
+
+  useEffect(() => {
+    const rosterKey = getNpcRosterKey(cityConfig)
+    if (rosterKey === npcRosterKeyRef.current) return
+    npcRosterKeyRef.current = rosterKey
+
     activeTriggerIds.current.clear()
     triggerCooldown.current = 1
-
-    void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
-
     npcFacingMap.current.clear()
     npcIdleTimers.current.clear()
     for (const npc of cityConfig.npcs) {
@@ -499,21 +541,27 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       }
     }
 
-    const sprites = npcSpritesRef.current
+    const activeIds = new Set(cityConfig.npcs.map((n) => n.id))
+    for (const id of [...npcSpritesRef.current.keys()]) {
+      if (!activeIds.has(id)) npcSpritesRef.current.delete(id)
+    }
+    for (const id of [...npcStoryIdleRef.current.keys()]) {
+      if (!activeIds.has(id)) npcStoryIdleRef.current.delete(id)
+    }
+
     for (const npc of cityConfig.npcs) {
       if (!npc.spriteSrc) continue
-      if (sprites.has(npc.id)) continue
-      const src = npc.spriteSrc
-      const img = new Image()
-      img.onload = () => {
-        for (const n of cityConfig.npcs) {
-          if (n.spriteSrc === src) sprites.set(n.id, img)
-        }
+      if (npc.spriteLayout === 'horizontal-bbox') {
+        if (npcStoryIdleRef.current.has(npc.id)) continue
+        void ensureStoryIdleCached(npc.spriteSrc).then((loaded) => {
+          if (loaded) npcStoryIdleRef.current.set(npc.id, loaded)
+        })
+        continue
       }
-      img.onerror = (err) => {
-        console.error(`[NPC sprite FAILED] ${src}`, err)
-      }
-      img.src = src
+      if (npcSpritesRef.current.has(npc.id)) continue
+      void assignStripSpriteToNpc(npc.id, npc.spriteSrc, npcSpritesRef.current).catch((err) => {
+        console.error(`[NPC sprite FAILED] ${npc.spriteSrc}`, err)
+      })
     }
   }, [cityConfig])
 
@@ -539,21 +587,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     if (dialogueNpcId) {
       const cfg = cityConfigRef.current
       const npc = cfg.npcs.find((n) => n.id === dialogueNpcId)
-      if (npc?.fixedFacing) {
-        npcFacingMap.current.set(dialogueNpcId, npc.fixedFacing)
-      } else if (npc) {
-        const px = worldPos.current.x
-        const py = worldPos.current.y
-        let bestFacing: Direction = 'down'
-        let bestDist = Infinity
-        for (const pt of getNpcInteractPoints(npc)) {
-          const dist = Math.hypot(px - pt.x, py - pt.y)
-          if (dist < bestDist) {
-            bestDist = dist
-            bestFacing = pt.npcFacing
-          }
-        }
-        npcFacingMap.current.set(dialogueNpcId, bestFacing)
+      if (npc) {
+        npcFacingMap.current.set(
+          dialogueNpcId,
+          resolveNpcFacingTowardPlayer(npc, worldPos.current.x, worldPos.current.y),
+        )
       }
     } else if (prevId) {
       npcFacingMap.current.delete(prevId)
@@ -873,6 +911,15 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
       const dirs: Direction[] = ['down', 'up', 'left', 'right']
       const activeDialogueNpc = dialogueNpcIdRef.current
+      if (activeDialogueNpc) {
+        const talkingNpc = cfg.npcs.find((n) => n.id === activeDialogueNpc)
+        if (talkingNpc) {
+          npcFacingMap.current.set(
+            activeDialogueNpc,
+            resolveNpcFacingTowardPlayer(talkingNpc, worldX, worldY),
+          )
+        }
+      }
       for (const npc of cfg.npcs) {
         if (npc.id === activeDialogueNpc) continue
         if (npc.fixedFacing) {
@@ -992,6 +1039,24 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
           const npc = entry.npc
           const half = NPC_SIZE / 2
           const npcFacing = npc.fixedFacing ?? npcFacingMap.current.get(npc.id) ?? 'down'
+          const displayW = 48
+          const displayH = 120
+          const dx = Math.floor(npc.x - displayW / 2)
+          const dy = Math.floor(npc.y + half - displayH)
+
+          const storySheet = npcStoryIdleRef.current.get(npc.id)
+          if (storySheet) {
+            const pose = storySheet.poses[npcFacing]
+            drawStoryIdleNpcPose(
+              ctx,
+              storySheet.image,
+              pose,
+              dx,
+              dy,
+              displayW,
+              displayH,
+            )
+          } else {
           const spriteImg = npcSpritesRef.current.get(npc.id)
 
           if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
@@ -1000,10 +1065,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             const frameH = spriteImg.naturalHeight
             const col = NPC_SPRITE_COL[npcFacing]
             const nsx = Math.floor(col * frameW)
-            const displayW = 48
-            const displayH = 120
-            const dx = Math.floor(npc.x - displayW / 2)
-            const dy = Math.floor(npc.y + half - displayH)
 
             ctx.imageSmoothingEnabled = false
             ctx.drawImage(
@@ -1036,6 +1097,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
               ctx.fillRect(cx + 6, cy - 2, 3, 3)
               ctx.fillRect(cx + 6, cy + 3, 3, 3)
             }
+          }
           }
         }
       }

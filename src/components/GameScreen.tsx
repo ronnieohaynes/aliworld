@@ -6,11 +6,11 @@ import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcD
 import { CITY_CONFIGS, type CityConfig, type CityId } from '../data/cityConfig'
 import { collectArtifact, hasArtifact } from '../store/artifactStore'
 import {
-  getQuest1Snapshot,
   hasTalkedToAllGatingNpcs,
   isGatingNpcId,
   isJaclynConverted,
   isMarkDefeated,
+  subscribeQuest1Store,
   isWalkerConverted,
   JACLYN_NPC_ID,
   MARK_NPC_ID,
@@ -19,7 +19,6 @@ import {
   setMarkDefeated,
   setWalkerConverted,
   WALKER_NPC_ID,
-  subscribeQuest1Store,
 } from '../store/quest1Store'
 import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
@@ -93,10 +92,10 @@ export function GameScreen() {
   )
 
   const baseCityConfig = CITY_CONFIGS[currentCity]
-  const quest1Revision = useSyncExternalStore(
+  const markDefeated = useSyncExternalStore(
     subscribeQuest1Store,
-    getQuest1Snapshot,
-    getQuest1Snapshot,
+    isMarkDefeated,
+    isMarkDefeated,
   )
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
 
@@ -117,13 +116,13 @@ export function GameScreen() {
   }, [])
 
   const cityConfig = useMemo((): CityConfig => {
-    void quest1Revision
     if (currentCity !== 'daly-city') return baseCityConfig
-    const npcs = baseCityConfig.npcs.filter(
-      (npc) => npc.id !== MARK_NPC_ID || !isMarkDefeated(),
-    )
-    return { ...baseCityConfig, npcs }
-  }, [baseCityConfig, currentCity, quest1Revision])
+    if (!markDefeated) return baseCityConfig
+    return {
+      ...baseCityConfig,
+      npcs: baseCityConfig.npcs.filter((npc) => npc.id !== MARK_NPC_ID),
+    }
+  }, [baseCityConfig, currentCity, markDefeated])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
