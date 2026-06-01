@@ -12,15 +12,17 @@ export type TriggerZone = {
   action: TriggerAction
 }
 
+/** 13 Gallons door — disabled until interior is ready; add back to TRIGGER_ZONES to re-enable. */
+export const GALLONS_ENTRANCE_ZONE: TriggerZone = {
+  id: 'gallons-entrance',
+  x: 490,
+  y: 270,
+  width: 160,
+  height: 60,
+  action: 'OPEN_13GALLONS',
+}
+
 export const TRIGGER_ZONES: TriggerZone[] = [
-  {
-    id: 'gallons-entrance',
-    x: 490,
-    y: 270,
-    width: 160,
-    height: 60,
-    action: 'OPEN_13GALLONS',
-  },
   {
     id: 'darkline-entrance',
     x: 580,
