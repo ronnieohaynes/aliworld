@@ -44,7 +44,7 @@ import {
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
-import { getShowDebug, subscribePlayerStore, toggleShowDebug } from '../store/playerStore'
+import { getShowDebug, setLastLocation, subscribePlayerStore, toggleShowDebug } from '../store/playerStore'
 import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
@@ -58,15 +58,18 @@ export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
 
 const INTERIOR_BG_SRC = publicAsset('Assets/Backgrounds/13gallons-interior.png')
 
+/** How often to push live coords into the account save buffer while exploring. */
+const LOCATION_REPORT_INTERVAL_MS = 3_000
+
+function findNpcInCity(id: string, cityId: CityId): NpcData | undefined {
+  return CITY_CONFIGS[cityId].npcs.find((n) => n.id === id)
+}
+
 type DialogueState = {
   npc: NpcData
   lineIndex: number
   speakerLines: ResolvedDialogueLine[]
   onComplete?: () => void
-}
-
-function findNpcInCity(id: string, cityId: CityId): NpcData | undefined {
-  return CITY_CONFIGS[cityId].npcs.find((n) => n.id === id)
 }
 
 export function GameScreen() {
@@ -87,6 +90,7 @@ export function GameScreen() {
   const menuEntryTargetRef = useRef<'fanny-pack' | null>(null)
   const [worldEntryActive, setWorldEntryActive] = useState(true)
   const [worldEntryReady, setWorldEntryReady] = useState(false)
+  const [nearbyNpcId, setNearbyNpcId] = useState<string | null>(null)
 
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -101,6 +105,15 @@ export function GameScreen() {
     getQuest1Snapshot,
   )
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
+
+  const reportCurrentLocation = useCallback(
+    (city: CityId = currentCity) => {
+      const pos = playerRef.current?.getPosition()
+      if (!pos) return
+      setLastLocation(city, pos.x, pos.y)
+    },
+    [currentCity],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -183,7 +196,7 @@ export function GameScreen() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Enter' && e.key !== 'Escape') return
+      if (e.key !== 'Escape') return
       if (e.ctrlKey || e.metaKey || e.altKey) return
       const target = e.target
       if (
@@ -202,9 +215,12 @@ export function GameScreen() {
         menuEntryWipe
       )
         return
-      if (worldEntryActive || showStartMenu) return
-      if (!canOpenStartMenu()) return
       e.preventDefault()
+      if (showStartMenu) {
+        setShowStartMenu(false)
+        return
+      }
+      if (!canOpenStartMenu()) return
       setShowStartMenu(true)
     }
     window.addEventListener('keydown', onKeyDown)
@@ -330,6 +346,7 @@ export function GameScreen() {
     setShowDarkline(false)
     const config = CITY_CONFIGS[currentCity]
     playerRef.current?.setPosition(config.darklineSpawnX, config.darklineSpawnY)
+    setLastLocation(currentCity, config.darklineSpawnX, config.darklineSpawnY)
   }, [currentCity])
 
   const handleDarklineTravel = useCallback((destination: CityId) => {
@@ -337,6 +354,7 @@ export function GameScreen() {
     setCurrentCity(destination)
     const destConfig = CITY_CONFIGS[destination]
     playerRef.current?.setPosition(destConfig.spawnX, destConfig.spawnY)
+    setLastLocation(destination, destConfig.spawnX, destConfig.spawnY)
   }, [])
 
   const grantNoticeArtifact = useCallback(() => {
@@ -457,6 +475,84 @@ export function GameScreen() {
     openNearbyNpcDialogue()
   }, [dialogue, advanceDialogue, openNearbyNpcDialogue, showStartMenu])
 
+  const handleConfirm = handlePlayAreaClick
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'Space') return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const target = e.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return
+      }
+      if (
+        worldEntryActive ||
+        showStartMenu ||
+        showLoadout ||
+        showFannyPack ||
+        battleNpcId ||
+        battleEntryWipe ||
+        menuEntryWipe
+      ) {
+        return
+      }
+      e.preventDefault()
+      handleConfirm()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [
+    battleEntryWipe,
+    battleNpcId,
+    handleConfirm,
+    menuEntryWipe,
+    showFannyPack,
+    showLoadout,
+    showStartMenu,
+    worldEntryActive,
+  ])
+
+  useEffect(() => {
+    if (worldEntryActive || battleNpcId) {
+      setNearbyNpcId(null)
+      return
+    }
+    let raf = 0
+    const tick = () => {
+      const next = playerRef.current?.getNearbyNpcId() ?? null
+      setNearbyNpcId((prev) => (prev === next ? prev : next))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [battleNpcId, worldEntryActive])
+
+  useEffect(() => {
+    if (worldEntryActive || battleNpcId || battleEntryWipe) return
+    reportCurrentLocation()
+    const id = window.setInterval(reportCurrentLocation, LOCATION_REPORT_INTERVAL_MS)
+    return () => window.clearInterval(id)
+  }, [battleEntryWipe, battleNpcId, reportCurrentLocation, worldEntryActive])
+
+  useEffect(() => {
+    if (worldEntryActive) return
+    reportCurrentLocation()
+  }, [
+    battleEntryWipe,
+    battleNpcId,
+    dialogue,
+    menuEntryWipe,
+    reportCurrentLocation,
+    showFannyPack,
+    showLoadout,
+    worldEntryActive,
+  ])
+
   useEffect(() => {
     resumeSoundtrackIfNeeded(hasArtifact(ADAM_MP3_ARTIFACT_ID))
     if (hasArtifact('subway-pass') && !isMarkDefeated()) {
@@ -487,7 +583,8 @@ export function GameScreen() {
       }
       return null
     })
-  }, [])
+    reportCurrentLocation()
+  }, [reportCurrentLocation])
 
   const returnToStartMenuIfPending = useCallback(() => {
     if (menuReturnPending) {
@@ -569,6 +666,8 @@ export function GameScreen() {
     !showDarkline &&
     !showInterior
 
+  const showInteractHint = showQuestHelper && !dialogue && nearbyNpcId !== null
+
   const handleInteriorClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (dialogue) {
@@ -611,6 +710,11 @@ export function GameScreen() {
             </>
           )}
           {showQuestHelper && <QuestHelper />}
+          {showInteractHint && (
+            <p className="game-screen-interact-hint" role="status">
+              space · talk
+            </p>
+          )}
           <GameCanvas debugHudId={GAME_DEBUG_HUD_ID}>
             <Player
               ref={playerRef}

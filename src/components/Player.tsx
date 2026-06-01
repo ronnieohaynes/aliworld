@@ -20,7 +20,7 @@ import {
 } from '../store/characterStore'
 import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
 import type { CollisionZone } from '../data/collisionZones'
-import { NPC_SIZE } from '../data/npcs'
+import { NPC_INTERACT_RANGE, NPC_SIZE } from '../data/npcs'
 import type { TriggerAction } from '../data/triggerZones'
 import type { CityConfig } from '../data/cityConfig'
 import { drawWorldMap } from '../game/drawWorldBackground'
@@ -58,9 +58,17 @@ const NPC_SPRITE_COL: Record<Direction, number> = {
 
 const NPC_DISPLAY_W = 48
 const NPC_DISPLAY_H = 120
-const NPC_INTERACT_POINT_RADIUS = 20
+const NPC_INTERACT_DEBUG_RADIUS = NPC_INTERACT_RANGE
 
 type InteractPoint = { x: number; y: number; npcFacing: Direction }
+
+function getNpcFeetY(npc: { y: number }): number {
+  return npc.y + NPC_SIZE / 2
+}
+
+function getPlayerFeetY(worldY: number): number {
+  return worldY + PLAYER_DISPLAY_HEIGHT / 2
+}
 
 function getNpcInteractPoints(npc: { x: number; y: number }): InteractPoint[] {
   const half = NPC_SIZE / 2
@@ -385,15 +393,15 @@ function drawCollisionZonesDebug(ctx: CanvasRenderingContext2D, collisionZones: 
     ctx.lineWidth = 2
     ctx.strokeRect(Math.floor(r.x), Math.floor(r.y), Math.floor(r.width), Math.floor(r.height))
 
-    for (const pt of getNpcInteractPoints(npc)) {
-      ctx.strokeStyle = 'rgba(0, 255, 100, 0.8)'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.arc(Math.floor(pt.x), Math.floor(pt.y), NPC_INTERACT_POINT_RADIUS, 0, Math.PI * 2)
-      ctx.stroke()
-      ctx.fillStyle = 'rgba(0, 255, 100, 0.15)'
-      ctx.fill()
-    }
+    const feetX = Math.floor(npc.x)
+    const feetY = Math.floor(getNpcFeetY(npc))
+    ctx.strokeStyle = 'rgba(0, 255, 100, 0.8)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.arc(feetX, feetY, NPC_INTERACT_DEBUG_RADIUS, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(0, 255, 100, 0.15)'
+    ctx.fill()
   }
 }
 
@@ -424,6 +432,7 @@ function drawDebugOverlay(
 
 export type PlayerHandle = {
   setPosition: (x: number, y: number) => void
+  getPosition: () => { x: number; y: number }
   getNearbyNpcId: () => string | null
 }
 
@@ -522,6 +531,9 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       worldPos.current = { x, y }
       activeTriggerIds.current.clear()
       triggerCooldown.current = 1
+    },
+    getPosition() {
+      return { x: worldPos.current.x, y: worldPos.current.y }
     },
     getNearbyNpcId() {
       return nearbyNpcIdRef.current
@@ -892,15 +904,14 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         }
       }
 
+      const playerFeetY = getPlayerFeetY(worldY)
       let closestNpcId: string | null = null
       let closestDist = Infinity
       for (const npc of cfg.npcs) {
-        for (const pt of getNpcInteractPoints(npc)) {
-          const dist = Math.hypot(worldX - pt.x, worldY - pt.y)
-          if (dist < NPC_INTERACT_POINT_RADIUS && dist < closestDist) {
-            closestDist = dist
-            closestNpcId = npc.id
-          }
+        const dist = Math.hypot(worldX - npc.x, playerFeetY - getNpcFeetY(npc))
+        if (dist <= NPC_INTERACT_RANGE && dist < closestDist) {
+          closestDist = dist
+          closestNpcId = npc.id
         }
       }
       nearbyNpcIdRef.current = closestNpcId
