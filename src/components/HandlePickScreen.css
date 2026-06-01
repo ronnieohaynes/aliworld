@@ -1,0 +1,128 @@
+.handle-pick-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 15000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(3, 3, 3, 0.96);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.handle-pick-screen__panel {
+  width: min(100%, 320px);
+  padding: 18px 16px 16px;
+  border: 2px solid #534ab7;
+  border-radius: 8px;
+  background: rgba(10, 10, 18, 0.96);
+  box-shadow:
+    0 0 0 1px rgba(127, 119, 221, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+}
+
+.handle-pick-screen__title {
+  margin: 0 0 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #fff;
+  text-align: center;
+}
+
+.handle-pick-screen__hint {
+  margin: 0 0 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: #7a7a96;
+  text-align: center;
+}
+
+.handle-pick-screen__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.handle-pick-screen__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.handle-pick-screen__label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: #7a7a96;
+}
+
+.handle-pick-screen__input {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #3d3660;
+  border-radius: 4px;
+  background: #12101c;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  box-sizing: border-box;
+}
+
+.handle-pick-screen__input:focus {
+  outline: none;
+  border-color: #7f77dd;
+  box-shadow: 0 0 0 1px rgba(127, 119, 221, 0.35);
+}
+
+.handle-pick-screen__input:disabled {
+  opacity: 0.6;
+}
+
+.handle-pick-screen__error {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: #f59e0b;
+}
+
+.handle-pick-screen__submit {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #534ab7;
+  border-radius: 4px;
+  background: #1a1528;
+  color: #afa9ec;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.handle-pick-screen__submit:hover:not(:disabled) {
+  border-color: #7f77dd;
+  background: #252035;
+  color: #fff;
+}
+
+.handle-pick-screen__submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

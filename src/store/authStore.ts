@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
+import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 export type AuthStatus = 'loading' | 'signed-out' | 'signed-in'
@@ -14,6 +15,13 @@ export type AuthState = {
 }
 
 type AuthResult = { error?: string }
+
+const PLACEHOLDER_HANDLE_RE = /^player_[0-9a-f]{8}$/i
+
+function profileFromHandle(handle: string | null | undefined): AuthProfile | null {
+  if (!handle || PLACEHOLDER_HANDLE_RE.test(handle)) return null
+  return { handle }
+}
 
 let state: AuthState = {
   session: null,
@@ -57,7 +65,7 @@ async function loadProfileInternal(): Promise<void> {
     return
   }
 
-  setState({ profile: data?.handle ? { handle: data.handle } : null })
+  setState({ profile: profileFromHandle(data?.handle) })
 }
 
 void supabase.auth.getSession().then(({ data: { session } }) => {
@@ -85,6 +93,10 @@ export function getAuthState(): AuthState {
 export function subscribeAuthStore(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
+}
+
+export function useAuthStore(): AuthState {
+  return useSyncExternalStore(subscribeAuthStore, getAuthState, getAuthState)
 }
 
 export async function signUp(email: string, password: string): Promise<AuthResult> {
@@ -115,7 +127,7 @@ export async function loadProfile(): Promise<AuthResult> {
 
   if (error) return { error: error.message }
 
-  setState({ profile: data?.handle ? { handle: data.handle } : null })
+  setState({ profile: profileFromHandle(data?.handle) })
   return {}
 }
 

@@ -36,6 +36,7 @@ import {
 import { performNewGameReset } from '../store/gameProgress'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import { getShowDebug, subscribePlayerStore, toggleShowDebug } from '../store/playerStore'
+import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
   StartMenuScreen,
@@ -444,6 +445,11 @@ export function GameScreen() {
           clearMidnightVariant()
           break
         case 'new-game':
+          break
+        case 'sign-out':
+          setShowStartMenu(false)
+          setMenuReturnPending(false)
+          void signOut()
           break
       }
     },

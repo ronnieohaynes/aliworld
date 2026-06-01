@@ -13,6 +13,7 @@ export type StartMenuAction =
   | 'stats'
   | 'choose-midnight'
   | 'new-game'
+  | 'sign-out'
 
 const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'resume', label: 'resume' },
@@ -20,6 +21,7 @@ const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'stats', label: 'stats' },
   { id: 'choose-midnight', label: 'choose MIDNIGHT' },
   { id: 'new-game', label: 'new game', danger: true },
+  { id: 'sign-out', label: 'sign out' },
 ]
 
 export type StartMenuHandle = {

@@ -1,27 +1,32 @@
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { AuthScreen } from './components/AuthScreen'
 import { GameScreen } from './components/GameScreen'
+import { HandlePickScreen } from './components/HandlePickScreen'
 import { MidnightVariantSelectScreen } from './components/MidnightVariantSelectScreen'
-import { supabase } from './lib/supabaseClient'
+import { TitleCard } from './components/TitleCard'
+import { useAuthStore } from './store/authStore'
 import {
   clearMidnightVariant,
   getSelectedMidnightVariant,
   subscribeCharacterStore,
 } from './store/characterStore'
 
+function LoadingSplash() {
+  return (
+    <div className="app-loading" aria-live="polite" aria-busy="true">
+      loading…
+    </div>
+  )
+}
+
 export default function App() {
-  const selectedMidnightVariant = useSyncExternalStore(
+  const auth = useAuthStore()
+  const variant = useSyncExternalStore(
     subscribeCharacterStore,
     getSelectedMidnightVariant,
     getSelectedMidnightVariant,
   )
-
-  useEffect(() => {
-    // TEMP connection test — remove when auth UI lands.
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) console.error('[supabase] session check failed:', error.message)
-      else console.log('[supabase] connected. session:', data.session ? 'active' : 'none')
-    })
-  }, [])
+  const [started, setStarted] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -34,8 +39,23 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  if (selectedMidnightVariant === null) {
-    return <MidnightVariantSelectScreen />
+  if (!started) {
+    return <TitleCard onStart={() => setStarted(true)} />
+  }
+
+  if (auth.status === 'loading') {
+    return <LoadingSplash />
+  }
+
+  if (auth.status === 'signed-out') {
+    return <AuthScreen />
+  }
+
+  if (!auth.profile) {
+    if (variant === null) {
+      return <MidnightVariantSelectScreen />
+    }
+    return <HandlePickScreen />
   }
 
   return <GameScreen />
