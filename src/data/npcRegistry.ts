@@ -39,7 +39,7 @@ const WALKER: NpcCombatEntry = {
   losingLine:
     "You're kinda strong. Maybe Danny does have something to fear after all.",
   spriteSrc: WALKER_SPRITE,
-  battleLocation: 'daly_city',
+  battleLocation: 'five',
 }
 
 /** TEMP: no-stakes grind target — huge HP, no damage. delete after testing. */

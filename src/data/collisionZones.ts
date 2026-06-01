@@ -1,43 +1,39 @@
-export type CollisionZone = {
-  x: number
-  y: number
-  width: number
-  height: number
+// Collision zones for ALIWORLD maps.
+// Each zone is { x, y, width, height } in world coordinates (pixels).
+// Generated from magenta-painted collision overlay. Map: 1254x1254.
+
+export interface CollisionZone {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-export const COLLISION_ZONES: CollisionZone[] = [
-  // ── North storefronts (buildings + grass strip) ────────────────
-  // Left of 13 Gallons door (LA PLAYITA → Coin Laundry)
-  { x: 0, y: 0, width: 490, height: 320 },
-  // Right of 13 Gallons door (TUCKED IN THE CUT → LUCKY DONUTS)
-  { x: 650, y: 0, width: 604, height: 320 },
-  // 13 Gallons door interior wall
-  { x: 490, y: 260, width: 160, height: 60 },
+export const COLLISION_ZONES: Record<string, CollisionZone[]> = {
+  five: [
+    { x: 12, y: 265, width: 1242, height: 62 },
+    { x: 1161, y: 347, width: 54, height: 32 },
+    { x: 22, y: 348, width: 57, height: 35 },
+    { x: 228, y: 348, width: 51, height: 37 },
+    { x: 296, y: 348, width: 40, height: 35 },
+    { x: 930, y: 350, width: 86, height: 40 },
+    { x: 460, y: 356, width: 52, height: 29 },
+    { x: 684, y: 358, width: 48, height: 36 },
+    { x: 779, y: 358, width: 29, height: 20 },
+    { x: 0, y: 410, width: 50, height: 252 },
+    { x: 73, y: 412, width: 148, height: 83 },
+    { x: 704, y: 412, width: 156, height: 81 },
+    { x: 1204, y: 416, width: 50, height: 227 },
+    { x: 313, y: 423, width: 133, height: 67 },
+    { x: 940, y: 427, width: 158, height: 56 },
+    { x: 460, y: 639, width: 65, height: 34 },
+    { x: 636, y: 660, width: 618, height: 86 },
+    { x: 0, y: 666, width: 554, height: 96 },
+    { x: 2, y: 876, width: 1252, height: 61 },
+  ],
+  // future maps: southside: [...], hillside: [...], etc.
+};
 
-  // ── Street vehicles ────────────────────────────────────────────
-  { x: 100, y: 420, width: 150, height: 80 },
-  { x: 300, y: 420, width: 150, height: 80 },
-  { x: 700, y: 420, width: 150, height: 80 },
-  { x: 1000, y: 420, width: 150, height: 80 },
-
-  // ── South commercial buildings (flat-roofed, building only) ───
-  // Left block (west of Darkline gap)
-  { x: 0, y: 700, width: 535, height: 100 },
-  // Right block (east of Darkline gap)
-  { x: 670, y: 700, width: 584, height: 100 },
-  // Darkline stairwell side walls (building edges flanking the gap)
-  { x: 560, y: 700, width: 20, height: 100 },
-  { x: 650, y: 700, width: 20, height: 100 },
-
-  // ── South street red car ───────────────────────────────────────
-  { x: 420, y: 790, width: 140, height: 60 },
-
-  // ── Residential block (south end — houses + yards) ─────────────
-  { x: 0, y: 870, width: 1254, height: 384 },
-
-  // ── World boundaries ───────────────────────────────────────────
-  { x: -50, y: 0, width: 50, height: 1254 },
-  { x: 1254, y: 0, width: 50, height: 1254 },
-  { x: 0, y: -50, width: 1254, height: 50 },
-  { x: 0, y: 1254, width: 1254, height: 50 },
-]
+export function getCollisionZones(mapId: string): CollisionZone[] {
+  return COLLISION_ZONES[mapId] ?? [];
+}

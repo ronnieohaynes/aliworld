@@ -1,11 +1,13 @@
 import { publicAsset } from '../utils/publicAsset'
-import type { CollisionZone } from './collisionZones'
-import { COLLISION_ZONES } from './collisionZones'
+import { getCollisionZones, type CollisionZone } from './collisionZones'
 import type { TriggerZone } from './triggerZones'
 import { TRIGGER_ZONES, DARKLINE_SPAWN_X, DARKLINE_SPAWN_Y } from './triggerZones'
-import { DALY_CITY_OVERWORLD_NPCS, type NpcData } from './npcs'
+import { FIVE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
-export type CityId = 'daly-city' | 'san-bruno'
+/** Player-facing name for the starting district (internal id is `five`). */
+export const FIVE_DISPLAY_NAME = 'the 5ive'
+
+export type CityId = 'five' | 'san-bruno'
 
 export type CityConfig = {
   id: CityId
@@ -17,6 +19,8 @@ export type CityConfig = {
   spawnY: number
   darklineSpawnX: number
   darklineSpawnY: number
+  /** Key for `getCollisionZones` (e.g. `five`). */
+  collisionMapId?: string
   collisionZones: CollisionZone[]
   triggerZones: TriggerZone[]
   npcs: NpcData[]
@@ -70,19 +74,20 @@ const SAN_BRUNO_TRIGGER_ZONES: TriggerZone[] = [
 ]
 
 export const CITY_CONFIGS: Record<CityId, CityConfig> = {
-  'daly-city': {
-    id: 'daly-city',
-    label: 'DALY CITY',
-    mapSrc: publicAsset('Assets/tileset/daly-city-map.png'),
+  five: {
+    id: 'five',
+    label: FIVE_DISPLAY_NAME,
+    mapSrc: publicAsset('Assets/tileset/5ive-map.PNG'),
     worldWidth: 1254,
     worldHeight: 1254,
     spawnX: 600,
     spawnY: 500,
     darklineSpawnX: DARKLINE_SPAWN_X,
     darklineSpawnY: DARKLINE_SPAWN_Y,
-    collisionZones: COLLISION_ZONES,
+    collisionMapId: 'five',
+    collisionZones: getCollisionZones('five'),
     triggerZones: TRIGGER_ZONES,
-    npcs: [...DALY_CITY_OVERWORLD_NPCS],
+    npcs: [...FIVE_OVERWORLD_NPCS],
   },
   'san-bruno': {
     id: 'san-bruno',
@@ -101,7 +106,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
 }
 
 export const DARKLINE_DESTINATIONS: CityId[] = [
-  'daly-city',
+  'five',
   'san-bruno',
 ]
 
