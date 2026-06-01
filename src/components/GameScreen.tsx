@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
-import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
+import { ADAM_MP3_ARTIFACT_ID } from '../data/adamMp3Handoff'
 import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, type NpcData } from '../data/npcs'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import { CITY_CONFIGS, type CityConfig, type CityId } from '../data/cityConfig'
 import { collectArtifact, hasArtifact } from '../store/artifactStore'
 import {
   getQuest1Snapshot,
+  GATING_NPC_IDS,
   hasTalkedToAllGatingNpcs,
+  hasTalkedToGatingNpc,
   isGatingNpcId,
   isJaclynConverted,
   isMarkDefeated,
@@ -309,7 +311,7 @@ export function GameScreen() {
     playerRef.current?.setPosition(destConfig.spawnX, destConfig.spawnY)
   }, [])
 
-  const completeAdamMp3Handoff = useCallback(() => {
+  const grantNoticeArtifact = useCallback(() => {
     if (!hasArtifact(ADAM_MP3_ARTIFACT_ID)) {
       collectArtifact(ADAM_MP3_ARTIFACT_ID)
       startSoundtrack()
@@ -322,27 +324,23 @@ export function GameScreen() {
       const next = prev.lineIndex + 1
       if (next >= prev.speakerLines.length) {
         const onComplete = prev.onComplete
-        if (isAdamNpcId(prev.npc.id)) {
-          completeAdamMp3Handoff()
-        } else if (isGatingNpcId(prev.npc.id)) {
+        if (isGatingNpcId(prev.npc.id)) {
+          const countBefore = GATING_NPC_IDS.filter((id) => hasTalkedToGatingNpc(id)).length
           markGatingNpcTalked(prev.npc.id)
+          if (countBefore === GATING_NPC_IDS.length - 1) {
+            grantNoticeArtifact()
+          }
         }
         if (onComplete) onComplete()
         return null
       }
       return { ...prev, lineIndex: next }
     })
-  }, [completeAdamMp3Handoff])
+  }, [grantNoticeArtifact])
 
   const openNearbyNpcDialogue = useCallback(() => {
     const nearbyId = playerRef.current?.getNearbyNpcId()
     if (!nearbyId) return
-
-    if (isAdamNpcId(nearbyId)) {
-      if (hasArtifact(ADAM_MP3_ARTIFACT_ID)) return
-      beginNpcDialogue(ADAM_NPC)
-      return
-    }
 
     if (nearbyId === WALKER_NPC_ID) {
       beginNpcDialogue(WALKER_NPC, {

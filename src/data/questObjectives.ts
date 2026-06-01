@@ -14,15 +14,13 @@ import {
 import { getWorldMemorySnapshot } from '../store/worldMemory'
 import { ADAM_MP3_ARTIFACT_ID } from './adamMp3Handoff'
 
-/** PART 2: wire to notice artifact id when collectible exists. */
-export const NOTICE_ARTIFACT_ID = 'notice' as const
+/** Notice artifact — same collectible id as the former Adam MP3 handoff. */
+export const NOTICE_ARTIFACT_ID = ADAM_MP3_ARTIFACT_ID
 
 export type QuestObjectiveContext = {
-  /** Spawn tutorial — Adam MP3 handoff. */
-  hasMp3: boolean
   gatingTalkedCount: number
+  gatingTalkedTotal: number
   allGatingTalked: boolean
-  /** PART 2: hasArtifact(NOTICE_ARTIFACT_ID) once notice is a real collectible. */
   hasNotice: boolean
   walkerConverted: boolean
   jaclynConverted: boolean
@@ -38,11 +36,10 @@ export function buildQuestObjectiveContext(): QuestObjectiveContext {
   const world = getWorldMemorySnapshot()
   const gatingTalkedCount = GATING_NPC_IDS.filter((id) => quest1.talked[id]).length
   return {
-    hasMp3: hasArtifact(ADAM_MP3_ARTIFACT_ID),
     gatingTalkedCount,
+    gatingTalkedTotal: GATING_NPC_IDS.length,
     allGatingTalked: hasTalkedToAllGatingNpcs(),
-    // PART 2: notice artifact hook — stub reads false until wired.
-    hasNotice: false,
+    hasNotice: hasArtifact(NOTICE_ARTIFACT_ID),
     walkerConverted: isWalkerConverted(),
     jaclynConverted: isJaclynConverted(),
     markDefeated: isMarkDefeated(),
@@ -69,13 +66,14 @@ export type QuestDefinition = {
 const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'wake',
-    isComplete: (ctx) => ctx.hasMp3 || ctx.gatingTalkedCount >= 1,
+    isComplete: (ctx) => ctx.gatingTalkedCount >= 1,
     getText: () => 'wake up.',
   },
   {
     id: 'find-self',
     isComplete: (ctx) => ctx.allGatingTalked,
-    getText: () => 'find out what you are.',
+    getText: (ctx) =>
+      `find out what you are. (${ctx.gatingTalkedCount}/${ctx.gatingTalkedTotal})`,
   },
   {
     id: 'read-notice',
