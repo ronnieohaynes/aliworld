@@ -44,7 +44,14 @@ import {
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
-import { getShowDebug, setLastLocation, subscribePlayerStore, toggleShowDebug } from '../store/playerStore'
+import {
+  getLastSavedLocation,
+  getShowDebug,
+  setLastLocation,
+  subscribePlayerStore,
+  toggleShowDebug,
+  whenAccountHydrated,
+} from '../store/playerStore'
 import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
@@ -60,6 +67,35 @@ const INTERIOR_BG_SRC = publicAsset('Assets/Backgrounds/13gallons-interior.png')
 
 /** How often to push live coords into the account save buffer while exploring. */
 const LOCATION_REPORT_INTERVAL_MS = 3_000
+
+const WORLD_POSITION_MARGIN = 40
+
+function clampWorldPosition(
+  cityId: CityId,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  const cfg = CITY_CONFIGS[cityId]
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return { x: cfg.spawnX, y: cfg.spawnY }
+  }
+  return {
+    x: Math.max(WORLD_POSITION_MARGIN, Math.min(cfg.worldWidth - WORLD_POSITION_MARGIN, x)),
+    y: Math.max(WORLD_POSITION_MARGIN, Math.min(cfg.worldHeight - WORLD_POSITION_MARGIN, y)),
+  }
+}
+
+function resolveSavedWorldPosition(
+  cityId: CityId,
+  x: number | undefined,
+  y: number | undefined,
+): { x: number; y: number } {
+  const cfg = CITY_CONFIGS[cityId]
+  if (x === undefined || y === undefined) {
+    return { x: cfg.spawnX, y: cfg.spawnY }
+  }
+  return clampWorldPosition(cityId, x, y)
+}
 
 function findNpcInCity(id: string, cityId: CityId): NpcData | undefined {
   return CITY_CONFIGS[cityId].npcs.find((n) => n.id === id)
@@ -91,6 +127,8 @@ export function GameScreen() {
   const [worldEntryActive, setWorldEntryActive] = useState(true)
   const [worldEntryReady, setWorldEntryReady] = useState(false)
   const [nearbyNpcId, setNearbyNpcId] = useState<string | null>(null)
+  const [locationReady, setLocationReady] = useState(false)
+  const pendingRestoreRef = useRef<{ city: CityId; x: number; y: number } | null>(null)
 
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -117,15 +155,44 @@ export function GameScreen() {
 
   useEffect(() => {
     let cancelled = false
+    void whenAccountHydrated().then(() => {
+      if (cancelled) return
+      const saved = getLastSavedLocation()
+      if (!saved) {
+        setLocationReady(true)
+        return
+      }
+      const pos = resolveSavedWorldPosition(saved.city, saved.x, saved.y)
+      pendingRestoreRef.current = { city: saved.city, x: pos.x, y: pos.y }
+      setCurrentCity(saved.city)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (locationReady) return
+    const pending = pendingRestoreRef.current
+    if (!pending || pending.city !== currentCity || !worldEntryReady) return
+
+    playerRef.current?.setPosition(pending.x, pending.y)
+    setLastLocation(pending.city, pending.x, pending.y)
+    pendingRestoreRef.current = null
+    setLocationReady(true)
+  }, [currentCity, locationReady, worldEntryReady])
+
+  useEffect(() => {
+    let cancelled = false
     setWorldEntryReady(false)
-    const entryCity = CITY_CONFIGS['daly-city']
+    const entryCity = CITY_CONFIGS[currentCity]
     void preloadWorldEntry(entryCity, selectedMidnightVariant).then(() => {
       if (!cancelled) setWorldEntryReady(true)
     })
     return () => {
       cancelled = true
     }
-  }, [selectedMidnightVariant])
+  }, [currentCity, selectedMidnightVariant])
 
   const handleWorldEntryComplete = useCallback(() => {
     setWorldEntryActive(false)
@@ -533,19 +600,26 @@ export function GameScreen() {
   }, [battleNpcId, worldEntryActive])
 
   useEffect(() => {
-    if (worldEntryActive || battleNpcId || battleEntryWipe) return
+    if (!locationReady || worldEntryActive || battleNpcId || battleEntryWipe) return
     reportCurrentLocation()
     const id = window.setInterval(reportCurrentLocation, LOCATION_REPORT_INTERVAL_MS)
     return () => window.clearInterval(id)
-  }, [battleEntryWipe, battleNpcId, reportCurrentLocation, worldEntryActive])
+  }, [
+    battleEntryWipe,
+    battleNpcId,
+    locationReady,
+    reportCurrentLocation,
+    worldEntryActive,
+  ])
 
   useEffect(() => {
-    if (worldEntryActive) return
+    if (!locationReady || worldEntryActive) return
     reportCurrentLocation()
   }, [
     battleEntryWipe,
     battleNpcId,
     dialogue,
+    locationReady,
     menuEntryWipe,
     reportCurrentLocation,
     showFannyPack,

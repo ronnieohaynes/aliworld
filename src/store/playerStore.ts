@@ -66,8 +66,11 @@ type LastLocation = {
   y: number
 }
 
-/** Latest overworld location — updated by GameScreen; not part of reactive player state. */
+/** Hold the latest city + position for the next account save (no save loop). */
 let lastLocation: LastLocation | null = null
+
+let accountHydrated = false
+let hydrateInFlight: Promise<void> | null = null
 
 const VALID_CITY_IDS: readonly CityId[] = ['daly-city', 'san-bruno']
 
@@ -87,6 +90,18 @@ export function setLastLocation(city: string, x: number, y: number): void {
   if (!cityId) return
   if (!Number.isFinite(x) || !Number.isFinite(y)) return
   lastLocation = { city: cityId, x, y }
+}
+
+/** Saved overworld location after hydrate (for GameScreen restore). */
+export function getLastSavedLocation(): LastLocation | null {
+  return lastLocation
+}
+
+/** Resolves once account progression (including location) has been loaded. */
+export function whenAccountHydrated(): Promise<void> {
+  if (accountHydrated) return Promise.resolve()
+  if (hydrateInFlight) return hydrateInFlight
+  return hydrateFromAccount()
 }
 
 function normalizeArtifacts(raw: unknown): CollectibleArtifactId[] {
@@ -223,30 +238,42 @@ subscribeWorldMemoryStore(persistProgressionToAccount)
 subscribeArtifactStore(persistProgressionToAccount)
 
 export async function hydrateFromAccount(): Promise<void> {
-  const data = await loadProgressionFromAccount()
-  if (!data) return
+  if (accountHydrated) return
+  if (hydrateInFlight) return hydrateInFlight
 
-  skipAccountSave = true
+  hydrateInFlight = (async () => {
+    const data = await loadProgressionFromAccount()
+    skipAccountSave = true
 
-  state = {
-    ...state,
-    archetype: data.archetype ?? state.archetype,
-    skills: data.skills ?? state.skills,
-    equippedMoves: data.equippedMoves ?? state.equippedMoves,
+    if (data) {
+      state = {
+        ...state,
+        archetype: data.archetype ?? state.archetype,
+        skills: data.skills ?? state.skills,
+        equippedMoves: data.equippedMoves ?? state.equippedMoves,
+      }
+      for (const listener of listeners) {
+        listener()
+      }
+
+      applyQuest1State(data.quest1 ?? {})
+      applyWorldMemoryState(data.worldMemory ?? {})
+      applyArtifactState(data.artifacts ?? [])
+
+      if (data.lastCity !== undefined && data.lastX !== undefined && data.lastY !== undefined) {
+        lastLocation = { city: data.lastCity, x: data.lastX, y: data.lastY }
+      }
+    }
+
+    skipAccountSave = false
+    accountHydrated = true
+  })()
+
+  try {
+    await hydrateInFlight
+  } finally {
+    hydrateInFlight = null
   }
-  for (const listener of listeners) {
-    listener()
-  }
-
-  applyQuest1State(data.quest1 ?? {})
-  applyWorldMemoryState(data.worldMemory ?? {})
-  applyArtifactState(data.artifacts ?? [])
-
-  if (data.lastCity !== undefined && data.lastX !== undefined && data.lastY !== undefined) {
-    lastLocation = { city: data.lastCity, x: data.lastX, y: data.lastY }
-  }
-
-  skipAccountSave = false
 }
 
 function createDefaultPlayerState(): PlayerStoreState {
@@ -264,6 +291,8 @@ function createDefaultPlayerState(): PlayerStoreState {
 export function resetProgression(): void {
   skipAccountSave = true
   lastLocation = null
+  accountHydrated = false
+  hydrateInFlight = null
   state = createDefaultPlayerState()
   for (const listener of listeners) {
     listener()
