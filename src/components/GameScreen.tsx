@@ -21,6 +21,7 @@ import { BattleScreen } from './BattleScreen'
 import { StatsScreen } from './StatsScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
+import { SkillTreeScreen } from './SkillTreeScreen'
 import { BattleEntryWipe } from './BattleEntryWipe'
 import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
@@ -70,6 +71,7 @@ export function GameScreen() {
   const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [showSkillTree, setShowSkillTree] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -166,6 +168,7 @@ export function GameScreen() {
   const resumeFromPauseMenu = useCallback(() => {
     setShowFannyPack(false)
     setShowStats(false)
+    setShowSkillTree(false)
     closeStartMenu()
   }, [closeStartMenu])
 
@@ -175,7 +178,7 @@ export function GameScreen() {
       closeStartMenu()
       return
     }
-    if (menuReturnPending && (showFannyPack || showStats)) {
+    if (menuReturnPending && (showFannyPack || showStats || showSkillTree)) {
       resumeFromPauseMenu()
       return
     }
@@ -188,6 +191,7 @@ export function GameScreen() {
     menuTransition,
     resumeFromPauseMenu,
     showFannyPack,
+    showSkillTree,
     showStartMenu,
     showStats,
   ])
@@ -235,7 +239,7 @@ export function GameScreen() {
       ) {
         return
       }
-      if (showStats || showFannyPack) {
+      if (showStats || showFannyPack || showSkillTree) {
         if (menuReturnPending) {
           e.preventDefault()
           resumeFromPauseMenu()
@@ -258,6 +262,7 @@ export function GameScreen() {
     menuReturnPending,
     resumeFromPauseMenu,
     showFannyPack,
+    showSkillTree,
     showStartMenu,
     showStats,
     menuTransition,
@@ -282,6 +287,12 @@ export function GameScreen() {
   const startMarkBattle = useCallback(() => {
     setDialogue(null)
     setBattleEntryWipe('mark')
+  }, [])
+
+  /** TEMP: debug grind fight — delete after testing. */
+  const startDummyFight = useCallback(() => {
+    setDialogue(null)
+    setBattleNpcId('dummy')
   }, [])
 
   const showMarkGateDialogue = useCallback(() => {
@@ -385,7 +396,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleEntryWipe || menuTransition || battleNpcId || showStats || showFannyPack)
+    if (battleEntryWipe || menuTransition || battleNpcId || showStats || showFannyPack || showSkillTree)
       return
     openNearbyNpcDialogue()
   }, [
@@ -395,6 +406,7 @@ export function GameScreen() {
     battleNpcId,
     showStats,
     showFannyPack,
+    showSkillTree,
     showStartMenu,
     menuTransition,
     worldEntryActive,
@@ -459,6 +471,14 @@ export function GameScreen() {
     setShowStats(false)
   }, [menuReturnPending, resumeFromPauseMenu])
 
+  const handleSkillTreeClose = useCallback(() => {
+    if (menuReturnPending) {
+      resumeFromPauseMenu()
+      return
+    }
+    setShowSkillTree(false)
+  }, [menuReturnPending, resumeFromPauseMenu])
+
   const beginMenuEntryTransition = useCallback(
     (screen: 'fanny-pack' | 'stats') => {
       setShowStartMenu(false)
@@ -496,6 +516,11 @@ export function GameScreen() {
         case 'stats':
           beginMenuEntryTransition('stats')
           break
+        case 'moves':
+          setShowStartMenu(false)
+          setMenuReturnPending(true)
+          setShowSkillTree(true)
+          break
         case 'new-game':
           break
         case 'sign-out':
@@ -524,6 +549,7 @@ export function GameScreen() {
     !isGamePaused &&
     !showStats &&
     !showFannyPack &&
+    !showSkillTree &&
     !showDarkline &&
     !showInterior
 
@@ -555,9 +581,21 @@ export function GameScreen() {
           onClick={handlePlayAreaClick}
         >
           {showDebug && (
-            <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
-              {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
-            </pre>
+            <>
+              <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
+                {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
+              </pre>
+              <button
+                type="button"
+                className="debug-fight-dummy"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  startDummyFight()
+                }}
+              >
+                fight dummy
+              </button>
+            </>
           )}
           {showQuestHelper && <QuestHelper />}
           <GameCanvas debugHudId={GAME_DEBUG_HUD_ID} paused={isGamePaused}>
@@ -573,7 +611,8 @@ export function GameScreen() {
                 !!battleEntryWipe ||
                 isGamePaused ||
                 showStats ||
-                showFannyPack
+                showFannyPack ||
+                showSkillTree
               }
               dialogueNpcId={dialogue?.npc.id ?? null}
             />
@@ -647,6 +686,7 @@ export function GameScreen() {
           )}
         </div>
       </GameShell>
+      {showSkillTree && <SkillTreeScreen onClose={handleSkillTreeClose} />}
     </div>
   )
 }
