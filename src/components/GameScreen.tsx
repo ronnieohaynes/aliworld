@@ -308,8 +308,8 @@ export function GameScreen() {
           setShowDarkline(true)
           return
         }
-        if (!hasTalkedToAllGatingNpcs()) {
-          showMarkGateDialogue()
+        if (!canApproachMark()) {
+          showMarkBlockedDialogue()
           return
         }
         beginNpcDialogue(MARK_NPC, { onComplete: startMarkBattle })
@@ -317,7 +317,7 @@ export function GameScreen() {
         setCafeFade('in')
       }
     },
-    [beginNpcDialogue, showMarkGateDialogue, startMarkBattle],
+    [beginNpcDialogue, canApproachMark, showMarkBlockedDialogue, startMarkBattle],
   )
 
   const handleExitTrigger = useCallback((action: TriggerAction) => {
@@ -401,8 +401,8 @@ export function GameScreen() {
         beginNpcDialogue(MARK_NPC)
         return
       }
-      if (!hasTalkedToAllGatingNpcs()) {
-        showMarkGateDialogue()
+      if (!canApproachMark()) {
+        showMarkBlockedDialogue()
         return
       }
       beginNpcDialogue(MARK_NPC, { onComplete: startMarkBattle })
@@ -413,9 +413,10 @@ export function GameScreen() {
     if (npc) beginNpcDialogue(npc)
   }, [
     beginNpcDialogue,
+    canApproachMark,
     canApproachWalker,
     currentCity,
-    showMarkGateDialogue,
+    showMarkBlockedDialogue,
     showNotYetDialogue,
     startMarkBattle,
     startNpcBattle,
