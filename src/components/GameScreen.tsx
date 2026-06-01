@@ -282,12 +282,12 @@ export function GameScreen() {
           showMarkGateDialogue()
           return
         }
-        startMarkBattle()
+        beginNpcDialogue(MARK_NPC, { onComplete: startMarkBattle })
       } else if (action === 'OPEN_ONE_LOVE_CAFE') {
         setCafeFade('in')
       }
     },
-    [showMarkGateDialogue, startMarkBattle],
+    [beginNpcDialogue, showMarkGateDialogue, startMarkBattle],
   )
 
   const handleExitTrigger = useCallback((action: TriggerAction) => {
@@ -371,7 +371,7 @@ export function GameScreen() {
         showMarkGateDialogue()
         return
       }
-      startMarkBattle()
+      beginNpcDialogue(MARK_NPC, { onComplete: startMarkBattle })
       return
     }
 

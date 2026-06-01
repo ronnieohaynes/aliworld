@@ -140,7 +140,14 @@ export const MARK_NPC: NpcData = {
   name: 'mark',
   x: 598,
   y: 795,
-  lines: ['You must not of heard about me. You better ask around.'],
+  linesBlocked: ['you better ask around.'],
+  lines: [
+    'everybody wants through. nobody gets through.',
+    "you're not the first to wear that jacket either.",
+    { speaker: 'jason', text: 'just send it, mark.' },
+    '...yeah. send it.',
+  ],
+  linesConverted: ['huh.', 'goat yoga...where do you want me.'],
   color: '#c084fc',
   // TODO: Replace with dedicated Mark idle sprite sheet when art is ready.
   spriteSrc: NPC3_SPRITE,
