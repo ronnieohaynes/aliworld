@@ -8,10 +8,23 @@ export const GATING_NPC_IDS = ['npc1', 'npc2', 'npc3', 'npc4'] as const
 export type GatingNpcId = (typeof GATING_NPC_IDS)[number]
 
 export const MARK_NPC_ID = 'mark'
+export const WALKER_NPC_ID = 'walker'
+export const JACLYN_NPC_ID = 'jaclyn'
 
 type Quest1State = {
   talked: Record<GatingNpcId, boolean>
   markDefeated: boolean
+  walkerConverted: boolean
+  jaclynConverted: boolean
+}
+
+function emptyQuest1State(): Quest1State {
+  return {
+    talked: emptyTalked(),
+    markDefeated: false,
+    walkerConverted: false,
+    jaclynConverted: false,
+  }
 }
 
 function emptyTalked(): Record<GatingNpcId, boolean> {
@@ -24,13 +37,15 @@ function emptyTalked(): Record<GatingNpcId, boolean> {
 }
 
 function loadQuest1FromStorage(): Quest1State {
-  const base: Quest1State = { talked: emptyTalked(), markDefeated: false }
+  const base = emptyQuest1State()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return base
     const parsed: unknown = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object') return base
-    const o = parsed as Partial<Quest1State & { talked?: Partial<Record<GatingNpcId, boolean>> }>
+    const o = parsed as Partial<
+      Quest1State & { talked?: Partial<Record<GatingNpcId, boolean>> }
+    >
     const talked = emptyTalked()
     for (const id of GATING_NPC_IDS) {
       if (o.talked?.[id] === true) talked[id] = true
@@ -38,6 +53,8 @@ function loadQuest1FromStorage(): Quest1State {
     return {
       talked,
       markDefeated: o.markDefeated === true,
+      walkerConverted: o.walkerConverted === true,
+      jaclynConverted: o.jaclynConverted === true,
     }
   } catch {
     return base
@@ -104,15 +121,41 @@ export function setMarkDefeated(): void {
   emit()
 }
 
+export function isWalkerConverted(): boolean {
+  return state.walkerConverted
+}
+
+export function setWalkerConverted(): void {
+  if (state.walkerConverted) return
+  state = { ...state, walkerConverted: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
+export function isJaclynConverted(): boolean {
+  return state.jaclynConverted
+}
+
+export function setJaclynConverted(): void {
+  if (state.jaclynConverted) return
+  state = { ...state, jaclynConverted: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export type Quest1Serialized = {
   markDefeated: boolean
   talkedGatingNpcs: Record<GatingNpcId, boolean>
+  walkerConverted?: boolean
+  jaclynConverted?: boolean
 }
 
 export function serialize(): Quest1Serialized {
   return {
     markDefeated: state.markDefeated,
     talkedGatingNpcs: { ...state.talked },
+    walkerConverted: state.walkerConverted,
+    jaclynConverted: state.jaclynConverted,
   }
 }
 
@@ -126,18 +169,20 @@ export function applyState(data: Partial<Quest1Serialized>): void {
   state = {
     markDefeated: data.markDefeated === true,
     talked,
+    walkerConverted: data.walkerConverted === true,
+    jaclynConverted: data.jaclynConverted === true,
   }
   emit()
 }
 
 export function resetState(): void {
-  state = { talked: emptyTalked(), markDefeated: false }
+  state = emptyQuest1State()
   emit()
 }
 
 /** Clear Quest 1 progress (debug / re-test). */
 export function resetQuest1ForDebug(): void {
-  state = { talked: emptyTalked(), markDefeated: false }
+  state = emptyQuest1State()
   try {
     localStorage.removeItem(STORAGE_KEY)
   } catch {

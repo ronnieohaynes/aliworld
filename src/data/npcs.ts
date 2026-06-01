@@ -1,12 +1,19 @@
 import type { Direction } from '../game/SpriteSheet'
 import { publicAsset } from '../utils/publicAsset'
 
+export type NpcDialogueLine = string | { speaker: string; text: string }
+
 export type NpcData = {
   id: string
   name: string
   x: number
   y: number
-  lines: string[]
+  /** Default / pre-fight lines (strings or { speaker, text } for multi-speaker). */
+  lines: NpcDialogueLine[]
+  /** Shown after conversion (walker/jaclyn) or defeat (mark). */
+  linesConverted?: NpcDialogueLine[]
+  /** Optional gate lines before quest prerequisites (mark only). */
+  linesBlocked?: NpcDialogueLine[]
   color: string
   /** Path to an idle sprite sheet (horizontal strip: down, up, left, right). */
   spriteSrc?: string
@@ -86,6 +93,47 @@ export const GATING_NPCS: readonly NpcData[] = [
   GATING_NPC_4,
 ]
 
+export const WALKER_NPC: NpcData = {
+  id: 'walker',
+  name: 'walker',
+  x: 680,
+  y: 520,
+  lines: [
+    'i heard you spawned. cute.',
+    "everybody thinks they're the one.",
+    'if you are, show me then.',
+  ],
+  linesConverted: [
+    'oh.',
+    'i get it now. i get it.',
+    "tell me where to go. tell me what to say. i'll say it exactly.",
+  ],
+  color: '#7a7a96',
+  spriteSrc: NPC2_SPRITE,
+  spriteColumns: 4,
+}
+
+/** Quest 1 — second conversion fight in Daly City (placeholder sprite). */
+export const JACLYN_NPC: NpcData = {
+  id: 'jaclyn',
+  name: 'jaclyn',
+  x: 820,
+  y: 500,
+  lines: [
+    'i know what you did to walker.',
+    "he was annoying but he was HIM. now he's... different.",
+    "i'm not scared of you. i just don't think you should.",
+  ],
+  linesConverted: [
+    "...oh. you're right. of course you're right.",
+    'why was i fighting this?',
+  ],
+  color: '#7a7a96',
+  // TODO: Replace with dedicated Jaclyn idle sprite sheet when art is ready.
+  spriteSrc: NPC3_SPRITE,
+  spriteColumns: 4,
+}
+
 /** Mark — Darkline guard; blocks stairs until Quest 1 complete. */
 export const MARK_NPC: NpcData = {
   id: 'mark',
@@ -117,6 +165,8 @@ export const ADAM_NPC: NpcData = {
 export const DALY_CITY_OVERWORLD_NPCS: readonly NpcData[] = [
   ADAM_NPC,
   ...GATING_NPCS,
+  WALKER_NPC,
+  JACLYN_NPC,
   MARK_NPC,
 ]
 

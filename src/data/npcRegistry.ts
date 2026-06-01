@@ -32,7 +32,7 @@ const MARK_SPRITE = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
 
 const WALKER: NpcCombatEntry = {
   id: 'walker',
-  displayName: 'Mark',
+  displayName: 'walker',
   stats: { hp: 30, maxHp: 30, atk: 6, def: 3, spd: 5 },
   moves: ['STRIKE', 'LOOP', 'SLIP', 'WHISPER'],
   losingLine:
@@ -49,9 +49,17 @@ const DUMMY: NpcCombatEntry = {
   stats: { hp: 40, maxHp: 40, atk: 0, def: 0, spd: 1 },
 }
 
+const JACLYN: NpcCombatEntry = {
+  ...WALKER,
+  id: 'jaclyn',
+  displayName: 'jaclyn',
+  losingLine: "...oh. you're right. of course you're right.",
+}
+
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
-  mark: { ...WALKER, id: 'mark' },
+  jaclyn: JACLYN,
+  mark: { ...WALKER, id: 'mark', displayName: 'mark' },
   dummy: DUMMY,
 }
 

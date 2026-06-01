@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
-import { MARK_NPC, MANDO_NPC, type NpcData } from '../data/npcs'
+import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, type NpcData } from '../data/npcs'
+import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import { CITY_CONFIGS, type CityConfig, type CityId } from '../data/cityConfig'
 import { collectArtifact, hasArtifact } from '../store/artifactStore'
 import {
   getQuest1Snapshot,
   hasTalkedToAllGatingNpcs,
   isGatingNpcId,
+  isJaclynConverted,
   isMarkDefeated,
+  isWalkerConverted,
+  JACLYN_NPC_ID,
   MARK_NPC_ID,
   markGatingNpcTalked,
+  setJaclynConverted,
   setMarkDefeated,
+  setWalkerConverted,
+  WALKER_NPC_ID,
   subscribeQuest1Store,
 } from '../store/quest1Store'
 import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
@@ -52,6 +59,8 @@ const INTERIOR_BG_SRC = publicAsset('Assets/Backgrounds/13gallons-interior.png')
 type DialogueState = {
   npc: NpcData
   lineIndex: number
+  speakerLines: ResolvedDialogueLine[]
+  onComplete?: () => void
 }
 
 function findNpcInCity(id: string, cityId: CityId): NpcData | undefined {
@@ -230,6 +239,26 @@ export function GameScreen() {
     setBattleEntryWipe('mark')
   }, [])
 
+  const startNpcBattle = useCallback((npcId: string) => {
+    setDialogue(null)
+    setBattleEntryWipe(npcId)
+  }, [])
+
+  const beginNpcDialogue = useCallback(
+    (
+      npc: NpcData,
+      options?: { blocked?: boolean; onComplete?: () => void },
+    ) => {
+      setDialogue({
+        npc,
+        lineIndex: 0,
+        speakerLines: resolveNpcDialogueLines(npc, options),
+        onComplete: options?.onComplete,
+      })
+    },
+    [],
+  )
+
   /** TEMP: debug grind fight — delete after testing. */
   const startDummyFight = useCallback(() => {
     setDialogue(null)
@@ -237,8 +266,8 @@ export function GameScreen() {
   }, [])
 
   const showMarkGateDialogue = useCallback(() => {
-    setDialogue({ npc: MARK_NPC, lineIndex: 0 })
-  }, [])
+    beginNpcDialogue(MARK_NPC, { blocked: true })
+  }, [beginNpcDialogue])
 
   const handleTrigger = useCallback(
     (action: TriggerAction) => {
@@ -291,12 +320,14 @@ export function GameScreen() {
     setDialogue((prev) => {
       if (!prev) return null
       const next = prev.lineIndex + 1
-      if (next >= prev.npc.lines.length) {
+      if (next >= prev.speakerLines.length) {
+        const onComplete = prev.onComplete
         if (isAdamNpcId(prev.npc.id)) {
           completeAdamMp3Handoff()
         } else if (isGatingNpcId(prev.npc.id)) {
           markGatingNpcTalked(prev.npc.id)
         }
+        if (onComplete) onComplete()
         return null
       }
       return { ...prev, lineIndex: next }
@@ -309,12 +340,33 @@ export function GameScreen() {
 
     if (isAdamNpcId(nearbyId)) {
       if (hasArtifact(ADAM_MP3_ARTIFACT_ID)) return
-      setDialogue({ npc: ADAM_NPC, lineIndex: 0 })
+      beginNpcDialogue(ADAM_NPC)
+      return
+    }
+
+    if (nearbyId === WALKER_NPC_ID) {
+      beginNpcDialogue(WALKER_NPC, {
+        onComplete: isWalkerConverted()
+          ? undefined
+          : () => startNpcBattle(WALKER_NPC_ID),
+      })
+      return
+    }
+
+    if (nearbyId === JACLYN_NPC_ID) {
+      beginNpcDialogue(JACLYN_NPC, {
+        onComplete: isJaclynConverted()
+          ? undefined
+          : () => startNpcBattle(JACLYN_NPC_ID),
+      })
       return
     }
 
     if (nearbyId === MARK_NPC_ID) {
-      if (isMarkDefeated()) return
+      if (isMarkDefeated()) {
+        beginNpcDialogue(MARK_NPC)
+        return
+      }
       if (!hasTalkedToAllGatingNpcs()) {
         showMarkGateDialogue()
         return
@@ -324,8 +376,14 @@ export function GameScreen() {
     }
 
     const npc = findNpcInCity(nearbyId, currentCity)
-    if (npc) setDialogue({ npc, lineIndex: 0 })
-  }, [currentCity, showMarkGateDialogue, startMarkBattle])
+    if (npc) beginNpcDialogue(npc)
+  }, [
+    beginNpcDialogue,
+    currentCity,
+    showMarkGateDialogue,
+    startMarkBattle,
+    startNpcBattle,
+  ])
 
   const handleInteract = useCallback(() => {
     if (worldEntryActive) return
@@ -382,9 +440,13 @@ export function GameScreen() {
 
   const handleBattleEnd = useCallback((result: 'win' | 'lose') => {
     setBattleNpcId((activeId) => {
-      if (activeId === MARK_NPC_ID && result === 'win') {
-        setMarkDefeated()
-        collectArtifact('subway-pass')
+      if (result === 'win') {
+        if (activeId === WALKER_NPC_ID) setWalkerConverted()
+        if (activeId === JACLYN_NPC_ID) setJaclynConverted()
+        if (activeId === MARK_NPC_ID) {
+          setMarkDefeated()
+          collectArtifact('subway-pass')
+        }
       }
       return null
     })
@@ -476,8 +538,8 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    setDialogue({ npc: MANDO_NPC, lineIndex: 0 })
-  }, [dialogue, advanceDialogue])
+    beginNpcDialogue(MANDO_NPC)
+  }, [dialogue, advanceDialogue, beginNpcDialogue])
 
   return (
     <div className="game-screen">
@@ -553,8 +615,8 @@ export function GameScreen() {
           )}
           {dialogue && !battleNpcId && (
             <DialogueBox
-              name={dialogue.npc.name}
-              line={dialogue.npc.lines[dialogue.lineIndex]!}
+              name={dialogue.speakerLines[dialogue.lineIndex]?.speaker ?? dialogue.npc.name}
+              line={dialogue.speakerLines[dialogue.lineIndex]?.text ?? ''}
               onAdvance={advanceDialogue}
             />
           )}
