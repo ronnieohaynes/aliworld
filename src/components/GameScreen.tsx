@@ -267,9 +267,21 @@ export function GameScreen() {
     setBattleNpcId('dummy')
   }, [])
 
+  const showNotYetDialogue = useCallback((npc: NpcData, line: string) => {
+    setDialogue({
+      npc,
+      lineIndex: 0,
+      speakerLines: [{ speaker: npc.name, text: line }],
+    })
+  }, [])
+
   const showMarkGateDialogue = useCallback(() => {
     beginNpcDialogue(MARK_NPC, { blocked: true })
   }, [beginNpcDialogue])
+
+  const canApproachWalker = useCallback(() => {
+    return hasTalkedToAllGatingNpcs() && hasArtifact(ADAM_MP3_ARTIFACT_ID)
+  }, [])
 
   const handleTrigger = useCallback(
     (action: TriggerAction) => {
@@ -343,11 +355,15 @@ export function GameScreen() {
     if (!nearbyId) return
 
     if (nearbyId === WALKER_NPC_ID) {
-      beginNpcDialogue(WALKER_NPC, {
-        onComplete: isWalkerConverted()
-          ? undefined
-          : () => startNpcBattle(WALKER_NPC_ID),
-      })
+      if (isWalkerConverted()) {
+        beginNpcDialogue(WALKER_NPC)
+        return
+      }
+      if (!canApproachWalker()) {
+        showNotYetDialogue(WALKER_NPC, 'talk to the block first. then come find me.')
+        return
+      }
+      beginNpcDialogue(WALKER_NPC, { onComplete: () => startNpcBattle(WALKER_NPC_ID) })
       return
     }
 
@@ -377,8 +393,10 @@ export function GameScreen() {
     if (npc) beginNpcDialogue(npc)
   }, [
     beginNpcDialogue,
+    canApproachWalker,
     currentCity,
     showMarkGateDialogue,
+    showNotYetDialogue,
     startMarkBattle,
     startNpcBattle,
   ])
