@@ -28,7 +28,8 @@ export const GATING_NPC_1: NpcData = {
   x: 220,
   y: 360,
   lines: [
-    "Everybody out here telegraphs. Watch what they do before they do it, and you'll never get caught slippin.",
+    "you're up. okay. okay okay okay.",
+    "you don't know what you are yet. that's normal. move. just move first.",
   ],
   color: '#7a7a96',
   spriteSrc: NPC1_SPRITE,
@@ -42,7 +43,7 @@ export const GATING_NPC_2: NpcData = {
   x: 540,
   y: 400,
   lines: [
-    'You get better at what you do over and over. Nobody starts strong out here.',
+    "everybody here's waiting on something. is it you?",
   ],
   color: '#7a7a96',
   spriteSrc: NPC2_SPRITE,
@@ -56,7 +57,8 @@ export const GATING_NPC_3: NpcData = {
   x: 880,
   y: 360,
   lines: [
-    "Funny how the things you carry tell you who you used to be. I used to wear a fanny pack too.",
+    "there's a man. don't say his name loud? okay.",
+    "they put up notices about him. you'll find one.",
   ],
   color: '#7a7a96',
   spriteSrc: NPC3_SPRITE,
@@ -70,7 +72,7 @@ export const GATING_NPC_4: NpcData = {
   x: 420,
   y: 580,
   lines: [
-    "Out here, half of it's you and half of it's the dice. Some days the crowd's with you, some days it ain't.",
+    "the darkline's how you get anywhere. it goes through Mark, though.",
   ],
   color: '#7a7a96',
   spriteSrc: NPC4_SPRITE,
