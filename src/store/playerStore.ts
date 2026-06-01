@@ -3,7 +3,9 @@ import {
   isMoveUnlocked,
   type PlayerMoveId,
 } from '../data/moves'
+import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
+import { getAuthState } from './authStore'
 import {
   awardMoveXp,
   computePlayerLevel,
@@ -40,6 +42,50 @@ function saveProgression(s: PlayerStoreState): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch {
     // storage unavailable — progression still lives for this session
+  }
+}
+
+export async function saveProgressionToAccount(s: PlayerStoreState): Promise<void> {
+  const userId = getAuthState().session?.user?.id
+  if (!userId) return
+
+  try {
+    const { error } = await supabase.from('aw_profiles').upsert({
+      user_id: userId,
+      moves_equipped: s.equippedMoves,
+      avatar_config: { archetype: s.archetype, skills: s.skills },
+      updated_at: new Date().toISOString(),
+    })
+    if (error) console.error('[save]', error.message)
+  } catch (err) {
+    console.error('[save]', err instanceof Error ? err.message : String(err))
+  }
+}
+
+export async function loadProgressionFromAccount(): Promise<Partial<PersistedProgression> | null> {
+  const userId = getAuthState().session?.user?.id
+  if (!userId) return null
+
+  try {
+    const { data, error } = await supabase
+      .from('aw_profiles')
+      .select('moves_equipped, avatar_config')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error || !data) return null
+
+    const avatarConfig = data.avatar_config as
+      | { archetype?: ArchetypeId; skills?: SkillsState }
+      | null
+
+    return {
+      equippedMoves: data.moves_equipped as PersistedProgression['equippedMoves'] | undefined,
+      archetype: avatarConfig?.archetype,
+      skills: avatarConfig?.skills,
+    }
+  } catch {
+    return null
   }
 }
 
