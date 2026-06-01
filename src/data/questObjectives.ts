@@ -14,7 +14,7 @@ import {
 import { getWorldMemorySnapshot } from '../store/worldMemory'
 import { ADAM_MP3_ARTIFACT_ID } from './adamMp3Handoff'
 
-/** Notice artifact — same collectible id as the former Adam MP3 handoff. */
+/** MP3 player from Adam (quest helper tracks this as the notice step). */
 export const NOTICE_ARTIFACT_ID = ADAM_MP3_ARTIFACT_ID
 
 export type QuestObjectiveContext = {
@@ -78,7 +78,7 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'read-notice',
     isComplete: (ctx) => ctx.hasNotice,
-    getText: () => 'read the notice the last one gave you.',
+    getText: () => 'talk to adam. he has something for you.',
   },
   {
     id: 'walker',

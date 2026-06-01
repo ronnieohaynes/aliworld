@@ -80,7 +80,7 @@ export const GATING_NPC_4: NpcData = {
   y: 580,
   lines: [
     "the darkline's how you get anywhere. it goes through Mark, though.",
-    "here. this is the notice. now you'll see what i mean.",
+    "adam's got something for you. start there.",
   ],
   color: '#7a7a96',
   spriteSrc: NPC4_SPRITE,

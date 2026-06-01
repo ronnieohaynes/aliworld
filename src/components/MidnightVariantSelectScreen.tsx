@@ -393,7 +393,7 @@ export function MidnightVariantSelectScreen() {
             >
               reset pick (debug)
             </button>
-            <p className="midnight-select-screen__debug-hint">press M in game to return here</p>
+            <p className="midnight-select-screen__debug-hint">new game returns here</p>
           </footer>
           </div>
         </div>

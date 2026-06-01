@@ -15,7 +15,7 @@ import {
 import { publicAsset } from '../utils/publicAsset'
 import './FannyPackScreen.css'
 
-const FADE_MS = 300
+const FADE_MS = 150
 const FANNY_PACK_INTERIOR_SRC = publicAsset('Assets/ui/fanny-pack-interior.png')
 
 type Props = {

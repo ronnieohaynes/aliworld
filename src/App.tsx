@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { AuthScreen } from './components/AuthScreen'
 import { GameScreen } from './components/GameScreen'
 import { HandlePickScreen } from './components/HandlePickScreen'
@@ -6,7 +6,6 @@ import { MidnightVariantSelectScreen } from './components/MidnightVariantSelectS
 import { TitleCard } from './components/TitleCard'
 import { useAuthStore } from './store/authStore'
 import {
-  clearMidnightVariant,
   getSelectedMidnightVariant,
   subscribeCharacterStore,
 } from './store/characterStore'
@@ -27,17 +26,6 @@ export default function App() {
     getSelectedMidnightVariant,
   )
   const [started, setStarted] = useState(false)
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'm' && e.key !== 'M') return
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-      e.preventDefault()
-      clearMidnightVariant()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
 
   if (!started) {
     return <TitleCard onStart={() => setStarted(true)} />
