@@ -1,6 +1,8 @@
 node_modules
 dist
-.env
+# committed: public, non-secret config (supabase url + anon key)
+# .env is intentionally NOT ignored
 .env.local
+.env.*.local
 *.local
 .DS_Store
