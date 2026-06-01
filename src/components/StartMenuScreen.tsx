@@ -11,6 +11,7 @@ export type StartMenuAction =
   | 'resume'
   | 'fanny-pack'
   | 'stats'
+  | 'moves'
   | 'choose-midnight'
   | 'new-game'
   | 'sign-out'
@@ -19,6 +20,7 @@ const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'resume', label: 'resume' },
   { id: 'fanny-pack', label: 'fanny pack' },
   { id: 'stats', label: 'stats' },
+  { id: 'moves', label: 'moves' },
   { id: 'choose-midnight', label: 'choose MIDNIGHT' },
   { id: 'new-game', label: 'new game', danger: true },
   { id: 'sign-out', label: 'sign out' },
