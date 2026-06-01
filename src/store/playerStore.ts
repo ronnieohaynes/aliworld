@@ -3,6 +3,7 @@ import {
   isMoveUnlocked,
   type PlayerMoveId,
 } from '../data/moves'
+import { MOVES } from '../data/moveDefinitions'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
 import { getAuthState } from './authStore'
@@ -27,14 +28,21 @@ const DEFAULT_EQUIPPED_MOVES: PlayerStoreState['equippedMoves'] = [
   'WHISPER',
 ]
 
-function isEquippedMovesTuple(
-  value: unknown,
-): value is PlayerStoreState['equippedMoves'] {
-  return (
-    Array.isArray(value) &&
-    value.length === 4 &&
-    value.every((id) => typeof id === 'string')
-  )
+function normalizeMoveId(raw: unknown): PlayerMoveId | null {
+  if (typeof raw !== 'string') return null
+  const upper = raw.toUpperCase() as PlayerMoveId
+  return MOVES[upper] ? upper : null
+}
+
+function normalizeEquippedMoves(raw: unknown): PlayerStoreState['equippedMoves'] {
+  const rawEquipped = Array.isArray(raw) ? raw : []
+  const normalized = rawEquipped.map(normalizeMoveId)
+  return [
+    normalized[0] ?? DEFAULT_EQUIPPED_MOVES[0],
+    normalized[1] ?? DEFAULT_EQUIPPED_MOVES[1],
+    normalized[2] ?? DEFAULT_EQUIPPED_MOVES[2],
+    normalized[3] ?? DEFAULT_EQUIPPED_MOVES[3],
+  ]
 }
 
 export async function saveProgressionToAccount(s: PlayerStoreState): Promise<void> {
@@ -72,7 +80,7 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
       | null
 
     return {
-      equippedMoves: data.moves_equipped as AccountProgression['equippedMoves'] | undefined,
+      equippedMoves: normalizeEquippedMoves(data.moves_equipped),
       archetype: avatarConfig?.archetype,
       skills: avatarConfig?.skills,
     }
@@ -115,9 +123,7 @@ export async function hydrateFromAccount(): Promise<void> {
     ...state,
     archetype: data.archetype ?? state.archetype,
     skills: data.skills ?? state.skills,
-    equippedMoves: isEquippedMovesTuple(data.equippedMoves)
-      ? data.equippedMoves
-      : state.equippedMoves,
+    equippedMoves: data.equippedMoves ?? state.equippedMoves,
   }
   for (const listener of listeners) {
     listener()

@@ -112,6 +112,14 @@ const SKILL_MOVE_COLOR_CLASS: Record<MoveSkill, string> = {
 
 export function getMoveUiMeta(id: PlayerMoveId) {
   const m = MOVES[id]
+  if (!m) {
+    return {
+      move: id,
+      label: String(id),
+      description: '',
+      className: '',
+    }
+  }
   return {
     move: id,
     label: m.displayName,
