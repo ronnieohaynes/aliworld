@@ -67,33 +67,33 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'wake',
     isComplete: (ctx) => ctx.gatingTalkedCount >= 1,
-    getText: () => 'wake up.',
+    getText: () => "you're awake. talk to the people around you.",
   },
   {
     id: 'find-self',
     isComplete: (ctx) => ctx.allGatingTalked,
     getText: (ctx) =>
-      `find out what you are. (${ctx.gatingTalkedCount}/${ctx.gatingTalkedTotal})`,
+      `talk to everyone on the block. (${ctx.gatingTalkedCount}/${ctx.gatingTalkedTotal})`,
   },
   {
     id: 'read-notice',
     isComplete: (ctx) => ctx.hasNotice,
-    getText: () => 'read the notice.',
+    getText: () => 'read the notice the last one gave you.',
   },
   {
     id: 'walker',
     isComplete: (ctx) => ctx.walkerConverted,
-    getText: () => 'convert walker.',
+    getText: () => 'find walker in daly city. show him.',
   },
   {
     id: 'jaclyn',
     isComplete: (ctx) => ctx.jaclynConverted,
-    getText: () => 'convert jaclyn.',
+    getText: () => 'find jaclyn in daly city. convert her too.',
   },
   {
     id: 'mark',
     isComplete: (ctx) => ctx.markDefeated,
-    getText: () => 'confront mark at the darkline.',
+    getText: () => 'mark guards the darkline. get through him.',
   },
   {
     id: 'san-bruno',
@@ -103,12 +103,12 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'cafe',
     isComplete: (ctx) => ctx.cafeSeen,
-    getText: () => "the cafe. someone's there.",
+    getText: () => 'go to the cafe in san bruno.',
   },
   {
     id: 'darkline',
     isComplete: () => false,
-    getText: () => 'take the darkline.',
+    getText: () => "take the darkline. (the world's bigger now.)",
   },
 ]
 
