@@ -6,10 +6,28 @@ import {
 import { MOVES } from '../data/moveDefinitions'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
+import { isCollectibleArtifactId, type CollectibleArtifactId } from '../data/artifacts'
 import { getAuthState } from './authStore'
-import { serialize as artifactSerialize, subscribeArtifactStore } from './artifactStore'
-import { serialize as quest1Serialize, subscribeQuest1Store } from './quest1Store'
-import { serialize as worldMemorySerialize, subscribeWorldMemoryStore } from './worldMemory'
+import {
+  applyState as applyArtifactState,
+  resetState as resetArtifactState,
+  serialize as artifactSerialize,
+  subscribeArtifactStore,
+} from './artifactStore'
+import {
+  applyState as applyQuest1State,
+  resetState as resetQuest1State,
+  serialize as quest1Serialize,
+  subscribeQuest1Store,
+  type Quest1Serialized,
+} from './quest1Store'
+import {
+  applyState as applyWorldMemoryState,
+  resetState as resetWorldMemoryState,
+  serialize as worldMemorySerialize,
+  subscribeWorldMemoryStore,
+  type WorldMemoryState,
+} from './worldMemory'
 import {
   awardMoveXp,
   computePlayerLevel,
@@ -22,6 +40,25 @@ type AccountProgression = {
   archetype: PlayerStoreState['archetype']
   skills: PlayerStoreState['skills']
   equippedMoves: PlayerStoreState['equippedMoves']
+  quest1?: Partial<Quest1Serialized>
+  worldMemory?: Partial<WorldMemoryState>
+  artifacts?: CollectibleArtifactId[]
+}
+
+type AccountAvatarConfig = {
+  archetype?: ArchetypeId
+  skills?: SkillsState
+  quest1?: Partial<Quest1Serialized>
+  worldMemory?: Partial<WorldMemoryState>
+  artifacts?: unknown
+}
+
+function normalizeArtifacts(raw: unknown): CollectibleArtifactId[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter(
+    (id): id is CollectibleArtifactId =>
+      typeof id === 'string' && isCollectibleArtifactId(id),
+  )
 }
 
 const DEFAULT_EQUIPPED_MOVES: PlayerStoreState['equippedMoves'] = [
@@ -84,14 +121,15 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
 
     if (error || !data) return null
 
-    const avatarConfig = data.avatar_config as
-      | { archetype?: ArchetypeId; skills?: SkillsState }
-      | null
+    const avatarConfig = data.avatar_config as AccountAvatarConfig | null
 
     return {
       equippedMoves: normalizeEquippedMoves(data.moves_equipped),
       archetype: avatarConfig?.archetype,
       skills: avatarConfig?.skills,
+      quest1: avatarConfig?.quest1,
+      worldMemory: avatarConfig?.worldMemory,
+      artifacts: normalizeArtifacts(avatarConfig?.artifacts),
     }
   } catch {
     return null
@@ -140,6 +178,7 @@ export async function hydrateFromAccount(): Promise<void> {
   if (!data) return
 
   skipAccountSave = true
+
   state = {
     ...state,
     archetype: data.archetype ?? state.archetype,
@@ -149,6 +188,11 @@ export async function hydrateFromAccount(): Promise<void> {
   for (const listener of listeners) {
     listener()
   }
+
+  applyQuest1State(data.quest1 ?? {})
+  applyWorldMemoryState(data.worldMemory ?? {})
+  applyArtifactState(data.artifacts ?? [])
+
   skipAccountSave = false
 }
 
@@ -170,6 +214,9 @@ export function resetProgression(): void {
   for (const listener of listeners) {
     listener()
   }
+  resetQuest1State()
+  resetWorldMemoryState()
+  resetArtifactState()
   skipAccountSave = false
 }
 
