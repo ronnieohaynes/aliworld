@@ -14,35 +14,27 @@ import {
   type SkillsState,
 } from './skillStore'
 
-const STORAGE_KEY = 'aliworld:player-progression:v1'
-
-type PersistedProgression = {
+type AccountProgression = {
   archetype: PlayerStoreState['archetype']
   skills: PlayerStoreState['skills']
   equippedMoves: PlayerStoreState['equippedMoves']
 }
 
-function loadProgression(): Partial<PersistedProgression> | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as Partial<PersistedProgression>
-  } catch {
-    return null
-  }
-}
+const DEFAULT_EQUIPPED_MOVES: PlayerStoreState['equippedMoves'] = [
+  'STRIKE',
+  'SLIP',
+  'HOLD',
+  'WHISPER',
+]
 
-function saveProgression(s: PlayerStoreState): void {
-  try {
-    const data: PersistedProgression = {
-      archetype: s.archetype,
-      skills: s.skills,
-      equippedMoves: s.equippedMoves,
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  } catch {
-    // storage unavailable — progression still lives for this session
-  }
+function isEquippedMovesTuple(
+  value: unknown,
+): value is PlayerStoreState['equippedMoves'] {
+  return (
+    Array.isArray(value) &&
+    value.length === 4 &&
+    value.every((id) => typeof id === 'string')
+  )
 }
 
 export async function saveProgressionToAccount(s: PlayerStoreState): Promise<void> {
@@ -62,7 +54,7 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<voi
   }
 }
 
-export async function loadProgressionFromAccount(): Promise<Partial<PersistedProgression> | null> {
+export async function loadProgressionFromAccount(): Promise<Partial<AccountProgression> | null> {
   const userId = getAuthState().session?.user?.id
   if (!userId) return null
 
@@ -80,7 +72,7 @@ export async function loadProgressionFromAccount(): Promise<Partial<PersistedPro
       | null
 
     return {
-      equippedMoves: data.moves_equipped as PersistedProgression['equippedMoves'] | undefined,
+      equippedMoves: data.moves_equipped as AccountProgression['equippedMoves'] | undefined,
       archetype: avatarConfig?.archetype,
       skills: avatarConfig?.skills,
     }
@@ -100,24 +92,44 @@ export type PlayerStoreState = {
   showDebug: boolean
 }
 
-const savedProgression = loadProgression()
-
 let state: PlayerStoreState = {
-  archetype: savedProgression?.archetype ?? 'atk',
+  archetype: 'atk',
   accessories: [],
-  skills: savedProgression?.skills ?? createDefaultSkills(),
-  equippedMoves: savedProgression?.equippedMoves ?? ['STRIKE', 'SLIP', 'HOLD', 'WHISPER'],
+  skills: createDefaultSkills(),
+  equippedMoves: DEFAULT_EQUIPPED_MOVES,
   hp: null,
   showDebug: false,
 }
 
 const listeners = new Set<() => void>()
+let skipAccountSave = false
 
 function emit(): void {
-  saveProgression(state)
+  if (!skipAccountSave) {
+    void saveProgressionToAccount(state)
+  }
   for (const listener of listeners) {
     listener()
   }
+}
+
+export async function hydrateFromAccount(): Promise<void> {
+  const data = await loadProgressionFromAccount()
+  if (!data) return
+
+  skipAccountSave = true
+  state = {
+    ...state,
+    archetype: data.archetype ?? state.archetype,
+    skills: data.skills ?? state.skills,
+    equippedMoves: isEquippedMovesTuple(data.equippedMoves)
+      ? data.equippedMoves
+      : state.equippedMoves,
+  }
+  for (const listener of listeners) {
+    listener()
+  }
+  skipAccountSave = false
 }
 
 export function getPlayerStoreState(): PlayerStoreState {
@@ -222,14 +234,9 @@ export function resetPlayerProgressForNewGame(): void {
     archetype: 'atk',
     accessories: [],
     skills: createDefaultSkills(),
-    equippedMoves: ['STRIKE', 'SLIP', 'HOLD', 'WHISPER'],
+    equippedMoves: DEFAULT_EQUIPPED_MOVES,
     hp: null,
     showDebug: false,
-  }
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    // ignore
   }
   emit()
 }
