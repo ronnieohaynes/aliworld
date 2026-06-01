@@ -97,10 +97,22 @@
   background: #44cc66;
 }
 
-.battle-screen__status {
-  min-height: 14px;
-  font-size: 10px;
-  letter-spacing: 0.5px;
+.battle-screen__status-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 0;
+  align-items: center;
+}
+
+.battle-screen__status-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border: 1px solid #2a2a3e;
+  border-radius: 999px;
+  background: rgba(26, 26, 46, 0.92);
+  font-size: 9px;
+  letter-spacing: 0.04em;
   color: #b8b8d0;
   text-transform: lowercase;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
@@ -116,10 +128,11 @@
 
 .battle-screen__telegraph {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 16px;
-  color: #c8c8d8;
+  color: #b8b8d0;
   text-align: center;
+  text-transform: lowercase;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
 
@@ -196,6 +209,10 @@
   background: linear-gradient(180deg, rgba(8, 8, 14, 0.55) 0%, rgba(8, 8, 14, 0.82) 100%);
 }
 
+.battle-screen__player-hud .battle-screen__status-tags {
+  justify-content: center;
+}
+
 .battle-screen__player-label {
   display: flex;
   align-items: center;
@@ -212,14 +229,6 @@
 .battle-screen__player-level {
   font-size: 11px;
   letter-spacing: 1px;
-}
-
-.battle-screen__brace {
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.5px;
-  color: #4488cc;
-  text-transform: lowercase;
 }
 
 .battle-screen__hp-numbers {

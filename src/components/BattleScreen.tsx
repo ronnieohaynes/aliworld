@@ -29,7 +29,6 @@ import {
   BATTLE_ROUND_END_GAP_MS,
   battleReducer,
   createInitialBattleState,
-  getEnemyStatusText,
   getTelegraphText,
   type PlayerMove,
 } from '../store/battleStore'
@@ -45,12 +44,53 @@ import {
   getShowDebug,
 } from '../store/playerStore'
 import { getMoveUiMeta } from '../data/moves'
+import type { CombatStatusState } from '../data/combatTypes'
 import { BattlePlacementGrid } from './BattlePlacementGrid'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
 
+type StatusTag = {
+  label: string
+  turns: number
+}
+
+function getFighterStatusTags(
+  side: 'player' | 'enemy',
+  status: CombatStatusState,
+): StatusTag[] {
+  if (side === 'enemy') {
+    const tags: StatusTag[] = []
+    if (status.enemyBleed > 0) tags.push({ label: 'bleed', turns: status.enemyBleed })
+    if (status.enemyShake > 0) tags.push({ label: 'shake', turns: status.enemyShake })
+    if (status.enemyStun > 0) tags.push({ label: 'stun', turns: status.enemyStun })
+    if (status.enemySlow > 0) tags.push({ label: 'slow', turns: status.enemySlow })
+    if (status.enemyMiss > 0) tags.push({ label: 'miss', turns: status.enemyMiss })
+    return tags
+  }
+
+  const tags: StatusTag[] = []
+  if (status.playerBrace > 0) tags.push({ label: 'brace', turns: status.playerBrace })
+  if (status.playerDouble > 0) tags.push({ label: 'double', turns: status.playerDouble })
+  if (status.playerReflect && status.playerReflect.turns > 0) {
+    tags.push({ label: 'reflect', turns: status.playerReflect.turns })
+  }
+  return tags
+}
+
+function FighterStatusTags({ tags }: { tags: StatusTag[] }) {
+  if (tags.length === 0) return null
+  return (
+    <div className="battle-screen__status-tags" aria-label="Status effects">
+      {tags.map(({ label, turns }) => (
+        <span key={label} className="battle-screen__status-tag">
+          {label} {turns}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 type Props = {
   npcId: string
@@ -168,7 +208,8 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
   const busy = state.phase !== 'player'
   const playerHpPct = Math.max(0, (state.playerHp / state.playerStats.maxHp) * 100)
   const enemyHpPct = Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)
-  const enemyStatus = getEnemyStatusText(state)
+  const enemyStatusTags = getFighterStatusTags('enemy', state.combatStatus)
+  const playerStatusTags = getFighterStatusTags('player', state.combatStatus)
   const playerLevel = getPlayerLevel()
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
   const showWinNarration = state.phase === 'ended' && state.result === 'win'
@@ -303,7 +344,7 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
               style={{ width: `${enemyHpPct}%` }}
             />
           </div>
-          <div className="battle-screen__status">{enemyStatus || '\u00a0'}</div>
+          <FighterStatusTags tags={enemyStatusTags} />
         </section>
 
         <section className="battle-screen__telegraph-row" aria-live="polite">
@@ -372,9 +413,6 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
             >
               LVL {playerLevel}
             </span>
-            {state.combatStatus.playerBrace > 0 && (
-              <span className="battle-screen__brace">braced</span>
-            )}
           </div>
           <div className="battle-screen__hp-track">
             <div
@@ -385,6 +423,7 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
           <div className="battle-screen__hp-numbers">
             {state.playerHp} / {state.playerStats.maxHp}
           </div>
+          <FighterStatusTags tags={playerStatusTags} />
         </section>
 
         <section className="battle-screen__action">
