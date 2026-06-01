@@ -18,10 +18,9 @@ import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
-import { StatsScreen } from './StatsScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
-import { SkillTreeScreen } from './SkillTreeScreen'
+import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe } from './BattleEntryWipe'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
@@ -69,13 +68,12 @@ export function GameScreen() {
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
   const [showFannyPack, setShowFannyPack] = useState(false)
-  const [showStats, setShowStats] = useState(false)
-  const [showSkillTree, setShowSkillTree] = useState(false)
+  const [showLoadout, setShowLoadout] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
-  const [menuEntryWipe, setMenuEntryWipe] = useState<'fanny-pack' | 'stats' | null>(null)
+  const [menuEntryWipe, setMenuEntryWipe] = useState<'fanny-pack' | null>(null)
   const startMenuRef = useRef<StartMenuHandle>(null)
-  const menuEntryTargetRef = useRef<'fanny-pack' | 'stats' | null>(null)
+  const menuEntryTargetRef = useRef<'fanny-pack' | null>(null)
   const [worldEntryActive, setWorldEntryActive] = useState(true)
   const [worldEntryReady, setWorldEntryReady] = useState(false)
 
@@ -186,9 +184,8 @@ export function GameScreen() {
       }
       if (
         worldEntryActive ||
-        showStats ||
+        showLoadout ||
         showFannyPack ||
-        showSkillTree ||
         battleNpcId ||
         battleEntryWipe ||
         menuEntryWipe
@@ -206,9 +203,8 @@ export function GameScreen() {
     battleNpcId,
     canOpenStartMenu,
     showFannyPack,
-    showSkillTree,
+    showLoadout,
     showStartMenu,
-    showStats,
     menuEntryWipe,
     worldEntryActive,
   ])
@@ -341,7 +337,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleEntryWipe || menuEntryWipe || battleNpcId || showStats || showFannyPack || showSkillTree)
+    if (battleEntryWipe || menuEntryWipe || battleNpcId || showFannyPack || showLoadout)
       return
     openNearbyNpcDialogue()
   }, [
@@ -349,9 +345,8 @@ export function GameScreen() {
     advanceDialogue,
     battleEntryWipe,
     battleNpcId,
-    showStats,
     showFannyPack,
-    showSkillTree,
+    showLoadout,
     showStartMenu,
     menuEntryWipe,
     worldEntryActive,
@@ -407,35 +402,21 @@ export function GameScreen() {
     returnToStartMenuIfPending()
   }, [returnToStartMenuIfPending])
 
-  const handleOpenStats = useCallback(() => {
+  const handleOpenLoadout = useCallback(() => {
     if (worldEntryActive || showStartMenu) return
-    setShowStats(true)
-  }, [showStartMenu])
+    setShowLoadout(true)
+  }, [showStartMenu, worldEntryActive])
 
-  const handleStatsClose = useCallback(() => {
-    setShowStats(false)
-    returnToStartMenuIfPending()
-  }, [returnToStartMenuIfPending])
-
-  const handleSkillTreeClose = useCallback(() => {
-    setShowSkillTree(false)
-    returnToStartMenuIfPending()
-  }, [returnToStartMenuIfPending])
-
-  const beginMenuEntryTransition = useCallback(
-    (target: 'fanny-pack' | 'stats') => {
-      menuEntryTargetRef.current = target
-      setShowStartMenu(false)
-      setMenuReturnPending(true)
-      setMenuEntryWipe(target)
-    },
-    [],
-  )
+  const beginMenuEntryTransition = useCallback((target: 'fanny-pack') => {
+    menuEntryTargetRef.current = target
+    setShowStartMenu(false)
+    setMenuReturnPending(true)
+    setMenuEntryWipe(target)
+  }, [])
 
   const handleMenuEntryMidpoint = useCallback(() => {
     const target = menuEntryTargetRef.current
     if (target === 'fanny-pack') setShowFannyPack(true)
-    else if (target === 'stats') setShowStats(true)
   }, [])
 
   const handleMenuEntryComplete = useCallback(() => {
@@ -452,13 +433,8 @@ export function GameScreen() {
         case 'fanny-pack':
           beginMenuEntryTransition('fanny-pack')
           break
-        case 'stats':
-          beginMenuEntryTransition('stats')
-          break
-        case 'moves':
-          setShowStartMenu(false)
-          setMenuReturnPending(true)
-          setShowSkillTree(true)
+        case 'loadout':
+          setShowLoadout(true)
           break
         case 'choose-midnight':
           setShowStartMenu(false)
@@ -489,9 +465,8 @@ export function GameScreen() {
     !battleEntryWipe &&
     !menuEntryWipe &&
     !showStartMenu &&
-    !showStats &&
+    !showLoadout &&
     !showFannyPack &&
-    !showSkillTree &&
     !showDarkline &&
     !showInterior
 
@@ -509,7 +484,7 @@ export function GameScreen() {
       <GameShell
         onSelect={handleToggleDebug}
         onFannyPack={handleFannyPack}
-        onScript={handleOpenStats}
+        onScript={handleOpenLoadout}
         onInteract={handleInteract}
         onStart={toggleStartMenu}
       >
@@ -548,9 +523,8 @@ export function GameScreen() {
                 worldEntryActive ||
                 !!battleEntryWipe ||
                 !!menuEntryWipe ||
-                showStats ||
                 showFannyPack ||
-                showSkillTree ||
+                showLoadout ||
                 showStartMenu
               }
               dialogueNpcId={dialogue?.npc.id ?? null}
@@ -613,7 +587,6 @@ export function GameScreen() {
             <WorldEntryWipe ready={worldEntryReady} onComplete={handleWorldEntryComplete} />
           )}
           <ArtifactAcquisitionToasts />
-          {showStats && <StatsScreen onClose={handleStatsClose} />}
           {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
           {showStartMenu && (
             <StartMenuScreen
@@ -624,7 +597,7 @@ export function GameScreen() {
           )}
         </div>
       </GameShell>
-      {showSkillTree && <SkillTreeScreen onClose={handleSkillTreeClose} />}
+      {showLoadout && <LoadoutScreen onClose={() => setShowLoadout(false)} />}
     </div>
   )
 }

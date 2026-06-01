@@ -10,8 +10,7 @@ import './StartMenuScreen.css'
 export type StartMenuAction =
   | 'resume'
   | 'fanny-pack'
-  | 'stats'
-  | 'moves'
+  | 'loadout'
   | 'choose-midnight'
   | 'new-game'
   | 'sign-out'
@@ -19,8 +18,7 @@ export type StartMenuAction =
 const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'resume', label: 'resume' },
   { id: 'fanny-pack', label: 'fanny pack' },
-  { id: 'stats', label: 'stats' },
-  { id: 'moves', label: 'moves' },
+  { id: 'loadout', label: 'loadout' },
   { id: 'choose-midnight', label: 'choose MIDNIGHT' },
   { id: 'new-game', label: 'new game', danger: true },
   { id: 'sign-out', label: 'sign out' },
