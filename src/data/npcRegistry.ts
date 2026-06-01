@@ -41,9 +41,18 @@ const WALKER: NpcCombatEntry = {
   battleLocation: 'daly_city',
 }
 
+/** TEMP: no-stakes grind target — huge HP, no damage. delete after testing. */
+const DUMMY: NpcCombatEntry = {
+  ...WALKER,
+  id: 'dummy',
+  displayName: 'Dummy',
+  stats: { hp: 40, maxHp: 40, atk: 0, def: 0, spd: 1 },
+}
+
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   mark: { ...WALKER, id: 'mark' },
+  dummy: DUMMY,
 }
 
 export function isAttackingMove(move: EnemyMove): boolean {
