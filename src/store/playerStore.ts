@@ -7,6 +7,9 @@ import { MOVES } from '../data/moveDefinitions'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
 import { getAuthState } from './authStore'
+import { serialize as artifactSerialize, subscribeArtifactStore } from './artifactStore'
+import { serialize as quest1Serialize, subscribeQuest1Store } from './quest1Store'
+import { serialize as worldMemorySerialize, subscribeWorldMemoryStore } from './worldMemory'
 import {
   awardMoveXp,
   computePlayerLevel,
@@ -53,7 +56,13 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<voi
     const { error } = await supabase.from('aw_profiles').upsert({
       user_id: userId,
       moves_equipped: s.equippedMoves,
-      avatar_config: { archetype: s.archetype, skills: s.skills },
+      avatar_config: {
+        archetype: s.archetype,
+        skills: s.skills,
+        quest1: quest1Serialize(),
+        worldMemory: worldMemorySerialize(),
+        artifacts: artifactSerialize(),
+      },
       updated_at: new Date().toISOString(),
     })
     if (error) console.error('[save]', error.message)
@@ -105,14 +114,26 @@ let state: PlayerStoreState = createDefaultPlayerState()
 const listeners = new Set<() => void>()
 let skipAccountSave = false
 
+function persistProgressionToAccount(): void {
+  if (skipAccountSave) return
+  void saveProgressionToAccount(state)
+}
+
 function emit(): void {
-  if (!skipAccountSave) {
-    void saveProgressionToAccount(state)
-  }
+  persistProgressionToAccount()
   for (const listener of listeners) {
     listener()
   }
 }
+
+/** Save current progression + quest/world/artifact state to the account. */
+export function triggerAccountProgressionSave(): void {
+  persistProgressionToAccount()
+}
+
+subscribeQuest1Store(persistProgressionToAccount)
+subscribeWorldMemoryStore(persistProgressionToAccount)
+subscribeArtifactStore(persistProgressionToAccount)
 
 export async function hydrateFromAccount(): Promise<void> {
   const data = await loadProgressionFromAccount()
