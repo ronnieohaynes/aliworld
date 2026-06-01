@@ -635,7 +635,7 @@ export function GameScreen() {
               <img
                 className="game-screen-interior__bg"
                 src={INTERIOR_BG_SRC}
-                alt="13 Gallons interior"
+                alt="cornerstone interior"
                 draggable={false}
               />
               {!dialogue && (

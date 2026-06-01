@@ -72,7 +72,7 @@ const SAN_BRUNO_TRIGGER_ZONES: TriggerZone[] = [
 export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   'daly-city': {
     id: 'daly-city',
-    label: 'DALY CITY',
+    label: '5ive',
     mapSrc: publicAsset('Assets/tileset/daly-city-map.png'),
     worldWidth: 1254,
     worldHeight: 1254,
@@ -86,7 +86,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   },
   'san-bruno': {
     id: 'san-bruno',
-    label: 'SAN BRUNO',
+    label: 'hillcrest',
     mapSrc: SAN_BRUNO_MAP_SRC,
     worldWidth: 1254,
     worldHeight: 1254,
@@ -106,6 +106,6 @@ export const DARKLINE_DESTINATIONS: CityId[] = [
 ]
 
 export const INACTIVE_DESTINATIONS: { label: string; status: string }[] = [
-  { label: 'SOUTH CITY', status: 'COMING SOON' },
-  { label: 'OAKLAND', status: 'COMING SOON' },
+  { label: 'southside', status: 'COMING SOON' },
+  { label: 'the town', status: 'COMING SOON' },
 ]

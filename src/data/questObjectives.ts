@@ -83,12 +83,12 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'walker',
     isComplete: (ctx) => ctx.walkerConverted,
-    getText: () => 'find walker in daly city. show him.',
+    getText: () => 'find walker in 5ive. show him.',
   },
   {
     id: 'jaclyn',
     isComplete: (ctx) => ctx.jaclynConverted,
-    getText: () => 'find jaclyn in daly city. convert her too.',
+    getText: () => 'find jaclyn in 5ive. convert her too.',
   },
   {
     id: 'mark',
@@ -98,12 +98,12 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'san-bruno',
     isComplete: (ctx) => ctx.inSanBruno,
-    getText: () => 'take the darkline to san bruno.',
+    getText: () => 'take the darkline to hillcrest.',
   },
   {
     id: 'cafe',
     isComplete: (ctx) => ctx.cafeSeen,
-    getText: () => 'go to the cafe in san bruno.',
+    getText: () => 'go to the cafe in hillcrest.',
   },
   {
     id: 'darkline',

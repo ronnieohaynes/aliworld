@@ -261,7 +261,7 @@ export function CustomizationScreen({ onClose }: Props) {
       >
         {panelView === 'main' ? (
           <>
-            <h1 className="customization-screen__panel-title">13 GALLONS</h1>
+            <h1 className="customization-screen__panel-title">cornerstone</h1>
             <nav className="customization-screen__options" aria-label="Customization categories">
               {CUSTOMIZATION_OPTIONS.map((label) => (
                 <button
