@@ -38,8 +38,7 @@ const WALKER: NpcCombatEntry = {
   displayName: 'walker',
   stats: { hp: 30, maxHp: 30, atk: 5, def: 2, spd: 4 },
   moves: ['STRIKE', 'SLIP'],
-  losingLine:
-    "You're kinda strong. Maybe Danny does have something to fear after all.",
+  losingLine: 'i get it now. tell me where to go.',
   spriteSrc: WALKER_SPRITE,
   battleLocation: 'five',
 }
@@ -69,7 +68,7 @@ const MARK: NpcCombatEntry = {
   displayName: 'mark',
   stats: { hp: 70, maxHp: 70, atk: 11, def: 6, spd: 4 },
   moves: ['STRIKE', 'HOLD', 'SLIP', 'LOOP'],
-  losingLine: WALKER.losingLine,
+  losingLine: 'huh. ...where do you want me.',
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',
 }

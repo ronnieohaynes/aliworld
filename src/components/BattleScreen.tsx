@@ -497,9 +497,10 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
           {showWinNarration ? (
             <button
               type="button"
-              className="battle-screen__narration"
+              className="battle-screen__narration battle-screen__narration--payoff"
               onClick={handleNarrationContinue}
             >
+              <span className="battle-screen__narration-label">{state.npc.displayName}</span>
               <p className="battle-screen__narration-text">{state.npc.losingLine}</p>
               <span className="battle-screen__narration-continue">tap to continue ▸</span>
             </button>
