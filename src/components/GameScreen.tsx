@@ -65,6 +65,15 @@ export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
 
 const INTERIOR_BG_SRC = publicAsset('Assets/Backgrounds/13gallons-interior.png')
 
+const NARRATOR_NPC: NpcData = {
+  id: 'narrator',
+  name: '',
+  x: 0,
+  y: 0,
+  lines: [],
+  color: '#000',
+}
+
 /** How often to push live coords into the account save buffer while exploring. */
 const LOCATION_REPORT_INTERVAL_MS = 3_000
 
@@ -358,6 +367,22 @@ export function GameScreen() {
     })
   }, [])
 
+  const showNarration = useCallback((lines: string[], onComplete?: () => void) => {
+    setDialogue({
+      npc: NARRATOR_NPC,
+      lineIndex: 0,
+      speakerLines: lines.map((text) => ({ speaker: '', text })),
+      onComplete,
+    })
+  }, [])
+
+  const showMarkVictoryNarration = useCallback(() => {
+    showNarration([
+      '[red jacket equips]',
+      "the darkline's open now. take it south.",
+    ])
+  }, [showNarration])
+
   const showMarkGateDialogue = useCallback(() => {
     beginNpcDialogue(MARK_NPC, { blocked: true })
   }, [beginNpcDialogue])
@@ -646,6 +671,7 @@ export function GameScreen() {
   }, [])
 
   const handleBattleEnd = useCallback((result: 'win' | 'lose') => {
+    let markWon = false
     setBattleNpcId((activeId) => {
       if (result === 'win') {
         if (activeId === WALKER_NPC_ID) setWalkerConverted()
@@ -653,12 +679,16 @@ export function GameScreen() {
         if (activeId === MARK_NPC_ID) {
           setMarkDefeated()
           collectArtifact('subway-pass')
+          markWon = true
         }
       }
       return null
     })
+    if (markWon) {
+      showMarkVictoryNarration()
+    }
     reportCurrentLocation()
-  }, [reportCurrentLocation])
+  }, [reportCurrentLocation, showMarkVictoryNarration])
 
   const returnToStartMenuIfPending = useCallback(() => {
     if (menuReturnPending) {
