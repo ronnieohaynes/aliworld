@@ -7,11 +7,13 @@ import { clearMidnightVariant } from './characterStore'
 import { stopSoundtrack } from './musicStore'
 import { resetPlayerProgressForNewGame } from './playerStore'
 import { resetQuest1ForDebug } from './quest1Store'
+import { resetQuest2ForDebug } from './quest2Store'
 
 /** Wipe all persisted progress and return to MIDNIGHT variant select (via clearMidnightVariant). */
 export function performNewGameReset(): void {
   resetArtifactsForDebug()
   resetQuest1ForDebug()
+  resetQuest2ForDebug()
   resetPlayerProgressForNewGame()
   stopSoundtrack()
   clearMidnightVariant()

@@ -23,6 +23,13 @@ import {
   type Quest1Serialized,
 } from './quest1Store'
 import {
+  applyState as applyQuest2State,
+  resetState as resetQuest2State,
+  serialize as quest2Serialize,
+  subscribeQuest2Store,
+  type Quest2Serialized,
+} from './quest2Store'
+import {
   applyState as applyWorldMemoryState,
   resetState as resetWorldMemoryState,
   serialize as worldMemorySerialize,
@@ -45,6 +52,7 @@ type AccountProgression = {
   skills: PlayerStoreState['skills']
   equippedMoves: PlayerStoreState['equippedMoves']
   quest1?: Partial<Quest1Serialized>
+  quest2?: Partial<Quest2Serialized>
   worldMemory?: Partial<WorldMemoryState>
   artifacts?: CollectibleArtifactId[]
   lastCity?: CityId
@@ -56,6 +64,7 @@ type AccountAvatarConfig = {
   archetype?: ArchetypeId
   skills?: SkillsState
   quest1?: Partial<Quest1Serialized>
+  quest2?: Partial<Quest2Serialized>
   worldMemory?: Partial<WorldMemoryState>
   artifacts?: unknown
   lastCity?: unknown
@@ -152,6 +161,7 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<voi
         archetype: s.archetype,
         skills: s.skills,
         quest1: quest1Serialize(),
+        quest2: quest2Serialize(),
         worldMemory: worldMemorySerialize(),
         artifacts: artifactSerialize(),
         ...(lastLocation
@@ -193,6 +203,7 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
       archetype: avatarConfig?.archetype,
       skills: avatarConfig?.skills,
       quest1: avatarConfig?.quest1,
+      quest2: avatarConfig?.quest2,
       worldMemory: avatarConfig?.worldMemory,
       artifacts: normalizeArtifacts(avatarConfig?.artifacts),
       ...(lastCity !== undefined && lastX !== undefined && lastY !== undefined
@@ -238,6 +249,7 @@ export function triggerAccountProgressionSave(): void {
 }
 
 subscribeQuest1Store(persistProgressionToAccount)
+subscribeQuest2Store(persistProgressionToAccount)
 subscribeWorldMemoryStore(persistProgressionToAccount)
 subscribeArtifactStore(persistProgressionToAccount)
 
@@ -262,6 +274,7 @@ export async function hydrateFromAccount(): Promise<void> {
         }
 
         applyQuest1State(data.quest1 ?? {})
+        applyQuest2State(data.quest2 ?? {})
         applyWorldMemoryState(data.worldMemory ?? {})
         applyArtifactState(data.artifacts ?? [])
 
@@ -306,6 +319,7 @@ export function resetProgression(): void {
     listener()
   }
   resetQuest1State()
+  resetQuest2State()
   resetWorldMemoryState()
   resetArtifactState()
   skipAccountSave = false
