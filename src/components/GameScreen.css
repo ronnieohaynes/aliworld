@@ -23,6 +23,17 @@
   touch-action: none;
 }
 
+.game-screen-battle-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 150;
+  pointer-events: none;
+}
+
+.game-screen-battle-layer > * {
+  pointer-events: auto;
+}
+
 .game-screen-interact-hint {
   position: absolute;
   bottom: 118px;

@@ -1,0 +1,93 @@
+.battle-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px 20px;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  cursor: pointer;
+}
+
+.battle-tutorial__dim-full {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 8, 14, 0.78);
+  pointer-events: none;
+}
+
+.battle-tutorial__spotlight {
+  position: fixed;
+  border: 2px solid #c084fc;
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(8, 8, 14, 0.78);
+  pointer-events: none;
+  transition:
+    top 180ms ease,
+    left 180ms ease,
+    width 180ms ease,
+    height 180ms ease;
+}
+
+.battle-tutorial__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 520px);
+  padding: 14px 16px 12px;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  background: rgba(10, 10, 18, 0.96);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  cursor: default;
+}
+
+.battle-tutorial__text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #f4e8c1;
+  text-transform: lowercase;
+}
+
+.battle-tutorial__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.battle-tutorial__next {
+  border: 1px solid #c084fc;
+  border-radius: 4px;
+  padding: 6px 12px;
+  background: rgba(192, 132, 252, 0.12);
+  color: #f4e8c1;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.battle-tutorial__next:hover {
+  background: rgba(192, 132, 252, 0.22);
+}
+
+.battle-tutorial__skip {
+  border: none;
+  padding: 4px 0;
+  background: transparent;
+  color: #9696b0;
+  font: inherit;
+  font-size: 11px;
+  text-transform: lowercase;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.battle-tutorial__skip:hover {
+  color: #c084fc;
+}

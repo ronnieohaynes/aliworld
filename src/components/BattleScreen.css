@@ -232,6 +232,13 @@
   justify-content: center;
 }
 
+.battle-screen__player-status-anchor {
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .battle-screen__player-label {
   display: flex;
   align-items: center;

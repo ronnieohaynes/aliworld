@@ -43,9 +43,18 @@ import {
   getEquippedMoves,
   getShowDebug,
 } from '../store/playerStore'
+import {
+  isBattleTutorialSeen,
+  setBattleTutorialSeen,
+  WALKER_NPC_ID,
+} from '../store/quest1Store'
 import { getMoveUiMeta } from '../data/moves'
 import type { CombatStatusState } from '../data/combatTypes'
 import { BattlePlacementGrid } from './BattlePlacementGrid'
+import {
+  BATTLE_TUTORIAL_STEPS,
+  BattleTutorialOverlay,
+} from './BattleTutorialOverlay'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
 
@@ -178,6 +187,10 @@ function drawEnemyBattleSprite(
 }
 
 export function BattleScreen({ npcId, onBattleEnd }: Props) {
+  const battleScreenRef = useRef<HTMLDivElement>(null)
+  const telegraphRowRef = useRef<HTMLElement>(null)
+  const movesRef = useRef<HTMLDivElement>(null)
+  const playerStatusRef = useRef<HTMLDivElement>(null)
   const playerCanvasRef = useRef<HTMLCanvasElement>(null)
   const enemyWrapRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLElement>(null)
@@ -195,6 +208,24 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
     npcId,
     (id) => createInitialBattleState(id),
   )
+
+  const [battleTutorialOpen, setBattleTutorialOpen] = useState(
+    () => npcId === WALKER_NPC_ID && !isBattleTutorialSeen(),
+  )
+  const [battleTutorialStep, setBattleTutorialStep] = useState(0)
+
+  const closeBattleTutorial = useCallback(() => {
+    setBattleTutorialOpen(false)
+    setBattleTutorialSeen()
+  }, [])
+
+  const advanceBattleTutorial = useCallback(() => {
+    if (battleTutorialStep >= BATTLE_TUTORIAL_STEPS.length - 1) {
+      closeBattleTutorial()
+      return
+    }
+    setBattleTutorialStep((step) => step + 1)
+  }, [battleTutorialStep, closeBattleTutorial])
 
   const prevEnemyHpRef = useRef(state.enemyHp)
   const prevPlayerHpRef = useRef(state.playerHp)
@@ -236,10 +267,11 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
 
   const handleMove = useCallback(
     (move: PlayerMove, slot: number) => {
+      if (battleTutorialOpen) return
       if (state.phase !== 'player') return
       dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
-    [state.phase],
+    [battleTutorialOpen, state.phase],
   )
 
   const handleNarrationContinue = useCallback(() => {
@@ -334,7 +366,11 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
   }, [state.npc.spriteSrc])
 
   return (
-    <div className="battle-screen" aria-label={`Battle vs ${state.npc.displayName}`}>
+    <div
+      ref={battleScreenRef}
+      className="battle-screen"
+      aria-label={`Battle vs ${state.npc.displayName}`}
+    >
       <div className="battle-screen__content">
         <section className="battle-screen__enemy-hud">
           <span className="battle-screen__enemy-name">{state.npc.displayName}</span>
@@ -347,7 +383,7 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
           <FighterStatusTags tags={enemyStatusTags} />
         </section>
 
-        <section className="battle-screen__telegraph-row" aria-live="polite">
+        <section className="battle-screen__telegraph-row" ref={telegraphRowRef} aria-live="polite">
           <p className="battle-screen__telegraph">{getTelegraphText(state)}</p>
         </section>
 
@@ -423,7 +459,9 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
           <div className="battle-screen__hp-numbers">
             {state.playerHp} / {state.playerStats.maxHp}
           </div>
-          <FighterStatusTags tags={playerStatusTags} />
+          <div ref={playerStatusRef} className="battle-screen__player-status-anchor">
+            <FighterStatusTags tags={playerStatusTags} />
+          </div>
         </section>
 
         <section className="battle-screen__action">
@@ -437,7 +475,12 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
               <span className="battle-screen__narration-continue">tap to continue ▸</span>
             </button>
           ) : (
-            <div className="battle-screen__moves" role="group" aria-label="Battle moves">
+            <div
+              ref={movesRef}
+              className="battle-screen__moves"
+              role="group"
+              aria-label="Battle moves"
+            >
               {battleMoveButtons.map(({ move, label, description, className }, slot) => {
                 const stolen = state.battleMove.snagStolen[slot]
                 const displayLabel = stolen
@@ -447,8 +490,8 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
                   <button
                     key={`${slot}-${move}-${stolen ?? ''}`}
                     type="button"
-                    className={`battle-screen__move ${className}${busy ? ' battle-screen__move--busy' : ''}`}
-                    disabled={busy}
+                    className={`battle-screen__move ${className}${busy || battleTutorialOpen ? ' battle-screen__move--busy' : ''}`}
+                    disabled={busy || battleTutorialOpen}
                     onClick={() => handleMove(move, slot)}
                   >
                     <span className="battle-screen__move-name">{displayLabel}</span>
@@ -460,6 +503,19 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
           )}
         </section>
       </div>
+      {battleTutorialOpen && (
+        <BattleTutorialOverlay
+          stepIndex={battleTutorialStep}
+          targetRefs={{
+            battle: battleScreenRef,
+            telegraph: telegraphRowRef,
+            moves: movesRef,
+            status: playerStatusRef,
+          }}
+          onNext={advanceBattleTutorial}
+          onSkip={closeBattleTutorial}
+        />
+      )}
     </div>
   )
 }

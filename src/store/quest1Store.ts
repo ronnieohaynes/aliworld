@@ -17,6 +17,7 @@ type Quest1State = {
   walkerConverted: boolean
   jaclynConverted: boolean
   cafeSceneSeen: boolean
+  battleTutorialSeen: boolean
 }
 
 function emptyQuest1State(): Quest1State {
@@ -26,6 +27,7 @@ function emptyQuest1State(): Quest1State {
     walkerConverted: false,
     jaclynConverted: false,
     cafeSceneSeen: false,
+    battleTutorialSeen: false,
   }
 }
 
@@ -58,6 +60,7 @@ function loadQuest1FromStorage(): Quest1State {
       walkerConverted: o.walkerConverted === true,
       jaclynConverted: o.jaclynConverted === true,
       cafeSceneSeen: o.cafeSceneSeen === true,
+      battleTutorialSeen: o.battleTutorialSeen === true,
     }
   } catch {
     return base
@@ -157,12 +160,24 @@ export function setCafeSceneSeen(): void {
   emit()
 }
 
+export function isBattleTutorialSeen(): boolean {
+  return state.battleTutorialSeen
+}
+
+export function setBattleTutorialSeen(): void {
+  if (state.battleTutorialSeen) return
+  state = { ...state, battleTutorialSeen: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export type Quest1Serialized = {
   markDefeated: boolean
   talkedGatingNpcs: Record<GatingNpcId, boolean>
   walkerConverted?: boolean
   jaclynConverted?: boolean
   cafeSceneSeen?: boolean
+  battleTutorialSeen?: boolean
 }
 
 export function serialize(): Quest1Serialized {
@@ -172,6 +187,7 @@ export function serialize(): Quest1Serialized {
     walkerConverted: state.walkerConverted,
     jaclynConverted: state.jaclynConverted,
     cafeSceneSeen: state.cafeSceneSeen,
+    battleTutorialSeen: state.battleTutorialSeen,
   }
 }
 
@@ -188,6 +204,7 @@ export function applyState(data: Partial<Quest1Serialized>): void {
     walkerConverted: data.walkerConverted === true,
     jaclynConverted: data.jaclynConverted === true,
     cafeSceneSeen: data.cafeSceneSeen === true,
+    battleTutorialSeen: data.battleTutorialSeen === true,
   }
   emit()
 }

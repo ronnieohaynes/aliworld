@@ -198,5 +198,5 @@ export const MANDO_NPC: NpcData = {
 }
 
 export const NPC_SIZE = 32
-/** Max feet-to-feet distance for talk / interact (must clear collision stop gap). */
-export const NPC_INTERACT_RANGE = 40
+/** Max distance to an NPC interact anchor for talk / interact. */
+export const NPC_INTERACT_RANGE = 48
