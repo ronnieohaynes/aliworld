@@ -90,7 +90,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       { skill: 'attack', amount: (r) => r.playerDmg * 3 },
       { skill: 'hp', amount: (r) => r.playerDmg },
     ],
-    uiDescription: 'wild sweep. bleed on crit. always hits something.',
+    uiDescription: 'wild sweep. crit applies bleed — chip each turn.',
     uiClassName: 'battle-screen__move--fury-sweep',
     playerLogLine: (r) =>
       `fury sweep. ${r.playerDmg}!${r.crit ? ' crit bleed.' : ''}`,
@@ -187,7 +187,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       { skill: 'luck', amount: (r) => (r.dodged && r.playerDmg > 0 ? 10 : 5) },
       { skill: 'hp', amount: 3 },
     ],
-    uiDescription: 'dodge and counter. break their rhythm.',
+    uiDescription: 'dodge and counter. avoid their incoming hit.',
     uiClassName: 'battle-screen__move--slip',
     playerLogLine: (r) => {
       const name = r.displayName.toLowerCase()
@@ -297,7 +297,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       },
       { skill: 'hp', amount: 3 },
     ],
-    uiDescription: 'brace. take less. set your feet.',
+    uiDescription: 'brace. take a fraction of the next hit.',
     uiClassName: 'battle-screen__move--hold',
     playerLogLine: (r) => {
       if (r.enemyAttacks) return `you braced. ${r.incoming} chip.`
@@ -390,7 +390,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       { skill: 'luck', amount: 4 },
       { skill: 'hp', amount: 2 },
     ],
-    uiDescription: 'rattle them. soften their next hit.',
+    uiDescription: 'rattle them. their next hit lands softer.',
     uiClassName: 'battle-screen__move--whisper',
     playerLogLine: (r) => {
       const name = r.displayName.toLowerCase()

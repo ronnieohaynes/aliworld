@@ -49,6 +49,11 @@ import {
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import { getMoveUiMeta } from '../data/moves'
+import { getEnemyMoveDef, type EnemyMoveId } from '../data/enemyMoves'
+import {
+  STATUS_EFFECT_HINTS,
+  STATUS_EFFECT_LEGEND,
+} from '../data/statusEffectCopy'
 import type { CombatStatusState } from '../data/combatTypes'
 import { BattlePlacementGrid } from './BattlePlacementGrid'
 import {
@@ -93,7 +98,11 @@ function FighterStatusTags({ tags }: { tags: StatusTag[] }) {
   return (
     <div className="battle-screen__status-tags" aria-label="Status effects">
       {tags.map(({ label, turns }) => (
-        <span key={label} className="battle-screen__status-tag">
+        <span
+          key={label}
+          className="battle-screen__status-tag"
+          title={STATUS_EFFECT_HINTS[label] ?? label}
+        >
           {label} {turns}
         </span>
       ))}
@@ -256,6 +265,10 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
   const showWinNarration = state.phase === 'ended' && state.result === 'win'
   const logLines = state.log.slice(-3)
+  const heavyTelegraph =
+    state.upcomingMove !== 'STUNNED' &&
+    state.phase !== 'ended' &&
+    getEnemyMoveDef(state.upcomingMove as EnemyMoveId).damageMult >= 1.6
 
   const finishBattle = useCallback(
     (result: 'win' | 'lose') => {
@@ -395,7 +408,11 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
         </section>
 
         <section className="battle-screen__telegraph-row" ref={telegraphRowRef} aria-live="polite">
-          <p className="battle-screen__telegraph">{getTelegraphText(state)}</p>
+          <p
+            className={`battle-screen__telegraph${heavyTelegraph ? ' battle-screen__telegraph--heavy' : ''}`}
+          >
+            {getTelegraphText(state)}
+          </p>
         </section>
 
         <section className="battle-screen__stage" ref={stageRef} aria-hidden>
@@ -473,6 +490,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
           <div ref={playerStatusRef} className="battle-screen__player-status-anchor">
             <FighterStatusTags tags={playerStatusTags} />
           </div>
+          <p className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
         </section>
 
         <section className="battle-screen__action">

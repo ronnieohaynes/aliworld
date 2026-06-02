@@ -150,6 +150,26 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
 
+.battle-screen__telegraph--heavy {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  color: #c084fc;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 12px rgba(192, 132, 252, 0.35);
+}
+
+.battle-screen__status-legend {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 8px;
+  line-height: 1.35;
+  color: #6a6a82;
+  text-align: center;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
 /* 3 — Character stage (background + fighters) */
 .battle-screen__stage {
   position: relative;
