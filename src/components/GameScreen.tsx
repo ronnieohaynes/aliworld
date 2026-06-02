@@ -156,6 +156,8 @@ export function GameScreen() {
   const [nearbyNpcId, setNearbyNpcId] = useState<string | null>(null)
   const [locationReady, setLocationReady] = useState(false)
   const pendingRestoreRef = useRef<{ city: CityId; x: number; y: number } | null>(null)
+  /** City to preload for world entry — resolved once after account hydrate. */
+  const [bootCityId, setBootCityId] = useState<CityId | null>(null)
 
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -191,18 +193,36 @@ export function GameScreen() {
     void whenAccountHydrated().then(() => {
       if (cancelled) return
       const saved = getLastSavedLocation()
-      if (!saved) {
-        setLocationReady(true)
+      if (saved) {
+        const pos = resolveSavedWorldPosition(saved.city, saved.x, saved.y)
+        pendingRestoreRef.current = { city: saved.city, x: pos.x, y: pos.y }
+        setCurrentCity(saved.city)
+        setBootCityId(saved.city)
         return
       }
-      const pos = resolveSavedWorldPosition(saved.city, saved.x, saved.y)
-      pendingRestoreRef.current = { city: saved.city, x: pos.x, y: pos.y }
-      setCurrentCity(saved.city)
+      setBootCityId('daly-city')
+      setLocationReady(true)
     })
     return () => {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!bootCityId) return
+    let cancelled = false
+    setWorldEntryReady(false)
+    void preloadWorldEntry(CITY_CONFIGS[bootCityId], selectedMidnightVariant)
+      .catch((err) => {
+        console.error('[world entry preload]', err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => {
+        if (!cancelled) setWorldEntryReady(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [bootCityId, selectedMidnightVariant])
 
   useEffect(() => {
     if (locationReady) return
@@ -214,18 +234,6 @@ export function GameScreen() {
     pendingRestoreRef.current = null
     setLocationReady(true)
   }, [currentCity, locationReady, worldEntryReady])
-
-  useEffect(() => {
-    let cancelled = false
-    setWorldEntryReady(false)
-    const entryCity = CITY_CONFIGS[currentCity]
-    void preloadWorldEntry(entryCity, selectedMidnightVariant).then(() => {
-      if (!cancelled) setWorldEntryReady(true)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [currentCity, selectedMidnightVariant])
 
   const handleWorldEntryComplete = useCallback(() => {
     setWorldEntryActive(false)

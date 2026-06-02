@@ -245,31 +245,35 @@ export async function hydrateFromAccount(): Promise<void> {
   if (hydrateInFlight) return hydrateInFlight
 
   hydrateInFlight = (async () => {
-    const data = await loadProgressionFromAccount()
     skipAccountSave = true
+    try {
+      const data = await loadProgressionFromAccount()
 
-    if (data) {
-      state = {
-        ...state,
-        archetype: data.archetype ?? state.archetype,
-        skills: data.skills ?? state.skills,
-        equippedMoves: data.equippedMoves ?? state.equippedMoves,
-      }
-      for (const listener of listeners) {
-        listener()
-      }
+      if (data) {
+        state = {
+          ...state,
+          archetype: data.archetype ?? state.archetype,
+          skills: data.skills ?? state.skills,
+          equippedMoves: data.equippedMoves ?? state.equippedMoves,
+        }
+        for (const listener of listeners) {
+          listener()
+        }
 
-      applyQuest1State(data.quest1 ?? {})
-      applyWorldMemoryState(data.worldMemory ?? {})
-      applyArtifactState(data.artifacts ?? [])
+        applyQuest1State(data.quest1 ?? {})
+        applyWorldMemoryState(data.worldMemory ?? {})
+        applyArtifactState(data.artifacts ?? [])
 
-      if (data.lastCity !== undefined && data.lastX !== undefined && data.lastY !== undefined) {
-        lastLocation = { city: data.lastCity, x: data.lastX, y: data.lastY }
+        if (data.lastCity !== undefined && data.lastX !== undefined && data.lastY !== undefined) {
+          lastLocation = { city: data.lastCity, x: data.lastX, y: data.lastY }
+        }
       }
+    } catch (err) {
+      console.error('[hydrate]', err instanceof Error ? err.message : String(err))
+    } finally {
+      skipAccountSave = false
+      accountHydrated = true
     }
-
-    skipAccountSave = false
-    accountHydrated = true
   })()
 
   try {
