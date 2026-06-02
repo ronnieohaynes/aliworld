@@ -111,6 +111,7 @@ export type PlayerMoveResolveOut = {
   missApplied: boolean
   doubleApplied: boolean
   reflectApplied: boolean
+  perfectGuardBonus?: boolean
 }
 
 export type MoveDefinition = {

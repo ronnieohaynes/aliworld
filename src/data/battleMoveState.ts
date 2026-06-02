@@ -23,6 +23,8 @@ export type BattleMoveState = {
   /** Pending counterweight mitigation for incoming this turn. */
   counterweightBlockPct: number | null
   counterweightReflectPct: number | null
+  /** Set after brace vs an enemy hit; next damage move gets a bonus. */
+  playerPerfectGuard: boolean
 }
 
 export function createBattleMoveState(): BattleMoveState {
@@ -43,5 +45,6 @@ export function createBattleMoveState(): BattleMoveState {
     oncePerBattleUsed: {},
     counterweightBlockPct: null,
     counterweightReflectPct: null,
+    playerPerfectGuard: false,
   }
 }

@@ -23,6 +23,8 @@ import {
   SEALED_FATE_TURN_MIN,
   braceIncomingMultiplier,
   LCK_CRIT_STAT_SCALE,
+  perfectGuardDamageBonus,
+  speedCounterBonus,
   speedDodgeBonus,
   speedDodgeSuccessChance,
 } from './moveBalance'
@@ -55,6 +57,18 @@ export type ResolveMoveContext = {
 }
 
 const jitter = (d: number) => Math.max(0, d + Math.floor((Math.random() - 0.5) * 3))
+
+function applyPerfectGuardBonus(
+  dmg: number,
+  ctx: ResolveMoveContext,
+  out: PlayerMoveResolveOut,
+): number {
+  if (dmg <= 0 || !ctx.battle.playerPerfectGuard) return dmg
+  const bonus = perfectGuardDamageBonus(ctx.def)
+  ctx.battle.playerPerfectGuard = false
+  out.perfectGuardBonus = true
+  return Math.floor(dmg * (1 + bonus))
+}
 
 function rollCrit(lck: number, base: number, lckMult: number, extraRolls = 0): boolean {
   const chance = lck * lckMult * LCK_CRIT_STAT_SCALE + base
@@ -106,6 +120,7 @@ function applyDamageProfile(
     }
   }
   if (profile.damageFloor != null) dmg = Math.max(profile.damageFloor, dmg)
+  dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
   out.incoming = profile.takeEnemyHit !== false ? eDmg : 0
 }
@@ -126,6 +141,7 @@ function applyFurySweep(
     if (c.bleedOnCritOnly) out.bleedApplied = true
   }
   dmg = Math.max(profile.damageFloor ?? FURY_SWEEP_DAMAGE_FLOOR, dmg)
+  dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
   out.incoming = profile.takeEnemyHit !== false ? eDmg : 0
 }
@@ -141,7 +157,9 @@ export function applyStolenEnemyMove(
     out.incoming = 0
     return
   }
-  out.playerDmg = jitter(Math.floor(ctx.atk * def.damageMult))
+  let dmg = Math.floor(ctx.atk * def.damageMult)
+  dmg = applyPerfectGuardBonus(dmg, ctx, out)
+  out.playerDmg = jitter(dmg)
   out.incoming = ctx.enemyAttacks ? ctx.eDmg : 0
 }
 
@@ -218,11 +236,10 @@ export function applyMoveBehavior(
     case 'dodge': {
       const d = behavior.profile
       if (enemyAttacks) {
-        const dodgeBonus = speedDodgeBonus(ctx.spd)
         if (Math.random() < speedDodgeSuccessChance(ctx.spd)) {
           out.dodged = true
           out.incoming = 0
-          const counterScale = 1 + dodgeBonus
+          const counterScale = 1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd)
           out.playerDmg = jitter(Math.floor(atk * d.counterMult * counterScale))
           if (Math.random() * 100 < d.stunChance.base + lck * d.stunChance.lckMult) {
             out.stunApplied = true
@@ -249,6 +266,9 @@ export function applyMoveBehavior(
       out.incoming = Math.floor(
         eDmg * braceIncomingMultiplier(b.incomingMult, ctx.def),
       )
+      if (enemyAttacks && eDmg > 0) {
+        battle.playerPerfectGuard = true
+      }
       if (b.blockStatus) battle.anchorBlocksStatus = true
       break
     }

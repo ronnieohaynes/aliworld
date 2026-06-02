@@ -74,6 +74,9 @@ export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.01
 export const DEF_MAX_MITIGATION = 0.6
 /** Brace never shrinks incoming below this fraction of raw hit damage. */
 export const DEF_BRACE_INCOMING_FLOOR = 0.1
+/** Bonus damage on the next strike after a successful brace (per defense level). */
+export const DEF_PERFECT_GUARD_BONUS_PER_LEVEL = 0.05
+export const DEF_PERFECT_GUARD_BONUS_MAX = 0.35
 
 /** Passive brace status multiplier at defense skill 1 (scales up with def). */
 export const DEF_BRACE_STATUS_BASE_MULT = 0.6
@@ -95,6 +98,10 @@ export function braceStatusIncomingMultiplier(defSkillLevel: number): number {
   return Math.max(DEF_BRACE_INCOMING_FLOOR, DEF_BRACE_STATUS_BASE_MULT - bonus)
 }
 
+export function perfectGuardDamageBonus(defSkillLevel: number): number {
+  return Math.min(DEF_PERFECT_GUARD_BONUS_MAX, defSkillLevel * DEF_PERFECT_GUARD_BONUS_PER_LEVEL)
+}
+
 export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: number): number {
   if (incoming <= 0) return 0
   const frac = defensePassiveMitigationFraction(defSkillLevel)
@@ -104,6 +111,9 @@ export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: n
 /** Speed skill — dodge reliability and counter scaling per level. */
 export const SPD_DODGE_PER_LEVEL = 0.02
 export const SPD_DODGE_MAX = 0.5
+/** Extra counter damage multiplier per speed level (on top of dodge bonus). */
+export const SPD_COUNTER_BONUS_PER_LEVEL = 0.08
+export const SPD_COUNTER_BONUS_MAX = 0.75
 /** Base dodge success before speed skill bonus (keeps early SLIP survivable). */
 export const SPD_DODGE_BASE_CHANCE = 0.68
 /** Speed skill bonus added to combat spd for initiative ties. */
@@ -111,6 +121,10 @@ export const SPD_INITIATIVE_WEIGHT = 1
 
 export function speedDodgeBonus(spdSkillLevel: number): number {
   return Math.min(SPD_DODGE_MAX, spdSkillLevel * SPD_DODGE_PER_LEVEL)
+}
+
+export function speedCounterBonus(spdSkillLevel: number): number {
+  return Math.min(SPD_COUNTER_BONUS_MAX, spdSkillLevel * SPD_COUNTER_BONUS_PER_LEVEL)
 }
 
 export function speedDodgeSuccessChance(spdSkillLevel: number): number {
