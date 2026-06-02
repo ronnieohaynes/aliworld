@@ -22,6 +22,7 @@ import {
   SEALED_FATE_TURN_MAX,
   SEALED_FATE_TURN_MIN,
   braceIncomingMultiplier,
+  LCK_CRIT_STAT_SCALE,
   speedDodgeBonus,
   speedDodgeSuccessChance,
 } from './moveBalance'
@@ -56,9 +57,10 @@ export type ResolveMoveContext = {
 const jitter = (d: number) => Math.max(0, d + Math.floor((Math.random() - 0.5) * 3))
 
 function rollCrit(lck: number, base: number, lckMult: number, extraRolls = 0): boolean {
-  let success = Math.random() * 100 < lck * lckMult + base
+  const chance = lck * lckMult * LCK_CRIT_STAT_SCALE + base
+  let success = Math.random() * 100 < chance
   for (let i = 0; i < extraRolls; i++) {
-    if (Math.random() * 100 < lck * lckMult + base) success = true
+    if (Math.random() * 100 < chance) success = true
   }
   return success
 }
