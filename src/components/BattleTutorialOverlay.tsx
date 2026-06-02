@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import './BattleTutorialOverlay.css'
 
 export type BattleTutorialTarget = 'battle' | 'telegraph' | 'moves' | 'status' | 'none'
@@ -113,7 +114,7 @@ export function BattleTutorialOverlay({ stepIndex, targetRefs, onNext, onSkip }:
 
   const isLastStep = stepIndex >= BATTLE_TUTORIAL_STEPS.length - 1
 
-  return (
+  return createPortal(
     <div
       className="battle-tutorial"
       role="dialog"
@@ -151,6 +152,7 @@ export function BattleTutorialOverlay({ stepIndex, targetRefs, onNext, onSkip }:
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

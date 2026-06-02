@@ -20,6 +20,7 @@
 
 .battle-tutorial__spotlight {
   position: fixed;
+  box-sizing: border-box;
   border: 2px solid #c084fc;
   border-radius: 6px;
   box-shadow: 0 0 0 9999px rgba(8, 8, 14, 0.78);
