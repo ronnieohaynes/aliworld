@@ -49,6 +49,7 @@ import {
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import { getMoveUiMeta } from '../data/moves'
+import { getBuildName } from '../data/buildName'
 import { getEnemyMoveDef, type EnemyMoveId } from '../data/enemyMoves'
 import {
   STATUS_EFFECT_HINTS,
@@ -262,6 +263,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const enemyStatusTags = getFighterStatusTags('enemy', state.combatStatus)
   const playerStatusTags = getFighterStatusTags('player', state.combatStatus)
   const playerLevel = getPlayerLevel()
+  const build = getBuildName()
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
   const showWinNarration = state.phase === 'ended' && state.result === 'win'
   const logLines = state.log.slice(-3)
@@ -470,6 +472,12 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
         </section>
 
         <section className="battle-screen__player-hud">
+          <div
+            className="battle-screen__player-build"
+            style={{ color: build.color }}
+          >
+            {build.name}
+          </div>
           <div className="battle-screen__player-label">
             <span>YOU</span>
             <span
