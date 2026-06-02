@@ -802,6 +802,7 @@ export function GameScreen() {
   const handleBattleExitComplete = useCallback(() => {
     pendingBattleExitRef.current = null
     setBattleNpcId(null)
+    setBattleReady(false)
     setBattleWipePhase(null)
     reportCurrentLocation()
   }, [reportCurrentLocation])
