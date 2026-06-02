@@ -1,8 +1,8 @@
 /**
- * Daly City Quest 1 — gating NPC conversations and Mark / Subway Pass gate.
+ * 5ive Quest 1 — gating NPC conversations and Mark / Subway Pass gate.
  */
 
-const STORAGE_KEY = 'aliworld:quest1-daly-city:v1'
+const STORAGE_KEY = 'aliworld:quest1-five:v1'
 
 export const GATING_NPC_IDS = ['npc1', 'npc2', 'npc3', 'npc4'] as const
 export type GatingNpcId = (typeof GATING_NPC_IDS)[number]

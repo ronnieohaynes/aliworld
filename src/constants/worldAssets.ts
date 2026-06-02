@@ -3,7 +3,7 @@ import { publicAsset } from '../utils/publicAsset'
 /**
  * Vite serves `public/` under `base` (e.g. `/aliworld/Assets/...` in dev and on GitHub Pages).
  */
-export const DALY_CITY_MAP_SRC = publicAsset('Assets/tileset/daly-city-map.png')
+export const FIVE_MAP_SRC = publicAsset('Assets/tileset/5ive-map.PNG')
 
 export const WORLD_WIDTH = 1254
 export const WORLD_HEIGHT = 1254

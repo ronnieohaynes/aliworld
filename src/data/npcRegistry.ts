@@ -28,7 +28,8 @@ export type NpcCombatEntry = {
   battleLocation: BattleLocationId
 }
 
-const MARK_SPRITE = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
+const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
+const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
 const WALKER: NpcCombatEntry = {
   id: 'walker',
@@ -37,8 +38,8 @@ const WALKER: NpcCombatEntry = {
   moves: ['STRIKE', 'LOOP', 'SLIP', 'WHISPER'],
   losingLine:
     "You're kinda strong. Maybe Danny does have something to fear after all.",
-  spriteSrc: MARK_SPRITE,
-  battleLocation: 'daly_city',
+  spriteSrc: WALKER_SPRITE,
+  battleLocation: 'five',
 }
 
 /** TEMP: no-stakes grind target — huge HP, no damage. delete after testing. */
@@ -59,7 +60,7 @@ const JACLYN: NpcCombatEntry = {
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   jaclyn: JACLYN,
-  mark: { ...WALKER, id: 'mark', displayName: 'mark' },
+  mark: { ...WALKER, id: 'mark', displayName: 'mark', spriteSrc: MARK_SPRITE },
   dummy: DUMMY,
 }
 

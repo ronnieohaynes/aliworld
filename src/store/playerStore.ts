@@ -75,11 +75,12 @@ let lastLocation: LastLocation | null = null
 let accountHydrated = false
 let hydrateInFlight: Promise<void> | null = null
 
-const VALID_CITY_IDS: readonly CityId[] = ['daly-city', 'san-bruno', 'southside']
+const VALID_CITY_IDS: readonly CityId[] = ['five', 'san-bruno', 'southside']
 
 function normalizeLastCity(raw: unknown): CityId | undefined {
   if (typeof raw !== 'string') return undefined
-  return VALID_CITY_IDS.includes(raw as CityId) ? (raw as CityId) : undefined
+  const id = raw === 'daly-city' || raw === '5ive' ? 'five' : raw
+  return VALID_CITY_IDS.includes(id as CityId) ? (id as CityId) : undefined
 }
 
 function normalizeWorldCoord(raw: unknown): number | undefined {

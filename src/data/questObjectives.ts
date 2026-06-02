@@ -14,8 +14,9 @@ import {
 } from '../store/quest1Store'
 import { getWorldMemorySnapshot } from '../store/worldMemory'
 import { ADAM_MP3_ARTIFACT_ID } from './adamMp3Handoff'
+import { FIVE_DISPLAY_NAME } from './cityConfig'
 
-/** Notice artifact — same collectible id as the former Adam MP3 handoff. */
+/** MP3 player from Adam (quest helper tracks this as the notice step). */
 export const NOTICE_ARTIFACT_ID = ADAM_MP3_ARTIFACT_ID
 
 export type QuestObjectiveContext = {
@@ -78,17 +79,17 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'read-notice',
     isComplete: (ctx) => ctx.hasNotice,
-    getText: () => 'read the notice the last one gave you.',
+    getText: () => 'talk to adam. he has something for you.',
   },
   {
     id: 'walker',
     isComplete: (ctx) => ctx.walkerConverted,
-    getText: () => 'find walker in 5ive. show him.',
+    getText: () => `find walker in ${FIVE_DISPLAY_NAME}. show him.`,
   },
   {
     id: 'jaclyn',
     isComplete: (ctx) => ctx.jaclynConverted,
-    getText: () => 'find jaclyn in 5ive. convert her too.',
+    getText: () => `find jaclyn in ${FIVE_DISPLAY_NAME}. convert her too.`,
   },
   {
     id: 'mark',
@@ -115,7 +116,7 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
 /** Ordered quests — add Quest 2–5 definitions here later. */
 export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
   {
-    id: 'quest-1-daly-city',
+    id: 'quest-1-five',
     label: 'quest 1',
     steps: QUEST_1_STEPS,
   },

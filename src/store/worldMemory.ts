@@ -13,6 +13,12 @@ function emptyState(): WorldMemoryState {
   return { bossesCleared: [], citiesVisited: [] }
 }
 
+/** Legacy city ids from before the five / the 5ive rename. */
+function normalizeCityId(cityId: string): string {
+  if (cityId === 'daly-city' || cityId === '5ive') return 'five'
+  return cityId
+}
+
 function loadWorldMemoryFromStorage(): WorldMemoryState {
   const base = emptyState()
   try {
@@ -26,7 +32,9 @@ function loadWorldMemoryFromStorage(): WorldMemoryState {
         ? o.bossesCleared.filter((id): id is string => typeof id === 'string')
         : [],
       citiesVisited: Array.isArray(o.citiesVisited)
-        ? o.citiesVisited.filter((id): id is string => typeof id === 'string')
+        ? o.citiesVisited
+            .filter((id): id is string => typeof id === 'string')
+            .map(normalizeCityId)
         : [],
     }
   } catch {
@@ -69,8 +77,9 @@ export function markBossCleared(bossId: string): void {
 }
 
 export function markCityVisited(cityId: string): void {
-  if (state.citiesVisited.includes(cityId)) return
-  state = { ...state, citiesVisited: [...state.citiesVisited, cityId] }
+  const id = normalizeCityId(cityId)
+  if (state.citiesVisited.includes(id)) return
+  state = { ...state, citiesVisited: [...state.citiesVisited, id] }
   saveWorldMemoryToStorage()
   emit()
 }
@@ -88,7 +97,9 @@ export function applyState(data: Partial<WorldMemoryState>): void {
       ? data.bossesCleared.filter((id): id is string => typeof id === 'string')
       : [],
     citiesVisited: Array.isArray(data.citiesVisited)
-      ? data.citiesVisited.filter((id): id is string => typeof id === 'string')
+      ? data.citiesVisited
+          .filter((id): id is string => typeof id === 'string')
+          .map(normalizeCityId)
       : [],
   }
   emit()

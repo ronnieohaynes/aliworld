@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
-import { ADAM_MP3_ARTIFACT_ID } from '../data/adamMp3Handoff'
+import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
 import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, type NpcData } from '../data/npcs'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import { CITY_CONFIGS, DARKLINE_DESTINATIONS, INACTIVE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION, type CityConfig, type CityId } from '../data/cityConfig'
@@ -8,13 +8,12 @@ import { isMoveUnlocked } from '../data/moves'
 import { collectArtifact, hasArtifact } from '../store/artifactStore'
 import {
   getQuest1Snapshot,
-  GATING_NPC_IDS,
   hasTalkedToAllGatingNpcs,
-  hasTalkedToGatingNpc,
   isGatingNpcId,
   isCafeSceneSeen,
   isJaclynConverted,
   isMarkDefeated,
+  subscribeQuest1Store,
   isWalkerConverted,
   JACLYN_NPC_ID,
   MARK_NPC_ID,
@@ -24,7 +23,6 @@ import {
   setMarkDefeated,
   setWalkerConverted,
   WALKER_NPC_ID,
-  subscribeQuest1Store,
 } from '../store/quest1Store'
 import { markCityVisited } from '../store/worldMemory'
 import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
@@ -35,6 +33,7 @@ import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe } from './BattleEntryWipe'
+import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { DarklineScreen } from './DarklineScreen'
@@ -42,7 +41,6 @@ import { DialogueBox } from './DialogueBox'
 import { GameCanvas } from './GameCanvas'
 import { Player, type PlayerHandle } from './Player'
 import {
-  clearMidnightVariant,
   getSelectedMidnightVariant,
   subscribeCharacterStore,
 } from '../store/characterStore'
@@ -136,7 +134,7 @@ type DialogueState = {
 
 export function GameScreen() {
   const playerRef = useRef<PlayerHandle>(null)
-  const [currentCity, setCurrentCity] = useState<CityId>('daly-city')
+  const [currentCity, setCurrentCity] = useState<CityId>('five')
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
   const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
@@ -148,9 +146,9 @@ export function GameScreen() {
   const [showLoadout, setShowLoadout] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
-  const [menuEntryWipe, setMenuEntryWipe] = useState<'fanny-pack' | null>(null)
+  const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
   const startMenuRef = useRef<StartMenuHandle>(null)
-  const menuEntryTargetRef = useRef<'fanny-pack' | null>(null)
+  const menuTransitionRef = useRef<MenuTransitionTarget | null>(null)
   const [worldEntryActive, setWorldEntryActive] = useState(true)
   const [worldEntryReady, setWorldEntryReady] = useState(false)
   const [nearbyNpcId, setNearbyNpcId] = useState<string | null>(null)
@@ -170,6 +168,11 @@ export function GameScreen() {
     subscribeQuest1Store,
     getQuest1Snapshot,
     getQuest1Snapshot,
+  )
+  const markDefeated = useSyncExternalStore(
+    subscribeQuest1Store,
+    isMarkDefeated,
+    isMarkDefeated,
   )
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
 
@@ -200,7 +203,7 @@ export function GameScreen() {
         setBootCityId(saved.city)
         return
       }
-      setBootCityId('daly-city')
+      setBootCityId('five')
       setLocationReady(true)
     })
     return () => {
@@ -240,13 +243,13 @@ export function GameScreen() {
   }, [])
 
   const cityConfig = useMemo((): CityConfig => {
-    void quest1Revision
-    if (currentCity !== 'daly-city') return baseCityConfig
-    const npcs = baseCityConfig.npcs.filter(
-      (npc) => npc.id !== MARK_NPC_ID || !isMarkDefeated(),
-    )
-    return { ...baseCityConfig, npcs }
-  }, [baseCityConfig, currentCity, quest1Revision])
+    if (currentCity !== 'five') return baseCityConfig
+    if (!markDefeated) return baseCityConfig
+    return {
+      ...baseCityConfig,
+      npcs: baseCityConfig.npcs.filter((npc) => npc.id !== MARK_NPC_ID),
+    }
+  }, [baseCityConfig, currentCity, markDefeated])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -263,24 +266,59 @@ export function GameScreen() {
       !worldEntryActive &&
       !battleNpcId &&
       !battleEntryWipe &&
-      !menuEntryWipe &&
+      !menuTransition &&
       !dialogue
     )
-  }, [worldEntryActive, battleNpcId, battleEntryWipe, menuEntryWipe, dialogue])
+  }, [worldEntryActive, battleNpcId, battleEntryWipe, menuTransition, dialogue])
+
+  const beginMenuTransition = useCallback((target: MenuTransitionTarget) => {
+    menuTransitionRef.current = target
+    setMenuTransition(target)
+  }, [])
+
+  /** Leave pause flow and return to gameplay (same as choosing resume). */
+  const resumeFromPauseMenu = useCallback(() => {
+    setShowFannyPack(false)
+    setShowLoadout(false)
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+  }, [])
+
+  const beginResumeTransition = useCallback(() => {
+    beginMenuTransition({ kind: 'resume' })
+  }, [beginMenuTransition])
 
   const toggleStartMenu = useCallback(() => {
+    if (menuTransition) return
     if (showStartMenu) {
-      setShowStartMenu(false)
+      resumeFromPauseMenu()
+      return
+    }
+    if (menuReturnPending && (showFannyPack || showLoadout)) {
+      beginResumeTransition()
       return
     }
     if (!canOpenStartMenu()) return
     setShowStartMenu(true)
-  }, [canOpenStartMenu, showStartMenu])
+  }, [
+    beginResumeTransition,
+    canOpenStartMenu,
+    menuReturnPending,
+    menuTransition,
+    resumeFromPauseMenu,
+    showFannyPack,
+    showLoadout,
+    showStartMenu,
+  ])
 
   const handleFannyPack = useCallback(() => {
-    if (worldEntryActive || showStartMenu) return
+    if (menuTransition || worldEntryActive || showStartMenu) return
+    if (menuReturnPending) {
+      beginResumeTransition()
+      return
+    }
     setShowFannyPack((open) => !open)
-  }, [showStartMenu])
+  }, [beginResumeTransition, menuReturnPending, menuTransition, showStartMenu])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -314,15 +352,14 @@ export function GameScreen() {
       ) {
         return
       }
-      if (
-        worldEntryActive ||
-        showLoadout ||
-        showFannyPack ||
-        battleNpcId ||
-        battleEntryWipe ||
-        menuEntryWipe
-      )
+      if (showLoadout || showFannyPack) {
+        if (menuReturnPending) {
+          e.preventDefault()
+          beginResumeTransition()
+        }
         return
+      }
+      if (battleNpcId || battleEntryWipe || menuTransition) return
       e.preventDefault()
       if (showStartMenu) {
         setShowStartMenu(false)
@@ -336,12 +373,13 @@ export function GameScreen() {
   }, [
     battleEntryWipe,
     battleNpcId,
+    beginResumeTransition,
     canOpenStartMenu,
+    menuReturnPending,
     showFannyPack,
     showLoadout,
     showStartMenu,
-    menuEntryWipe,
-    worldEntryActive,
+    menuTransition,
   ])
 
   const handleToggleDebug = useCallback(() => {
@@ -508,7 +546,7 @@ export function GameScreen() {
     setLastLocation(destination, destConfig.spawnX, destConfig.spawnY)
   }, [])
 
-  const grantNoticeArtifact = useCallback(() => {
+  const completeAdamMp3Handoff = useCallback(() => {
     if (!hasArtifact(ADAM_MP3_ARTIFACT_ID)) {
       collectArtifact(ADAM_MP3_ARTIFACT_ID)
       startSoundtrack()
@@ -521,23 +559,27 @@ export function GameScreen() {
       const next = prev.lineIndex + 1
       if (next >= prev.speakerLines.length) {
         const onComplete = prev.onComplete
-        if (isGatingNpcId(prev.npc.id)) {
-          const countBefore = GATING_NPC_IDS.filter((id) => hasTalkedToGatingNpc(id)).length
+        if (isAdamNpcId(prev.npc.id)) {
+          completeAdamMp3Handoff()
+        } else if (isGatingNpcId(prev.npc.id)) {
           markGatingNpcTalked(prev.npc.id)
-          if (countBefore === GATING_NPC_IDS.length - 1) {
-            grantNoticeArtifact()
-          }
         }
         if (onComplete) onComplete()
         return null
       }
       return { ...prev, lineIndex: next }
     })
-  }, [grantNoticeArtifact])
+  }, [completeAdamMp3Handoff])
 
   const openNearbyNpcDialogue = useCallback(() => {
     const nearbyId = playerRef.current?.getNearbyNpcId()
     if (!nearbyId) return
+
+    if (isAdamNpcId(nearbyId)) {
+      if (hasArtifact(ADAM_MP3_ARTIFACT_ID)) return
+      beginNpcDialogue(ADAM_NPC)
+      return
+    }
 
     if (nearbyId === WALKER_NPC_ID) {
       if (isWalkerConverted()) {
@@ -605,7 +647,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleEntryWipe || menuEntryWipe || battleNpcId || showFannyPack || showLoadout)
+    if (battleEntryWipe || menuTransition || battleNpcId || showFannyPack || showLoadout)
       return
     openNearbyNpcDialogue()
   }, [
@@ -618,7 +660,7 @@ export function GameScreen() {
     showFannyPack,
     showLoadout,
     showStartMenu,
-    menuEntryWipe,
+    menuTransition,
     worldEntryActive,
     openNearbyNpcDialogue,
   ])
@@ -663,7 +705,7 @@ export function GameScreen() {
         showFannyPack ||
         battleNpcId ||
         battleEntryWipe ||
-        menuEntryWipe
+        menuTransition
       ) {
         return
       }
@@ -678,7 +720,7 @@ export function GameScreen() {
     battleNpcId,
     cafeFade,
     handleConfirm,
-    menuEntryWipe,
+    menuTransition,
     showFannyPack,
     showLoadout,
     showStartMenu,
@@ -721,7 +763,7 @@ export function GameScreen() {
     battleNpcId,
     dialogue,
     locationReady,
-    menuEntryWipe,
+    menuTransition,
     reportCurrentLocation,
     showFannyPack,
     showLoadout,
@@ -766,56 +808,66 @@ export function GameScreen() {
     reportCurrentLocation()
   }, [reportCurrentLocation, showMarkVictoryNarration])
 
-  const returnToStartMenuIfPending = useCallback(() => {
-    if (menuReturnPending) {
-      setMenuReturnPending(false)
-      setShowStartMenu(true)
-    }
-  }, [menuReturnPending])
-
   const handleFannyPackClose = useCallback(() => {
+    if (menuReturnPending) {
+      beginResumeTransition()
+      return
+    }
     setShowFannyPack(false)
-    returnToStartMenuIfPending()
-  }, [returnToStartMenuIfPending])
+  }, [beginResumeTransition, menuReturnPending])
+
+  const handleLoadoutClose = useCallback(() => {
+    if (menuReturnPending) {
+      beginResumeTransition()
+      return
+    }
+    setShowLoadout(false)
+  }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
     if (worldEntryActive || showStartMenu) return
     setShowLoadout(true)
   }, [showStartMenu, worldEntryActive])
 
-  const beginMenuEntryTransition = useCallback((target: 'fanny-pack') => {
-    menuEntryTargetRef.current = target
-    setShowStartMenu(false)
-    setMenuReturnPending(true)
-    setMenuEntryWipe(target)
-  }, [])
+  const beginMenuEntryTransition = useCallback(
+    (screen: 'fanny-pack' | 'loadout') => {
+      setShowStartMenu(false)
+      setMenuReturnPending(true)
+      beginMenuTransition({ kind: 'to-screen', screen })
+    },
+    [beginMenuTransition],
+  )
 
-  const handleMenuEntryMidpoint = useCallback(() => {
-    const target = menuEntryTargetRef.current
-    if (target === 'fanny-pack') setShowFannyPack(true)
-  }, [])
+  const handleMenuTransitionMidpoint = useCallback(() => {
+    const target = menuTransitionRef.current
+    if (!target) return
+    switch (target.kind) {
+      case 'to-screen':
+        if (target.screen === 'fanny-pack') setShowFannyPack(true)
+        else setShowLoadout(true)
+        break
+      case 'resume':
+        resumeFromPauseMenu()
+        break
+    }
+  }, [resumeFromPauseMenu])
 
-  const handleMenuEntryComplete = useCallback(() => {
-    menuEntryTargetRef.current = null
-    setMenuEntryWipe(null)
+  const handleMenuTransitionComplete = useCallback(() => {
+    menuTransitionRef.current = null
+    setMenuTransition(null)
   }, [])
 
   const handleStartMenuAction = useCallback(
     (action: StartMenuAction) => {
       switch (action) {
         case 'resume':
-          setShowStartMenu(false)
+          resumeFromPauseMenu()
           break
         case 'fanny-pack':
           beginMenuEntryTransition('fanny-pack')
           break
         case 'loadout':
-          setShowLoadout(true)
-          break
-        case 'choose-midnight':
-          setShowStartMenu(false)
-          setMenuReturnPending(false)
-          clearMidnightVariant()
+          beginMenuEntryTransition('loadout')
           break
         case 'new-game':
           break
@@ -826,7 +878,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition],
+    [beginMenuEntryTransition, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -839,7 +891,7 @@ export function GameScreen() {
     !worldEntryActive &&
     !battleNpcId &&
     !battleEntryWipe &&
-    !menuEntryWipe &&
+    !menuTransition &&
     !showStartMenu &&
     !showLoadout &&
     !showFannyPack &&
@@ -868,8 +920,10 @@ export function GameScreen() {
       >
         <div
           className={`game-screen-play${
-            battleEntryWipe || menuEntryWipe ? ' game-screen-play--battle-wipe' : ''
-          }${worldEntryActive ? ' game-screen-play--world-entry' : ''}`}
+            battleEntryWipe ? ' game-screen-play--battle-wipe' : ''
+          }${menuTransition ? ' game-screen-play--menu-transition' : ''}${
+            worldEntryActive ? ' game-screen-play--world-entry' : ''
+          }`}
           onClick={handlePlayAreaClick}
         >
           {showDebug && (
@@ -905,7 +959,7 @@ export function GameScreen() {
                 !!dialogue ||
                 worldEntryActive ||
                 !!battleEntryWipe ||
-                !!menuEntryWipe ||
+                !!menuTransition ||
                 showFannyPack ||
                 showLoadout ||
                 showStartMenu
@@ -983,10 +1037,11 @@ export function GameScreen() {
               onComplete={handleBattleEntryComplete}
             />
           )}
-          {menuEntryWipe && (
-            <BattleEntryWipe
-              onMidpoint={handleMenuEntryMidpoint}
-              onComplete={handleMenuEntryComplete}
+          {menuTransition && (
+            <MenuEntryCover
+              immediateMidpoint={menuTransition.kind === 'resume'}
+              onMidpoint={handleMenuTransitionMidpoint}
+              onComplete={handleMenuTransitionComplete}
             />
           )}
           {worldEntryActive && (
@@ -994,6 +1049,7 @@ export function GameScreen() {
           )}
           <ArtifactAcquisitionToasts />
           {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
+          {showStartMenu && <div className="game-screen-pause-scrim" aria-hidden />}
           {showStartMenu && (
             <StartMenuScreen
               ref={startMenuRef}
@@ -1003,7 +1059,7 @@ export function GameScreen() {
           )}
         </div>
       </GameShell>
-      {showLoadout && <LoadoutScreen onClose={() => setShowLoadout(false)} />}
+      {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
     </div>
   )
 }

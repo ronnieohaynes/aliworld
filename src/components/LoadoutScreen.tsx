@@ -41,7 +41,7 @@ import {
 import './BattleScreen.css'
 import './LoadoutScreen.css'
 
-const FADE_MS = 300
+const FADE_MS = 150
 
 const SKILL_ROWS: { id: MoveSkill; label: string }[] = [
   { id: 'attack', label: 'ATK' },

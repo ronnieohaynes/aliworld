@@ -17,7 +17,12 @@ export type NpcData = {
   color: string
   /** Path to an idle sprite sheet (horizontal strip: down, up, left, right). */
   spriteSrc?: string
-  /** Number of direction columns in the sprite sheet (default 4). */
+  /**
+   * `strip-columns` — equal-width columns (gating NPC placeholders).
+   * `horizontal-bbox` — 1536×1024 story sheets; one idle pose per direction, bbox-cropped.
+   */
+  spriteLayout?: 'strip-columns' | 'horizontal-bbox'
+  /** Number of direction columns in the sprite sheet (default 4; strip-columns only). */
   spriteColumns?: number
   /** When set, overworld sprite always faces this direction (no idle rotation). */
   fixedFacing?: Direction
@@ -25,14 +30,21 @@ export type NpcData = {
 
 const NPC1_SPRITE = publicAsset('Assets/Characters/npcs/npc1-idle-sheet.png')
 const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
-const NPC3_SPRITE = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
 const NPC4_SPRITE = publicAsset('Assets/Characters/npcs/npc4-idle-sheet.png')
+const NPC5_IDLE_SPRITE = `${publicAsset('Assets/Characters/npcs/npc5-idle.PNG')}?v=3`
 
-/** Quest 1 gating NPC — near laundromat (left storefront). */
+const ADAM_IDLE_SPRITE = `${publicAsset('Assets/Characters/npcs/Adam-idle.PNG')}?v=2`
+const MARK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
+const JACLYN_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
+const WALKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
+/** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
+export const JASON_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
+
+/** Quest 1 gating NPC — Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
   id: 'npc1',
   name: '',
-  x: 220,
+  x: 130,
   y: 360,
   lines: [
     "you're up. okay. okay okay okay.",
@@ -40,51 +52,51 @@ export const GATING_NPC_1: NpcData = {
   ],
   color: '#7a7a96',
   spriteSrc: NPC1_SPRITE,
-  spriteColumns: 4,
+  spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — near 13 Gallons (center). */
+/** Quest 1 gating NPC — main road, left of center. */
 export const GATING_NPC_2: NpcData = {
   id: 'npc2',
   name: '',
-  x: 540,
-  y: 400,
+  x: 340,
+  y: 505,
   lines: [
     "everybody here's waiting on something. is it you?",
   ],
   color: '#7a7a96',
   spriteSrc: NPC2_SPRITE,
-  spriteColumns: 4,
+  spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — near dental (right storefront). */
+/** Quest 1 gating NPC — far east sidewalk. */
 export const GATING_NPC_3: NpcData = {
   id: 'npc3',
   name: '',
-  x: 880,
-  y: 360,
+  x: 1140,
+  y: 520,
   lines: [
     "there's a man. don't say his name loud? okay.",
     "they put up notices about him. you'll find one.",
   ],
   color: '#7a7a96',
-  spriteSrc: NPC3_SPRITE,
-  spriteColumns: 4,
+  spriteSrc: NPC5_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — lower / mid-map between districts. */
+/** Quest 1 gating NPC — west sidewalk. */
 export const GATING_NPC_4: NpcData = {
   id: 'npc4',
   name: '',
-  x: 420,
+  x: 70,
   y: 580,
   lines: [
     "the darkline's how you get anywhere. it goes through Mark, though.",
-    "here. this is the notice. now you'll see what i mean.",
+    "adam's got something for you. start there.",
   ],
   color: '#7a7a96',
   spriteSrc: NPC4_SPRITE,
-  spriteColumns: 4,
+  spriteLayout: 'horizontal-bbox',
 }
 
 export const GATING_NPCS: readonly NpcData[] = [
@@ -97,8 +109,8 @@ export const GATING_NPCS: readonly NpcData[] = [
 export const WALKER_NPC: NpcData = {
   id: 'walker',
   name: 'walker',
-  x: 680,
-  y: 520,
+  x: 800,
+  y: 508,
   lines: [
     'i heard you spawned. cute.',
     "everybody thinks they're the one.",
@@ -110,16 +122,16 @@ export const WALKER_NPC: NpcData = {
     "tell me where to go. tell me what to say. i'll say it exactly.",
   ],
   color: '#7a7a96',
-  spriteSrc: NPC2_SPRITE,
-  spriteColumns: 4,
+  spriteSrc: WALKER_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 — second conversion fight in Daly City (placeholder sprite). */
+/** Quest 1 — second conversion fight; Sunset Bakery sidewalk (upper-right). */
 export const JACLYN_NPC: NpcData = {
   id: 'jaclyn',
   name: 'jaclyn',
-  x: 820,
-  y: 500,
+  x: 1060,
+  y: 358,
   lines: [
     'i know what you did to walker.',
     "he was annoying but he was HIM. now he's... different.",
@@ -130,9 +142,8 @@ export const JACLYN_NPC: NpcData = {
     'why was i fighting this?',
   ],
   color: '#7a7a96',
-  // TODO: Replace with dedicated Jaclyn idle sprite sheet when art is ready.
-  spriteSrc: NPC3_SPRITE,
-  spriteColumns: 4,
+  spriteSrc: JACLYN_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
 }
 
 /** Mark — Darkline guard; blocks stairs until Quest 1 complete. */
@@ -150,13 +161,12 @@ export const MARK_NPC: NpcData = {
   ],
   linesConverted: ['huh.', 'goat yoga...where do you want me.'],
   color: '#c084fc',
-  // TODO: Replace with dedicated Mark idle sprite sheet when art is ready.
-  spriteSrc: NPC3_SPRITE,
-  spriteColumns: 4,
+  spriteSrc: MARK_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
   fixedFacing: 'up',
 }
 
-/** Adam — Prelude MP3 player handoff, placed near Daly City spawn (see cityConfig). */
+/** Adam — Prelude MP3 player handoff, placed near five spawn (see cityConfig). */
 export const ADAM_NPC: NpcData = {
   id: 'adam',
   name: 'adam',
@@ -164,13 +174,12 @@ export const ADAM_NPC: NpcData = {
   y: 480,
   lines: ["you'll need this."],
   color: '#afa9ec',
-  // TODO: Swap in dedicated Adam idle sprite sheet when art is ready.
-  spriteSrc: NPC1_SPRITE,
-  spriteColumns: 4,
+  spriteSrc: ADAM_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
 }
 
-/** Daly City overworld NPCs (spawn → block → Darkline gate). */
-export const DALY_CITY_OVERWORLD_NPCS: readonly NpcData[] = [
+/** the 5ive overworld NPCs (spawn → block → Darkline gate). */
+export const FIVE_OVERWORLD_NPCS: readonly NpcData[] = [
   ADAM_NPC,
   ...GATING_NPCS,
   WALKER_NPC,

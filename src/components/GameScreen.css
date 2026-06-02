@@ -17,7 +17,8 @@
 }
 
 .game-screen-play--battle-wipe,
-.game-screen-play--world-entry {
+.game-screen-play--world-entry,
+.game-screen-play--menu-transition {
   pointer-events: none;
   touch-action: none;
 }
@@ -41,6 +42,16 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
   pointer-events: none;
   user-select: none;
+}
+
+.game-screen-pause-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 125;
+  background: rgba(3, 3, 8, 0.52);
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 

@@ -49,7 +49,7 @@ import { BattlePlacementGrid } from './BattlePlacementGrid'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
 
-const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/npc3-idle-sheet.png')
+const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
 type StatusTag = {
   label: string
