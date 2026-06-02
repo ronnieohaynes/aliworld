@@ -31,11 +31,12 @@ export type NpcCombatEntry = {
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
+/** Tutorial — low threat, simple move pool, win even if sloppy. */
 const WALKER: NpcCombatEntry = {
   id: 'walker',
   displayName: 'walker',
-  stats: { hp: 30, maxHp: 30, atk: 6, def: 3, spd: 5 },
-  moves: ['STRIKE', 'LOOP', 'SLIP', 'WHISPER'],
+  stats: { hp: 30, maxHp: 30, atk: 5, def: 2, spd: 4 },
+  moves: ['STRIKE', 'SLIP'],
   losingLine:
     "You're kinda strong. Maybe Danny does have something to fear after all.",
   spriteSrc: WALKER_SPRITE,
@@ -50,17 +51,32 @@ const DUMMY: NpcCombatEntry = {
   stats: { hp: 40, maxHp: 40, atk: 0, def: 0, spd: 1 },
 }
 
+/** Status check — fast and hard; trading STRIKEs hurts unless you debuff her. */
 const JACLYN: NpcCombatEntry = {
-  ...WALKER,
   id: 'jaclyn',
   displayName: 'jaclyn',
+  stats: { hp: 45, maxHp: 45, atk: 9, def: 3, spd: 8 },
+  moves: ['STRIKE', 'LOOP', 'WHISPER'],
   losingLine: "...oh. you're right. of course you're right.",
+  spriteSrc: WALKER_SPRITE,
+  battleLocation: 'five',
+}
+
+/** Boss wall — tanky, telegraphs a heavy LOOP the player must brace or slip. */
+const MARK: NpcCombatEntry = {
+  id: 'mark',
+  displayName: 'mark',
+  stats: { hp: 70, maxHp: 70, atk: 11, def: 6, spd: 4 },
+  moves: ['STRIKE', 'HOLD', 'SLIP', 'LOOP'],
+  losingLine: WALKER.losingLine,
+  spriteSrc: MARK_SPRITE,
+  battleLocation: 'five',
 }
 
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   jaclyn: JACLYN,
-  mark: { ...WALKER, id: 'mark', displayName: 'mark', spriteSrc: MARK_SPRITE },
+  mark: MARK,
   dummy: DUMMY,
 }
 

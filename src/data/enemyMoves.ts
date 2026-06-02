@@ -24,7 +24,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
   STRIKE: {
     id: 'STRIKE',
     displayName: 'STRIKE',
-    telegraphLine: 'winds a strike.',
+    telegraphLine: 'lines up a strike.',
     isAttacking: true,
     damageMult: 1,
     onResolve: [],
@@ -32,15 +32,15 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
   LOOP: {
     id: 'LOOP',
     displayName: 'LOOP',
-    telegraphLine: 'loops the rhythm.',
+    telegraphLine: 'draws back — a heavy loop is coming.',
     isAttacking: true,
-    damageMult: 1.3,
+    damageMult: 1.7,
     onResolve: [],
   },
   SLIP: {
     id: 'SLIP',
     displayName: 'SLIP',
-    telegraphLine: 'feints a slip.',
+    telegraphLine: 'feints a slip to your blind side.',
     isAttacking: true,
     damageMult: 0.7,
     onResolve: [],
@@ -48,7 +48,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
   WHISPER: {
     id: 'WHISPER',
     displayName: 'WHISPER',
-    telegraphLine: 'murmurs something.',
+    telegraphLine: 'murmurs something that crawls under your skin.',
     isAttacking: false,
     damageMult: 0,
     onResolve: [],
@@ -56,7 +56,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
   HOLD: {
     id: 'HOLD',
     displayName: 'HOLD',
-    telegraphLine: 'holds ground.',
+    telegraphLine: 'plants his feet and braces.',
     isAttacking: false,
     damageMult: 0,
     onResolve: [],
