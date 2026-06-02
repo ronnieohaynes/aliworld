@@ -145,9 +145,9 @@ export const XP_DAMAGE_BLOCKED_MULT = 6
 export const XP_DAMAGE_AVOIDED_MULT = 6
 /** Flat bonus when brace/dodge succeeds so low-block turns still progress. */
 export const XP_DEFENSE_SPEED_ACTION_BONUS = 10
-export const XP_LUCK_PROC_BONUS = 14
+export const XP_LUCK_PROC_BONUS = 16
 /** Luck moves that chip damage — lower weight than attack damage XP. */
-export const XP_LUCK_DAMAGE_MULT = 1.5
+export const XP_LUCK_DAMAGE_MULT = 3.5
 export const XP_FALLBACK_SMALL = 6
 
 /** Soft skill counter loop — attack > speed > luck > defense > attack. */

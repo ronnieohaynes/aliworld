@@ -459,7 +459,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'loop' },
     onResolve: [],
     xpGrants: [
-      { skill: 'luck', amount: (r) => 14 + r.playerDmg * XP_LUCK_DAMAGE_MULT },
+      { skill: 'luck', amount: (r) => 16 + r.playerDmg * XP_LUCK_DAMAGE_MULT },
     ],
     uiDescription: 'make them repeat their last move.',
     uiClassName: 'battle-screen__move--loop',
@@ -475,7 +475,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'snag' },
     onResolve: [],
-    xpGrants: [{ skill: 'luck', amount: 18 }],
+    xpGrants: [{ skill: 'luck', amount: 22 }],
     uiDescription: 'steal one of their moves for this fight.',
     uiClassName: 'battle-screen__move--snag',
     playerLogLine: (r) =>
@@ -512,7 +512,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'sealed-fate' },
     onResolve: [],
-    xpGrants: [{ skill: 'luck', amount: 20 }],
+    xpGrants: [{ skill: 'luck', amount: 24 }],
     uiDescription: 'death clock. huge hit soon or you pay.',
     uiClassName: 'battle-screen__move--sealed-fate',
     playerLogLine: () => 'sealed fate marked.',
