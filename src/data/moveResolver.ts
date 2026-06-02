@@ -36,6 +36,10 @@ export type { PlayerMoveResolveOut }
 export type ResolveMoveContext = {
   atk: number
   eDmg: number
+  /** Defense skill level — scales mitigation. */
+  def: number
+  /** Speed skill level — scales dodge and initiative. */
+  spd: number
   enemyAttacks: boolean
   lck: number
   playerHp: number

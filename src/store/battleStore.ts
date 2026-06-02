@@ -294,9 +294,12 @@ function buildResolveContext(
   state: BattleState,
   slot?: number,
 ): import('../data/moveResolver').ResolveMoveContext {
+  const skills = getPlayerSkills()
   return {
     atk: state.playerStats.atk,
     eDmg: 0,
+    def: skills.defense.level,
+    spd: skills.speed.level,
     enemyAttacks: false,
     lck: state.playerStats.lck,
     playerHp: state.playerHp,
