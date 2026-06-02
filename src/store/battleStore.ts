@@ -43,6 +43,10 @@ import {
 } from '../data/npcRegistry'
 import { deriveBuildLoopType } from '../data/buildName'
 import {
+  appendBattleFeedback,
+  type BattleFeedbackEvent,
+} from '../data/battleFeedback'
+import {
   applySkillCounterModifiers,
   getSkillCounterRelation,
 } from '../data/skillCounter'
@@ -129,6 +133,9 @@ export type BattleState = {
   resolveStep: BattleResolveStep
   /** True for one turn after combat level increases (battle UI flash). */
   playerLevelFlash: boolean
+  /** Pop-up combat callouts for the battle UI (blocked, dodged, status, etc.). */
+  feedbackEvents: BattleFeedbackEvent[]
+  feedbackSeq: number
 }
 
 export type BattleAction =
@@ -213,6 +220,8 @@ export type ResolveResult = {
   rawIncoming: number
   damageBlocked: number
   damageAvoided: number
+  /** Next strike boosted after a successful brace (perfect guard). */
+  perfectGuardBonus: boolean
   eMove: UpcomingMove
   pMove: PlayerMove
 }
@@ -243,9 +252,16 @@ function emptyResolveResult(
     rawIncoming: 0,
     damageBlocked: 0,
     damageAvoided: 0,
+    perfectGuardBonus: false,
     eMove,
     pMove,
   }
+}
+
+function withResolveFeedback(state: BattleState, r: ResolveResult): BattleState {
+  const feedbackEvents = appendBattleFeedback([], r)
+  if (feedbackEvents.length === 0) return state
+  return { ...state, feedbackEvents, feedbackSeq: state.feedbackSeq + 1 }
 }
 
 function mitigateIncoming(
@@ -729,6 +745,7 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     deathClocks: tickDeathClocks(state.deathClocks),
     phase: 'player',
     result: null,
+    feedbackEvents: [],
   }
 }
 
@@ -786,6 +803,8 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   const r = consumed.wasExposed
     ? resolveExposedTurn(working, pMove, working.upcomingMove)
     : resolveMoves(working, pMove, working.upcomingMove, slot)
+
+  working = withResolveFeedback(working, r)
 
   const enemyFirst = enemyActsFirstInResolution(working)
   const pending: PendingResolve = { r, enemyFirst }
@@ -991,6 +1010,8 @@ export function createInitialBattleState(
     pendingResolve: null,
     resolveStep: 'idle',
     playerLevelFlash: false,
+    feedbackEvents: [],
+    feedbackSeq: 0,
   }
 }
 

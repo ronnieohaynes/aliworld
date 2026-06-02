@@ -49,6 +49,7 @@ import {
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import { getMoveUiMeta } from '../data/moves'
+import type { BattleFeedbackTone } from '../data/battleFeedback'
 import { getBuildName } from '../data/buildName'
 import {
   counterMatchupLabel,
@@ -69,6 +70,25 @@ import './BattleScreen.css'
 import './PlayerLevelBadge.css'
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/mark-idle.png')
+
+type BattleFloater = {
+  id: number
+  text: string
+  target: 'enemy' | 'player'
+  tone: BattleFeedbackTone | 'attack'
+  kind?: string
+}
+
+const FLOATER_TONE_CLASS: Record<BattleFeedbackTone | 'attack', string> = {
+  attack: 'attack',
+  defense: 'defense',
+  speed: 'speed',
+  luck: 'luck',
+  shake: 'shake',
+  slow: 'slow',
+  bleed: 'bleed',
+  stun: 'stun',
+}
 
 type StatusTag = {
   label: string
@@ -254,12 +274,13 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
 
   const prevEnemyHpRef = useRef(state.enemyHp)
   const prevPlayerHpRef = useRef(state.playerHp)
+  const prevFeedbackSeqRef = useRef(state.feedbackSeq)
   const [enemyHitFx, setEnemyHitFx] = useState(false)
   const [playerHitFx, setPlayerHitFx] = useState(false)
   const [playerAtkFx, setPlayerAtkFx] = useState(false)
-  const [floaters, setFloaters] = useState<
-    { id: number; amount: number; target: 'enemy' | 'player' }[]
-  >([])
+  const [playerDodgeFx, setPlayerDodgeFx] = useState(false)
+  const [enemyCritFx, setEnemyCritFx] = useState(false)
+  const [floaters, setFloaters] = useState<BattleFloater[]>([])
 
   const busy = state.phase !== 'player'
   const playerHpPct = Math.max(0, (state.playerHp / state.playerStats.maxHp) * 100)
@@ -326,7 +347,10 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
       setEnemyHitFx(true)
       setPlayerAtkFx(true)
       const id = Date.now() + Math.random()
-      setFloaters((f) => [...f, { id, amount: enemyDelta, target: 'enemy' }])
+      setFloaters((f) => [
+        ...f,
+        { id, text: `-${enemyDelta}`, target: 'enemy', tone: 'attack' },
+      ])
       window.setTimeout(() => setEnemyHitFx(false), 320)
       window.setTimeout(() => setPlayerAtkFx(false), 240)
       window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
@@ -334,7 +358,10 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
     if (playerDelta > 0) {
       setPlayerHitFx(true)
       const id = Date.now() + Math.random()
-      setFloaters((f) => [...f, { id, amount: playerDelta, target: 'player' }])
+      setFloaters((f) => [
+        ...f,
+        { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+      ])
       window.setTimeout(() => setPlayerHitFx(false), 320)
       window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
     }
@@ -342,6 +369,35 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
     prevEnemyHpRef.current = state.enemyHp
     prevPlayerHpRef.current = state.playerHp
   }, [state.enemyHp, state.playerHp])
+
+  useEffect(() => {
+    if (state.feedbackSeq === prevFeedbackSeqRef.current) return
+    prevFeedbackSeqRef.current = state.feedbackSeq
+
+    const events = state.feedbackEvents
+    if (events.length === 0) return
+
+    if (events.some((e) => e.kind === 'dodged')) {
+      setPlayerDodgeFx(true)
+      window.setTimeout(() => setPlayerDodgeFx(false), 420)
+    }
+    if (events.some((e) => e.kind === 'crit')) {
+      setEnemyCritFx(true)
+      window.setTimeout(() => setEnemyCritFx(false), 480)
+    }
+
+    events.forEach((event, index) => {
+      const id = Date.now() + Math.random() + index
+      const durationMs = event.kind === 'crit' ? 1200 : 900
+      window.setTimeout(() => {
+        setFloaters((f) => [
+          ...f,
+          { id, text: event.text, target: event.target, tone: event.tone, kind: event.kind },
+        ])
+        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), durationMs)
+      }, index * 80)
+    })
+  }, [state.feedbackSeq, state.feedbackEvents])
 
   useEffect(() => {
     if (state.phase !== 'busy') return
@@ -427,7 +483,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
           <StageBackground location={battleLocation} />
           <div className="battle-screen__arena">
             <div
-              className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}`}
+              className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
               style={{ left: BATTLE_ENEMY_PLACEMENT.x, top: BATTLE_ENEMY_DRAW_Y }}
             >
               <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
@@ -439,7 +495,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
               </div>
             </div>
             <div
-              className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ' battle-screen__fighter--attack' : ''}`}
+              className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ' battle-screen__fighter--attack' : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
               style={{ left: BATTLE_PLAYER_PLACEMENT.x, top: BATTLE_PLAYER_DRAW_Y }}
             >
               <canvas
@@ -452,9 +508,9 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
             {floaters.map((f) => (
               <span
                 key={f.id}
-                className={`battle-screen__floater battle-screen__floater--${f.target}`}
+                className={`battle-screen__floater battle-screen__floater--${f.target} battle-screen__floater--${FLOATER_TONE_CLASS[f.tone]}${f.kind === 'crit' ? ' battle-screen__floater--crit-pop' : ''}`}
               >
-                -{f.amount}
+                {f.text}
               </span>
             ))}
           </div>

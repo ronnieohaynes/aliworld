@@ -533,8 +533,43 @@
 }
 .battle-screen__floater--enemy { left: 28%; }
 .battle-screen__floater--player { left: 64%; }
+.battle-screen__floater--attack { color: #ff4d4d; }
+.battle-screen__floater--defense { color: #4488cc; }
+.battle-screen__floater--speed { color: #44cc66; }
+.battle-screen__floater--luck { color: #c084fc; }
+.battle-screen__floater--shake { color: #e6a817; }
+.battle-screen__floater--slow { color: #66a3ff; }
+.battle-screen__floater--bleed { color: #cc4444; }
+.battle-screen__floater--stun { color: #cccc44; }
+.battle-screen__floater--crit-pop {
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  animation: battle-floater-crit-rise 1.2s ease-out forwards;
+}
+.battle-screen__fighter--dodge {
+  animation: battle-dodge-flash 0.42s ease-out;
+}
+.battle-screen__fighter--crit {
+  animation: battle-crit-flash 0.48s ease-out;
+}
 @keyframes battle-floater-rise {
   0% { opacity: 0; transform: translateY(0) scale(0.8); }
   20% { opacity: 1; transform: translateY(-10px) scale(1.1); }
   100% { opacity: 0; transform: translateY(-48px) scale(1); }
+}
+@keyframes battle-floater-crit-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); color: #e9d5ff; }
+  15% { opacity: 1; transform: translateY(-14px) scale(1.35); color: #c084fc; }
+  100% { opacity: 0; transform: translateY(-56px) scale(1.1); color: #a855f7; }
+}
+@keyframes battle-dodge-flash {
+  0% { filter: brightness(1); transform: translateX(0); }
+  30% { filter: brightness(1.45) drop-shadow(0 0 8px #44cc66); transform: translateX(-6px); }
+  60% { filter: brightness(1.2); transform: translateX(4px); }
+  100% { filter: brightness(1); transform: translateX(0); }
+}
+@keyframes battle-crit-flash {
+  0% { filter: brightness(1); }
+  25% { filter: brightness(1.6) drop-shadow(0 0 12px #c084fc); }
+  100% { filter: brightness(1); }
 }
