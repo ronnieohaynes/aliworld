@@ -1,6 +1,11 @@
 import { createBattleMoveState, type BattleMoveState } from '../data/battleMoveState'
 import { applyMoveCostAfterResolve, consumeTurnFlag } from '../data/combatTurnCosts'
-import { BLACKOUT_INTERRUPTIBLE, BLEED_DAMAGE_MAX_HP_PCT } from '../data/moveBalance'
+import {
+  applyDefensePassiveMitigation,
+  BLACKOUT_INTERRUPTIBLE,
+  BLEED_DAMAGE_MAX_HP_PCT,
+  braceStatusIncomingMultiplier,
+} from '../data/moveBalance'
 import {
   createEmptyCombatStatus,
   enemyLosesTurn,
@@ -236,6 +241,7 @@ function mitigateIncoming(
   incoming: number,
   status: CombatStatusState,
   playerDef: number,
+  defSkillLevel: number,
   battle: BattleMoveState,
 ): number {
   let dmg = incoming
@@ -257,11 +263,14 @@ function mitigateIncoming(
   }
 
   if (status.playerBrace > 0 && dmg > 0) {
-    dmg = Math.floor(dmg * 0.6)
+    dmg = Math.floor(dmg * braceStatusIncomingMultiplier(defSkillLevel))
   }
   if (dmg > 0) {
     const defMod = battle.enemyDefShattered ? Math.max(0, Math.floor(playerDef / 4)) : Math.floor(playerDef / 3)
     dmg = Math.max(1, dmg - defMod)
+  }
+  if (dmg > 0) {
+    dmg = applyDefensePassiveMitigation(dmg, defSkillLevel)
   }
   return dmg
 }
@@ -353,6 +362,7 @@ function resolvePlayerMoveBody(
     out.incoming,
     state.combatStatus,
     state.playerStats.def,
+    getPlayerSkills().defense.level,
     state.battleMove,
   )
 
@@ -383,6 +393,7 @@ export function resolveExposedTurn(
     eDmg,
     state.combatStatus,
     state.playerStats.def,
+    getPlayerSkills().defense.level,
     state.battleMove,
   )
 

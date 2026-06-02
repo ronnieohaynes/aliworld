@@ -65,3 +65,38 @@ export const ENEMY_SLOW_OUTGOING_MULT = 0.62
 export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
 /** Shared enemy LOOP strike multiplier — mark's telegraphed heavy. */
 export const ENEMY_LOOP_STRIKE_MULT = 2
+
+/** Defense skill — brace blocks more per level (multiplier reduction, capped). */
+export const DEF_MITIGATION_PER_LEVEL = 0.01
+/** Defense skill — passive incoming damage reduction per level. */
+export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.004
+/** Hard cap on total defense mitigation so builds never become invincible. */
+export const DEF_MAX_MITIGATION = 0.6
+/** Brace never shrinks incoming below this fraction of raw hit damage. */
+export const DEF_BRACE_INCOMING_FLOOR = 0.1
+
+/** Passive brace status multiplier at defense skill 1 (scales up with def). */
+export const DEF_BRACE_STATUS_BASE_MULT = 0.6
+
+export function defensePassiveMitigationFraction(defSkillLevel: number): number {
+  return Math.min(DEF_MAX_MITIGATION, defSkillLevel * DEF_PASSIVE_MITIGATION_PER_LEVEL)
+}
+
+/** Scale active brace (HOLD) incoming multiplier down as defense rises. */
+export function braceIncomingMultiplier(baseMult: number, defSkillLevel: number): number {
+  const defBonus = Math.min(0.5, defSkillLevel * DEF_MITIGATION_PER_LEVEL)
+  const scaled = baseMult * (1 - defBonus)
+  return Math.max(DEF_BRACE_INCOMING_FLOOR, scaled)
+}
+
+/** Brace status chip mitigation — stronger at higher defense skill. */
+export function braceStatusIncomingMultiplier(defSkillLevel: number): number {
+  const bonus = Math.min(0.35, Math.max(0, defSkillLevel - 1) * DEF_MITIGATION_PER_LEVEL)
+  return Math.max(DEF_BRACE_INCOMING_FLOOR, DEF_BRACE_STATUS_BASE_MULT - bonus)
+}
+
+export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: number): number {
+  if (incoming <= 0) return 0
+  const frac = defensePassiveMitigationFraction(defSkillLevel)
+  return Math.max(1, Math.floor(incoming * (1 - frac)))
+}

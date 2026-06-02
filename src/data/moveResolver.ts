@@ -21,6 +21,7 @@ import {
   SEALED_FATE_MISS_SELF_DAMAGE_PCT,
   SEALED_FATE_TURN_MAX,
   SEALED_FATE_TURN_MIN,
+  braceIncomingMultiplier,
 } from './moveBalance'
 import { scheduleDeathClock } from './combatSystems'
 import type { EnemyMoveId } from './enemyMoves'
@@ -233,7 +234,9 @@ export function applyMoveBehavior(
       const b = behavior.profile
       out.braced = true
       out.playerDmg = 0
-      out.incoming = Math.floor(eDmg * b.incomingMult)
+      out.incoming = Math.floor(
+        eDmg * braceIncomingMultiplier(b.incomingMult, ctx.def),
+      )
       if (b.blockStatus) battle.anchorBlocksStatus = true
       break
     }
