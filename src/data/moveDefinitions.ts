@@ -291,7 +291,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'speed', amount: 7 },
-      { skill: 'attack', amount: (r) => r.playerDmg * 2 },
     ],
     uiDescription: 'mirror their last hit back.',
     uiClassName: 'battle-screen__move--refract',
