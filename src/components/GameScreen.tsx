@@ -797,22 +797,7 @@ export function GameScreen() {
 
   const handleBattleExitMidpoint = useCallback(() => {
     setBattleReady(false)
-    const pending = pendingBattleExitRef.current
-    if (!pending) return
-
-    if (pending.result === 'win') {
-      setBattleNpcId((activeId) => {
-        if (activeId === WALKER_NPC_ID) setWalkerConverted()
-        if (activeId === JACLYN_NPC_ID) setJaclynConverted()
-        if (activeId === MARK_NPC_ID) {
-          setMarkDefeated()
-          collectArtifact('subway-pass')
-          showMarkVictoryNarration()
-        }
-        return activeId
-      })
-    }
-  }, [showMarkVictoryNarration])
+  }, [])
 
   const handleBattleExitComplete = useCallback(() => {
     pendingBattleExitRef.current = null
@@ -821,10 +806,22 @@ export function GameScreen() {
     reportCurrentLocation()
   }, [reportCurrentLocation])
 
-  const handleBattleEnd = useCallback((result: 'win' | 'lose') => {
-    pendingBattleExitRef.current = { result }
-    setBattleWipePhase('exit')
-  }, [])
+  const handleBattleEnd = useCallback(
+    (result: 'win' | 'lose') => {
+      if (result === 'win') {
+        if (battleNpcId === WALKER_NPC_ID) setWalkerConverted()
+        if (battleNpcId === JACLYN_NPC_ID) setJaclynConverted()
+        if (battleNpcId === MARK_NPC_ID) {
+          setMarkDefeated()
+          collectArtifact('subway-pass')
+          showMarkVictoryNarration()
+        }
+      }
+      pendingBattleExitRef.current = { result }
+      setBattleWipePhase('exit')
+    },
+    [battleNpcId, showMarkVictoryNarration],
+  )
 
   const handleFannyPackClose = useCallback(() => {
     if (menuReturnPending) {
