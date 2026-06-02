@@ -25,7 +25,7 @@ export const CANNON_DEF_SHATTER_CHANCE = 0.05
 
 export const BLACKOUT_ARMED_DAMAGE_MULT = 3.2
 
-export const PARRY_DODGE_COUNTER_MULT = 0.65
+export const PARRY_DODGE_COUNTER_MULT = 0.72
 export const PARRY_DODGE_WEAK_MULT = 0.35
 export const PARRY_ON_DODGE_REFLECT_PCT = 0.02
 
@@ -58,9 +58,9 @@ export const REFRACT_DAMAGE_MULT = 1
 export const LOOP_DAMAGE_MULT = 0.55
 
 /** Enemy outgoing damage multiplier while shaken (0–1). */
-export const ENEMY_SHAKE_OUTGOING_MULT = 0.42
+export const ENEMY_SHAKE_OUTGOING_MULT = 0.4
 /** Enemy outgoing damage multiplier while slowed (0–1). */
-export const ENEMY_SLOW_OUTGOING_MULT = 0.62
+export const ENEMY_SLOW_OUTGOING_MULT = 0.56
 /** Bleed chip each turn as a fraction of enemy max hp. */
 export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
 /** Shared enemy LOOP strike multiplier — mark's telegraphed heavy. */
@@ -112,8 +112,8 @@ export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: n
 export const SPD_DODGE_PER_LEVEL = 0.02
 export const SPD_DODGE_MAX = 0.5
 /** Extra counter damage multiplier per speed level (on top of dodge bonus). */
-export const SPD_COUNTER_BONUS_PER_LEVEL = 0.08
-export const SPD_COUNTER_BONUS_MAX = 0.75
+export const SPD_COUNTER_BONUS_PER_LEVEL = 0.09
+export const SPD_COUNTER_BONUS_MAX = 0.8
 /** Base dodge success before speed skill bonus (keeps early SLIP survivable). */
 export const SPD_DODGE_BASE_CHANCE = 0.68
 /** Speed skill bonus added to combat spd for initiative ties. */
@@ -136,7 +136,7 @@ export function speedInitiativeBonus(spdSkillLevel: number): number {
 }
 
 /** Luck stat weight in crit rolls — makes luck investment show up in fight feel. */
-export const LCK_CRIT_STAT_SCALE = 1.42
+export const LCK_CRIT_STAT_SCALE = 1.48
 
 /** Move XP — scale rewards with what each skill actually accomplished. */
 export const XP_DAMAGE_DEALT_MULT = 3
