@@ -4,39 +4,43 @@ import './BattleEntryWipe.css'
 export const BATTLE_ENTRY_WIPE_MS = 1000
 export const BATTLE_ENTRY_WIPE_MIDPOINT_MS = BATTLE_ENTRY_WIPE_MS / 2
 
+export type BattleWipeMode = 'enter' | 'exit'
+
 type Props = {
+  mode: BattleWipeMode
   onMidpoint: () => void
   onComplete: () => void
 }
 
-export function BattleEntryWipe({ onMidpoint, onComplete }: Props) {
-  const midpointCalled = useRef(false)
-  const completeCalled = useRef(false)
+export function BattleEntryWipe({ mode, onMidpoint, onComplete }: Props) {
+  const onMidpointRef = useRef(onMidpoint)
+  const onCompleteRef = useRef(onComplete)
 
   useEffect(() => {
-    midpointCalled.current = false
-    completeCalled.current = false
+    onMidpointRef.current = onMidpoint
+  }, [onMidpoint])
 
-    const midpointTimer = window.setTimeout(() => {
-      if (midpointCalled.current) return
-      midpointCalled.current = true
-      onMidpoint()
-    }, BATTLE_ENTRY_WIPE_MIDPOINT_MS)
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
-    const completeTimer = window.setTimeout(() => {
-      if (completeCalled.current) return
-      completeCalled.current = true
-      onComplete()
-    }, BATTLE_ENTRY_WIPE_MS)
-
+  useEffect(() => {
+    const midpointTimer = window.setTimeout(
+      () => onMidpointRef.current(),
+      BATTLE_ENTRY_WIPE_MIDPOINT_MS,
+    )
+    const completeTimer = window.setTimeout(
+      () => onCompleteRef.current(),
+      BATTLE_ENTRY_WIPE_MS,
+    )
     return () => {
       window.clearTimeout(midpointTimer)
       window.clearTimeout(completeTimer)
     }
-  }, [onMidpoint, onComplete])
+  }, [])
 
   return (
-    <div className="battle-entry-wipe" aria-hidden>
+    <div className={`battle-entry-wipe battle-entry-wipe--${mode}`} aria-hidden>
       <div className="battle-entry-wipe__panel">
         <div className="battle-entry-wipe__sigil" aria-hidden>
           <span className="battle-entry-wipe__sigil-mark" />

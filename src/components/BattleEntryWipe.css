@@ -29,6 +29,10 @@
   image-rendering: crisp-edges;
 }
 
+.battle-entry-wipe--exit .battle-entry-wipe__panel {
+  animation-name: battle-entry-wipe-sweep-exit;
+}
+
 .battle-entry-wipe__sigil {
   position: absolute;
   left: 42%;
@@ -57,5 +61,14 @@
   }
   to {
     transform: translateX(100%);
+  }
+}
+
+@keyframes battle-entry-wipe-sweep-exit {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-100%);
   }
 }
