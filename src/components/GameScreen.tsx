@@ -32,7 +32,7 @@ import { BattleScreen } from './BattleScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { LoadoutScreen } from './LoadoutScreen'
-import { BattleEntryWipe } from './BattleEntryWipe'
+import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
 import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
@@ -141,7 +141,8 @@ export function GameScreen() {
   const [cafeSceneLine, setCafeSceneLine] = useState(0)
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
-  const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
+  const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
+  const pendingBattleExitRef = useRef<{ result: 'win' | 'lose' } | null>(null)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
@@ -265,11 +266,11 @@ export function GameScreen() {
     return (
       !worldEntryActive &&
       !battleNpcId &&
-      !battleEntryWipe &&
+      !battleWipePhase &&
       !menuTransition &&
       !dialogue
     )
-  }, [worldEntryActive, battleNpcId, battleEntryWipe, menuTransition, dialogue])
+  }, [worldEntryActive, battleNpcId, battleWipePhase, menuTransition, dialogue])
 
   const beginMenuTransition = useCallback((target: MenuTransitionTarget) => {
     menuTransitionRef.current = target
@@ -359,7 +360,7 @@ export function GameScreen() {
         }
         return
       }
-      if (battleNpcId || battleEntryWipe || menuTransition) return
+      if (battleNpcId || battleWipePhase || menuTransition) return
       e.preventDefault()
       if (showStartMenu) {
         setShowStartMenu(false)
@@ -371,7 +372,7 @@ export function GameScreen() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
-    battleEntryWipe,
+    battleWipePhase,
     battleNpcId,
     beginResumeTransition,
     canOpenStartMenu,
@@ -403,12 +404,14 @@ export function GameScreen() {
 
   const startMarkBattle = useCallback(() => {
     setDialogue(null)
-    setBattleEntryWipe('mark')
+    setBattleNpcId(MARK_NPC_ID)
+    setBattleWipePhase('enter')
   }, [])
 
   const startNpcBattle = useCallback((npcId: string) => {
     setDialogue(null)
-    setBattleEntryWipe(npcId)
+    setBattleNpcId(npcId)
+    setBattleWipePhase('enter')
   }, [])
 
   const beginNpcDialogue = useCallback(
@@ -518,6 +521,7 @@ export function GameScreen() {
         beginNpcDialogue(MARK_NPC, { onComplete: startMarkBattle })
       } else if (action === 'OPEN_ONE_LOVE_CAFE') {
         if (isCafeSceneSeen() || cafeFade !== 'none') return
+        setDialogue(null)
         setCafeFade('in')
       }
     },
@@ -647,7 +651,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleEntryWipe || menuTransition || battleNpcId || showFannyPack || showLoadout)
+    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout)
       return
     openNearbyNpcDialogue()
   }, [
@@ -655,7 +659,7 @@ export function GameScreen() {
     cafeFade,
     dialogue,
     advanceDialogue,
-    battleEntryWipe,
+    battleWipePhase,
     battleNpcId,
     showFannyPack,
     showLoadout,
@@ -678,7 +682,7 @@ export function GameScreen() {
     openNearbyNpcDialogue()
   }, [advanceCafeScene, cafeFade, dialogue, advanceDialogue, openNearbyNpcDialogue, showStartMenu])
 
-  const handleConfirm = handlePlayAreaClick
+  const handleConfirm = handleInteract
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -704,7 +708,7 @@ export function GameScreen() {
         showLoadout ||
         showFannyPack ||
         battleNpcId ||
-        battleEntryWipe ||
+        battleWipePhase ||
         menuTransition
       ) {
         return
@@ -716,7 +720,7 @@ export function GameScreen() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
     advanceCafeScene,
-    battleEntryWipe,
+    battleWipePhase,
     battleNpcId,
     cafeFade,
     handleConfirm,
@@ -743,12 +747,12 @@ export function GameScreen() {
   }, [battleNpcId, worldEntryActive])
 
   useEffect(() => {
-    if (!locationReady || worldEntryActive || battleNpcId || battleEntryWipe) return
+    if (!locationReady || worldEntryActive || battleNpcId || battleWipePhase) return
     reportCurrentLocation()
     const id = window.setInterval(reportCurrentLocation, LOCATION_REPORT_INTERVAL_MS)
     return () => window.clearInterval(id)
   }, [
-    battleEntryWipe,
+    battleWipePhase,
     battleNpcId,
     locationReady,
     reportCurrentLocation,
@@ -759,7 +763,7 @@ export function GameScreen() {
     if (!locationReady || worldEntryActive) return
     reportCurrentLocation()
   }, [
-    battleEntryWipe,
+    battleWipePhase,
     battleNpcId,
     dialogue,
     locationReady,
@@ -778,35 +782,41 @@ export function GameScreen() {
   }, [])
 
   const handleBattleEntryMidpoint = useCallback(() => {
-    setBattleEntryWipe((pendingNpcId) => {
-      if (pendingNpcId) setBattleNpcId(pendingNpcId)
-      return pendingNpcId
-    })
+    // Battle mounts when the enter wipe starts — nothing to swap at midpoint.
   }, [])
 
   const handleBattleEntryComplete = useCallback(() => {
-    setBattleEntryWipe(null)
+    setBattleWipePhase(null)
   }, [])
 
-  const handleBattleEnd = useCallback((result: 'win' | 'lose') => {
-    let markWon = false
+  const handleBattleExitMidpoint = useCallback(() => {
+    const pending = pendingBattleExitRef.current
+    if (!pending) return
+
     setBattleNpcId((activeId) => {
-      if (result === 'win') {
+      if (pending.result === 'win') {
         if (activeId === WALKER_NPC_ID) setWalkerConverted()
         if (activeId === JACLYN_NPC_ID) setJaclynConverted()
         if (activeId === MARK_NPC_ID) {
           setMarkDefeated()
           collectArtifact('subway-pass')
-          markWon = true
+          showMarkVictoryNarration()
         }
       }
       return null
     })
-    if (markWon) {
-      showMarkVictoryNarration()
-    }
+  }, [showMarkVictoryNarration])
+
+  const handleBattleExitComplete = useCallback(() => {
+    pendingBattleExitRef.current = null
+    setBattleWipePhase(null)
     reportCurrentLocation()
-  }, [reportCurrentLocation, showMarkVictoryNarration])
+  }, [reportCurrentLocation])
+
+  const handleBattleEnd = useCallback((result: 'win' | 'lose') => {
+    pendingBattleExitRef.current = { result }
+    setBattleWipePhase('exit')
+  }, [])
 
   const handleFannyPackClose = useCallback(() => {
     if (menuReturnPending) {
@@ -890,7 +900,7 @@ export function GameScreen() {
   const showQuestHelper =
     !worldEntryActive &&
     !battleNpcId &&
-    !battleEntryWipe &&
+    !battleWipePhase &&
     !menuTransition &&
     !showStartMenu &&
     !showLoadout &&
@@ -920,7 +930,7 @@ export function GameScreen() {
       >
         <div
           className={`game-screen-play${
-            battleEntryWipe ? ' game-screen-play--battle-wipe' : ''
+            battleWipePhase ? ' game-screen-play--battle-wipe' : ''
           }${menuTransition ? ' game-screen-play--menu-transition' : ''}${
             worldEntryActive ? ' game-screen-play--world-entry' : ''
           }`}
@@ -958,7 +968,7 @@ export function GameScreen() {
               dialogueActive={
                 !!dialogue ||
                 worldEntryActive ||
-                !!battleEntryWipe ||
+                !!battleWipePhase ||
                 !!menuTransition ||
                 showFannyPack ||
                 showLoadout ||
@@ -1014,7 +1024,7 @@ export function GameScreen() {
               }
             />
           )}
-          {cafeFade === 'scene' && !dialogue && (
+          {cafeFade === 'scene' && (
             <div
               className="game-screen-cafe-scene"
               onClick={(e) => {
@@ -1024,19 +1034,33 @@ export function GameScreen() {
               role="dialog"
               aria-modal="true"
             >
-              <p className="game-screen-cafe-scene__text">{CAFE_SCENE_LINES[cafeSceneLine]}</p>
+              <p className="game-screen-cafe-scene__text">
+                {CAFE_SCENE_LINES[cafeSceneLine] ?? ''}
+              </p>
               <span className="game-screen-cafe-scene__continue">tap to continue ▸</span>
             </div>
           )}
-          {battleNpcId && (
-            <BattleScreen npcId={battleNpcId} onBattleEnd={handleBattleEnd} />
-          )}
-          {battleEntryWipe && (
-            <BattleEntryWipe
-              onMidpoint={handleBattleEntryMidpoint}
-              onComplete={handleBattleEntryComplete}
-            />
-          )}
+          <div className="game-screen-battle-layer">
+            {battleNpcId && (
+              <BattleScreen npcId={battleNpcId} onBattleEnd={handleBattleEnd} />
+            )}
+            {battleWipePhase && (
+              <BattleEntryWipe
+                key={battleWipePhase}
+                mode={battleWipePhase}
+                onMidpoint={
+                  battleWipePhase === 'enter'
+                    ? handleBattleEntryMidpoint
+                    : handleBattleExitMidpoint
+                }
+                onComplete={
+                  battleWipePhase === 'enter'
+                    ? handleBattleEntryComplete
+                    : handleBattleExitComplete
+                }
+              />
+            )}
+          </div>
           {menuTransition && (
             <MenuEntryCover
               immediateMidpoint={menuTransition.kind === 'resume'}
