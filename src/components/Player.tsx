@@ -28,6 +28,10 @@ import {
 } from '../game/npcSpriteCache'
 import type { TriggerAction } from '../data/triggerZones'
 import type { CityConfig } from '../data/cityConfig'
+import type { QuestPulseTargetDescriptor } from '../data/questObjectives'
+import {
+  resolveQuestPulseWorldPoint,
+} from '../data/questObjectives'
 import { drawWorldMap } from '../game/drawWorldBackground'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { playerScreenAnchor } from '../game/playerScreenAnchor'
@@ -36,7 +40,7 @@ import { SpriteSheet, type Direction } from '../game/SpriteSheet'
 import { loadWorldBackgroundForSrc } from '../game/WorldBackground'
 import './Player.css'
 
-const MOVE_SPEED = 120
+const MOVE_SPEED = 156
 const ANIM_FPS = 8
 const ANIM_INTERVAL = 1 / ANIM_FPS
 const WALK_FRAME_COUNT = MIDNIGHT_WALK_FRAMES_PER_DIRECTION
@@ -75,10 +79,6 @@ type InteractPoint = { x: number; y: number; npcFacing: Direction }
 
 function getNpcFeetY(npc: { y: number }): number {
   return npc.y + NPC_SIZE / 2
-}
-
-function getPlayerFeetY(worldY: number): number {
-  return worldY + PLAYER_DISPLAY_HEIGHT / 2
 }
 
 function getNpcInteractPoints(npc: { x: number; y: number }): InteractPoint[] {
@@ -388,12 +388,10 @@ function getMapCollisionZones(cfg: CityConfig): CollisionZone[] {
 }
 
 function getFeetHitbox(worldX: number, worldY: number): CollisionZone {
-  const wx = Math.floor(worldX)
-  const wy = Math.floor(worldY)
-  const feetY = wy + Math.floor(PLAYER_DISPLAY_HEIGHT / 2)
+  const feetY = worldY + PLAYER_DISPLAY_HEIGHT / 2
   return {
-    x: Math.floor(wx - FEET_HITBOX_WIDTH / 2),
-    y: Math.floor(feetY - FEET_HITBOX_HEIGHT / 2),
+    x: worldX - FEET_HITBOX_WIDTH / 2,
+    y: feetY - FEET_HITBOX_HEIGHT / 2,
     width: FEET_HITBOX_WIDTH,
     height: FEET_HITBOX_HEIGHT,
   }
@@ -468,6 +466,38 @@ function drawDebugOverlay(
   })
 }
 
+const QUEST_PULSE_COLOR = '#c084fc'
+
+function drawQuestObjectivePulse(
+  ctx: CanvasRenderingContext2D,
+  worldX: number,
+  worldY: number,
+  nowMs: number,
+): void {
+  const t = nowMs / 1000
+  const pulse = 0.5 + 0.5 * Math.sin(t * 3)
+  const alpha = 0.25 + 0.35 * pulse
+  const radius = 28 + 12 * pulse
+
+  ctx.save()
+  const gradient = ctx.createRadialGradient(worldX, worldY, 0, worldX, worldY, radius)
+  gradient.addColorStop(0, `rgba(192, 132, 252, ${alpha * 0.55})`)
+  gradient.addColorStop(0.55, `rgba(192, 132, 252, ${alpha * 0.22})`)
+  gradient.addColorStop(1, 'rgba(192, 132, 252, 0)')
+  ctx.fillStyle = gradient
+  ctx.beginPath()
+  ctx.arc(worldX, worldY, radius, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.globalAlpha = alpha
+  ctx.strokeStyle = QUEST_PULSE_COLOR
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(worldX, worldY, radius * 0.82, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.restore()
+}
+
 export type PlayerHandle = {
   setPosition: (x: number, y: number) => void
   getPosition: () => { x: number; y: number }
@@ -480,10 +510,20 @@ type PlayerProps = {
   onTriggerExit?: (action: TriggerAction) => void
   dialogueActive?: boolean
   dialogueNpcId?: string | null
+  questPulseDescriptor?: QuestPulseTargetDescriptor | null
+  showQuestPulse?: boolean
 }
 
 export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
-  { cityConfig, onTrigger, onTriggerExit, dialogueActive, dialogueNpcId },
+  {
+    cityConfig,
+    onTrigger,
+    onTriggerExit,
+    dialogueActive,
+    dialogueNpcId,
+    questPulseDescriptor = null,
+    showQuestPulse = false,
+  },
   ref,
 ) {
   const { canvas, ctx, width, height, registerLoop, unregisterLoop, setDebugHud } =
@@ -503,6 +543,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const cityConfigRef = useRef(cityConfig)
 
   const worldPos = useRef<Vec>({ x: cityConfig.spawnX, y: cityConfig.spawnY })
+  const moveRemainder = useRef<Vec>({ x: 0, y: 0 })
   const direction = useRef<Direction>('down')
   const animFrame = useRef(MIDNIGHT_WALK_IDLE_FRAME)
   const animElapsed = useRef(0)
@@ -526,6 +567,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const nearbyNpcIdRef = useRef<string | null>(null)
   const dialogueActiveRef = useRef(false)
   const dialogueNpcIdRef = useRef<string | null>(null)
+  const questPulseDescriptorRef = useRef<QuestPulseTargetDescriptor | null>(null)
+  const showQuestPulseRef = useRef(false)
   const npcFacingMap = useRef(new Map<string, Direction>())
   const npcSpritesRef = useRef(new Map<string, HTMLImageElement>())
   const npcStoryIdleRef = useRef(
@@ -585,6 +628,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   useImperativeHandle(ref, () => ({
     setPosition(x: number, y: number) {
       worldPos.current = { x, y }
+      moveRemainder.current = { x: 0, y: 0 }
       activeTriggerIds.current.clear()
       triggerCooldown.current = 1
     },
@@ -617,6 +661,14 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       npcFacingMap.current.delete(prevId)
     }
   }, [dialogueNpcId])
+
+  useEffect(() => {
+    questPulseDescriptorRef.current = questPulseDescriptor
+  }, [questPulseDescriptor])
+
+  useEffect(() => {
+    showQuestPulseRef.current = showQuestPulse
+  }, [showQuestPulse])
 
   useEffect(() => {
     selectedMidnightVariantRef.current = selectedMidnightVariant
@@ -849,15 +901,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       wasMoving.current = isMoving
       lastFacing.current = facing
 
-      const rightOnly =
-        facing === 'right' &&
-        vx > 0 &&
-        vy === 0 &&
-        keysDown.current.has('ArrowRight') &&
-        !keysDown.current.has('ArrowLeft') &&
-        !keysDown.current.has('ArrowUp') &&
-        !keysDown.current.has('ArrowDown')
-
       const mapCollisionZones = getMapCollisionZones(cfg)
       const collidesAt = (wx: number, wy: number): boolean => {
         const hitbox = getFeetHitbox(wx, wy)
@@ -865,13 +908,47 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         return cfg.npcs.some((npc) => rectsOverlap(hitbox, getNpcCollisionRect(npc)))
       }
 
-      if (isMoving && walkSheet?.loaded) {
+      const halfW = PLAYER_DISPLAY_WIDTH / 2
+      const halfH = PLAYER_DISPLAY_HEIGHT / 2
+
+      const applyAxisSteps = (axis: 'x' | 'y', steps: number) => {
+        if (steps === 0) return
+        const dir = Math.sign(steps)
+        let remaining = Math.abs(steps)
+        let applied = 0
+        while (remaining > 0) {
+          const pos = worldPos.current
+          if (axis === 'x') {
+            const nextX = Math.max(
+              halfW,
+              Math.min(cfg.worldWidth - halfW, pos.x + dir),
+            )
+            if (nextX === pos.x || collidesAt(nextX, pos.y)) break
+            worldPos.current.x = nextX
+          } else {
+            const nextY = Math.max(
+              halfH,
+              Math.min(cfg.worldHeight - halfH, pos.y + dir),
+            )
+            if (nextY === pos.y || collidesAt(pos.x, nextY)) break
+            worldPos.current.y = nextY
+          }
+          applied += 1
+          remaining -= 1
+        }
+        if (applied < Math.abs(steps)) {
+          if (axis === 'x') moveRemainder.current.x = 0
+          else moveRemainder.current.y = 0
+        } else {
+          if (axis === 'x') moveRemainder.current.x -= dir * applied
+          else moveRemainder.current.y -= dir * applied
+        }
+      }
+
+      if (isMoving) {
         let speedX = 0
         let speedY = 0
-        if (rightOnly) {
-          speedX = MOVE_SPEED
-          speedY = 0
-        } else if (vx !== 0 && vy !== 0) {
+        if (vx !== 0 && vy !== 0) {
           const len = Math.hypot(vx, vy)
           speedX = (vx / len) * MOVE_SPEED
           speedY = (vy / len) * MOVE_SPEED
@@ -881,30 +958,16 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
           speedY = Math.sign(vy) * MOVE_SPEED
         }
 
-        const dx = speedX * dt
-        let dy = speedY * dt
-        if (rightOnly) {
-          dy = 0
-        }
+        moveRemainder.current.x += speedX * dt
+        moveRemainder.current.y += speedY * dt
 
-        const halfW = PLAYER_DISPLAY_WIDTH / 2
-        const halfH = PLAYER_DISPLAY_HEIGHT / 2
-
-        const nextX = Math.max(
-          halfW,
-          Math.min(cfg.worldWidth - halfW, worldPos.current.x + dx),
-        )
-        const nextY = Math.max(
-          halfH,
-          Math.min(cfg.worldHeight - halfH, worldPos.current.y + dy),
-        )
-
-        if (dx !== 0 && !collidesAt(nextX, worldPos.current.y)) {
-          worldPos.current.x = Math.floor(nextX)
-        }
-        if (dy !== 0 && !collidesAt(worldPos.current.x, nextY)) {
-          worldPos.current.y = Math.floor(nextY)
-        }
+        const stepX = Math.trunc(moveRemainder.current.x)
+        const stepY = Math.trunc(moveRemainder.current.y)
+        applyAxisSteps('x', stepX)
+        applyAxisSteps('y', stepY)
+      } else {
+        moveRemainder.current.x = 0
+        moveRemainder.current.y = 0
       }
 
       const zoom = clampZoom(zoomLevel.current, width, height, cfg.worldWidth, cfg.worldHeight)
@@ -960,13 +1023,16 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         }
       }
 
-      const playerFeetY = getPlayerFeetY(worldY)
       let closestNpcId: string | null = null
       let closestDist = Infinity
       for (const npc of cfg.npcs) {
-        const dist = Math.hypot(worldX - npc.x, playerFeetY - getNpcFeetY(npc))
-        if (dist <= NPC_INTERACT_RANGE && dist < closestDist) {
-          closestDist = dist
+        let nearestInteract = Infinity
+        for (const pt of getNpcInteractPoints(npc)) {
+          const dist = Math.hypot(worldX - pt.x, worldY - pt.y)
+          if (dist < nearestInteract) nearestInteract = dist
+        }
+        if (nearestInteract <= NPC_INTERACT_RANGE && nearestInteract < closestDist) {
+          closestDist = nearestInteract
           closestNpcId = npc.id
         }
       }
@@ -1119,6 +1185,18 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             }
           }
           }
+        }
+      }
+
+      if (showQuestPulseRef.current && !frozen) {
+        const pulsePoint = resolveQuestPulseWorldPoint(
+          questPulseDescriptorRef.current,
+          cfg,
+          worldX,
+          worldY,
+        )
+        if (pulsePoint) {
+          drawQuestObjectivePulse(ctx, pulsePoint.x, pulsePoint.y, performance.now())
         }
       }
 

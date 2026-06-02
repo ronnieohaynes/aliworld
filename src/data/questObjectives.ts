@@ -7,14 +7,18 @@ import {
   GATING_NPC_IDS,
   getQuest1Snapshot,
   hasTalkedToAllGatingNpcs,
+  hasTalkedToGatingNpc,
   isCafeSceneSeen,
   isJaclynConverted,
   isMarkDefeated,
   isWalkerConverted,
+  type GatingNpcId,
 } from '../store/quest1Store'
 import { getWorldMemorySnapshot } from '../store/worldMemory'
 import { ADAM_MP3_ARTIFACT_ID } from './adamMp3Handoff'
-import { FIVE_DISPLAY_NAME } from './cityConfig'
+import { FIVE_DISPLAY_NAME, type CityConfig } from './cityConfig'
+import { NPC_SIZE } from './npcs'
+import type { TriggerAction } from './triggerZones'
 
 /** MP3 player from Adam (quest helper tracks this as the notice step). */
 export const NOTICE_ARTIFACT_ID = ADAM_MP3_ARTIFACT_ID
@@ -151,4 +155,131 @@ export function resolvePrimaryQuestObjective(
     return { questId: 'none', stepId: 'none', text: '' }
   }
   return resolveActiveObjective(quest, ctx)
+}
+
+/** First incomplete quest step id, or null when every step is complete. */
+export function getActiveStepId(ctx: QuestObjectiveContext): string | null {
+  for (const step of QUEST_1_STEPS) {
+    if (!step.isComplete(ctx)) return step.id
+  }
+  return null
+}
+
+export type QuestPulseTargetDescriptor =
+  | { kind: 'npc'; id: string }
+  | { kind: 'zone'; action: TriggerAction }
+  | { kind: 'nearest-untalked-gating' }
+
+/** Map active quest step → overworld highlight target (before city filtering). */
+export function getQuestPulseTargetDescriptor(
+  stepId: string,
+  ctx: QuestObjectiveContext,
+): QuestPulseTargetDescriptor | null {
+  switch (stepId) {
+    case 'wake':
+    case 'find-self':
+      return { kind: 'nearest-untalked-gating' }
+    case 'read-notice':
+      return ctx.hasNotice ? null : { kind: 'npc', id: 'adam' }
+    case 'walker':
+      return { kind: 'npc', id: 'walker' }
+    case 'jaclyn':
+      return { kind: 'npc', id: 'jaclyn' }
+    case 'mark':
+      return { kind: 'npc', id: 'mark' }
+    case 'san-bruno':
+    case 'darkline':
+      return { kind: 'zone', action: 'OPEN_DARKLINE' }
+    case 'cafe':
+      return { kind: 'zone', action: 'OPEN_ONE_LOVE_CAFE' }
+    default:
+      return null
+  }
+}
+
+function npcFeetY(npc: { y: number }): number {
+  return npc.y + NPC_SIZE / 2
+}
+
+function findNpcInCity(city: CityConfig, id: string) {
+  return city.npcs.find((npc) => npc.id === id)
+}
+
+function findTriggerInCity(city: CityConfig, action: TriggerAction) {
+  return city.triggerZones.find((zone) => zone.action === action)
+}
+
+function findNearestUntalkedGatingNpc(
+  city: CityConfig,
+  playerX: number,
+  playerY: number,
+) {
+  let best: { x: number; y: number } | null = null
+  let bestDist = Infinity
+  for (const id of GATING_NPC_IDS) {
+    if (hasTalkedToGatingNpc(id as GatingNpcId)) continue
+    const npc = findNpcInCity(city, id)
+    if (!npc) continue
+    const feetY = npcFeetY(npc)
+    const dist = Math.hypot(playerX - npc.x, playerY - feetY)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = { x: npc.x, y: feetY }
+    }
+  }
+  return best
+}
+
+function resolveDescriptorInCity(
+  descriptor: QuestPulseTargetDescriptor,
+  city: CityConfig,
+  playerX: number,
+  playerY: number,
+): { x: number; y: number } | null {
+  switch (descriptor.kind) {
+    case 'npc': {
+      const npc = findNpcInCity(city, descriptor.id)
+      if (!npc) return null
+      return { x: npc.x, y: npcFeetY(npc) }
+    }
+    case 'zone': {
+      const zone = findTriggerInCity(city, descriptor.action)
+      if (!zone) return null
+      return { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 }
+    }
+    case 'nearest-untalked-gating':
+      return findNearestUntalkedGatingNpc(city, playerX, playerY)
+  }
+}
+
+/**
+ * World point for the quest pulse in the current city.
+ * Falls back to the local darkline entrance when the step target lives elsewhere.
+ */
+export function resolveQuestPulseWorldPoint(
+  descriptor: QuestPulseTargetDescriptor | null,
+  city: CityConfig,
+  playerX: number,
+  playerY: number,
+): { x: number; y: number } | null {
+  if (!descriptor) return null
+
+  const direct = resolveDescriptorInCity(descriptor, city, playerX, playerY)
+  if (direct) return direct
+
+  const darkline = findTriggerInCity(city, 'OPEN_DARKLINE')
+  if (!darkline) return null
+  return {
+    x: darkline.x + darkline.width / 2,
+    y: darkline.y + darkline.height / 2,
+  }
+}
+
+/** Active step descriptor for the primary quest, if any. */
+export function resolveActiveQuestPulseDescriptor(
+  ctx: QuestObjectiveContext = buildQuestObjectiveContext(),
+): QuestPulseTargetDescriptor | null {
+  const stepId = getActiveStepId(ctx)
+  if (!stepId) return null
+  return getQuestPulseTargetDescriptor(stepId, ctx)
 }

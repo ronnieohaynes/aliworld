@@ -5,7 +5,7 @@ import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, type NpcData } from '../da
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import { CITY_CONFIGS, DARKLINE_DESTINATIONS, INACTIVE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION, type CityConfig, type CityId } from '../data/cityConfig'
 import { isMoveUnlocked } from '../data/moves'
-import { collectArtifact, hasArtifact } from '../store/artifactStore'
+import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
   getQuest1Snapshot,
   hasTalkedToAllGatingNpcs,
@@ -24,7 +24,11 @@ import {
   setWalkerConverted,
   WALKER_NPC_ID,
 } from '../store/quest1Store'
-import { markCityVisited } from '../store/worldMemory'
+import {
+  getWorldMemorySnapshot,
+  markCityVisited,
+  subscribeWorldMemoryStore,
+} from '../store/worldMemory'
 import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
@@ -59,6 +63,10 @@ import {
 } from '../store/playerStore'
 import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
+import {
+  buildQuestObjectiveContext,
+  resolveActiveQuestPulseDescriptor,
+} from '../data/questObjectives'
 import {
   StartMenuScreen,
   type StartMenuAction,
@@ -171,6 +179,16 @@ export function GameScreen() {
     getQuest1Snapshot,
     getQuest1Snapshot,
   )
+  const artifactRevision = useSyncExternalStore(
+    subscribeArtifactStore,
+    getArtifactStoreSnapshot,
+    getArtifactStoreSnapshot,
+  )
+  const worldRevision = useSyncExternalStore(
+    subscribeWorldMemoryStore,
+    getWorldMemorySnapshot,
+    getWorldMemorySnapshot,
+  )
   const markDefeated = useSyncExternalStore(
     subscribeQuest1Store,
     isMarkDefeated,
@@ -183,6 +201,13 @@ export function GameScreen() {
     if (!isCafeSceneSeen()) return [...DARKLINE_DESTINATIONS]
     return [...DARKLINE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION]
   }, [quest1Revision])
+
+  const questPulseDescriptor = useMemo(() => {
+    void artifactRevision
+    void quest1Revision
+    void worldRevision
+    return resolveActiveQuestPulseDescriptor(buildQuestObjectiveContext())
+  }, [artifactRevision, quest1Revision, worldRevision])
 
   const reportCurrentLocation = useCallback(
     (city: CityId = currentCity) => {
@@ -931,6 +956,8 @@ export function GameScreen() {
     !showDarkline &&
     !showInterior
 
+  const showQuestPulse = showQuestHelper && cafeFade === 'none'
+
   const showInteractHint = showQuestHelper && !dialogue && nearbyNpcId !== null
 
   const handleInteriorClick = useCallback((e: React.MouseEvent) => {
@@ -998,6 +1025,8 @@ export function GameScreen() {
                 showStartMenu
               }
               dialogueNpcId={dialogue?.npc.id ?? null}
+              questPulseDescriptor={questPulseDescriptor}
+              showQuestPulse={showQuestPulse}
             />
             {!battleNpcId && <PlayerLevelOverhead />}
           </GameCanvas>
