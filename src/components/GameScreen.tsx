@@ -11,12 +11,14 @@ import {
   hasTalkedToAllGatingNpcs,
   hasTalkedToGatingNpc,
   isGatingNpcId,
+  isCafeSceneSeen,
   isJaclynConverted,
   isMarkDefeated,
   isWalkerConverted,
   JACLYN_NPC_ID,
   MARK_NPC_ID,
   markGatingNpcTalked,
+  setCafeSceneSeen,
   setJaclynConverted,
   setMarkDefeated,
   setWalkerConverted,
@@ -74,6 +76,14 @@ const NARRATOR_NPC: NpcData = {
   color: '#000',
 }
 
+const CAFE_SCENE_LINES = [
+  'danny sits at the cafe. he does not look up.',
+  "he is the most ordinary thing you've seen since spawning.",
+  "you're here to destroy him. he doesn't notice you exist.",
+] as const
+
+type CafeFadePhase = 'none' | 'in' | 'scene' | 'out'
+
 /** How often to push live coords into the account save buffer while exploring. */
 const LOCATION_REPORT_INTERVAL_MS = 3_000
 
@@ -122,7 +132,8 @@ export function GameScreen() {
   const [currentCity, setCurrentCity] = useState<CityId>('daly-city')
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
-  const [cafeFade, setCafeFade] = useState<'none' | 'in' | 'out'>('none')
+  const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
+  const [cafeSceneLine, setCafeSceneLine] = useState(0)
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleEntryWipe, setBattleEntryWipe] = useState<string | null>(null)
@@ -319,7 +330,10 @@ export function GameScreen() {
   useEffect(() => {
     if (cafeFade === 'none') return
     if (cafeFade === 'in') {
-      const t = window.setTimeout(() => setCafeFade('out'), 600)
+      const t = window.setTimeout(() => {
+        setCafeSceneLine(0)
+        setCafeFade('scene')
+      }, 400)
       return () => window.clearTimeout(t)
     }
     if (cafeFade === 'out') {
@@ -383,6 +397,21 @@ export function GameScreen() {
     ])
   }, [showNarration])
 
+  const finishCafeScene = useCallback(() => {
+    setCafeSceneSeen()
+    setCafeFade('out')
+  }, [])
+
+  const advanceCafeScene = useCallback(() => {
+    if (cafeFade !== 'scene') return
+    const next = cafeSceneLine + 1
+    if (next >= CAFE_SCENE_LINES.length) {
+      finishCafeScene()
+      return
+    }
+    setCafeSceneLine(next)
+  }, [cafeFade, cafeSceneLine, finishCafeScene])
+
   const showMarkGateDialogue = useCallback(() => {
     beginNpcDialogue(MARK_NPC, { blocked: true })
   }, [beginNpcDialogue])
@@ -422,10 +451,11 @@ export function GameScreen() {
         }
         beginNpcDialogue(MARK_NPC, { onComplete: startMarkBattle })
       } else if (action === 'OPEN_ONE_LOVE_CAFE') {
+        if (isCafeSceneSeen() || cafeFade !== 'none') return
         setCafeFade('in')
       }
     },
-    [beginNpcDialogue, canApproachMark, showMarkBlockedDialogue, startMarkBattle],
+    [beginNpcDialogue, cafeFade, canApproachMark, showMarkBlockedDialogue, startMarkBattle],
   )
 
   const handleExitTrigger = useCallback((action: TriggerAction) => {
@@ -534,6 +564,10 @@ export function GameScreen() {
 
   const handleInteract = useCallback(() => {
     if (worldEntryActive) return
+    if (cafeFade === 'scene') {
+      advanceCafeScene()
+      return
+    }
     if (showStartMenu) {
       startMenuRef.current?.activate()
       return
@@ -546,6 +580,8 @@ export function GameScreen() {
       return
     openNearbyNpcDialogue()
   }, [
+    advanceCafeScene,
+    cafeFade,
     dialogue,
     advanceDialogue,
     battleEntryWipe,
@@ -560,12 +596,16 @@ export function GameScreen() {
 
   const handlePlayAreaClick = useCallback(() => {
     if (worldEntryActive || showStartMenu) return
+    if (cafeFade === 'scene') {
+      advanceCafeScene()
+      return
+    }
     if (dialogue) {
       advanceDialogue()
       return
     }
     openNearbyNpcDialogue()
-  }, [dialogue, advanceDialogue, openNearbyNpcDialogue, showStartMenu])
+  }, [advanceCafeScene, cafeFade, dialogue, advanceDialogue, openNearbyNpcDialogue, showStartMenu])
 
   const handleConfirm = handlePlayAreaClick
 
@@ -580,6 +620,11 @@ export function GameScreen() {
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLElement && target.isContentEditable)
       ) {
+        return
+      }
+      if (cafeFade === 'scene') {
+        e.preventDefault()
+        advanceCafeScene()
         return
       }
       if (
@@ -599,8 +644,10 @@ export function GameScreen() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
+    advanceCafeScene,
     battleEntryWipe,
     battleNpcId,
+    cafeFade,
     handleConfirm,
     menuEntryWipe,
     showFannyPack,
@@ -858,7 +905,7 @@ export function GameScreen() {
               onTravel={handleDarklineTravel}
             />
           )}
-          {dialogue && !battleNpcId && (
+          {dialogue && !battleNpcId && cafeFade !== 'scene' && (
             <DialogueBox
               name={dialogue.speakerLines[dialogue.lineIndex]?.speaker ?? dialogue.npc.name}
               line={dialogue.speakerLines[dialogue.lineIndex]?.text ?? ''}
@@ -867,13 +914,34 @@ export function GameScreen() {
           )}
           {cafeFade !== 'none' && (
             <div
-              className="game-screen-cafe-fade"
-              style={{
-                animation: cafeFade === 'in'
-                  ? 'cafeFadeIn 400ms ease-in forwards'
-                  : 'cafeFadeOut 400ms ease-out forwards',
-              }}
+              className={`game-screen-cafe-fade${
+                cafeFade === 'scene' ? ' game-screen-cafe-fade--hold' : ''
+              }`}
+              style={
+                cafeFade === 'in' || cafeFade === 'out'
+                  ? {
+                      animation:
+                        cafeFade === 'in'
+                          ? 'cafeFadeIn 400ms ease-in forwards'
+                          : 'cafeFadeOut 400ms ease-out forwards',
+                    }
+                  : undefined
+              }
             />
+          )}
+          {cafeFade === 'scene' && !dialogue && (
+            <div
+              className="game-screen-cafe-scene"
+              onClick={(e) => {
+                e.stopPropagation()
+                advanceCafeScene()
+              }}
+              role="dialog"
+              aria-modal="true"
+            >
+              <p className="game-screen-cafe-scene__text">{CAFE_SCENE_LINES[cafeSceneLine]}</p>
+              <span className="game-screen-cafe-scene__continue">tap to continue ▸</span>
+            </div>
           )}
           {battleNpcId && (
             <BattleScreen npcId={battleNpcId} onBattleEnd={handleBattleEnd} />

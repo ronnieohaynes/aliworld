@@ -22,6 +22,27 @@
   touch-action: none;
 }
 
+.game-screen-interact-hint {
+  position: absolute;
+  bottom: 118px;
+  left: 50%;
+  z-index: 40;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid #2a2a3e;
+  border-radius: 4px;
+  background: rgba(10, 10, 18, 0.88);
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+  pointer-events: none;
+  user-select: none;
+}
+
 
 /* 13 Gallons interior overlay (V1.1 — view only, no customization) */
 .game-screen-interior {
@@ -75,6 +96,44 @@
   to   { opacity: 0; }
 }
 
+.game-screen-cafe-fade--hold {
+  opacity: 1;
+}
+
+.game-screen-cafe-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 8, 14, 0.92);
+  cursor: pointer;
+}
+
+.game-screen-cafe-scene__text {
+  max-width: 320px;
+  margin: 0;
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: lowercase;
+}
+
+.game-screen-cafe-scene__continue {
+  margin-top: 20px;
+  color: #7a7a96;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
 .game-screen-debug-hud {
   position: absolute;
   top: 8px;
@@ -91,4 +150,24 @@
   border: 2px solid #ffffff;
   pointer-events: none;
   white-space: pre;
+}
+
+/* TEMP: debug dummy fight — delete after testing */
+.debug-fight-dummy {
+  position: absolute;
+  top: 96px;
+  left: 8px;
+  z-index: 9999;
+  margin: 0;
+  padding: 8px 10px;
+  border: 2px solid #f59e0b;
+  border-radius: 4px;
+  background: #1a1528;
+  color: #f59e0b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  cursor: pointer;
+  pointer-events: auto;
 }

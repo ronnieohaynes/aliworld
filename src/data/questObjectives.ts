@@ -7,6 +7,7 @@ import {
   GATING_NPC_IDS,
   getQuest1Snapshot,
   hasTalkedToAllGatingNpcs,
+  isCafeSceneSeen,
   isJaclynConverted,
   isMarkDefeated,
   isWalkerConverted,
@@ -44,8 +45,7 @@ export function buildQuestObjectiveContext(): QuestObjectiveContext {
     jaclynConverted: isJaclynConverted(),
     markDefeated: isMarkDefeated(),
     inSanBruno: world.citiesVisited.includes('san-bruno'),
-    // PART 2: cafe beat hook — stub reads false until wired.
-    cafeSeen: false,
+    cafeSeen: isCafeSceneSeen(),
   }
 }
 
