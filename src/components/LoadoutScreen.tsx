@@ -22,6 +22,7 @@ import {
   MOVE_SKILL_LADDERS,
   type PlayerMoveId,
 } from '../data/moves'
+import { deriveBuildName } from '../data/buildName'
 import type { MoveSkill } from '../data/moveTypes'
 import {
   getSelectedMidnightVariant,
@@ -148,6 +149,7 @@ export function LoadoutScreen({ onClose }: Props) {
   )
 
   const playerLevel = useMemo(() => getPlayerLevel(), [skills])
+  const build = useMemo(() => deriveBuildName(skills), [skills])
   const skillSections = useMemo(
     () => buildSkillSections(skills, equipped),
     [skills, equipped],
@@ -229,6 +231,12 @@ export function LoadoutScreen({ onClose }: Props) {
               width={WORLD_PLAYER_DISPLAY_WIDTH}
               height={WORLD_PLAYER_DISPLAY_HEIGHT}
             />
+            <div
+              className="loadout-screen__build"
+              style={{ color: build.color }}
+            >
+              {build.name}
+            </div>
             <p className="loadout-screen__level">level {playerLevel}</p>
           </section>
 
