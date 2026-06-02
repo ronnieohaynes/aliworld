@@ -387,21 +387,6 @@ export function GameScreen() {
     toggleShowDebug()
   }, [])
 
-  useEffect(() => {
-    if (cafeFade === 'none') return
-    if (cafeFade === 'in') {
-      const t = window.setTimeout(() => {
-        setCafeSceneLine(0)
-        setCafeFade('scene')
-      }, 400)
-      return () => window.clearTimeout(t)
-    }
-    if (cafeFade === 'out') {
-      const t = window.setTimeout(() => setCafeFade('none'), 400)
-      return () => window.clearTimeout(t)
-    }
-  }, [cafeFade])
-
   const startMarkBattle = useCallback(() => {
     if (battleNpcId || battleWipePhase) return
     setDialogue(null)
@@ -463,15 +448,31 @@ export function GameScreen() {
 
   const finishCafeScene = useCallback(() => {
     setCafeSceneSeen()
-    showNarration(['the jacket. you feel it. something opens.'], () => {
-      if (!isMoveUnlocked('FURY_SWEEP', getPlayerSkills())) {
-        const targetXp = totalXpForLevel(FURY_SWEEP_UNLOCK_LEVEL)
-        const grant = Math.max(0, targetXp - getPlayerSkills().attack.xp)
-        if (grant > 0) grantPlayerSkillXp('attack', grant)
-      }
-      setCafeFade('out')
-    })
-  }, [showNarration])
+    if (!isMoveUnlocked('FURY_SWEEP', getPlayerSkills())) {
+      const targetXp = totalXpForLevel(FURY_SWEEP_UNLOCK_LEVEL)
+      const grant = Math.max(0, targetXp - getPlayerSkills().attack.xp)
+      if (grant > 0) grantPlayerSkillXp('attack', grant)
+    }
+    setCafeFade('out')
+  }, [])
+
+  useEffect(() => {
+    if (cafeFade === 'none') return
+    if (cafeFade === 'in') {
+      const t = window.setTimeout(() => {
+        setCafeSceneLine(0)
+        setCafeFade('scene')
+      }, 400)
+      return () => window.clearTimeout(t)
+    }
+    if (cafeFade === 'out') {
+      const t = window.setTimeout(() => {
+        setCafeFade('none')
+        showNarration(['the jacket. you feel it. something opens.'])
+      }, 400)
+      return () => window.clearTimeout(t)
+    }
+  }, [cafeFade, showNarration])
 
   const advanceCafeScene = useCallback(() => {
     if (cafeFade !== 'scene') return
