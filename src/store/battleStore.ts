@@ -449,6 +449,7 @@ function enemyActsFirstInResolution(state: BattleState): boolean {
     state.combatStatus,
     state.playerStats.spd,
     state.npc.stats.spd,
+    getPlayerSkills().speed.level,
   )
 }
 

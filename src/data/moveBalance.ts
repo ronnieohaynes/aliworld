@@ -100,3 +100,23 @@ export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: n
   const frac = defensePassiveMitigationFraction(defSkillLevel)
   return Math.max(1, Math.floor(incoming * (1 - frac)))
 }
+
+/** Speed skill — dodge reliability and counter scaling per level. */
+export const SPD_DODGE_PER_LEVEL = 0.01
+export const SPD_DODGE_MAX = 0.5
+/** Base dodge success before speed skill bonus (keeps early SLIP survivable). */
+export const SPD_DODGE_BASE_CHANCE = 0.68
+/** Speed skill bonus added to combat spd for initiative ties. */
+export const SPD_INITIATIVE_WEIGHT = 1
+
+export function speedDodgeBonus(spdSkillLevel: number): number {
+  return Math.min(SPD_DODGE_MAX, spdSkillLevel * SPD_DODGE_PER_LEVEL)
+}
+
+export function speedDodgeSuccessChance(spdSkillLevel: number): number {
+  return Math.min(0.99, SPD_DODGE_BASE_CHANCE + speedDodgeBonus(spdSkillLevel))
+}
+
+export function speedInitiativeBonus(spdSkillLevel: number): number {
+  return Math.max(0, spdSkillLevel - 1) * SPD_INITIATIVE_WEIGHT
+}

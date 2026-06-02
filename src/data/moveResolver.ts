@@ -22,6 +22,8 @@ import {
   SEALED_FATE_TURN_MAX,
   SEALED_FATE_TURN_MIN,
   braceIncomingMultiplier,
+  speedDodgeBonus,
+  speedDodgeSuccessChance,
 } from './moveBalance'
 import { scheduleDeathClock } from './combatSystems'
 import type { EnemyMoveId } from './enemyMoves'
@@ -214,14 +216,22 @@ export function applyMoveBehavior(
     case 'dodge': {
       const d = behavior.profile
       if (enemyAttacks) {
-        out.dodged = true
-        out.incoming = 0
-        out.playerDmg = jitter(Math.floor(atk * d.counterMult))
-        if (Math.random() * 100 < d.stunChance.base + lck * d.stunChance.lckMult) {
-          out.stunApplied = true
-        }
-        if (d.onDodgeReflectPct && ctx.eDmg > 0) {
-          out.playerDmg += Math.max(1, Math.floor(ctx.eDmg * d.onDodgeReflectPct))
+        const dodgeBonus = speedDodgeBonus(ctx.spd)
+        if (Math.random() < speedDodgeSuccessChance(ctx.spd)) {
+          out.dodged = true
+          out.incoming = 0
+          const counterScale = 1 + dodgeBonus
+          out.playerDmg = jitter(Math.floor(atk * d.counterMult * counterScale))
+          if (Math.random() * 100 < d.stunChance.base + lck * d.stunChance.lckMult) {
+            out.stunApplied = true
+          }
+          if (d.onDodgeReflectPct && ctx.eDmg > 0) {
+            out.playerDmg += Math.max(1, Math.floor(ctx.eDmg * d.onDodgeReflectPct))
+          }
+        } else {
+          out.dodged = false
+          out.incoming = eDmg
+          out.playerDmg = jitter(Math.floor(atk * d.weakMult))
         }
       } else {
         out.incoming = 0

@@ -10,6 +10,7 @@ import {
 import {
   ENEMY_SHAKE_OUTGOING_MULT,
   ENEMY_SLOW_OUTGOING_MULT,
+  speedInitiativeBonus,
 } from './moveBalance'
 
 export { createEmptyCombatStatus }
@@ -127,9 +128,11 @@ export function playerActsFirstDespiteSpd(
   status: CombatStatusState,
   playerSpd: number,
   enemySpd: number,
+  speedSkillLevel = 1,
 ): boolean {
   if (status.enemySlow > 0) return true
-  return playerSpd >= enemySpd
+  const effectivePlayerSpd = playerSpd + speedInitiativeBonus(speedSkillLevel)
+  return effectivePlayerSpd >= enemySpd
 }
 
 export function getEnemyStatusLabels(status: CombatStatusState): string[] {
