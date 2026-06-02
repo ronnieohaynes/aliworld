@@ -51,12 +51,41 @@ export function BattleTutorialOverlay({ stepIndex, targetRefs, onNext, onSkip }:
   }, [targetRefs])
 
   useLayoutEffect(() => {
-    measureTargets()
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(measureTargets)
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
   }, [measureTargets, stepIndex])
+
+  useEffect(() => {
+    const t1 = window.setTimeout(measureTargets, 120)
+    const t2 = window.setTimeout(measureTargets, 360)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [measureTargets])
 
   useEffect(() => {
     window.addEventListener('resize', measureTargets)
     return () => window.removeEventListener('resize', measureTargets)
+  }, [measureTargets])
+
+  useEffect(() => {
+    const battleEl = targetRefs.battle.current
+    if (!battleEl) return
+    battleEl.addEventListener('scroll', measureTargets, { passive: true })
+    return () => battleEl.removeEventListener('scroll', measureTargets)
+  }, [measureTargets, targetRefs.battle])
+
+  useEffect(() => {
+    if (document.fonts?.ready) {
+      void document.fonts.ready.then(measureTargets)
+    }
   }, [measureTargets])
 
   useEffect(() => {

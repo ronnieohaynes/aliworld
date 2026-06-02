@@ -1097,6 +1097,7 @@ export function GameScreen() {
               <BattleScreen
                 key={battleNpcId}
                 npcId={battleNpcId}
+                battleRevealed={!battleWipePhase}
                 onBattleEnd={handleBattleEnd}
               />
             )}

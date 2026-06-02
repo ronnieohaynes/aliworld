@@ -104,6 +104,8 @@ function FighterStatusTags({ tags }: { tags: StatusTag[] }) {
 type Props = {
   npcId: string
   onBattleEnd: (result: 'win' | 'lose') => void
+  /** True once enter wipe has lifted and the battle is visible. */
+  battleRevealed?: boolean
 }
 
 function StageBackground({ location }: { location: BattleLocationId }) {
@@ -186,7 +188,7 @@ function drawEnemyBattleSprite(
   )
 }
 
-export function BattleScreen({ npcId, onBattleEnd }: Props) {
+export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Props) {
   const battleScreenRef = useRef<HTMLDivElement>(null)
   const telegraphRowRef = useRef<HTMLElement>(null)
   const movesRef = useRef<HTMLDivElement>(null)
@@ -209,13 +211,22 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
     (id) => createInitialBattleState(id),
   )
 
-  const [battleTutorialOpen, setBattleTutorialOpen] = useState(
-    () => npcId === WALKER_NPC_ID && !isBattleTutorialSeen(),
-  )
+  const shouldRunBattleTutorial =
+    npcId === WALKER_NPC_ID && !isBattleTutorialSeen()
+  const [battleTutorialBlocking, setBattleTutorialBlocking] = useState(shouldRunBattleTutorial)
+  const [battleTutorialOverlayOpen, setBattleTutorialOverlayOpen] = useState(false)
   const [battleTutorialStep, setBattleTutorialStep] = useState(0)
 
+  useEffect(() => {
+    if (!battleTutorialBlocking || battleTutorialOverlayOpen) return
+    if (!battleRevealed) return
+    const t = window.setTimeout(() => setBattleTutorialOverlayOpen(true), 0)
+    return () => window.clearTimeout(t)
+  }, [battleTutorialBlocking, battleTutorialOverlayOpen, battleRevealed])
+
   const closeBattleTutorial = useCallback(() => {
-    setBattleTutorialOpen(false)
+    setBattleTutorialBlocking(false)
+    setBattleTutorialOverlayOpen(false)
     setBattleTutorialSeen()
   }, [])
 
@@ -267,11 +278,11 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
 
   const handleMove = useCallback(
     (move: PlayerMove, slot: number) => {
-      if (battleTutorialOpen) return
+      if (battleTutorialBlocking) return
       if (state.phase !== 'player') return
       dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
-    [battleTutorialOpen, state.phase],
+    [battleTutorialBlocking, state.phase],
   )
 
   const handleNarrationContinue = useCallback(() => {
@@ -490,8 +501,8 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
                   <button
                     key={`${slot}-${move}-${stolen ?? ''}`}
                     type="button"
-                    className={`battle-screen__move ${className}${busy || battleTutorialOpen ? ' battle-screen__move--busy' : ''}`}
-                    disabled={busy || battleTutorialOpen}
+                    className={`battle-screen__move ${className}${busy || battleTutorialBlocking ? ' battle-screen__move--busy' : ''}`}
+                    disabled={busy || battleTutorialBlocking}
                     onClick={() => handleMove(move, slot)}
                   >
                     <span className="battle-screen__move-name">{displayLabel}</span>
@@ -503,7 +514,7 @@ export function BattleScreen({ npcId, onBattleEnd }: Props) {
           )}
         </section>
       </div>
-      {battleTutorialOpen && (
+      {battleTutorialOverlayOpen && (
         <BattleTutorialOverlay
           stepIndex={battleTutorialStep}
           targetRefs={{
