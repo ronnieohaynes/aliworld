@@ -2,6 +2,7 @@ export type TriggerAction =
   | 'OPEN_13GALLONS'
   | 'OPEN_DARKLINE'
   | 'OPEN_ONE_LOVE_CAFE'
+  | 'OPEN_BLUE_STORE'
 
 export type TriggerZone = {
   id: string

@@ -2,7 +2,7 @@ import { publicAsset } from '../utils/publicAsset'
 import { getCollisionZones, type CollisionZone } from './collisionZones'
 import type { TriggerZone } from './triggerZones'
 import { TRIGGER_ZONES, DARKLINE_SPAWN_X, DARKLINE_SPAWN_Y } from './triggerZones'
-import { FIVE_OVERWORLD_NPCS, type NpcData } from './npcs'
+import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
 /** Player-facing name for the starting district (internal id is `five`). */
 export const FIVE_DISPLAY_NAME = 'the 5ive'
@@ -27,6 +27,8 @@ export type CityConfig = {
 }
 
 const SAN_BRUNO_MAP_SRC = publicAsset('Assets/tileset/san-bruno-map.PNG')
+/** Placeholder until hillside-market art — walkable reuse of the 5ive tileset. */
+const SOUTHSIDE_PLACEHOLDER_MAP_SRC = publicAsset('Assets/tileset/5ive-map.PNG')
 
 const SAN_BRUNO_COLLISION_ZONES: CollisionZone[] = [
   // ── Top buildings flanking Darkline entrance (gap x:430–700) ──
@@ -73,6 +75,35 @@ const SAN_BRUNO_TRIGGER_ZONES: TriggerZone[] = [
   },
 ]
 
+const SOUTHSIDE_COLLISION_ZONES: CollisionZone[] = [
+  { x: 0, y: 0, width: 1254, height: 180 },
+  { x: 0, y: 180, width: 320, height: 1074 },
+  { x: 900, y: 180, width: 354, height: 1074 },
+  { x: -50, y: 0, width: 50, height: 1254 },
+  { x: 1254, y: 0, width: 50, height: 1254 },
+  { x: 0, y: -50, width: 1254, height: 50 },
+  { x: 0, y: 1254, width: 1254, height: 50 },
+]
+
+const SOUTHSIDE_TRIGGER_ZONES: TriggerZone[] = [
+  {
+    id: 'southside-darkline-entrance',
+    x: 500,
+    y: 60,
+    width: 130,
+    height: 60,
+    action: 'OPEN_DARKLINE',
+  },
+  {
+    id: 'blue-store-entrance',
+    x: 680,
+    y: 420,
+    width: 120,
+    height: 80,
+    action: 'OPEN_BLUE_STORE',
+  },
+]
+
 export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   five: {
     id: 'five',
@@ -106,16 +137,16 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   southside: {
     id: 'southside',
     label: 'southside',
-    mapSrc: SAN_BRUNO_MAP_SRC,
+    mapSrc: SOUTHSIDE_PLACEHOLDER_MAP_SRC,
     worldWidth: 1254,
     worldHeight: 1254,
     spawnX: 570,
-    spawnY: 300,
-    darklineSpawnX: 570,
-    darklineSpawnY: 300,
-    collisionZones: SAN_BRUNO_COLLISION_ZONES,
-    triggerZones: [],
-    npcs: [],
+    spawnY: 280,
+    darklineSpawnX: 565,
+    darklineSpawnY: 140,
+    collisionZones: SOUTHSIDE_COLLISION_ZONES,
+    triggerZones: SOUTHSIDE_TRIGGER_ZONES,
+    npcs: [...SOUTHSIDE_OVERWORLD_NPCS],
   },
 }
 
