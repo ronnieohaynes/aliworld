@@ -1,5 +1,6 @@
 import { publicAsset } from '../utils/publicAsset'
 import type { BattleLocationId } from './battleBackgrounds'
+import type { LeanSkill } from './skillCounter'
 import {
   type EnemyMoveId,
   isAttackingEnemyMove,
@@ -23,6 +24,7 @@ export type NpcCombatEntry = {
   displayName: string
   stats: CombatStats
   moves: EnemyMove[]
+  leanSkill: LeanSkill
   losingLine: string
   spriteSrc?: string
   battleLocation: BattleLocationId
@@ -38,6 +40,7 @@ const WALKER: NpcCombatEntry = {
   displayName: 'walker',
   stats: { hp: 30, maxHp: 30, atk: 5, def: 2, spd: 4 },
   moves: ['STRIKE', 'SLIP'],
+  leanSkill: 'none',
   losingLine: 'i get it now. tell me where to go.',
   spriteSrc: WALKER_SPRITE,
   battleLocation: 'five',
@@ -51,23 +54,25 @@ const DUMMY: NpcCombatEntry = {
   stats: { hp: 40, maxHp: 40, atk: 0, def: 0, spd: 1 },
 }
 
-/** Status check — fast and hard; trading STRIKEs hurts unless you debuff her. */
+/** Status check — fast and slippery; rewards debuffs and defense-lean builds. */
 const JACLYN: NpcCombatEntry = {
   id: 'jaclyn',
   displayName: 'jaclyn',
   stats: { hp: 45, maxHp: 45, atk: 9, def: 3, spd: 8 },
-  moves: ['STRIKE', 'LOOP', 'WHISPER'],
+  moves: ['STRIKE', 'SLIP', 'SLIP', 'LOOP', 'WHISPER'],
+  leanSkill: 'speed',
   losingLine: "...oh. you're right. of course you're right.",
   spriteSrc: JACLYN_SPRITE,
   battleLocation: 'five',
 }
 
-/** Boss wall — tanky, telegraphs a heavy LOOP the player must brace or slip. */
+/** Boss wall — braces heavy, telegraphs LOOP; attack builds grind, speed slips through. */
 const MARK: NpcCombatEntry = {
   id: 'mark',
   displayName: 'mark',
-  stats: { hp: 70, maxHp: 70, atk: 11, def: 6, spd: 4 },
-  moves: ['STRIKE', 'HOLD', 'SLIP', 'LOOP'],
+  stats: { hp: 70, maxHp: 70, atk: 11, def: 7, spd: 4 },
+  moves: ['HOLD', 'HOLD', 'LOOP', 'STRIKE', 'SLIP'],
+  leanSkill: 'defense',
   losingLine: 'huh. ...where do you want me.',
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',

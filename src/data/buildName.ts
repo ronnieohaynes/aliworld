@@ -8,6 +8,8 @@ export type BuildName = {
 
 type CombatSkill = 'attack' | 'speed' | 'defense' | 'luck'
 
+export type BuildLoopSkill = CombatSkill
+
 const BALANCED: BuildName = {
   name: 'blank slate',
   color: '#f4e8c1',
@@ -80,4 +82,30 @@ export function deriveBuildName(skills: SkillsState): BuildName {
 
 export function getBuildName(): BuildName {
   return deriveBuildName(getPlayerSkills())
+}
+
+/** Dominant skill for matchup counters; null when still blank slate. */
+export function deriveBuildLoopType(skills: SkillsState): BuildLoopSkill | null {
+  const ranked: { skill: CombatSkill; level: number }[] = (
+    [
+      { skill: 'attack' as const, level: skills.attack.level },
+      { skill: 'speed' as const, level: skills.speed.level },
+      { skill: 'defense' as const, level: skills.defense.level },
+      { skill: 'luck' as const, level: skills.luck.level },
+    ] satisfies { skill: CombatSkill; level: number }[]
+  ).sort((a, b) => b.level - a.level)
+
+  const top = ranked[0]!
+  const second = ranked[1]!
+  const third = ranked[2]!
+
+  if (top.level - second.level >= PURE_THRESHOLD) {
+    return top.skill
+  }
+
+  if (second.level - third.level >= COMBO_THRESHOLD) {
+    return top.skill
+  }
+
+  return null
 }

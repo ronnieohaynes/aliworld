@@ -63,8 +63,20 @@ export type MoveXpContext = {
   pMove: PlayerMoveId
   playerDmg: number
   incoming: number
+  rawIncoming: number
+  damageBlocked: number
+  damageAvoided: number
   dodged: boolean
+  braced: boolean
+  crit: boolean
   enemyAttacks: boolean
+  shakeApplied: boolean
+  bleedApplied: boolean
+  stunApplied: boolean
+  slowApplied: boolean
+  missApplied: boolean
+  doubleApplied: boolean
+  reflectApplied: boolean
 }
 
 export type MoveXpGrant = {

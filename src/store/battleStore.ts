@@ -41,6 +41,11 @@ import {
   getNpcCombatEntry,
   type NpcCombatEntry,
 } from '../data/npcRegistry'
+import { deriveBuildLoopType } from '../data/buildName'
+import {
+  applySkillCounterModifiers,
+  getSkillCounterRelation,
+} from '../data/skillCounter'
 import {
   applyCombatSkillXp,
   getEquippedMoves,
@@ -205,6 +210,9 @@ export type ResolveResult = {
   /** False during exposed / skip turns — no player move effects or XP move line. */
   playerActed: boolean
   phenomenaLine?: string
+  rawIncoming: number
+  damageBlocked: number
+  damageAvoided: number
   eMove: UpcomingMove
   pMove: PlayerMove
 }
@@ -232,6 +240,9 @@ function emptyResolveResult(
     enemyAttacks,
     enemyStunned,
     playerActed: true,
+    rawIncoming: 0,
+    damageBlocked: 0,
+    damageAvoided: 0,
     eMove,
     pMove,
   }
@@ -320,6 +331,21 @@ function buildResolveContext(
   }
 }
 
+function finalizeIncomingXpMetrics(
+  out: ResolveResult,
+  rawIncoming: number,
+): void {
+  out.rawIncoming = rawIncoming
+  if (out.dodged && rawIncoming > 0) {
+    out.damageAvoided = rawIncoming
+    out.damageBlocked = 0
+    return
+  }
+  out.damageAvoided = 0
+  out.damageBlocked =
+    rawIncoming > 0 ? Math.max(0, rawIncoming - out.incoming) : 0
+}
+
 function resolvePlayerMoveBody(
   state: BattleState,
   pMove: PlayerMove,
@@ -358,6 +384,14 @@ function resolvePlayerMoveBody(
     state.battleMove.hyperdriveSpent = true
   }
 
+  applySkillCounterModifiers(
+    out,
+    getSkillCounterRelation(
+      deriveBuildLoopType(getPlayerSkills()),
+      state.npc.leanSkill,
+    ),
+  )
+
   out.incoming = mitigateIncoming(
     out.incoming,
     state.combatStatus,
@@ -365,6 +399,8 @@ function resolvePlayerMoveBody(
     getPlayerSkills().defense.level,
     state.battleMove,
   )
+
+  finalizeIncomingXpMetrics(out, enemyAttacks ? eDmg : 0)
 
   if (
     BLACKOUT_INTERRUPTIBLE &&
@@ -389,6 +425,13 @@ export function resolveExposedTurn(
   const { enemyStunned, enemyAttacks, eDmg } = resolveEnemyIncoming(state, eMove)
   const out = emptyResolveResult(eMove, pMove, enemyStunned, enemyAttacks)
   out.playerActed = false
+  applySkillCounterModifiers(
+    out,
+    getSkillCounterRelation(
+      deriveBuildLoopType(getPlayerSkills()),
+      state.npc.leanSkill,
+    ),
+  )
   out.incoming = mitigateIncoming(
     eDmg,
     state.combatStatus,
@@ -396,6 +439,7 @@ export function resolveExposedTurn(
     getPlayerSkills().defense.level,
     state.battleMove,
   )
+  finalizeIncomingXpMetrics(out, enemyAttacks ? eDmg : 0)
 
   if (
     state.battleMove.blackoutPhase === 'loading' &&

@@ -123,3 +123,16 @@ export function speedInitiativeBonus(spdSkillLevel: number): number {
 
 /** Luck stat weight in crit rolls — makes luck investment show up in fight feel. */
 export const LCK_CRIT_STAT_SCALE = 1.28
+
+/** Move XP — scale rewards with what each skill actually accomplished. */
+export const XP_DAMAGE_DEALT_MULT = 3
+export const XP_DAMAGE_BLOCKED_MULT = 3
+export const XP_DAMAGE_AVOIDED_MULT = 3
+export const XP_LUCK_PROC_BONUS = 8
+export const XP_FALLBACK_SMALL = 3
+
+/** Soft skill counter loop — attack > speed > luck > defense > attack. */
+export const COUNTER_ADVANTAGE_DMG_MULT = 1.18
+export const COUNTER_DISADVANTAGE_DMG_MULT = 0.85
+export const COUNTER_ADVANTAGE_INCOMING_MULT = 0.85
+export const COUNTER_DISADVANTAGE_INCOMING_MULT = 1.18

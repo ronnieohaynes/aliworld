@@ -18,10 +18,28 @@ import {
   PARRY_DODGE_COUNTER_MULT,
   PARRY_DODGE_WEAK_MULT,
   PARRY_ON_DODGE_REFLECT_PCT,
+  XP_DAMAGE_AVOIDED_MULT,
+  XP_DAMAGE_BLOCKED_MULT,
+  XP_DAMAGE_DEALT_MULT,
+  XP_FALLBACK_SMALL,
+  XP_LUCK_PROC_BONUS,
 } from './moveBalance'
 import type { PlayerMoveId } from './moveIds'
 import { unlockLevelForRung } from './moveUnlock'
-import type { MoveDefinition } from './moveTypes'
+import type { MoveDefinition, MoveXpContext } from './moveTypes'
+
+function luckProcCount(r: MoveXpContext): number {
+  let count = 0
+  if (r.crit) count++
+  if (r.shakeApplied) count++
+  if (r.bleedApplied) count++
+  if (r.stunApplied) count++
+  if (r.slowApplied) count++
+  if (r.missApplied) count++
+  if (r.doubleApplied) count++
+  if (r.reflectApplied) count++
+  return count
+}
 
 function def(
   partial: Omit<MoveDefinition, 'unlockAtSkillLevel'> & { ladderRung: MoveDefinition['ladderRung'] },
@@ -50,7 +68,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: (r) => r.playerDmg * 4 },
+      { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
       { skill: 'hp', amount: (r) => r.playerDmg * 1.3 },
     ],
     uiDescription: 'hit the opening. trade if they swing.',
@@ -183,8 +201,18 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'speed', amount: (r) => (r.dodged ? 10 : 5) },
-      { skill: 'luck', amount: (r) => (r.dodged && r.playerDmg > 0 ? 10 : 5) },
+      {
+        skill: 'speed',
+        amount: (r) =>
+          r.damageAvoided > 0
+            ? r.damageAvoided * XP_DAMAGE_AVOIDED_MULT
+            : XP_FALLBACK_SMALL,
+      },
+      {
+        skill: 'luck',
+        amount: (r) =>
+          r.dodged && r.playerDmg > 0 ? r.playerDmg * XP_DAMAGE_DEALT_MULT : XP_FALLBACK_SMALL,
+      },
       { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'dodge and counter. avoid their incoming hit.',
@@ -215,8 +243,14 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'speed', amount: (r) => (r.dodged ? 9 : 4) },
-      { skill: 'defense', amount: 3 },
+      {
+        skill: 'speed',
+        amount: (r) =>
+          r.damageAvoided > 0
+            ? r.damageAvoided * XP_DAMAGE_AVOIDED_MULT
+            : XP_FALLBACK_SMALL,
+      },
+      { skill: 'defense', amount: XP_FALLBACK_SMALL },
     ],
     uiDescription: 'deflect and sting. tiny reflect on dodge.',
     uiClassName: 'battle-screen__move--parry',
@@ -293,7 +327,10 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     xpGrants: [
       {
         skill: 'defense',
-        amount: (r) => (r.enemyAttacks && r.incoming > 0 ? r.incoming * 4 : 3),
+        amount: (r) =>
+          r.damageBlocked > 0
+            ? r.damageBlocked * XP_DAMAGE_BLOCKED_MULT
+            : XP_FALLBACK_SMALL,
       },
       { skill: 'hp', amount: 3 },
     ],
@@ -317,7 +354,13 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: ['brace'],
     xpGrants: [
-      { skill: 'defense', amount: 8 },
+      {
+        skill: 'defense',
+        amount: (r) =>
+          r.damageBlocked > 0
+            ? r.damageBlocked * XP_DAMAGE_BLOCKED_MULT
+            : XP_FALLBACK_SMALL,
+      },
       { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'brace and shrug off status this turn.',
@@ -341,7 +384,15 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       reflectPct: { min: 0.02, max: 0.1 },
     },
     onResolve: [],
-    xpGrants: [{ skill: 'defense', amount: 10 }],
+    xpGrants: [
+      {
+        skill: 'defense',
+        amount: (r) =>
+          r.damageBlocked > 0
+            ? Math.floor(r.damageBlocked * XP_DAMAGE_BLOCKED_MULT * 0.85)
+            : XP_FALLBACK_SMALL,
+      },
+    ],
     uiDescription: 'block heavy. chance to send some back.',
     uiClassName: 'battle-screen__move--counterweight',
     playerLogLine: () => 'counterweight set.',
@@ -355,7 +406,15 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'brick-wall' },
     onResolve: [],
-    xpGrants: [{ skill: 'defense', amount: 11 }],
+    xpGrants: [
+      {
+        skill: 'defense',
+        amount: (r) =>
+          r.damageAvoided > 0 || r.damageBlocked > 0
+            ? (r.damageAvoided + r.damageBlocked) * XP_DAMAGE_BLOCKED_MULT
+            : XP_FALLBACK_SMALL,
+      },
+    ],
     uiDescription: 'nullify the next hit entirely.',
     uiClassName: 'battle-screen__move--brick-wall',
     playerLogLine: () => 'brick wall up.',
@@ -387,7 +446,13 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: ['shake'],
     xpGrants: [
-      { skill: 'luck', amount: 4 },
+      {
+        skill: 'luck',
+        amount: (r) =>
+          XP_FALLBACK_SMALL +
+          (r.shakeApplied ? XP_LUCK_PROC_BONUS : 0) +
+          r.playerDmg * XP_DAMAGE_DEALT_MULT,
+      },
       { skill: 'hp', amount: 2 },
     ],
     uiDescription: 'rattle them. their next hit lands softer.',
@@ -439,7 +504,13 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'phenomena' },
     onResolve: [],
-    xpGrants: [{ skill: 'luck', amount: 8 }],
+    xpGrants: [
+      {
+        skill: 'luck',
+        amount: (r) =>
+          XP_FALLBACK_SMALL + luckProcCount(r) * XP_LUCK_PROC_BONUS + r.playerDmg * 2,
+      },
+    ],
     uiDescription: 'pure rng from the known pool.',
     uiClassName: 'battle-screen__move--phenomena',
     playerLogLine: (r) => r.phenomenaLine ?? 'phenomena.',

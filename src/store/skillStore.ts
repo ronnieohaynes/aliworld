@@ -137,8 +137,20 @@ function toMoveXpContext(r: ResolveResult): MoveXpContext {
     pMove: r.pMove,
     playerDmg: r.playerDmg,
     incoming: r.incoming,
+    rawIncoming: r.rawIncoming,
+    damageBlocked: r.damageBlocked,
+    damageAvoided: r.damageAvoided,
     dodged: r.dodged,
+    braced: r.braced,
+    crit: r.crit,
     enemyAttacks: r.enemyAttacks,
+    shakeApplied: r.shakeApplied,
+    bleedApplied: r.bleedApplied,
+    stunApplied: r.stunApplied,
+    slowApplied: r.slowApplied,
+    missApplied: r.missApplied,
+    doubleApplied: r.doubleApplied,
+    reflectApplied: r.reflectApplied,
   }
 }
 
