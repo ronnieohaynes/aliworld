@@ -142,6 +142,7 @@ export function GameScreen() {
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
+  const [battleReady, setBattleReady] = useState(false)
   const pendingBattleExitRef = useRef<{ result: 'win' | 'lose' } | null>(null)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
@@ -390,6 +391,7 @@ export function GameScreen() {
   const startMarkBattle = useCallback(() => {
     if (battleNpcId || battleWipePhase) return
     setDialogue(null)
+    setBattleReady(false)
     setBattleNpcId(MARK_NPC_ID)
     setBattleWipePhase('enter')
   }, [battleNpcId, battleWipePhase])
@@ -397,6 +399,7 @@ export function GameScreen() {
   const startNpcBattle = useCallback((npcId: string) => {
     if (battleNpcId || battleWipePhase) return
     setDialogue(null)
+    setBattleReady(false)
     setBattleNpcId(npcId)
     setBattleWipePhase('enter')
   }, [battleNpcId, battleWipePhase])
@@ -785,7 +788,7 @@ export function GameScreen() {
   }, [])
 
   const handleBattleEntryMidpoint = useCallback(() => {
-    // Battle mounts when the enter wipe starts — nothing to swap at midpoint.
+    setBattleReady(true)
   }, [])
 
   const handleBattleEntryComplete = useCallback(() => {
@@ -793,11 +796,12 @@ export function GameScreen() {
   }, [])
 
   const handleBattleExitMidpoint = useCallback(() => {
+    setBattleReady(false)
     const pending = pendingBattleExitRef.current
     if (!pending) return
 
-    setBattleNpcId((activeId) => {
-      if (pending.result === 'win') {
+    if (pending.result === 'win') {
+      setBattleNpcId((activeId) => {
         if (activeId === WALKER_NPC_ID) setWalkerConverted()
         if (activeId === JACLYN_NPC_ID) setJaclynConverted()
         if (activeId === MARK_NPC_ID) {
@@ -805,9 +809,9 @@ export function GameScreen() {
           collectArtifact('subway-pass')
           showMarkVictoryNarration()
         }
-      }
-      return null
-    })
+        return activeId
+      })
+    }
   }, [showMarkVictoryNarration])
 
   const handleBattleExitComplete = useCallback(() => {
@@ -1045,7 +1049,7 @@ export function GameScreen() {
             </div>
           )}
           <div className="game-screen-battle-layer">
-            {battleNpcId && (
+            {battleNpcId && battleReady && (
               <BattleScreen
                 key={battleNpcId}
                 npcId={battleNpcId}
