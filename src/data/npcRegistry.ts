@@ -29,6 +29,7 @@ export type NpcCombatEntry = {
 }
 
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
+const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
 /** Tutorial — low threat, simple move pool, win even if sloppy. */
@@ -58,7 +59,7 @@ const JACLYN: NpcCombatEntry = {
   stats: { hp: 45, maxHp: 45, atk: 9, def: 3, spd: 8 },
   moves: ['STRIKE', 'LOOP', 'WHISPER'],
   losingLine: "...oh. you're right. of course you're right.",
-  spriteSrc: WALKER_SPRITE,
+  spriteSrc: JACLYN_SPRITE,
   battleLocation: 'five',
 }
 

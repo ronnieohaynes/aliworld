@@ -901,6 +901,23 @@ export function GameScreen() {
     setShowStartMenu(false)
     setMenuReturnPending(false)
     performNewGameReset()
+
+    pendingRestoreRef.current = null
+    setCurrentCity('five')
+    setBootCityId('five')
+    setLocationReady(true)
+
+    setCafeFade('none')
+    setCafeSceneLine(0)
+    setDialogue(null)
+    setBattleNpcId(null)
+    setBattleWipePhase(null)
+    setBattleReady(false)
+    setShowDarkline(false)
+    setShowInterior(false)
+
+    const cfg = CITY_CONFIGS.five
+    playerRef.current?.setPosition(cfg.spawnX, cfg.spawnY)
   }, [])
 
   const showQuestHelper =

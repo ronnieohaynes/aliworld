@@ -419,6 +419,7 @@ export function toggleShowDebug(): void {
 
 /** Reset skills, level, and loadout for START menu New Game. */
 export function resetPlayerProgressForNewGame(): void {
+  lastLocation = null
   state = createDefaultPlayerState()
   emit()
 }
