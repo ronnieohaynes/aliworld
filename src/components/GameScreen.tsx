@@ -1045,7 +1045,11 @@ export function GameScreen() {
           )}
           <div className="game-screen-battle-layer">
             {battleNpcId && (
-              <BattleScreen npcId={battleNpcId} onBattleEnd={handleBattleEnd} />
+              <BattleScreen
+                key={battleNpcId}
+                npcId={battleNpcId}
+                onBattleEnd={handleBattleEnd}
+              />
             )}
             {battleWipePhase && (
               <BattleEntryWipe
