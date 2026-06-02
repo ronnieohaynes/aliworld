@@ -67,9 +67,9 @@ export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
 export const ENEMY_LOOP_STRIKE_MULT = 2
 
 /** Defense skill — brace blocks more per level (multiplier reduction, capped). */
-export const DEF_MITIGATION_PER_LEVEL = 0.012
+export const DEF_MITIGATION_PER_LEVEL = 0.025
 /** Defense skill — passive incoming damage reduction per level. */
-export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.005
+export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.01
 /** Hard cap on total defense mitigation so builds never become invincible. */
 export const DEF_MAX_MITIGATION = 0.6
 /** Brace never shrinks incoming below this fraction of raw hit damage. */
@@ -102,7 +102,7 @@ export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: n
 }
 
 /** Speed skill — dodge reliability and counter scaling per level. */
-export const SPD_DODGE_PER_LEVEL = 0.01
+export const SPD_DODGE_PER_LEVEL = 0.02
 export const SPD_DODGE_MAX = 0.5
 /** Base dodge success before speed skill bonus (keeps early SLIP survivable). */
 export const SPD_DODGE_BASE_CHANCE = 0.68
@@ -122,7 +122,7 @@ export function speedInitiativeBonus(spdSkillLevel: number): number {
 }
 
 /** Luck stat weight in crit rolls — makes luck investment show up in fight feel. */
-export const LCK_CRIT_STAT_SCALE = 1.28
+export const LCK_CRIT_STAT_SCALE = 1.42
 
 /** Move XP — scale rewards with what each skill actually accomplished. */
 export const XP_DAMAGE_DEALT_MULT = 3
