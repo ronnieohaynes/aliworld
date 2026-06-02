@@ -56,3 +56,12 @@ export const PHENOMENA_HEAL_PCT_MAX = 0.22
 export const REFRACT_DAMAGE_MULT = 1
 
 export const LOOP_DAMAGE_MULT = 0.55
+
+/** Enemy outgoing damage multiplier while shaken (0–1). */
+export const ENEMY_SHAKE_OUTGOING_MULT = 0.42
+/** Enemy outgoing damage multiplier while slowed (0–1). */
+export const ENEMY_SLOW_OUTGOING_MULT = 0.62
+/** Bleed chip each turn as a fraction of enemy max hp. */
+export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
+/** Shared enemy LOOP strike multiplier — mark's telegraphed heavy. */
+export const ENEMY_LOOP_STRIKE_MULT = 2

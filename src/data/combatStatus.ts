@@ -7,6 +7,10 @@ import {
   type StatusEffectId,
   type StatusTarget,
 } from './combatTypes'
+import {
+  ENEMY_SHAKE_OUTGOING_MULT,
+  ENEMY_SLOW_OUTGOING_MULT,
+} from './moveBalance'
 
 export { createEmptyCombatStatus }
 export type { CombatStatusState, ReflectBuff, StatusEffectId }
@@ -113,8 +117,8 @@ export function enemyLosesTurn(status: CombatStatusState): boolean {
 /** Shake + slow weaken enemy outgoing damage (stack multiplicatively). */
 export function enemyOutgoingDamageMult(status: CombatStatusState): number {
   let mult = 1
-  if (status.enemyShake > 0) mult *= 0.5
-  if (status.enemySlow > 0) mult *= 0.7
+  if (status.enemyShake > 0) mult *= ENEMY_SHAKE_OUTGOING_MULT
+  if (status.enemySlow > 0) mult *= ENEMY_SLOW_OUTGOING_MULT
   return mult
 }
 

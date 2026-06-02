@@ -1,6 +1,6 @@
 import { createBattleMoveState, type BattleMoveState } from '../data/battleMoveState'
 import { applyMoveCostAfterResolve, consumeTurnFlag } from '../data/combatTurnCosts'
-import { BLACKOUT_INTERRUPTIBLE } from '../data/moveBalance'
+import { BLACKOUT_INTERRUPTIBLE, BLEED_DAMAGE_MAX_HP_PCT } from '../data/moveBalance'
 import {
   createEmptyCombatStatus,
   enemyLosesTurn,
@@ -581,7 +581,7 @@ function applyPlayerResolutionPhase(
   }
 
   if (working.combatStatus.enemyBleed > 0 && nextEnemyHp > 0) {
-    const b = Math.max(1, Math.floor(state.enemyMaxHp * 0.06))
+    const b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT))
     nextEnemyHp = Math.max(0, nextEnemyHp - b)
     nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
   }

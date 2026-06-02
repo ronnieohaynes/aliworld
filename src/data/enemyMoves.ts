@@ -1,4 +1,5 @@
 import type { StatusApplySpec } from './combatTypes'
+import { ENEMY_LOOP_STRIKE_MULT } from './moveBalance'
 
 /** Enemy move ids — shared pool for all NPCs (snag steals from this set). */
 export const ENEMY_MOVE_IDS = ['STRIKE', 'LOOP', 'SLIP', 'WHISPER', 'HOLD'] as const
@@ -34,7 +35,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
     displayName: 'LOOP',
     telegraphLine: 'draws back — a heavy loop is coming.',
     isAttacking: true,
-    damageMult: 1.7,
+    damageMult: ENEMY_LOOP_STRIKE_MULT,
     onResolve: [],
   },
   SLIP: {
