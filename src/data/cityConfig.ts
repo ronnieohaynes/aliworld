@@ -5,7 +5,7 @@ import type { TriggerZone } from './triggerZones'
 import { TRIGGER_ZONES, DARKLINE_SPAWN_X, DARKLINE_SPAWN_Y } from './triggerZones'
 import { DALY_CITY_OVERWORLD_NPCS, type NpcData } from './npcs'
 
-export type CityId = 'daly-city' | 'san-bruno'
+export type CityId = 'daly-city' | 'san-bruno' | 'southside'
 
 export type CityConfig = {
   id: CityId
@@ -98,6 +98,20 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     triggerZones: SAN_BRUNO_TRIGGER_ZONES,
     npcs: [],
   },
+  southside: {
+    id: 'southside',
+    label: 'southside',
+    mapSrc: SAN_BRUNO_MAP_SRC,
+    worldWidth: 1254,
+    worldHeight: 1254,
+    spawnX: 570,
+    spawnY: 300,
+    darklineSpawnX: 570,
+    darklineSpawnY: 300,
+    collisionZones: SAN_BRUNO_COLLISION_ZONES,
+    triggerZones: [],
+    npcs: [],
+  },
 }
 
 export const DARKLINE_DESTINATIONS: CityId[] = [
@@ -105,7 +119,9 @@ export const DARKLINE_DESTINATIONS: CityId[] = [
   'san-bruno',
 ]
 
+/** Unlocked after E1 cafe beat — appended to darkline destinations at runtime. */
+export const POST_E1_DARKLINE_DESTINATION: CityId = 'southside'
+
 export const INACTIVE_DESTINATIONS: { label: string; status: string }[] = [
-  { label: 'southside', status: 'COMING SOON' },
   { label: 'the town', status: 'COMING SOON' },
 ]

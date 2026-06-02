@@ -142,6 +142,14 @@ function toMoveXpContext(r: ResolveResult): MoveXpContext {
   }
 }
 
+export function grantSkillXpAmount(
+  skills: SkillsState,
+  skill: SkillId,
+  amount: number,
+): { skills: SkillsState; lines: string[] } {
+  return grantSkillXp(skills, skill, amount)
+}
+
 /** Award move-based XP from a resolved combat turn. */
 export function awardMoveXp(skills: SkillsState, r: ResolveResult): {
   skills: SkillsState

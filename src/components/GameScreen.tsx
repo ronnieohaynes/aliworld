@@ -3,7 +3,8 @@ import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID } from '../data/adamMp3Handoff'
 import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, type NpcData } from '../data/npcs'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
-import { CITY_CONFIGS, type CityConfig, type CityId } from '../data/cityConfig'
+import { CITY_CONFIGS, DARKLINE_DESTINATIONS, INACTIVE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION, type CityConfig, type CityId } from '../data/cityConfig'
+import { isMoveUnlocked } from '../data/moves'
 import { collectArtifact, hasArtifact } from '../store/artifactStore'
 import {
   getQuest1Snapshot,
@@ -25,6 +26,7 @@ import {
   WALKER_NPC_ID,
   subscribeQuest1Store,
 } from '../store/quest1Store'
+import { markCityVisited } from '../store/worldMemory'
 import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
@@ -48,10 +50,13 @@ import { performNewGameReset } from '../store/gameProgress'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
   getLastSavedLocation,
+  getPlayerSkills,
   getShowDebug,
+  grantPlayerSkillXp,
   setLastLocation,
   subscribePlayerStore,
   toggleShowDebug,
+  totalXpForLevel,
   whenAccountHydrated,
 } from '../store/playerStore'
 import { signOut } from '../store/authStore'
@@ -81,6 +86,8 @@ const CAFE_SCENE_LINES = [
   "he is the most ordinary thing you've seen since spawning.",
   "you're here to destroy him. he doesn't notice you exist.",
 ] as const
+
+const FURY_SWEEP_UNLOCK_LEVEL = 17
 
 type CafeFadePhase = 'none' | 'in' | 'scene' | 'out'
 
@@ -163,6 +170,12 @@ export function GameScreen() {
     getQuest1Snapshot,
   )
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
+
+  const darklineDestinations = useMemo((): CityId[] => {
+    void quest1Revision
+    if (!isCafeSceneSeen()) return [...DARKLINE_DESTINATIONS]
+    return [...DARKLINE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION]
+  }, [quest1Revision])
 
   const reportCurrentLocation = useCallback(
     (city: CityId = currentCity) => {
@@ -399,8 +412,15 @@ export function GameScreen() {
 
   const finishCafeScene = useCallback(() => {
     setCafeSceneSeen()
-    setCafeFade('out')
-  }, [])
+    showNarration(['the jacket. you feel it. something opens.'], () => {
+      if (!isMoveUnlocked('FURY_SWEEP', getPlayerSkills())) {
+        const targetXp = totalXpForLevel(FURY_SWEEP_UNLOCK_LEVEL)
+        const grant = Math.max(0, targetXp - getPlayerSkills().attack.xp)
+        if (grant > 0) grantPlayerSkillXp('attack', grant)
+      }
+      setCafeFade('out')
+    })
+  }, [showNarration])
 
   const advanceCafeScene = useCallback(() => {
     if (cafeFade !== 'scene') return
@@ -474,6 +494,7 @@ export function GameScreen() {
   const handleDarklineTravel = useCallback((destination: CityId) => {
     setShowDarkline(false)
     setCurrentCity(destination)
+    markCityVisited(destination)
     const destConfig = CITY_CONFIGS[destination]
     playerRef.current?.setPosition(destConfig.spawnX, destConfig.spawnY)
     setLastLocation(destination, destConfig.spawnX, destConfig.spawnY)
@@ -901,6 +922,8 @@ export function GameScreen() {
           {showDarkline && (
             <DarklineScreen
               currentCity={currentCity}
+              destinations={darklineDestinations}
+              inactiveDestinations={INACTIVE_DESTINATIONS}
               onClose={handleDarklineClose}
               onTravel={handleDarklineTravel}
             />

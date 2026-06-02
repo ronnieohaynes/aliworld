@@ -13,11 +13,19 @@ const FADE_MS = 400
 
 type Props = {
   currentCity: CityId
+  destinations?: readonly CityId[]
+  inactiveDestinations?: readonly { label: string; status: string }[]
   onClose: () => void
   onTravel: (destination: CityId) => void
 }
 
-export function DarklineScreen({ currentCity, onClose, onTravel }: Props) {
+export function DarklineScreen({
+  currentCity,
+  destinations = DARKLINE_DESTINATIONS,
+  inactiveDestinations = INACTIVE_DESTINATIONS,
+  onClose,
+  onTravel,
+}: Props) {
   const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting'>('entering')
   const [travelTarget, setTravelTarget] = useState<CityId | null>(null)
 
@@ -84,7 +92,7 @@ export function DarklineScreen({ currentCity, onClose, onTravel }: Props) {
       <nav className="darkline-screen__menu" aria-label="Darkline destinations">
         <h2 className="darkline-screen__title">Darkline</h2>
 
-        {DARKLINE_DESTINATIONS.map((cityId) => {
+        {destinations.map((cityId) => {
           const config = CITY_CONFIGS[cityId]
           const isHere = cityId === currentCity
           return (
@@ -101,7 +109,7 @@ export function DarklineScreen({ currentCity, onClose, onTravel }: Props) {
           )
         })}
 
-        {INACTIVE_DESTINATIONS.map((dest) => (
+        {inactiveDestinations.map((dest) => (
           <div key={dest.label} className="darkline-screen__dest">
             <span className="darkline-screen__dest-label">{dest.label}</span>
             <span className="darkline-screen__dest-status">{dest.status}</span>

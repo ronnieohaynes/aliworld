@@ -33,7 +33,10 @@ import {
   awardMoveXp,
   computePlayerLevel,
   createDefaultSkills,
+  grantSkillXpAmount,
   playerLevelUpLine,
+  totalXpForLevel,
+  type SkillId,
   type SkillsState,
 } from './skillStore'
 
@@ -72,7 +75,7 @@ let lastLocation: LastLocation | null = null
 let accountHydrated = false
 let hydrateInFlight: Promise<void> | null = null
 
-const VALID_CITY_IDS: readonly CityId[] = ['daly-city', 'san-bruno']
+const VALID_CITY_IDS: readonly CityId[] = ['daly-city', 'san-bruno', 'southside']
 
 function normalizeLastCity(raw: unknown): CityId | undefined {
   if (typeof raw !== 'string') return undefined
@@ -349,6 +352,16 @@ export function setPlayerSkills(skills: SkillsState): void {
   state = { ...state, skills }
   emit()
 }
+
+/** Story / milestone skill XP — persists and triggers account save. */
+export function grantPlayerSkillXp(skill: SkillId, amount: number): string[] {
+  const { skills, lines } = grantSkillXpAmount(state.skills, skill, amount)
+  state = { ...state, skills }
+  emit()
+  return lines
+}
+
+export { totalXpForLevel }
 
 export function getOverworldPlayerHp(): number | null {
   return state.hp
