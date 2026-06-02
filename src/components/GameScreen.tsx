@@ -403,16 +403,18 @@ export function GameScreen() {
   }, [cafeFade])
 
   const startMarkBattle = useCallback(() => {
+    if (battleNpcId || battleWipePhase) return
     setDialogue(null)
     setBattleNpcId(MARK_NPC_ID)
     setBattleWipePhase('enter')
-  }, [])
+  }, [battleNpcId, battleWipePhase])
 
   const startNpcBattle = useCallback((npcId: string) => {
+    if (battleNpcId || battleWipePhase) return
     setDialogue(null)
     setBattleNpcId(npcId)
     setBattleWipePhase('enter')
-  }, [])
+  }, [battleNpcId, battleWipePhase])
 
   const beginNpcDialogue = useCallback(
     (
@@ -809,6 +811,7 @@ export function GameScreen() {
 
   const handleBattleExitComplete = useCallback(() => {
     pendingBattleExitRef.current = null
+    setBattleNpcId(null)
     setBattleWipePhase(null)
     reportCurrentLocation()
   }, [reportCurrentLocation])
