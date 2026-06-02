@@ -21,7 +21,9 @@ import {
   XP_DAMAGE_AVOIDED_MULT,
   XP_DAMAGE_BLOCKED_MULT,
   XP_DAMAGE_DEALT_MULT,
+  XP_DEFENSE_SPEED_ACTION_BONUS,
   XP_FALLBACK_SMALL,
+  XP_LUCK_DAMAGE_MULT,
   XP_LUCK_PROC_BONUS,
 } from './moveBalance'
 import type { PlayerMoveId } from './moveIds'
@@ -39,6 +41,24 @@ function luckProcCount(r: MoveXpContext): number {
   if (r.doubleApplied) count++
   if (r.reflectApplied) count++
   return count
+}
+
+function defenseMoveXp(r: MoveXpContext): number {
+  if (r.damageBlocked > 0) {
+    return r.damageBlocked * XP_DAMAGE_BLOCKED_MULT + XP_DEFENSE_SPEED_ACTION_BONUS
+  }
+  return r.braced ? XP_DEFENSE_SPEED_ACTION_BONUS : XP_FALLBACK_SMALL
+}
+
+function speedDodgeMoveXp(r: MoveXpContext): number {
+  if (r.damageAvoided > 0) {
+    return (
+      r.damageAvoided * XP_DAMAGE_AVOIDED_MULT +
+      XP_DEFENSE_SPEED_ACTION_BONUS +
+      (r.dodged && r.playerDmg > 0 ? Math.floor(r.playerDmg * 0.5) : 0)
+    )
+  }
+  return XP_FALLBACK_SMALL
 }
 
 function def(
@@ -201,17 +221,10 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      {
-        skill: 'speed',
-        amount: (r) =>
-          r.damageAvoided > 0
-            ? r.damageAvoided * XP_DAMAGE_AVOIDED_MULT
-            : XP_FALLBACK_SMALL,
-      },
+      { skill: 'speed', amount: speedDodgeMoveXp },
       {
         skill: 'luck',
-        amount: (r) =>
-          r.dodged && r.playerDmg > 0 ? r.playerDmg * XP_DAMAGE_DEALT_MULT : XP_FALLBACK_SMALL,
+        amount: (r) => (r.stunApplied ? XP_LUCK_PROC_BONUS : 0),
       },
       { skill: 'hp', amount: 3 },
     ],
@@ -243,14 +256,8 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      {
-        skill: 'speed',
-        amount: (r) =>
-          r.damageAvoided > 0
-            ? r.damageAvoided * XP_DAMAGE_AVOIDED_MULT
-            : XP_FALLBACK_SMALL,
-      },
-      { skill: 'defense', amount: XP_FALLBACK_SMALL },
+      { skill: 'speed', amount: speedDodgeMoveXp },
+      { skill: 'defense', amount: (r) => (r.dodged ? XP_FALLBACK_SMALL : 0) },
     ],
     uiDescription: 'deflect and sting. tiny reflect on dodge.',
     uiClassName: 'battle-screen__move--parry',
@@ -272,8 +279,8 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [{ effect: 'slow', turns: 3 }],
     xpGrants: [
-      { skill: 'speed', amount: 8 },
-      { skill: 'luck', amount: 3 },
+      { skill: 'speed', amount: (r) => 12 + r.playerDmg },
+      { skill: 'luck', amount: 4 },
     ],
     uiDescription: 'slow them down. you set the tempo.',
     uiClassName: 'battle-screen__move--gravity-shift',
@@ -290,7 +297,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'refract' },
     onResolve: [],
     xpGrants: [
-      { skill: 'speed', amount: 7 },
+      { skill: 'speed', amount: (r) => Math.max(14, r.playerDmg * 2.5) },
     ],
     uiDescription: 'mirror their last hit back.',
     uiClassName: 'battle-screen__move--refract',
@@ -306,7 +313,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'rechargeTurn' },
     behavior: { kind: 'hyperdrive' },
     onResolve: [],
-    xpGrants: [{ skill: 'speed', amount: 14 }],
+    xpGrants: [{ skill: 'speed', amount: 22 }],
     uiDescription: 'double next turn. then you skip — exposed.',
     uiClassName: 'battle-screen__move--hyperdrive',
     playerLogLine: (r) =>
@@ -324,13 +331,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'brace', profile: { incomingMult: 0.3 } },
     onResolve: ['brace'],
     xpGrants: [
-      {
-        skill: 'defense',
-        amount: (r) =>
-          r.damageBlocked > 0
-            ? r.damageBlocked * XP_DAMAGE_BLOCKED_MULT
-            : XP_FALLBACK_SMALL,
-      },
+      { skill: 'defense', amount: defenseMoveXp },
       { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'brace. take a fraction of the next hit.',
@@ -353,13 +354,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: ['brace'],
     xpGrants: [
-      {
-        skill: 'defense',
-        amount: (r) =>
-          r.damageBlocked > 0
-            ? r.damageBlocked * XP_DAMAGE_BLOCKED_MULT
-            : XP_FALLBACK_SMALL,
-      },
+      { skill: 'defense', amount: defenseMoveXp },
       { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'brace and shrug off status this turn.',
@@ -383,15 +378,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       reflectPct: { min: 0.02, max: 0.1 },
     },
     onResolve: [],
-    xpGrants: [
-      {
-        skill: 'defense',
-        amount: (r) =>
-          r.damageBlocked > 0
-            ? Math.floor(r.damageBlocked * XP_DAMAGE_BLOCKED_MULT * 0.85)
-            : XP_FALLBACK_SMALL,
-      },
-    ],
+    xpGrants: [{ skill: 'defense', amount: defenseMoveXp }],
     uiDescription: 'block heavy. chance to send some back.',
     uiClassName: 'battle-screen__move--counterweight',
     playerLogLine: () => 'counterweight set.',
@@ -410,8 +397,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
         skill: 'defense',
         amount: (r) =>
           r.damageAvoided > 0 || r.damageBlocked > 0
-            ? (r.damageAvoided + r.damageBlocked) * XP_DAMAGE_BLOCKED_MULT
-            : XP_FALLBACK_SMALL,
+            ? (r.damageAvoided + r.damageBlocked) * XP_DAMAGE_BLOCKED_MULT +
+              XP_DEFENSE_SPEED_ACTION_BONUS
+            : XP_DEFENSE_SPEED_ACTION_BONUS,
       },
     ],
     uiDescription: 'nullify the next hit entirely.',
@@ -427,7 +415,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'oncePerBattle' },
     behavior: { kind: 'invincible' },
     onResolve: [],
-    xpGrants: [{ skill: 'defense', amount: 15 }],
+    xpGrants: [{ skill: 'defense', amount: 24 }],
     uiDescription: 'half your hp. block the next 3 hits. once per fight.',
     uiClassName: 'battle-screen__move--invincible',
     playerLogLine: () => 'invincible. for now.',
@@ -448,9 +436,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       {
         skill: 'luck',
         amount: (r) =>
-          XP_FALLBACK_SMALL +
+          XP_DEFENSE_SPEED_ACTION_BONUS +
           (r.shakeApplied ? XP_LUCK_PROC_BONUS : 0) +
-          r.playerDmg * XP_DAMAGE_DEALT_MULT,
+          r.playerDmg * XP_LUCK_DAMAGE_MULT,
       },
       { skill: 'hp', amount: 2 },
     ],
@@ -471,8 +459,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'loop' },
     onResolve: [],
     xpGrants: [
-      { skill: 'luck', amount: 7 },
-      { skill: 'attack', amount: (r) => r.playerDmg * 2 },
+      { skill: 'luck', amount: (r) => 14 + r.playerDmg * XP_LUCK_DAMAGE_MULT },
     ],
     uiDescription: 'make them repeat their last move.',
     uiClassName: 'battle-screen__move--loop',
@@ -488,7 +475,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'snag' },
     onResolve: [],
-    xpGrants: [{ skill: 'luck', amount: 10 }],
+    xpGrants: [{ skill: 'luck', amount: 18 }],
     uiDescription: 'steal one of their moves for this fight.',
     uiClassName: 'battle-screen__move--snag',
     playerLogLine: (r) =>
@@ -507,7 +494,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       {
         skill: 'luck',
         amount: (r) =>
-          XP_FALLBACK_SMALL + luckProcCount(r) * XP_LUCK_PROC_BONUS + r.playerDmg * 2,
+          XP_DEFENSE_SPEED_ACTION_BONUS +
+          luckProcCount(r) * XP_LUCK_PROC_BONUS +
+          r.playerDmg * XP_LUCK_DAMAGE_MULT,
       },
     ],
     uiDescription: 'pure rng from the known pool.',
@@ -523,7 +512,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'sealed-fate' },
     onResolve: [],
-    xpGrants: [{ skill: 'luck', amount: 12 }],
+    xpGrants: [{ skill: 'luck', amount: 20 }],
     uiDescription: 'death clock. huge hit soon or you pay.',
     uiClassName: 'battle-screen__move--sealed-fate',
     playerLogLine: () => 'sealed fate marked.',

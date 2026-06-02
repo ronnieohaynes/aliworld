@@ -140,10 +140,15 @@ export const LCK_CRIT_STAT_SCALE = 1.48
 
 /** Move XP — scale rewards with what each skill actually accomplished. */
 export const XP_DAMAGE_DEALT_MULT = 3
-export const XP_DAMAGE_BLOCKED_MULT = 3
-export const XP_DAMAGE_AVOIDED_MULT = 3
-export const XP_LUCK_PROC_BONUS = 8
-export const XP_FALLBACK_SMALL = 3
+/** Higher than damage-dealt — defensive actions happen on fewer turns. */
+export const XP_DAMAGE_BLOCKED_MULT = 6
+export const XP_DAMAGE_AVOIDED_MULT = 6
+/** Flat bonus when brace/dodge succeeds so low-block turns still progress. */
+export const XP_DEFENSE_SPEED_ACTION_BONUS = 10
+export const XP_LUCK_PROC_BONUS = 14
+/** Luck moves that chip damage — lower weight than attack damage XP. */
+export const XP_LUCK_DAMAGE_MULT = 1.5
+export const XP_FALLBACK_SMALL = 6
 
 /** Soft skill counter loop — attack > speed > luck > defense > attack. */
 export const COUNTER_ADVANTAGE_DMG_MULT = 1.18
