@@ -18,6 +18,18 @@ import { getWorldMemorySnapshot } from '../store/worldMemory'
 import { ADAM_MP3_ARTIFACT_ID } from './adamMp3Handoff'
 import { FIVE_DISPLAY_NAME, type CityConfig } from './cityConfig'
 import { NPC_SIZE } from './npcs'
+import {
+  buildQuest2ObjectiveContext,
+  getQuest2ActiveStepId,
+  isE2QuestUnlocked,
+  QUEST_2_STEPS,
+  type Quest2ObjectiveContext,
+} from './quest2Objectives'
+import {
+  RESTOCKER_NPC_ID,
+  TOWN_CRIER_NPC_ID,
+  CROWD_2_NPC_ID,
+} from '../store/quest2Store'
 import type { TriggerAction } from './triggerZones'
 
 /** MP3 player from Adam (quest helper tracks this as the notice step). */
@@ -35,7 +47,7 @@ export type QuestObjectiveContext = {
   inSanBruno: boolean
   /** PART 2: set when cafe / danny beat is seen. */
   cafeSeen: boolean
-}
+} & Quest2ObjectiveContext
 
 export function buildQuestObjectiveContext(): QuestObjectiveContext {
   const quest1 = getQuest1Snapshot()
@@ -51,6 +63,7 @@ export function buildQuestObjectiveContext(): QuestObjectiveContext {
     markDefeated: isMarkDefeated(),
     inSanBruno: world.citiesVisited.includes('san-bruno'),
     cafeSeen: isCafeSceneSeen(),
+    ...buildQuest2ObjectiveContext(),
   }
 }
 
@@ -117,14 +130,24 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   },
 ]
 
-/** Ordered quests — add Quest 2–5 definitions here later. */
+/** Ordered quests — quest 2 activates after e1 cafe beat. */
 export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
   {
     id: 'quest-1-five',
     label: 'quest 1',
     steps: QUEST_1_STEPS,
   },
+  {
+    id: 'quest-2-southside',
+    label: 'quest 2',
+    steps: QUEST_2_STEPS,
+  },
 ]
+
+/** Quest 1 last step never completes — e2 unlocks after cafe + mark. */
+function shouldShowQuest2(ctx: QuestObjectiveContext): boolean {
+  return isE2QuestUnlocked() && ctx.cafeSeen
+}
 
 export type ResolvedObjective = {
   questId: string
@@ -146,10 +169,24 @@ export function resolveActiveObjective(
   return { questId: quest.id, stepId: last.id, text: last.getText(ctx) }
 }
 
-/** Active objective for the primary (first) registered quest. */
+/** Active objective — quest 2 after e1 unlock; otherwise quest 1. */
 export function resolvePrimaryQuestObjective(
   ctx: QuestObjectiveContext = buildQuestObjectiveContext(),
 ): ResolvedObjective {
+  if (shouldShowQuest2(ctx)) {
+    const quest2 = QUEST_DEFINITIONS[1]
+    if (quest2) {
+      const q2Ctx = ctx
+      for (const step of quest2.steps) {
+        if (!step.isComplete(q2Ctx)) {
+          return { questId: quest2.id, stepId: step.id, text: step.getText(q2Ctx) }
+        }
+      }
+      const last = quest2.steps[quest2.steps.length - 1]!
+      return { questId: quest2.id, stepId: last.id, text: last.getText(q2Ctx) }
+    }
+  }
+
   const quest = QUEST_DEFINITIONS[0]
   if (!quest) {
     return { questId: 'none', stepId: 'none', text: '' }
@@ -157,8 +194,11 @@ export function resolvePrimaryQuestObjective(
   return resolveActiveObjective(quest, ctx)
 }
 
-/** First incomplete quest step id, or null when every step is complete. */
+/** First incomplete quest step id across active quest, or null when complete. */
 export function getActiveStepId(ctx: QuestObjectiveContext): string | null {
+  if (shouldShowQuest2(ctx)) {
+    return getQuest2ActiveStepId(ctx)
+  }
   for (const step of QUEST_1_STEPS) {
     if (!step.isComplete(ctx)) return step.id
   }
@@ -192,6 +232,18 @@ export function getQuestPulseTargetDescriptor(
       return { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'cafe':
       return { kind: 'zone', action: 'OPEN_ONE_LOVE_CAFE' }
+    case 'e2-crowd':
+      return ctx.crowdAddressed ? null : { kind: 'npc', id: CROWD_2_NPC_ID }
+    case 'e2-crier':
+      return { kind: 'npc', id: TOWN_CRIER_NPC_ID }
+    case 'e2-travel':
+      return { kind: 'zone', action: 'OPEN_DARKLINE' }
+    case 'e2-clerk':
+      return { kind: 'zone', action: 'OPEN_BLUE_STORE' }
+    case 'e2-restocker':
+      return { kind: 'npc', id: RESTOCKER_NPC_ID }
+    case 'e2-field':
+      return null
     default:
       return null
   }

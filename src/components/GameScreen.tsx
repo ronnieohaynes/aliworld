@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
-import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, type NpcData } from '../data/npcs'
+import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, type NpcData } from '../data/npcs'
+import { isE2QuestUnlocked } from '../data/quest2Objectives'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import { CITY_CONFIGS, DARKLINE_DESTINATIONS, INACTIVE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION, type CityConfig, type CityId } from '../data/cityConfig'
 import { isMoveUnlocked } from '../data/moves'
@@ -24,6 +25,22 @@ import {
   setWalkerConverted,
   WALKER_NPC_ID,
 } from '../store/quest1Store'
+import {
+  CLERK_NPC_ID,
+  CROWD_2_NPC_ID,
+  getQuest2Snapshot,
+  isClerkConverted,
+  isCrierConverted,
+  isCrowdAddressed,
+  isRestockerDefeated,
+  RESTOCKER_NPC_ID,
+  setClerkConverted,
+  setCrierConverted,
+  setCrowdAddressed,
+  setRestockerDefeated,
+  subscribeQuest2Store,
+  TOWN_CRIER_NPC_ID,
+} from '../store/quest2Store'
 import {
   getWorldMemorySnapshot,
   markCityVisited,
@@ -179,6 +196,11 @@ export function GameScreen() {
     getQuest1Snapshot,
     getQuest1Snapshot,
   )
+  const quest2Revision = useSyncExternalStore(
+    subscribeQuest2Store,
+    getQuest2Snapshot,
+    getQuest2Snapshot,
+  )
   const artifactRevision = useSyncExternalStore(
     subscribeArtifactStore,
     getArtifactStoreSnapshot,
@@ -198,16 +220,22 @@ export function GameScreen() {
 
   const darklineDestinations = useMemo((): CityId[] => {
     void quest1Revision
+    void quest2Revision
     if (!isCafeSceneSeen()) return [...DARKLINE_DESTINATIONS]
-    return [...DARKLINE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION]
-  }, [quest1Revision])
+    const dest: CityId[] = [...DARKLINE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION]
+    if (isE2QuestUnlocked() && !isCrierConverted()) {
+      return dest.filter((id) => id !== 'southside')
+    }
+    return dest
+  }, [quest1Revision, quest2Revision])
 
   const questPulseDescriptor = useMemo(() => {
     void artifactRevision
     void quest1Revision
+    void quest2Revision
     void worldRevision
     return resolveActiveQuestPulseDescriptor(buildQuestObjectiveContext())
-  }, [artifactRevision, quest1Revision, worldRevision])
+  }, [artifactRevision, quest1Revision, quest2Revision, worldRevision])
 
   const reportCurrentLocation = useCallback(
     (city: CityId = currentCity) => {
@@ -270,13 +298,30 @@ export function GameScreen() {
   }, [])
 
   const cityConfig = useMemo((): CityConfig => {
-    if (currentCity !== 'five') return baseCityConfig
-    if (!markDefeated) return baseCityConfig
-    return {
-      ...baseCityConfig,
-      npcs: baseCityConfig.npcs.filter((npc) => npc.id !== MARK_NPC_ID),
+    if (currentCity === 'five') {
+      let npcs = [...baseCityConfig.npcs]
+      if (markDefeated) {
+        npcs = npcs.filter((npc) => npc.id !== MARK_NPC_ID)
+      }
+      if (isE2QuestUnlocked()) {
+        if (!isCrowdAddressed()) {
+          npcs = [...npcs, CROWD_1_NPC, CROWD_2_NPC]
+        }
+        if (!isCrierConverted()) {
+          npcs = [...npcs, TOWN_CRIER_NPC]
+        }
+      }
+      return { ...baseCityConfig, npcs }
     }
-  }, [baseCityConfig, currentCity, markDefeated])
+    if (currentCity === 'southside') {
+      let npcs = [...baseCityConfig.npcs]
+      if (!isClerkConverted()) {
+        npcs = npcs.filter((npc) => npc.id !== RESTOCKER_NPC_ID)
+      }
+      return { ...baseCityConfig, npcs }
+    }
+    return baseCityConfig
+  }, [baseCityConfig, currentCity, markDefeated, quest2Revision])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -554,9 +599,24 @@ export function GameScreen() {
         if (isCafeSceneSeen() || cafeFade !== 'none') return
         setDialogue(null)
         setCafeFade('in')
+      } else if (action === 'OPEN_BLUE_STORE') {
+        if (!isCrierConverted()) {
+          showNotYetDialogue(CLERK_NPC, 'nobody gets in until the crier moves.')
+          return
+        }
+        if (isClerkConverted()) return
+        beginNpcDialogue(CLERK_NPC, { onComplete: () => startNpcBattle(CLERK_NPC_ID) })
       }
     },
-    [beginNpcDialogue, cafeFade, canApproachMark, showMarkBlockedDialogue, startMarkBattle],
+    [
+      beginNpcDialogue,
+      cafeFade,
+      canApproachMark,
+      showMarkBlockedDialogue,
+      showNotYetDialogue,
+      startMarkBattle,
+      startNpcBattle,
+    ],
   )
 
   const handleExitTrigger = useCallback((action: TriggerAction) => {
@@ -600,6 +660,9 @@ export function GameScreen() {
           markGatingNpcTalked(prev.npc.id)
         }
         if (onComplete) onComplete()
+        if (prev.npc.id === CROWD_2_NPC_ID && isE2QuestUnlocked() && !isCrowdAddressed()) {
+          setCrowdAddressed()
+        }
         return null
       }
       return { ...prev, lineIndex: next }
@@ -652,6 +715,56 @@ export function GameScreen() {
         return
       }
       beginNpcDialogue(MARK_NPC, { onComplete: startMarkBattle })
+      return
+    }
+
+    if (nearbyId === CROWD_2_NPC_ID) {
+      beginNpcDialogue(CROWD_2_NPC)
+      return
+    }
+
+    if (nearbyId === CROWD_1_NPC.id) {
+      beginNpcDialogue(CROWD_1_NPC)
+      return
+    }
+
+    if (nearbyId === TOWN_CRIER_NPC_ID) {
+      if (isCrierConverted()) {
+        beginNpcDialogue(TOWN_CRIER_NPC)
+        return
+      }
+      if (!isCrowdAddressed()) {
+        showNotYetDialogue(TOWN_CRIER_NPC, 'address the crowd first.')
+        return
+      }
+      beginNpcDialogue(TOWN_CRIER_NPC, { onComplete: () => startNpcBattle(TOWN_CRIER_NPC_ID) })
+      return
+    }
+
+    if (nearbyId === CLERK_NPC_ID) {
+      if (currentCity !== 'southside') return
+      if (!isCrierConverted()) {
+        showNotYetDialogue(CLERK_NPC, 'the crier has to go first.')
+        return
+      }
+      if (isClerkConverted()) {
+        beginNpcDialogue(CLERK_NPC)
+        return
+      }
+      beginNpcDialogue(CLERK_NPC, { onComplete: () => startNpcBattle(CLERK_NPC_ID) })
+      return
+    }
+
+    if (nearbyId === RESTOCKER_NPC_ID) {
+      if (!isClerkConverted()) {
+        showNotYetDialogue(RESTOCKER_NPC, 'get through the clerk first.')
+        return
+      }
+      if (isRestockerDefeated()) {
+        beginNpcDialogue(RESTOCKER_NPC)
+        return
+      }
+      beginNpcDialogue(RESTOCKER_NPC, { onComplete: () => startNpcBattle(RESTOCKER_NPC_ID) })
       return
     }
 
@@ -842,11 +955,17 @@ export function GameScreen() {
           collectArtifact('subway-pass')
           showMarkVictoryNarration()
         }
+        if (battleNpcId === TOWN_CRIER_NPC_ID) setCrierConverted()
+        if (battleNpcId === CLERK_NPC_ID) setClerkConverted()
+        if (battleNpcId === RESTOCKER_NPC_ID) {
+          setRestockerDefeated()
+          showNarration(["something's wrong in the field.", 'you started it.'])
+        }
       }
       pendingBattleExitRef.current = { result }
       setBattleWipePhase('exit')
     },
-    [battleNpcId, showMarkVictoryNarration],
+    [battleNpcId, showMarkVictoryNarration, showNarration],
   )
 
   const handleFannyPackClose = useCallback(() => {
