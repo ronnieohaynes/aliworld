@@ -33,6 +33,7 @@ export type NpcCombatEntry = {
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
+const ADAM_SPRITE = publicAsset('Assets/Characters/npcs/Adam-idle.PNG')
 
 /** Tutorial — low threat, simple move pool, win even if sloppy. */
 const WALKER: NpcCombatEntry = {
@@ -78,10 +79,36 @@ const MARK: NpcCombatEntry = {
   battleLocation: 'five',
 }
 
+/** E2 gate — blue store clerk; attack-lean scrapper. */
+const CLERK: NpcCombatEntry = {
+  id: 'clerk',
+  displayName: 'clerk',
+  stats: { hp: 55, maxHp: 55, atk: 10, def: 4, spd: 5 },
+  moves: ['STRIKE', 'STRIKE', 'WHISPER', 'LOOP'],
+  leanSkill: 'attack',
+  losingLine: "the gift... it's priceless.",
+  spriteSrc: ADAM_SPRITE,
+  battleLocation: 'five',
+}
+
+/** E2 boss — restocker in the back room; defense wall. */
+const RESTOCKER: NpcCombatEntry = {
+  id: 'restocker',
+  displayName: 'restocker',
+  stats: { hp: 85, maxHp: 85, atk: 12, def: 8, spd: 3 },
+  moves: ['HOLD', 'HOLD', 'LOOP', 'STRIKE'],
+  leanSkill: 'defense',
+  losingLine: "it CAN stop...",
+  spriteSrc: MARK_SPRITE,
+  battleLocation: 'five',
+}
+
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   jaclyn: JACLYN,
   mark: MARK,
+  clerk: CLERK,
+  restocker: RESTOCKER,
   dummy: DUMMY,
 }
 

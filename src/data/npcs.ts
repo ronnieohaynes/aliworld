@@ -37,8 +37,9 @@ const ADAM_IDLE_SPRITE = `${publicAsset('Assets/Characters/npcs/Adam-idle.PNG')}
 const MARK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 const JACLYN_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const WALKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
+const JASON_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 /** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
-export const JASON_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
+export { JASON_IDLE_SPRITE }
 
 /** Quest 1 gating NPC — Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
@@ -120,6 +121,7 @@ export const WALKER_NPC: NpcData = {
     'oh.',
     'i get it now. i get it.',
     "tell me where to go. tell me what to say. i'll say it exactly.",
+    "i told you. i told all of you. exactly like he said.",
   ],
   color: '#7a7a96',
   spriteSrc: WALKER_IDLE_SPRITE,
@@ -186,6 +188,86 @@ export const FIVE_OVERWORLD_NPCS: readonly NpcData[] = [
   JACLYN_NPC,
   MARK_NPC,
 ]
+
+/** Quest 2 — crowd outside the 5ive after e1. */
+export const CROWD_1_NPC: NpcData = {
+  id: 'crowd1',
+  name: 'crowd',
+  x: 520,
+  y: 420,
+  lines: ["he's back. that's him. that's the one."],
+  linesConverted: ['so do something. prove it again. we want to see.'],
+  color: '#9696b0',
+  spriteSrc: NPC2_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+}
+
+export const CROWD_2_NPC: NpcData = {
+  id: 'crowd2',
+  name: 'crowd',
+  x: 680,
+  y: 440,
+  lines: ["i heard he got walker. i heard he got jaclyn too."],
+  color: '#9696b0',
+  spriteSrc: NPC4_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+}
+
+/** Quest 2 — town crier at the 5ive. */
+export const TOWN_CRIER_NPC: NpcData = {
+  id: 'town-crier',
+  name: 'town crier',
+  x: 600,
+  y: 380,
+  lines: [
+    'who is this guy? a crowd will follow anybody who looks sure.',
+    "i don't think you're sure.",
+    'convince me.',
+  ],
+  linesConverted: [
+    "...i was wrong. i'll tell them. i'll tell everyone.",
+    'send me ahead.',
+  ],
+  color: '#c084fc',
+  spriteSrc: JASON_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+}
+
+/** Quest 2 — blue store clerk (southside). */
+export const CLERK_NPC: NpcData = {
+  id: 'clerk',
+  name: 'clerk',
+  x: 720,
+  y: 480,
+  lines: [
+    'the crier came through here an hour ago.',
+    'i run this store.',
+    'you want in? you go through me.',
+  ],
+  linesConverted: ["the gift... it's priceless."],
+  color: '#4488cc',
+  spriteSrc: ADAM_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+}
+
+/** Quest 2 — restocker boss (blue store back room). */
+export const RESTOCKER_NPC: NpcData = {
+  id: 'restocker',
+  name: 'restocker',
+  x: 820,
+  y: 520,
+  lines: [
+    'who is this dude?',
+    "my only job is to fix what's in front of me. let's see you try.",
+  ],
+  linesConverted: ['it CAN stop...', "he'll know soon enough."],
+  color: '#cc4444',
+  spriteSrc: MARK_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+}
+
+/** Southside overworld NPCs (e2). */
+export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = [CLERK_NPC, RESTOCKER_NPC]
 
 /** Mando — renders inside the 13 Gallons interior overlay. */
 export const MANDO_NPC: NpcData = {

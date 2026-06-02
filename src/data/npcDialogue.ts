@@ -3,6 +3,14 @@ import {
   isMarkDefeated,
   isWalkerConverted,
 } from '../store/quest1Store'
+import {
+  CLERK_NPC_ID,
+  isClerkConverted,
+  isCrierConverted,
+  isRestockerDefeated,
+  RESTOCKER_NPC_ID,
+  TOWN_CRIER_NPC_ID,
+} from '../store/quest2Store'
 import type { NpcData, NpcDialogueLine } from './npcs'
 
 export type ResolvedDialogueLine = {
@@ -29,6 +37,9 @@ function isNpcConverted(npcId: string): boolean {
   if (npcId === 'walker') return isWalkerConverted()
   if (npcId === 'jaclyn') return isJaclynConverted()
   if (npcId === 'mark') return isMarkDefeated()
+  if (npcId === TOWN_CRIER_NPC_ID) return isCrierConverted()
+  if (npcId === CLERK_NPC_ID) return isClerkConverted()
+  if (npcId === RESTOCKER_NPC_ID) return isRestockerDefeated()
   return false
 }
 
