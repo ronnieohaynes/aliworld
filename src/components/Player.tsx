@@ -27,13 +27,13 @@ import {
   assignStripSpriteToNpc,
   ensureStoryIdleCached,
 } from '../game/npcSpriteCache'
-import type { TriggerAction } from '../data/triggerZones'
+import type { TriggerAction, TriggerZone } from '../data/triggerZones'
 import type { CityConfig } from '../data/cityConfig'
 import type { QuestPulseTargetDescriptor } from '../data/questObjectives'
 import {
   resolveQuestPulseWorldPoint,
 } from '../data/questObjectives'
-import { drawWorldMap } from '../game/drawWorldBackground'
+import { drawWorldForegroundOverlay, drawWorldMap } from '../game/drawWorldBackground'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { playerScreenAnchor } from '../game/playerScreenAnchor'
 import { getShowDebug } from '../store/playerStore'
@@ -416,6 +416,42 @@ function getNpcCollisionRect(npc: { x: number; y: number }): CollisionZone {
   return { x: npc.x - NPC_COLLISION_RADIUS + 15, y: npc.y - NPC_COLLISION_RADIUS - 20, width: 45, height: NPC_COLLISION_RADIUS * 2 + 15 }
 }
 
+function drawDarklineEntranceZonesDebug(
+  ctx: CanvasRenderingContext2D,
+  triggerZones: TriggerZone[],
+): void {
+  for (const zone of triggerZones) {
+    if (zone.action !== 'OPEN_DARKLINE') continue
+    const x = Math.floor(zone.x)
+    const y = Math.floor(zone.y)
+    const w = Math.floor(zone.width)
+    const h = Math.floor(zone.height)
+    ctx.fillStyle = 'rgba(140, 0, 220, 0.35)'
+    ctx.fillRect(x, y, w, h)
+    ctx.strokeStyle = 'rgba(180, 60, 255, 0.95)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(x, y, w, h)
+  }
+}
+
+function drawTransitionZonesDebug(
+  ctx: CanvasRenderingContext2D,
+  triggerZones: TriggerZone[],
+): void {
+  for (const zone of triggerZones) {
+    if (zone.action === 'OPEN_DARKLINE') continue
+    const x = Math.floor(zone.x)
+    const y = Math.floor(zone.y)
+    const w = Math.floor(zone.width)
+    const h = Math.floor(zone.height)
+    ctx.fillStyle = 'rgba(255, 220, 0, 0.35)'
+    ctx.fillRect(x, y, w, h)
+    ctx.strokeStyle = 'rgba(255, 235, 60, 0.95)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(x, y, w, h)
+  }
+}
+
 function drawCollisionZonesDebug(ctx: CanvasRenderingContext2D, collisionZones: CollisionZone[], npcs: { x: number; y: number; id: string }[]): void {
   for (const zone of collisionZones) {
     ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
@@ -601,7 +637,12 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
-  }, [cityConfig.mapSrc])
+    if (cityConfig.foregroundMapSrc) {
+      void loadWorldBackgroundForSrc(cityConfig.foregroundMapSrc).catch((err) =>
+        console.error(err),
+      )
+    }
+  }, [cityConfig.mapSrc, cityConfig.foregroundMapSrc])
 
   useEffect(() => {
     const rosterKey = getNpcRosterKey(cityConfig)
@@ -745,6 +786,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
+    if (cityConfig.foregroundMapSrc) {
+      void loadWorldBackgroundForSrc(cityConfig.foregroundMapSrc).catch((err) =>
+        console.error(err),
+      )
+    }
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'c' || e.key === 'C') {
@@ -788,7 +834,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [cityConfig.mapSrc])
+  }, [cityConfig.mapSrc, cityConfig.foregroundMapSrc])
 
   useEffect(() => {
     const el = canvas
@@ -1100,10 +1146,18 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       ctx.imageSmoothingEnabled = false
       applyWorldTransform(ctx, zoom, focus.x, focus.y, width, height)
 
-      drawWorldMap(ctx, cfg.mapSrc, cfg.worldWidth, cfg.worldHeight)
+      drawWorldMap(
+        ctx,
+        cfg.mapSrc,
+        cfg.worldWidth,
+        cfg.worldHeight,
+        cfg.mapDrawScale ?? 1,
+      )
 
       if (showCollisionDebug.current) {
         drawCollisionZonesDebug(ctx, getMapCollisionZones(cfg), cfg.npcs)
+        drawTransitionZonesDebug(ctx, cfg.triggerZones)
+        drawDarklineEntranceZonesDebug(ctx, cfg.triggerZones)
       }
 
       const frame = isMoving ? animFrame.current : MIDNIGHT_WALK_IDLE_FRAME
@@ -1114,12 +1168,19 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
       const variantId = selectedMidnightVariantRef.current ?? 'default'
       const renderTuning = getMidnightVariantRenderTuning(variantId)
-      const dh = Math.floor(PLAYER_DISPLAY_HEIGHT)
+      const characterScale = cfg.characterScale ?? 1
+      const baseDh = Math.floor(PLAYER_DISPLAY_HEIGHT)
+      const baseDw = Math.floor(PLAYER_DISPLAY_WIDTH)
+      const drawDh = Math.floor(baseDh * characterScale)
+      const drawDw = Math.floor(baseDw * characterScale)
       const worldDrawY = Math.floor(
-        worldY - dh / 2 - renderTuning.drawShiftUp + renderTuning.feetOffset,
+        worldY +
+          baseDh / 2 -
+          drawDh -
+          renderTuning.drawShiftUp +
+          renderTuning.feetOffset,
       )
-      const dw = Math.floor(PLAYER_DISPLAY_WIDTH)
-      const worldDrawX = Math.floor(worldX - dw / 2)
+      const worldDrawX = Math.floor(worldX - drawDw / 2)
 
       const logicalAnchorX = (worldX - focus.x) * zoom + width / 2
       const logicalAnchorY = (worldDrawY - focus.y) * zoom + height / 2 - 14
@@ -1136,8 +1197,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
       const midnightSheet = midnightSheetRef.current
 
-      type Renderable = { sortY: number; kind: 'midnight' } | { sortY: number; kind: 'npc'; npc: typeof cfg.npcs[number] }
-      const midnightBottomY = worldDrawY + dh
+      type Renderable =
+        | { sortY: number; kind: 'midnight' }
+        | { sortY: number; kind: 'npc'; npc: typeof cfg.npcs[number] }
+
+      const midnightBottomY = worldDrawY + drawDh
       const renderables: Renderable[] = [{ sortY: midnightBottomY, kind: 'midnight' }]
       for (const npc of cfg.npcs) {
         const half = NPC_SIZE / 2
@@ -1160,8 +1224,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
               frame,
               worldDrawX,
               worldDrawY,
-              dw,
-              dh,
+              drawDw,
+              drawDh,
               1,
               renderTuning,
             )
@@ -1243,6 +1307,16 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         if (pulsePoint) {
           drawQuestObjectivePulse(ctx, pulsePoint.x, pulsePoint.y, performance.now())
         }
+      }
+
+      if (cfg.foregroundMapSrc) {
+        drawWorldForegroundOverlay(
+          ctx,
+          cfg.foregroundMapSrc,
+          cfg.worldWidth,
+          cfg.worldHeight,
+          cfg.mapDrawScale ?? 1,
+        )
       }
 
       if (showCoordinateOverlay.current) {
