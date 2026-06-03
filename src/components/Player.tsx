@@ -122,7 +122,7 @@ const ZOOM_DEFAULT = 1.0
 const ZOOM_STEP = 0.1
 const COORD_GRID_SPACING = 100
 const MOBILE_ZOOM_BREAKPOINT = 480
-const MOBILE_ZOOM_DEFAULT = 1.5
+const MOBILE_ZOOM_DEFAULT = 1.3
 
 function getDefaultZoom(screenW: number): number {
   return screenW <= MOBILE_ZOOM_BREAKPOINT ? MOBILE_ZOOM_DEFAULT : ZOOM_DEFAULT
@@ -1089,7 +1089,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         height,
       }
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      const surfaceDpr =
+        width > 0 && canvas.width > 0 ? canvas.width / width : window.devicePixelRatio || 1
+
+      ctx.setTransform(surfaceDpr, 0, 0, surfaceDpr, 0, 0)
       ctx.fillStyle = WORLD_CANVAS_FILL
       ctx.fillRect(0, 0, width, height)
 

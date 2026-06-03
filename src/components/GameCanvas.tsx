@@ -26,13 +26,17 @@ function syncCanvasSurface(
   canvas: HTMLCanvasElement,
   stage: HTMLElement,
 ): SurfaceSize | null {
-  const cssW = Math.max(1, Math.floor(stage.clientWidth))
-  const cssH = Math.max(1, Math.floor(stage.clientHeight))
+  const cssW = Math.max(1, Math.floor(canvas.clientWidth || stage.clientWidth))
+  const cssH = Math.max(1, Math.floor(canvas.clientHeight || stage.clientHeight))
   if (cssW <= 0 || cssH <= 0) return null
 
-  if (canvas.width !== cssW || canvas.height !== cssH) {
-    canvas.width = cssW
-    canvas.height = cssH
+  const dpr = window.devicePixelRatio || 1
+  const bufW = Math.max(1, Math.round(cssW * dpr))
+  const bufH = Math.max(1, Math.round(cssH * dpr))
+
+  if (canvas.width !== bufW || canvas.height !== bufH) {
+    canvas.width = bufW
+    canvas.height = bufH
   }
 
   return { width: cssW, height: cssH }

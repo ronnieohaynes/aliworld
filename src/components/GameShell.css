@@ -1,6 +1,6 @@
 /* GameShell frame 390×844; canvas renders at same internal resolution inside the bezel viewport */
 :root {
-  --game-shell-viewport-w: 358px;
+  --game-shell-viewport-w: 100%;
   --game-shell-shift-x: 0px;
 }
 
@@ -68,7 +68,7 @@
 
 .game-shell__viewport {
   width: 100%;
-  max-width: var(--game-shell-viewport-w);
+  max-width: none;
   height: 100%;
   flex: 1 1 auto;
   min-height: 0;
