@@ -17,9 +17,34 @@ type Props = {
   debugHudId?: string
 }
 
+type SurfaceSize = {
+  width: number
+  height: number
+}
+
+function syncCanvasSurface(
+  canvas: HTMLCanvasElement,
+  stage: HTMLElement,
+): SurfaceSize | null {
+  const cssW = Math.max(1, Math.floor(stage.clientWidth))
+  const cssH = Math.max(1, Math.floor(stage.clientHeight))
+  if (cssW <= 0 || cssH <= 0) return null
+
+  if (canvas.width !== cssW || canvas.height !== cssH) {
+    canvas.width = cssW
+    canvas.height = cssH
+  }
+
+  return { width: cssW, height: cssH }
+}
+
 export function GameCanvas({ children, className, debugHudId }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const loopsRef = useRef(new Map<symbol, GameLoopFn>())
+  const [surfaceSize, setSurfaceSize] = useState<SurfaceSize>({
+    width: GAME_CANVAS_WIDTH,
+    height: GAME_CANVAS_HEIGHT,
+  })
   const [contextValue, setContextValue] = useState<GameCanvasContextValue | null>(
     null,
   )
@@ -35,6 +60,29 @@ export function GameCanvas({ children, className, debugHudId }: Props) {
 
   useEffect(() => {
     const canvas = canvasRef.current
+    const stage = canvas?.parentElement
+    if (!canvas || !stage) return
+
+    const ctx = canvas.getContext('2d', { alpha: false })
+    if (!ctx) return
+
+    ctx.imageSmoothingEnabled = false
+
+    const applySurface = () => {
+      const next = syncCanvasSurface(canvas, stage)
+      if (!next) return
+      setSurfaceSize(next)
+    }
+
+    applySurface()
+    const observer = new ResizeObserver(applySurface)
+    observer.observe(stage)
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d', { alpha: false })
@@ -45,8 +93,8 @@ export function GameCanvas({ children, className, debugHudId }: Props) {
     const value: GameCanvasContextValue = {
       canvas,
       ctx,
-      width: GAME_CANVAS_WIDTH,
-      height: GAME_CANVAS_HEIGHT,
+      width: surfaceSize.width,
+      height: surfaceSize.height,
       registerLoop: (id, fn) => {
         loopsRef.current.set(id, fn)
       },
@@ -75,7 +123,7 @@ export function GameCanvas({ children, className, debugHudId }: Props) {
       cancelAnimationFrame(raf)
       loopsRef.current.clear()
     }
-  }, [setDebugHud])
+  }, [setDebugHud, surfaceSize.height, surfaceSize.width])
 
   return (
     <div className={`game-canvas-wrap ${className ?? ''}`}>
@@ -83,8 +131,6 @@ export function GameCanvas({ children, className, debugHudId }: Props) {
         <canvas
           ref={canvasRef}
           className="game-canvas"
-          width={GAME_CANVAS_WIDTH}
-          height={GAME_CANVAS_HEIGHT}
           aria-label="ALIWORLD game view"
         />
         {contextValue ? (

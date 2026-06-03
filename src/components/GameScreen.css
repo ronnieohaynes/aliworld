@@ -68,8 +68,9 @@
 
 .game-screen-talk-btn {
   position: absolute;
-  right: max(12px, env(safe-area-inset-right, 0px));
-  bottom: max(168px, calc(150px + env(safe-area-inset-bottom, 0px)));
+  left: 50%;
+  right: auto;
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
   z-index: 45;
   margin: 0;
   padding: 12px 18px;
@@ -90,11 +91,18 @@
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transform: translateX(-50%);
 }
 
 .game-screen-talk-btn:active {
-  transform: translateY(1px);
+  transform: translateX(-50%) translateY(1px);
   background: rgba(83, 74, 183, 0.35);
+}
+
+@media (max-width: 480px) {
+  .game-screen-interact-hint {
+    display: none;
+  }
 }
 
 .game-screen-pause-scrim {
