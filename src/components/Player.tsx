@@ -122,7 +122,7 @@ const ZOOM_DEFAULT = 1.0
 const ZOOM_STEP = 0.1
 const COORD_GRID_SPACING = 100
 const MOBILE_ZOOM_BREAKPOINT = 480
-const MOBILE_ZOOM_DEFAULT = 1.8
+const MOBILE_ZOOM_DEFAULT = 1.5
 
 function getDefaultZoom(screenW: number): number {
   return screenW <= MOBILE_ZOOM_BREAKPOINT ? MOBILE_ZOOM_DEFAULT : ZOOM_DEFAULT
