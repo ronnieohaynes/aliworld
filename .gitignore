@@ -1,5 +1,6 @@
 node_modules
 dist
+dist-admin
 # committed: public, non-secret config (supabase url + anon key)
 # .env is intentionally NOT ignored
 .env.local
