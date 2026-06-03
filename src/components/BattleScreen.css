@@ -194,14 +194,18 @@
   inset: 0;
   z-index: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 24px 12px;
   overflow: hidden;
 }
 
 .battle-screen__arena {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 200px;
   z-index: 2;
 }
 
@@ -264,8 +268,8 @@
   flex-direction: column;
   gap: 4px;
   background: rgba(12, 12, 18, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
 }
 
 .battle-screen__player-hud .battle-screen__hp-track {
