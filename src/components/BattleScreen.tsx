@@ -49,6 +49,7 @@ import {
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import { getMoveUiMeta } from '../data/moves'
+import { track } from '../lib/analytics'
 import type { BattleFeedbackTone } from '../data/battleFeedback'
 import { getBuildName } from '../data/buildName'
 import {
@@ -137,7 +138,7 @@ function FighterStatusTags({ tags }: { tags: StatusTag[] }) {
 
 type Props = {
   npcId: string
-  onBattleEnd: (result: 'win' | 'lose') => void
+  onBattleEnd: (result: 'win' | 'lose', turns: number) => void
   /** True once enter wipe has lifted and the battle is visible. */
   battleRevealed?: boolean
 }
@@ -245,6 +246,10 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
     (id) => createInitialBattleState(id),
   )
 
+  useEffect(() => {
+    track('battle_start', { enemyId: npcId })
+  }, [npcId])
+
   const shouldRunBattleTutorial =
     npcId === WALKER_NPC_ID && !isBattleTutorialSeen()
   const [battleTutorialBlocking, setBattleTutorialBlocking] = useState(shouldRunBattleTutorial)
@@ -305,9 +310,9 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
       endHandledRef.current = true
       const healed = applyBattleEndHealing(result, state.playerStats.maxHp, state.playerHp)
       setOverworldPlayerHp(healed)
-      onBattleEnd(result)
+      onBattleEnd(result, state.turn)
     },
-    [onBattleEnd, state.playerHp, state.playerStats.maxHp],
+    [onBattleEnd, state.playerHp, state.playerStats.maxHp, state.turn],
   )
 
   const equippedMoves = useSyncExternalStore(

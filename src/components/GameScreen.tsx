@@ -961,8 +961,9 @@ export function GameScreen() {
 
   const handleBattleEnd = useCallback(
     (result: 'win' | 'lose', turns: number) => {
+      const safeTurns = Number.isFinite(turns) && turns >= 0 ? turns : 0
       if (battleNpcId) {
-        track('battle_end', { enemyId: battleNpcId, result, turns })
+        track('battle_end', { enemyId: battleNpcId, result, turns: safeTurns })
       }
       if (result === 'win') {
         if (battleNpcId === WALKER_NPC_ID) {

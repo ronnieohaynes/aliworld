@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import {
-  buildQuestObjectiveContext,
-  resolvePrimaryQuestObjective,
-} from '../data/questObjectives'
+import { buildQuestObjectiveContext, resolvePrimaryQuestObjective } from '../data/questObjectives'
+import { track } from '../lib/analytics'
 import { getArtifactStoreSnapshot, subscribeArtifactStore } from '../store/artifactStore'
 import { getQuest1Snapshot, subscribeQuest1Store } from '../store/quest1Store'
 import { getQuest2Snapshot, subscribeQuest2Store } from '../store/quest2Store'
@@ -40,16 +38,27 @@ export function QuestHelper() {
     return resolvePrimaryQuestObjective(buildQuestObjectiveContext())
   }, [artifactRevision, quest1Revision, quest2Revision, worldRevision])
 
-  const prevStepIdRef = useRef(objective.stepId)
+  const prevObjectiveRef = useRef<{ questId: string; stepId: string } | null>(null)
   const [flash, setFlash] = useState(false)
 
   useEffect(() => {
-    if (prevStepIdRef.current === objective.stepId) return
-    prevStepIdRef.current = objective.stepId
-    setFlash(true)
-    const timer = window.setTimeout(() => setFlash(false), 600)
-    return () => window.clearTimeout(timer)
-  }, [objective.stepId])
+    const prev = prevObjectiveRef.current
+    const next = { questId: objective.questId, stepId: objective.stepId }
+    prevObjectiveRef.current = next
+
+    if (
+      prev &&
+      (prev.questId !== next.questId || prev.stepId !== next.stepId)
+    ) {
+      track('quest_step_advance', {
+        questId: next.questId,
+        stepId: next.stepId,
+      })
+      setFlash(true)
+      const timer = window.setTimeout(() => setFlash(false), 600)
+      return () => window.clearTimeout(timer)
+    }
+  }, [objective.questId, objective.stepId])
 
   if (!objective.text) return null
 
