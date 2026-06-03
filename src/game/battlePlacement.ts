@@ -18,13 +18,15 @@ export const BATTLE_ENEMY_GROUND_Y = BATTLE_GROUND_Y
 export const BATTLE_PLAYER_GROUND_Y = BATTLE_GROUND_Y
 
 export const BATTLE_ENEMY_X = 36
-export const BATTLE_PLAYER_X = 218
+export const BATTLE_PLAYER_X = 206
 
 export const BATTLE_ENEMY_DISPLAY_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
 export const BATTLE_ENEMY_DISPLAY_H = Math.floor(WORLD_NPC_DISPLAY_H * BATTLE_SPRITE_SCALE)
 
-/** Protagonist reads ~12% taller than enemy in battle (crisp integer height). */
-export const BATTLE_PLAYER_DISPLAY_H = Math.floor(BATTLE_ENEMY_DISPLAY_H * 1.12)
+/** Player vs enemy BOX multiplier — tuned for VISIBLE-body parity
+ *  (enemy sources are padded; their visible body ≈ 60–70% of the box). */
+export const BATTLE_PLAYER_BOX_MULT = 0.78
+export const BATTLE_PLAYER_DISPLAY_H = Math.floor(BATTLE_ENEMY_DISPLAY_H * BATTLE_PLAYER_BOX_MULT)
 export const BATTLE_PLAYER_DISPLAY_W = Math.floor(
   WORLD_PLAYER_DISPLAY_WIDTH * (BATTLE_PLAYER_DISPLAY_H / WORLD_PLAYER_DISPLAY_HEIGHT),
 )
@@ -34,7 +36,7 @@ export const BATTLE_PLAYER_DISPLAY_W = Math.floor(
  * Increase to push sprite down; decrease to raise.
  */
 export const BATTLE_ENEMY_FOOT_INSET = -4
-export const BATTLE_PLAYER_FOOT_INSET = 6
+export const BATTLE_PLAYER_FOOT_INSET = 4
 
 export function battleDrawY(
   groundY: number,
