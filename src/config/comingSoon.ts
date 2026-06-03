@@ -1,5 +1,5 @@
 /** Danny: paste the public stream link for BETTER LUCK NEXT TIME? (Spotify, Apple Music, etc.) */
-export const BLNT_TRACK_URL = 'https://example.com/better-luck-next-time'
+export const BLNT_TRACK_URL = 'https://blnt.dannyali.com'
 
 /** Optional social links — leave empty string to hide. */
 export const SOCIAL_INSTAGRAM_URL = ''
