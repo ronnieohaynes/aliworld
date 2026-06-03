@@ -1,0 +1,17 @@
+.account-save-indicator {
+  position: fixed;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 12000;
+  padding: 6px 10px;
+  border: 1px solid #3d3660;
+  border-radius: 4px;
+  background: rgba(10, 10, 18, 0.92);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #7a7a96;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}

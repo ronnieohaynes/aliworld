@@ -1,6 +1,9 @@
-import type { Session } from '@supabase/supabase-js'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { isNetworkAuthError, toFriendlyAuthError } from '../utils/authErrors'
+import { getPasswordResetRedirectUrl, isPasswordRecoveryUrl } from '../utils/authRoutes'
+import { resetCharacterForSignOut } from './characterStore'
 import { hydrateFromAccount, resetProgression } from './playerStore'
 
 export type AuthStatus = 'loading' | 'signed-out' | 'signed-in'
@@ -13,9 +16,11 @@ export type AuthState = {
   session: Session | null
   status: AuthStatus
   profile: AuthProfile | null
+  /** User landed from a password-reset email and must set a new password. */
+  passwordRecoveryPending: boolean
 }
 
-type AuthResult = { error?: string }
+type AuthResult = { error?: string; needsEmailConfirmation?: boolean }
 
 const PLACEHOLDER_HANDLE_RE = /^player_[0-9a-f]{8}$/i
 
@@ -28,6 +33,7 @@ let state: AuthState = {
   session: null,
   status: 'loading',
   profile: null,
+  passwordRecoveryPending: isPasswordRecoveryUrl(),
 }
 
 const listeners = new Set<() => void>()
@@ -45,7 +51,11 @@ function setState(partial: Partial<AuthState>): void {
 
 function friendlyDbError(error: { code?: string; message: string }): string {
   if (error.code === '23505') return 'that handle is taken. pick another.'
-  return error.message
+  return toFriendlyAuthError(error.message)
+}
+
+function wrapAuthError(message: string): string {
+  return toFriendlyAuthError(message)
 }
 
 async function loadProfileInternal(): Promise<void> {
@@ -70,22 +80,56 @@ async function loadProfileInternal(): Promise<void> {
   void hydrateFromAccount()
 }
 
-void supabase.auth.getSession().then(({ data: { session } }) => {
-  setState({
-    session,
-    status: session ? 'signed-in' : 'signed-out',
-  })
-  if (session) void loadProfileInternal()
-})
-
-supabase.auth.onAuthStateChange((_event, session) => {
+function handleSignedIn(session: Session | null, recoveryPending: boolean): void {
   setState({
     session,
     status: session ? 'signed-in' : 'signed-out',
     profile: session ? state.profile : null,
+    passwordRecoveryPending: recoveryPending,
   })
-  if (session) void loadProfileInternal()
-  else setState({ profile: null })
+  if (session && !recoveryPending) void loadProfileInternal()
+}
+
+function handleSignedOut(): void {
+  setState({
+    session: null,
+    status: 'signed-out',
+    profile: null,
+    passwordRecoveryPending: false,
+  })
+  resetProgression()
+  resetCharacterForSignOut()
+}
+
+supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
+  if (event === 'INITIAL_SESSION') {
+    const recovery = isPasswordRecoveryUrl() && session != null
+    handleSignedIn(session, recovery)
+    return
+  }
+
+  if (event === 'PASSWORD_RECOVERY') {
+    handleSignedIn(session, true)
+    return
+  }
+
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+    const recovery = isPasswordRecoveryUrl() && session != null
+    handleSignedIn(session, recovery)
+    return
+  }
+
+  if (event === 'USER_UPDATED') {
+    if (session) {
+      setState({ session })
+      if (!state.passwordRecoveryPending) void loadProfileInternal()
+    }
+    return
+  }
+
+  if (event === 'SIGNED_OUT') {
+    handleSignedOut()
+  }
 })
 
 export function getAuthState(): AuthState {
@@ -102,36 +146,86 @@ export function useAuthStore(): AuthState {
 }
 
 export async function signUp(email: string, password: string): Promise<AuthResult> {
-  const { error } = await supabase.auth.signUp({ email, password })
-  if (error) return { error: error.message }
-  return {}
+  try {
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) return { error: wrapAuthError(error.message) }
+    if (!data.session) return { needsEmailConfirmation: true }
+    return {}
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { error: wrapAuthError(message) }
+  }
 }
 
 export async function signIn(email: string, password: string): Promise<AuthResult> {
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { error: error.message }
-  return {}
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { error: wrapAuthError(error.message) }
+    return {}
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { error: wrapAuthError(message) }
+  }
+}
+
+export async function requestPasswordReset(email: string): Promise<AuthResult> {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: getPasswordResetRedirectUrl(),
+    })
+    if (error) return { error: wrapAuthError(error.message) }
+    return {}
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { error: wrapAuthError(message) }
+  }
+}
+
+export async function updatePassword(password: string): Promise<AuthResult> {
+  try {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) return { error: wrapAuthError(error.message) }
+    setState({ passwordRecoveryPending: false })
+    void loadProfileInternal()
+    return {}
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { error: wrapAuthError(message) }
+  }
+}
+
+export function clearPasswordRecoveryPending(): void {
+  setState({ passwordRecoveryPending: false })
 }
 
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut()
-  resetProgression()
+  try {
+    await supabase.auth.signOut()
+  } catch (err) {
+    console.error('[auth] signOut failed:', err instanceof Error ? err.message : String(err))
+  }
+  handleSignedOut()
 }
 
 export async function loadProfile(): Promise<AuthResult> {
   const userId = state.session?.user?.id
   if (!userId) return { error: 'not signed in' }
 
-  const { data, error } = await supabase
-    .from('aw_users')
-    .select('handle')
-    .eq('user_id', userId)
-    .maybeSingle()
+  try {
+    const { data, error } = await supabase
+      .from('aw_users')
+      .select('handle')
+      .eq('user_id', userId)
+      .maybeSingle()
 
-  if (error) return { error: error.message }
+    if (error) return { error: friendlyDbError(error) }
 
-  setState({ profile: profileFromHandle(data?.handle) })
-  return {}
+    setState({ profile: profileFromHandle(data?.handle) })
+    return {}
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { error: isNetworkAuthError(message) ? wrapAuthError(message) : friendlyDbError({ message }) }
+  }
 }
 
 /** Sets the player's public handle (updates aw_users; aw_profiles bootstrapped on signup). */
@@ -145,18 +239,23 @@ export async function createProfile(handle: string): Promise<AuthResult> {
     return { error: 'handle must be 3–16 characters.' }
   }
 
-  // aw_users + aw_profiles rows are created by the handle_new_user trigger on signup;
-  // this updates the placeholder handle to the player's chosen one.
-  const { data, error } = await supabase
-    .from('aw_users')
-    .update({ handle: normalized, email })
-    .eq('user_id', userId)
-    .select('handle')
-    .maybeSingle()
+  try {
+    const { data, error } = await supabase
+      .from('aw_users')
+      .update({ handle: normalized, email })
+      .eq('user_id', userId)
+      .select('handle')
+      .maybeSingle()
 
-  if (error) return { error: friendlyDbError(error) }
-  if (!data?.handle) return { error: 'profile not found — try signing in again.' }
+    if (error) return { error: friendlyDbError(error) }
+    if (!data?.handle) return { error: 'profile not found — try signing in again.' }
 
-  setState({ profile: { handle: data.handle } })
-  return {}
+    setState({ profile: { handle: data.handle } })
+    return {}
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { error: wrapAuthError(message) }
+  }
 }
+
+export { toFriendlyAuthError } from '../utils/authErrors'

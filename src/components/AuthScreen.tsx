@@ -1,18 +1,13 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { getAuthState, signIn, signUp } from '../store/authStore'
+import {
+  getAuthState,
+  requestPasswordReset,
+  signIn,
+  signUp,
+} from '../store/authStore'
 import './AuthScreen.css'
 
-type Mode = 'login' | 'signup'
-
-function toFriendlyAuthError(message: string): string {
-  const lower = message.toLowerCase()
-  if (lower.includes('invalid login credentials')) return 'wrong email or password.'
-  if (lower.includes('user already registered')) return 'that email is already taken.'
-  if (lower.includes('email not confirmed')) return 'confirm your email first, then log in.'
-  if (lower.includes('password') && lower.includes('least')) return 'password is too short.'
-  if (lower.includes('valid email')) return 'that email does not look right.'
-  return message.toLowerCase()
-}
+type Mode = 'login' | 'signup' | 'forgot'
 
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>('login')
@@ -28,6 +23,7 @@ export function AuthScreen() {
     setError(null)
     setMessage(null)
     setTermsAccepted(false)
+    if (next !== 'login') setPassword('')
   }, [])
 
   const handleSubmit = useCallback(
@@ -37,7 +33,27 @@ export function AuthScreen() {
       setMessage(null)
 
       const trimmedEmail = email.trim()
-      if (!trimmedEmail || !password) {
+      if (!trimmedEmail) {
+        setError('email required.')
+        return
+      }
+
+      if (mode === 'forgot') {
+        setSubmitting(true)
+        try {
+          const result = await requestPasswordReset(trimmedEmail)
+          if (result.error) {
+            setError(result.error)
+            return
+          }
+          setMessage('reset link sent — check your email.')
+        } finally {
+          setSubmitting(false)
+        }
+        return
+      }
+
+      if (!password) {
         setError('email and password required.')
         return
       }
@@ -52,19 +68,21 @@ export function AuthScreen() {
         if (mode === 'login') {
           const result = await signIn(trimmedEmail, password)
           if (result.error) {
-            setError(toFriendlyAuthError(result.error))
+            setError(result.error)
           }
           return
         }
 
         const result = await signUp(trimmedEmail, password)
         if (result.error) {
-          setError(toFriendlyAuthError(result.error))
+          setError(result.error)
           return
         }
 
-        if (getAuthState().status !== 'signed-in') {
+        if (result.needsEmailConfirmation || getAuthState().status !== 'signed-in') {
           setMessage('check your email to confirm your account, then log in.')
+          setPassword('')
+          setMode('login')
         }
       } finally {
         setSubmitting(false)
@@ -74,12 +92,33 @@ export function AuthScreen() {
   )
 
   const submitDisabled =
-    submitting || !email.trim() || !password || (mode === 'signup' && !termsAccepted)
+    submitting ||
+    !email.trim() ||
+    (mode !== 'forgot' && !password) ||
+    (mode === 'signup' && !termsAccepted)
+
+  const title =
+    mode === 'login' ? 'log in' : mode === 'signup' ? 'sign up' : 'reset password'
+
+  const submitLabel =
+    submitting
+      ? 'one sec…'
+      : mode === 'login'
+        ? 'log in'
+        : mode === 'signup'
+          ? 'create account'
+          : 'send reset link'
 
   return (
     <div className="auth-screen" role="dialog" aria-modal="true" aria-label="Sign in">
       <div className="auth-screen__panel">
-        <h1 className="auth-screen__title">{mode === 'login' ? 'log in' : 'sign up'}</h1>
+        <h1 className="auth-screen__title">{title}</h1>
+
+        {mode === 'forgot' && (
+          <p className="auth-screen__hint">
+            enter your email — we&apos;ll send a link to set a new password.
+          </p>
+        )}
 
         <form className="auth-screen__form" onSubmit={handleSubmit}>
           <label className="auth-screen__field">
@@ -95,18 +134,31 @@ export function AuthScreen() {
             />
           </label>
 
-          <label className="auth-screen__field">
-            <span className="auth-screen__label">password</span>
-            <input
-              className="auth-screen__input"
-              type="password"
-              name="password"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+          {mode !== 'forgot' && (
+            <label className="auth-screen__field">
+              <span className="auth-screen__label">password</span>
+              <input
+                className="auth-screen__input"
+                type="password"
+                name="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={submitting}
+              />
+            </label>
+          )}
+
+          {mode === 'login' && (
+            <button
+              type="button"
+              className="auth-screen__link"
+              onClick={() => switchMode('forgot')}
               disabled={submitting}
-            />
-          </label>
+            >
+              forgot password?
+            </button>
+          )}
 
           {mode === 'signup' && (
             <label className="auth-screen__terms">
@@ -138,22 +190,29 @@ export function AuthScreen() {
             className="auth-screen__submit"
             disabled={submitDisabled}
           >
-            {submitting
-              ? 'one sec…'
-              : mode === 'login'
-                ? 'log in'
-                : 'create account'}
+            {submitLabel}
           </button>
         </form>
 
-        <button
-          type="button"
-          className="auth-screen__toggle"
-          onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
-          disabled={submitting}
-        >
-          {mode === 'login' ? 'new here? sign up' : 'already have an account? log in'}
-        </button>
+        {mode === 'forgot' ? (
+          <button
+            type="button"
+            className="auth-screen__toggle"
+            onClick={() => switchMode('login')}
+            disabled={submitting}
+          >
+            back to log in
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="auth-screen__toggle"
+            onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+            disabled={submitting}
+          >
+            {mode === 'login' ? 'new here? sign up' : 'already have an account? log in'}
+          </button>
+        )}
       </div>
     </div>
   )

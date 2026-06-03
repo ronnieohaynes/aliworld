@@ -149,9 +149,9 @@ function normalizeEquippedMoves(raw: unknown): PlayerStoreState['equippedMoves']
   ]
 }
 
-export async function saveProgressionToAccount(s: PlayerStoreState): Promise<void> {
+export async function saveProgressionToAccount(s: PlayerStoreState): Promise<boolean> {
   const userId = getAuthState().session?.user?.id
-  if (!userId) return
+  if (!userId) return true
 
   try {
     const { error } = await supabase.from('aw_profiles').upsert({
@@ -174,9 +174,14 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<voi
       },
       updated_at: new Date().toISOString(),
     })
-    if (error) console.error('[save]', error.message)
+    if (error) {
+      console.error('[save]', error.message)
+      return false
+    }
+    return true
   } catch (err) {
     console.error('[save]', err instanceof Error ? err.message : String(err))
+    return false
   }
 }
 
@@ -229,11 +234,76 @@ export type PlayerStoreState = {
 let state: PlayerStoreState = createDefaultPlayerState()
 
 const listeners = new Set<() => void>()
+const saveStatusListeners = new Set<() => void>()
 let skipAccountSave = false
+
+export type AccountSaveStatus = 'idle' | 'saving' | 'offline'
+
+let accountSaveStatus: AccountSaveStatus = 'idle'
+let pendingSaveSnapshot: PlayerStoreState | null = null
+let saveLoopInFlight: Promise<void> | null = null
+
+const SAVE_RETRY_DELAYS_MS = [800, 2000, 5000] as const
+
+function setAccountSaveStatus(next: AccountSaveStatus): void {
+  if (accountSaveStatus === next) return
+  accountSaveStatus = next
+  for (const listener of saveStatusListeners) {
+    listener()
+  }
+}
+
+export function getAccountSaveStatus(): AccountSaveStatus {
+  return accountSaveStatus
+}
+
+export function subscribeAccountSaveStatus(listener: () => void): () => void {
+  saveStatusListeners.add(listener)
+  return () => saveStatusListeners.delete(listener)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+async function runAccountSaveLoop(): Promise<void> {
+  while (pendingSaveSnapshot) {
+    const snapshot = pendingSaveSnapshot
+    pendingSaveSnapshot = null
+    setAccountSaveStatus('saving')
+
+    let saved = false
+    for (let attempt = 0; attempt <= SAVE_RETRY_DELAYS_MS.length; attempt++) {
+      saved = await saveProgressionToAccount(snapshot)
+      if (saved) break
+      const delay = SAVE_RETRY_DELAYS_MS[attempt]
+      if (delay == null) break
+      await sleep(delay)
+    }
+
+    if (!saved) {
+      pendingSaveSnapshot = snapshot
+      setAccountSaveStatus('offline')
+      return
+    }
+
+    setAccountSaveStatus('idle')
+  }
+}
+
+function queueAccountSave(snapshot: PlayerStoreState): void {
+  pendingSaveSnapshot = snapshot
+  if (saveLoopInFlight) return
+  saveLoopInFlight = runAccountSaveLoop().finally(() => {
+    saveLoopInFlight = null
+  })
+}
 
 function persistProgressionToAccount(): void {
   if (skipAccountSave) return
-  void saveProgressionToAccount(state)
+  queueAccountSave(state)
 }
 
 function emit(): void {
@@ -314,6 +384,8 @@ export function resetProgression(): void {
   lastLocation = null
   accountHydrated = false
   hydrateInFlight = null
+  pendingSaveSnapshot = null
+  setAccountSaveStatus('idle')
   state = createDefaultPlayerState()
   for (const listener of listeners) {
     listener()

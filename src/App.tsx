@@ -3,6 +3,7 @@ import { AuthScreen } from './components/AuthScreen'
 import { GameScreen } from './components/GameScreen'
 import { HandlePickScreen } from './components/HandlePickScreen'
 import { MidnightVariantSelectScreen } from './components/MidnightVariantSelectScreen'
+import { PasswordResetScreen } from './components/PasswordResetScreen'
 import { TitleCard } from './components/TitleCard'
 import { useAuthStore } from './store/authStore'
 import {
@@ -10,6 +11,7 @@ import {
   getSelectedMidnightVariant,
   subscribeCharacterStore,
 } from './store/characterStore'
+import { clearAuthParamsFromUrl, isPasswordResetPath } from './utils/authRoutes'
 
 function LoadingSplash() {
   return (
@@ -27,6 +29,20 @@ export default function App() {
     getSelectedMidnightVariant,
   )
   const [started, setStarted] = useState(false)
+  const [resetRoute, setResetRoute] = useState(() => isPasswordResetPath())
+
+  useEffect(() => {
+    const syncRoute = () => setResetRoute(isPasswordResetPath())
+    syncRoute()
+    window.addEventListener('popstate', syncRoute)
+    return () => window.removeEventListener('popstate', syncRoute)
+  }, [])
+
+  useEffect(() => {
+    if (auth.status !== 'signed-in' || auth.passwordRecoveryPending) return
+    if (!window.location.hash && !window.location.search) return
+    clearAuthParamsFromUrl()
+  }, [auth.passwordRecoveryPending, auth.status])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -54,6 +70,18 @@ export default function App() {
 
   if (auth.status === 'loading') {
     return <LoadingSplash />
+  }
+
+  if (auth.status === 'signed-in' && auth.passwordRecoveryPending) {
+    return <PasswordResetScreen />
+  }
+
+  if (resetRoute && auth.status === 'signed-out') {
+    return (
+      <div className="app-loading" aria-live="polite">
+        open the reset link from your email to continue.
+      </div>
+    )
   }
 
   if (auth.status === 'signed-out') {

@@ -119,6 +119,42 @@
   color: #afa9ec;
 }
 
+.auth-screen__hint {
+  margin: -8px 0 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: #7a7a96;
+  text-align: center;
+}
+
+.auth-screen__link {
+  align-self: flex-start;
+  margin: -4px 0 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #7f77dd;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-screen__link:hover:not(:disabled) {
+  color: #afa9ec;
+}
+
+.auth-screen__link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .auth-screen__submit {
   margin: 4px 0 0;
   padding: 10px 12px;

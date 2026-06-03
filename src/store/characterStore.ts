@@ -109,6 +109,17 @@ export function clearMidnightVariant(): void {
   emit()
 }
 
+/** Reset cosmetic picks on sign-out so the next account starts clean. */
+export function resetCharacterForSignOut(): void {
+  state = {
+    hasCustomized: false,
+    skinTone: null,
+    midnightVariant: null,
+  }
+  saveMidnightVariantToStorage(null)
+  emit()
+}
+
 /** @deprecated Use clearMidnightVariant */
 export const clearMidnightVariantForDebug = clearMidnightVariant
 

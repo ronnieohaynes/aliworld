@@ -89,6 +89,7 @@ import {
   type StartMenuAction,
   type StartMenuHandle,
 } from './StartMenuScreen'
+import { AccountSaveIndicator } from './AccountSaveIndicator'
 import './GameScreen.css'
 
 export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
@@ -1090,6 +1091,7 @@ export function GameScreen() {
 
   return (
     <div className="game-screen">
+      <AccountSaveIndicator />
       <GameShell
         onSelect={handleToggleDebug}
         onFannyPack={handleFannyPack}
