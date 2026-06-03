@@ -204,8 +204,9 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
-  height: 200px;
+  /* Floor aligns with player HP band (above move grid) */
+  bottom: 130px;
+  height: 270px;
   z-index: 2;
 }
 
@@ -267,9 +268,14 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: rgba(12, 12, 18, 0.45);
-  backdrop-filter: blur(1.5px);
-  -webkit-backdrop-filter: blur(1.5px);
+  background: linear-gradient(
+    180deg,
+    rgba(12, 12, 18, 0.04) 0%,
+    rgba(12, 12, 18, 0.22) 42%,
+    rgba(12, 12, 18, 0.48) 100%
+  );
+  backdrop-filter: blur(0.5px);
+  -webkit-backdrop-filter: blur(0.5px);
 }
 
 .battle-screen__player-hud .battle-screen__hp-track {

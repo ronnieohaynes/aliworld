@@ -13,14 +13,14 @@ import {
   BATTLE_ENEMY_DISPLAY_W,
   BATTLE_ENEMY_DRAW_Y,
   BATTLE_ENEMY_PLACEMENT,
+  BATTLE_PLAYER_DISPLAY_H,
+  BATTLE_PLAYER_DISPLAY_W,
   BATTLE_PLAYER_DRAW_Y,
   BATTLE_PLAYER_PLACEMENT,
 } from '../game/battlePlacement'
 import {
   drawWorldPlayerSprite,
   getIdleFrameIndex,
-  WORLD_PLAYER_DISPLAY_HEIGHT,
-  WORLD_PLAYER_DISPLAY_WIDTH,
 } from '../game/worldSpriteRender'
 import {
   applyBattleEndHealing,
@@ -181,8 +181,8 @@ function drawPlayerBattleSprite(
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
 
-  const dw = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH)
-  const dh = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT)
+  const dw = BATTLE_PLAYER_DISPLAY_W
+  const dh = BATTLE_PLAYER_DISPLAY_H
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
@@ -507,8 +507,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
                 <canvas
                   ref={playerCanvasRef}
                   className="battle-screen__player-sprite-canvas"
-                  width={WORLD_PLAYER_DISPLAY_WIDTH}
-                  height={WORLD_PLAYER_DISPLAY_HEIGHT}
+                  width={BATTLE_PLAYER_DISPLAY_W}
+                  height={BATTLE_PLAYER_DISPLAY_H}
                 />
               </div>
               {floaters.map((f) => (

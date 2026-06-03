@@ -5,24 +5,26 @@ import {
   WORLD_PLAYER_DISPLAY_WIDTH,
 } from './worldSpriteRender'
 
-/** Enemy asphalt line — bottom edge of enemy sprite box. */
-export const BATTLE_ENEMY_GROUND_Y = 185
+/** Battle sprite scale vs overworld display size. */
+export const BATTLE_SPRITE_SCALE = 1.2
 
-/** Player ground line — bottom edge of player sprite box. */
-export const BATTLE_PLAYER_GROUND_Y = 165
+/** Enemy asphalt line — bottom edge of enemy sprite box (arena coords). */
+export const BATTLE_ENEMY_GROUND_Y = 258
+
+/** Player ground line — bottom edge of player sprite box (arena coords). */
+export const BATTLE_PLAYER_GROUND_Y = 255
 
 /** @deprecated Use BATTLE_ENEMY_GROUND_Y */
 export const BATTLE_GROUND_Y = BATTLE_ENEMY_GROUND_Y
 
-export const BATTLE_ENEMY_X = 50
-export const BATTLE_PLAYER_X = 250
+export const BATTLE_ENEMY_X = 36
+export const BATTLE_PLAYER_X = 228
 
-/** Battle-only enemy display (−10% from overworld 48×120). */
-export const BATTLE_ENEMY_DISPLAY_W = Math.floor(WORLD_NPC_DISPLAY_W * 0.9)
-export const BATTLE_ENEMY_DISPLAY_H = Math.floor(WORLD_NPC_DISPLAY_H * 0.9)
+export const BATTLE_ENEMY_DISPLAY_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
+export const BATTLE_ENEMY_DISPLAY_H = Math.floor(WORLD_NPC_DISPLAY_H * BATTLE_SPRITE_SCALE)
 
-export const BATTLE_PLAYER_DISPLAY_W = WORLD_PLAYER_DISPLAY_WIDTH
-export const BATTLE_PLAYER_DISPLAY_H = WORLD_PLAYER_DISPLAY_HEIGHT
+export const BATTLE_PLAYER_DISPLAY_W = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH * BATTLE_SPRITE_SCALE)
+export const BATTLE_PLAYER_DISPLAY_H = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT * BATTLE_SPRITE_SCALE)
 
 /**
  * Transparent px below visible feet inside the rendered frame.
