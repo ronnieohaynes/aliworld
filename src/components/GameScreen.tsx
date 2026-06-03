@@ -16,6 +16,7 @@ import {
   isMarkDefeated,
   subscribeQuest1Store,
   isWalkerConverted,
+  isWorldIntroSeen,
   JACLYN_NPC_ID,
   MARK_NPC_ID,
   markGatingNpcTalked,
@@ -23,6 +24,7 @@ import {
   setJaclynConverted,
   setMarkDefeated,
   setWalkerConverted,
+  setWorldIntroSeen,
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import {
@@ -92,6 +94,7 @@ import {
   type StartMenuHandle,
 } from './StartMenuScreen'
 import { AccountSaveIndicator } from './AccountSaveIndicator'
+import { IntroNarrationScreen } from './IntroNarrationScreen'
 import './GameScreen.css'
 
 export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
@@ -187,6 +190,7 @@ export function GameScreen() {
   const pendingRestoreRef = useRef<{ city: CityId; x: number; y: number } | null>(null)
   /** City to preload for world entry — resolved once after account hydrate. */
   const [bootCityId, setBootCityId] = useState<CityId | null>(null)
+  const [introActive, setIntroActive] = useState(false)
 
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -260,10 +264,12 @@ export function GameScreen() {
         pendingRestoreRef.current = { city: saved.city, x: pos.x, y: pos.y }
         setCurrentCity(saved.city)
         setBootCityId(saved.city)
+        setIntroActive(false)
         return
       }
       setBootCityId('five')
       setLocationReady(true)
+      setIntroActive(!isWorldIntroSeen())
     })
     return () => {
       cancelled = true
@@ -308,6 +314,11 @@ export function GameScreen() {
 
   const handleWorldEntryComplete = useCallback(() => {
     setWorldEntryActive(false)
+  }, [])
+
+  const handleIntroComplete = useCallback(() => {
+    setWorldIntroSeen()
+    setIntroActive(false)
   }, [])
 
   const cityConfig = useMemo((): CityConfig => {
@@ -1284,9 +1295,10 @@ export function GameScreen() {
               onComplete={handleMenuTransitionComplete}
             />
           )}
-          {worldEntryActive && (
+          {worldEntryActive && !introActive && (
             <WorldEntryWipe ready={worldEntryReady} onComplete={handleWorldEntryComplete} />
           )}
+          {introActive && <IntroNarrationScreen onComplete={handleIntroComplete} />}
           <ArtifactAcquisitionToasts />
           {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
           {showStartMenu && <div className="game-screen-pause-scrim" aria-hidden />}
