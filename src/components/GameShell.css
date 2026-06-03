@@ -1,4 +1,4 @@
-/* Screen viewport — internal canvas is 390×844, CSS stretches to fill the bezel slot */
+/* GameShell frame 390×844; canvas renders at same internal resolution inside the bezel viewport */
 :root {
   --game-shell-viewport-w: 358px;
   --game-shell-shift-x: 0px;
@@ -425,27 +425,26 @@
   }
 
   .game-shell {
-    width: 100vw;
-    height: 100dvh;
+    aspect-ratio: 390 / 844;
+    width: min(100vw, calc(100dvh * 390 / 844));
+    height: min(100dvh, calc(100vw * 844 / 390));
     max-width: 100vw;
     max-height: 100dvh;
+    margin: 0 auto;
     transform: none;
     border: none;
     border-radius: 0;
-    margin: 0;
     padding:
       max(8px, env(safe-area-inset-top, 0px))
       max(10px, env(safe-area-inset-right, 0px))
       max(10px, env(safe-area-inset-bottom, 0px))
       max(10px, env(safe-area-inset-left, 0px));
+    grid-template-rows: 36px 1fr 150px 40px;
   }
 
   .game-shell__viewport {
     max-width: none;
-  }
-
-  .game-shell {
-    grid-template-rows: 36px 1fr 150px 40px;
+    container-type: size;
   }
 
   .game-shell__controls {

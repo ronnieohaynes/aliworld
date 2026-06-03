@@ -14,8 +14,10 @@
   .game-screen {
     min-height: 100dvh;
     height: 100dvh;
-    align-items: stretch;
-    justify-content: stretch;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a12;
   }
 }
 

@@ -10,6 +10,17 @@
   image-rendering: crisp-edges;
 }
 
+@media (max-width: 480px) {
+  .midnight-select-app {
+    min-height: 100dvh;
+    height: 100dvh;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a12;
+  }
+}
+
 .midnight-select-screen {
   position: absolute;
   inset: 0;

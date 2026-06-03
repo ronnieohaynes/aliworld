@@ -79,20 +79,22 @@ export function GameCanvas({ children, className, debugHudId }: Props) {
 
   return (
     <div className={`game-canvas-wrap ${className ?? ''}`}>
-      <canvas
-        ref={canvasRef}
-        className="game-canvas"
-        width={GAME_CANVAS_WIDTH}
-        height={GAME_CANVAS_HEIGHT}
-        aria-label="ALIWORLD game view"
-      />
-      {contextValue ? (
-        <div className="game-canvas-ui">
-          <GameCanvasContext.Provider value={contextValue}>
-            {children}
-          </GameCanvasContext.Provider>
-        </div>
-      ) : null}
+      <div className="game-canvas-stage">
+        <canvas
+          ref={canvasRef}
+          className="game-canvas"
+          width={GAME_CANVAS_WIDTH}
+          height={GAME_CANVAS_HEIGHT}
+          aria-label="ALIWORLD game view"
+        />
+        {contextValue ? (
+          <div className="game-canvas-ui">
+            <GameCanvasContext.Provider value={contextValue}>
+              {children}
+            </GameCanvasContext.Provider>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }
