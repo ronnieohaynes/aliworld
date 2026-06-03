@@ -3,10 +3,12 @@ import react from '@vitejs/plugin-react'
 
 /** Separate /admin build — anon key + admin secret only; NO service role in client. */
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const envDir = process.cwd()
+  const env = loadEnv(mode, envDir, '')
 
   return {
     root: 'admin',
+    envDir,
     publicDir: false,
     plugins: [react()],
     define: {

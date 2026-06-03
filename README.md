@@ -9,6 +9,20 @@
 Supabase config ships in the committed `.env` (public anon key only).
 Real secrets, if ever needed, go in `.env.local` (gitignored) — never in `.env`.
 
+## coming soon (play.dannyali.com)
+
+1. Run `db/004_email_signups.sql` in Supabase SQL Editor.
+2. Set `VITE_COMING_SOON=true` in **Cloudflare Pages production env** for `play.dannyali.com`.
+3. Leave the flag **unset** on the `.pages.dev` preview URL so Danny + Ronnie can test the real game.
+4. Update `BLNT_TRACK_URL` in `src/config/comingSoon.ts` with the public stream link.
+5. At launch: remove the flag (or set `false`) to serve the game on the custom domain.
+
+Local preview with coming-soon:
+
+```bash
+VITE_COMING_SOON=true npm run dev
+```
+
 ## analytics (mothership dashboard)
 
 Player events land in `aw_events`. RLS blocks cross-user reads, so the dashboard uses a **Supabase Edge Function** with the service role (server-side only) and returns **aggregates only**.

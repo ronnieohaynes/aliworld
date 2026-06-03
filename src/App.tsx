@@ -1,10 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { AuthScreen } from './components/AuthScreen'
+import { ComingSoon } from './components/ComingSoon'
 import { GameScreen } from './components/GameScreen'
 import { HandlePickScreen } from './components/HandlePickScreen'
 import { MidnightVariantSelectScreen } from './components/MidnightVariantSelectScreen'
 import { PasswordResetScreen } from './components/PasswordResetScreen'
+import { PrivacyPolicy } from './components/PrivacyPolicy'
 import { TitleCard } from './components/TitleCard'
+import { isComingSoonMode } from './config/comingSoon'
 import { useAuthStore } from './store/authStore'
 import {
   clearMidnightVariant,
@@ -21,7 +24,24 @@ function LoadingSplash() {
   )
 }
 
-export default function App() {
+function isPrivacyPath(pathname: string): boolean {
+  const path = pathname.replace(/\/+$/, '') || '/'
+  return path === '/privacy' || path.endsWith('/privacy')
+}
+
+function usePathname(): string {
+  const [pathname, setPathname] = useState(() => window.location.pathname)
+
+  useEffect(() => {
+    const sync = () => setPathname(window.location.pathname)
+    window.addEventListener('popstate', sync)
+    return () => window.removeEventListener('popstate', sync)
+  }, [])
+
+  return pathname
+}
+
+function GameApp() {
   const auth = useAuthStore()
   const variant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -96,4 +116,18 @@ export default function App() {
   }
 
   return <GameScreen />
+}
+
+export default function App() {
+  const pathname = usePathname()
+
+  if (isPrivacyPath(pathname)) {
+    return <PrivacyPolicy />
+  }
+
+  if (isComingSoonMode()) {
+    return <ComingSoon />
+  }
+
+  return <GameApp />
 }
