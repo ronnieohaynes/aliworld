@@ -6,6 +6,8 @@ import {
 import { MOVES } from '../data/moveDefinitions'
 import type { CityId } from '../data/cityConfig'
 import { deriveBuildName } from '../data/buildName'
+import type { BattleFeedbackEvent } from '../data/battleFeedback'
+import type { TimingBonusGrant } from '../data/timingBonusXp'
 import { track } from '../lib/analytics'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
@@ -503,13 +505,26 @@ export type CombatXpResult = {
   skillLines: string[]
   playerLevelLine: string | null
   playerLevel: number
+  bonusCallouts: BattleFeedbackEvent[]
 }
 
 /** Apply combat XP to persistent skills; returns skill + combat level-up log lines. */
-export function applyCombatSkillXp(r: ResolveResult): CombatXpResult {
+export function applyCombatSkillXp(
+  r: ResolveResult,
+  timingBonuses: TimingBonusGrant[] = [],
+): CombatXpResult {
   const prevPlayerLevel = computePlayerLevel(state.skills)
   const before = state.skills
-  const { skills, levelUpLines } = awardMoveXp(before, r)
+  const { skills: afterMoveXp, levelUpLines } = awardMoveXp(before, r)
+  let skills = afterMoveXp
+  let levelUpLinesAll = [...levelUpLines]
+
+  for (const bonus of timingBonuses) {
+    const result = grantSkillXpAmount(skills, bonus.skill, bonus.amount)
+    skills = result.skills
+    levelUpLinesAll = [...levelUpLinesAll, ...result.lines]
+  }
+
   trackSkillLevelUps(before, skills)
   state = { ...state, skills }
   trackBuildNameIfChanged(skills)
@@ -518,9 +533,10 @@ export function applyCombatSkillXp(r: ResolveResult): CombatXpResult {
   const playerLevelLine =
     playerLevel > prevPlayerLevel ? playerLevelUpLine(playerLevel) : null
   return {
-    skillLines: levelUpLines,
+    skillLines: levelUpLinesAll,
     playerLevelLine,
     playerLevel,
+    bonusCallouts: timingBonuses.map((bonus) => bonus.callout),
   }
 }
 

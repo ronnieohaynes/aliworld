@@ -5,31 +5,36 @@ import {
   WORLD_PLAYER_DISPLAY_WIDTH,
 } from './worldSpriteRender'
 
-/** Enemy asphalt line — bottom edge of enemy sprite box. */
-export const BATTLE_ENEMY_GROUND_Y = 185
+/** Battle sprite scale vs overworld display size (enemy). */
+export const BATTLE_SPRITE_SCALE = 1.2
 
-/** Player ground line — bottom edge of player sprite box. */
-export const BATTLE_PLAYER_GROUND_Y = 165
+/** Shared feet baseline — both fighters align visible feet to this arena Y. */
+export const BATTLE_GROUND_Y = 258
 
-/** @deprecated Use BATTLE_ENEMY_GROUND_Y */
-export const BATTLE_GROUND_Y = BATTLE_ENEMY_GROUND_Y
+/** @deprecated Use BATTLE_GROUND_Y */
+export const BATTLE_ENEMY_GROUND_Y = BATTLE_GROUND_Y
 
-export const BATTLE_ENEMY_X = 50
-export const BATTLE_PLAYER_X = 250
+/** @deprecated Use BATTLE_GROUND_Y */
+export const BATTLE_PLAYER_GROUND_Y = BATTLE_GROUND_Y
 
-/** Battle-only enemy display (−10% from overworld 48×120). */
-export const BATTLE_ENEMY_DISPLAY_W = Math.floor(WORLD_NPC_DISPLAY_W * 0.9)
-export const BATTLE_ENEMY_DISPLAY_H = Math.floor(WORLD_NPC_DISPLAY_H * 0.9)
+export const BATTLE_ENEMY_X = 36
+export const BATTLE_PLAYER_X = 218
 
-export const BATTLE_PLAYER_DISPLAY_W = WORLD_PLAYER_DISPLAY_WIDTH
-export const BATTLE_PLAYER_DISPLAY_H = WORLD_PLAYER_DISPLAY_HEIGHT
+export const BATTLE_ENEMY_DISPLAY_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
+export const BATTLE_ENEMY_DISPLAY_H = Math.floor(WORLD_NPC_DISPLAY_H * BATTLE_SPRITE_SCALE)
+
+/** Protagonist reads ~12% taller than enemy in battle (crisp integer height). */
+export const BATTLE_PLAYER_DISPLAY_H = Math.floor(BATTLE_ENEMY_DISPLAY_H * 1.12)
+export const BATTLE_PLAYER_DISPLAY_W = Math.floor(
+  WORLD_PLAYER_DISPLAY_WIDTH * (BATTLE_PLAYER_DISPLAY_H / WORLD_PLAYER_DISPLAY_HEIGHT),
+)
 
 /**
- * Transparent px below visible feet inside the rendered frame.
- * Increase if visible feet float above the ground line; decrease if they sink.
+ * Per-sprite drawY tweak so visible feet meet BATTLE_GROUND_Y (source padding differs).
+ * Increase to push sprite down; decrease to raise.
  */
-export const BATTLE_ENEMY_FOOT_INSET = 0
-export const BATTLE_PLAYER_FOOT_INSET = 0
+export const BATTLE_ENEMY_FOOT_INSET = -4
+export const BATTLE_PLAYER_FOOT_INSET = 6
 
 export function battleDrawY(
   groundY: number,
@@ -40,12 +45,12 @@ export function battleDrawY(
 }
 
 export const BATTLE_ENEMY_DRAW_Y = battleDrawY(
-  BATTLE_ENEMY_GROUND_Y,
+  BATTLE_GROUND_Y,
   BATTLE_ENEMY_DISPLAY_H,
   BATTLE_ENEMY_FOOT_INSET,
 )
 export const BATTLE_PLAYER_DRAW_Y = battleDrawY(
-  BATTLE_PLAYER_GROUND_Y,
+  BATTLE_GROUND_Y,
   BATTLE_PLAYER_DISPLAY_H,
   BATTLE_PLAYER_FOOT_INSET,
 )
@@ -65,7 +70,7 @@ export const BATTLE_ENEMY_PLACEMENT: BattleSpritePlacement = {
   drawY: BATTLE_ENEMY_DRAW_Y,
   displayWidth: BATTLE_ENEMY_DISPLAY_W,
   displayHeight: BATTLE_ENEMY_DISPLAY_H,
-  groundY: BATTLE_ENEMY_GROUND_Y,
+  groundY: BATTLE_GROUND_Y,
   footInset: BATTLE_ENEMY_FOOT_INSET,
   facing: 'left',
 }
@@ -75,7 +80,7 @@ export const BATTLE_PLAYER_PLACEMENT: BattleSpritePlacement = {
   drawY: BATTLE_PLAYER_DRAW_Y,
   displayWidth: BATTLE_PLAYER_DISPLAY_W,
   displayHeight: BATTLE_PLAYER_DISPLAY_H,
-  groundY: BATTLE_PLAYER_GROUND_Y,
+  groundY: BATTLE_GROUND_Y,
   footInset: BATTLE_PLAYER_FOOT_INSET,
   facing: 'left',
 }

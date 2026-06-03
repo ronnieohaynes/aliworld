@@ -25,6 +25,7 @@ import {
   isMarkDefeated,
   subscribeQuest1Store,
   isWalkerConverted,
+  isWorldIntroSeen,
   JACLYN_NPC_ID,
   MARK_NPC_ID,
   markGatingNpcTalked,
@@ -32,6 +33,7 @@ import {
   setJaclynConverted,
   setMarkDefeated,
   setWalkerConverted,
+  setWorldIntroSeen,
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import {
@@ -101,6 +103,7 @@ import {
   type StartMenuHandle,
 } from './StartMenuScreen'
 import { AccountSaveIndicator } from './AccountSaveIndicator'
+import { IntroNarrationScreen } from './IntroNarrationScreen'
 import './GameScreen.css'
 
 export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
@@ -206,6 +209,9 @@ export function GameScreen() {
   const [mapTransitionReady, setMapTransitionReady] = useState(false)
   const [mapTransitionPending, setMapTransitionPending] = useState(false)
   const mapTransitionRef = useRef<MapTransitionTarget | null>(null)
+  /** True until account hydrate resolves whether intro should run. */
+  const [introPending, setIntroPending] = useState(true)
+  const [introActive, setIntroActive] = useState(false)
 
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -282,10 +288,14 @@ export function GameScreen() {
         pendingRestoreRef.current = { city: saved.city, x: pos.x, y: pos.y }
         setCurrentCity(saved.city)
         setBootCityId(saved.city)
+        setIntroActive(false)
+        setIntroPending(false)
         return
       }
       setBootCityId('five')
       setLocationReady(true)
+      setIntroActive(!isWorldIntroSeen())
+      setIntroPending(false)
     })
     return () => {
       cancelled = true
@@ -330,6 +340,11 @@ export function GameScreen() {
 
   const handleWorldEntryComplete = useCallback(() => {
     setWorldEntryActive(false)
+  }, [])
+
+  const handleIntroComplete = useCallback(() => {
+    setWorldIntroSeen()
+    setIntroActive(false)
   }, [])
 
   const cityConfig = useMemo((): CityConfig => {
@@ -1222,6 +1237,17 @@ export function GameScreen() {
     }
     beginNpcDialogue(MANDO_NPC)
   }, [dialogue, advanceDialogue, beginNpcDialogue])
+
+  if (introPending || introActive) {
+    return (
+      <div
+        className="game-screen"
+        style={{ background: '#0a0a12', minHeight: '100dvh', height: '100dvh' }}
+      >
+        {introActive ? <IntroNarrationScreen onComplete={handleIntroComplete} /> : null}
+      </div>
+    )
+  }
 
   return (
     <div className="game-screen">

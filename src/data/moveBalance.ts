@@ -150,6 +150,12 @@ export const XP_LUCK_PROC_BONUS = 16
 export const XP_LUCK_DAMAGE_MULT = 3.5
 export const XP_FALLBACK_SMALL = 6
 
+/** Bonus skill XP for skilled timing — meaningful boost, not a level shortcut. */
+export const COUNTER_XP_BONUS = 14
+export const PERFECT_GUARD_XP_BONUS = 16
+export const ADVANTAGE_XP_BONUS = 12
+export const TELEGRAPH_READ_XP_BONUS = 18
+
 /** Soft skill counter loop — attack > speed > luck > defense > attack. */
 export const COUNTER_ADVANTAGE_DMG_MULT = 1.18
 export const COUNTER_DISADVANTAGE_DMG_MULT = 0.85

@@ -194,14 +194,19 @@
   inset: 0;
   z-index: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 24px 12px;
   overflow: hidden;
 }
 
 .battle-screen__arena {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  /* Floor aligns with player HP band (above move grid) */
+  bottom: 130px;
+  height: 270px;
   z-index: 2;
 }
 
@@ -232,22 +237,31 @@
   image-rendering: crisp-edges;
 }
 
-/* 4 — Battle log (overlays lower stage) */
+/* 4 — Battle log (top-center, under telegraph) */
 .battle-screen__log {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 5;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: 3px;
-  padding: 0 16px 4px;
+  align-items: center;
+  gap: 2px;
+  max-width: min(92%, 320px);
+  padding: 4px 12px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(10, 10, 18, 0) 0%, rgba(10, 10, 18, 0.35) 100%);
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: rgba(10, 10, 18, 0.35);
+  border-radius: 4px;
 }
 
 .battle-screen__log-line {
+  width: 100%;
   font-size: 10px;
   line-height: 14px;
   color: #d4b87a;
+  text-align: center;
   text-transform: lowercase;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
   overflow: hidden;
@@ -263,9 +277,14 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: rgba(12, 12, 18, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: linear-gradient(
+    180deg,
+    rgba(12, 12, 18, 0.04) 0%,
+    rgba(12, 12, 18, 0.22) 42%,
+    rgba(12, 12, 18, 0.48) 100%
+  );
+  backdrop-filter: blur(0.5px);
+  -webkit-backdrop-filter: blur(0.5px);
 }
 
 .battle-screen__player-hud .battle-screen__hp-track {

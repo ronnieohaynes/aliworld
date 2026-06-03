@@ -11,7 +11,7 @@ export type BattleFeedbackTone =
   | 'stun'
 
 export type BattleFeedbackEvent = {
-  kind: 'damage' | 'blocked' | 'dodged' | 'counter' | 'status' | 'crit' | 'perfect-guard'
+  kind: 'damage' | 'blocked' | 'dodged' | 'counter' | 'status' | 'crit' | 'perfect-guard' | 'xp-bonus'
   text: string
   target: 'enemy' | 'player'
   tone: BattleFeedbackTone

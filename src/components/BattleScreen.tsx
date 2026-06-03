@@ -6,22 +6,18 @@ import {
   type BattleLocationId,
 } from '../data/battleBackgrounds'
 import { publicAsset } from '../utils/publicAsset'
-import { loadSpriteSheetWithFallback } from '../game/characterLayers'
+import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
 import {
   BATTLE_ENEMY_DISPLAY_H,
   BATTLE_ENEMY_DISPLAY_W,
   BATTLE_ENEMY_DRAW_Y,
   BATTLE_ENEMY_PLACEMENT,
+  BATTLE_PLAYER_DISPLAY_H,
+  BATTLE_PLAYER_DISPLAY_W,
   BATTLE_PLAYER_DRAW_Y,
   BATTLE_PLAYER_PLACEMENT,
 } from '../game/battlePlacement'
-import {
-  drawWorldPlayerSprite,
-  getIdleFrameIndex,
-  WORLD_PLAYER_DISPLAY_HEIGHT,
-  WORLD_PLAYER_DISPLAY_WIDTH,
-} from '../game/worldSpriteRender'
 import {
   applyBattleEndHealing,
   BATTLE_END_LOSE_DELAY_MS,
@@ -181,12 +177,12 @@ function drawPlayerBattleSprite(
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
 
-  const dw = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH)
-  const dh = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT)
+  const dw = BATTLE_PLAYER_DISPLAY_W
+  const dh = BATTLE_PLAYER_DISPLAY_H
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
-  drawWorldPlayerSprite(ctx, sheet, 'left', getIdleFrameIndex(), 0, tuning.feetOffset, tuning)
+  drawSheetFrame(ctx, sheet, 'left', getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
 }
 
 function drawEnemyBattleSprite(
@@ -298,7 +294,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const matchupLabel = counterMatchupLabel(counterRelation)
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
   const showWinNarration = state.phase === 'ended' && state.result === 'win'
-  const logLines = state.log.slice(-3)
+  const logLines = state.log.slice(-2)
   const heavyTelegraph =
     state.upcomingMove !== 'STUNNED' &&
     state.phase !== 'ended' &&
@@ -485,6 +481,14 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
         </section>
 
         <div className="battle-screen__playfield">
+          <section className="battle-screen__log" aria-live="polite">
+            {logLines.map((line, i) => (
+              <div key={`${i}-${line}`} className="battle-screen__log-line">
+                {line}
+              </div>
+            ))}
+          </section>
+
           <section className="battle-screen__stage" ref={stageRef} aria-hidden>
             <StageBackground location={battleLocation} />
             <div className="battle-screen__arena">
@@ -507,8 +511,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
                 <canvas
                   ref={playerCanvasRef}
                   className="battle-screen__player-sprite-canvas"
-                  width={WORLD_PLAYER_DISPLAY_WIDTH}
-                  height={WORLD_PLAYER_DISPLAY_HEIGHT}
+                  width={BATTLE_PLAYER_DISPLAY_W}
+                  height={BATTLE_PLAYER_DISPLAY_H}
                 />
               </div>
               {floaters.map((f) => (
@@ -532,14 +536,6 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
           </section>
 
           <div className="battle-screen__bottom-stack">
-            <section className="battle-screen__log" aria-live="polite">
-              {logLines.map((line, i) => (
-                <div key={`${i}-${line}`} className="battle-screen__log-line">
-                  {line}
-                </div>
-              ))}
-            </section>
-
             <section className="battle-screen__player-hud">
               <div className="battle-screen__player-build-row">
                 <div

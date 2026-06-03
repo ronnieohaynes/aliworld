@@ -1,0 +1,98 @@
+.intro-narration {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 28px;
+  background: #0a0a12;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  animation: intro-narration-in 480ms ease-out;
+}
+
+.intro-narration--fade-out {
+  animation: intro-narration-out 720ms ease-in forwards;
+  pointer-events: none;
+}
+
+.intro-narration__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 45%, rgba(83, 74, 183, 0.14) 0%, transparent 70%);
+  animation: intro-narration-flicker 4.2s ease-in-out infinite;
+}
+
+.intro-narration__eyebrow {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 20px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: lowercase;
+  color: #7f77dd;
+  opacity: 0.88;
+}
+
+.intro-narration__text {
+  position: relative;
+  z-index: 1;
+  max-width: 320px;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: lowercase;
+  color: #f4e8c1;
+  min-height: 3.1em;
+}
+
+.intro-narration__cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: #534ab7;
+  animation: intro-narration-blink 0.9s step-end infinite;
+}
+
+.intro-narration__continue {
+  position: relative;
+  z-index: 1;
+  margin-top: 28px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: #6a6a82;
+  animation: intro-narration-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes intro-narration-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes intro-narration-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes intro-narration-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@keyframes intro-narration-flicker {
+  0%, 100% { opacity: 0.55; }
+  48% { opacity: 0.75; }
+  52% { opacity: 0.4; }
+}
