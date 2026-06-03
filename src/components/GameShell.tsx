@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type PointerEvent,
@@ -22,6 +23,8 @@ const ARROW_KEYS = {
 
 type Direction = keyof typeof ARROW_KEYS
 
+const JOYSTICK_DEADZONE = 14
+
 function dispatchArrowKey(key: string, type: 'keydown' | 'keyup') {
   window.dispatchEvent(
     new KeyboardEvent(type, {
@@ -31,6 +34,44 @@ function dispatchArrowKey(key: string, type: 'keydown' | 'keyup') {
       cancelable: true,
     }),
   )
+}
+
+/** 8-way stick vector → cardinal key set (Player combines held arrows for diagonals). */
+function stickVectorToDirections(dx: number, dy: number): Direction[] {
+  const mag = Math.hypot(dx, dy)
+  if (mag < JOYSTICK_DEADZONE) return []
+
+  const angle = Math.atan2(dy, dx)
+  const sector = Math.round(angle / (Math.PI / 4))
+  const s = ((sector % 8) + 8) % 8
+
+  const sectors: Direction[][] = [
+    ['right'],
+    ['down', 'right'],
+    ['down'],
+    ['down', 'left'],
+    ['left'],
+    ['up', 'left'],
+    ['up'],
+    ['up', 'right'],
+  ]
+  return sectors[s] ?? []
+}
+
+function clampKnobOffset(
+  dx: number,
+  dy: number,
+  maxThrow: number,
+): { x: number; y: number } {
+  const mag = Math.hypot(dx, dy)
+  if (mag <= maxThrow || mag === 0) return { x: dx, y: dy }
+  const scale = maxThrow / mag
+  return { x: dx * scale, y: dy * scale }
+}
+
+function maxThrowForZone(size: number): number {
+  const knobSize = size * (60 / 140)
+  return Math.max(JOYSTICK_DEADZONE + 4, (size - knobSize) / 2)
 }
 
 type Props = {
@@ -75,33 +116,103 @@ function useLiveClock(): string {
   return time
 }
 
-function bindDpadKey(
-  dir: Direction,
-  setActive: (dir: Direction | null) => void,
-) {
-  const key = ARROW_KEYS[dir]
-  return {
-    onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
-      e.preventDefault()
-      e.currentTarget.setPointerCapture(e.pointerId)
-      setActive(dir)
-      dispatchArrowKey(key, 'keydown')
-    },
-    onPointerUp: (e: PointerEvent<HTMLButtonElement>) => {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId)
+function GameShellJoystick() {
+  const zoneRef = useRef<HTMLDivElement>(null)
+  const activeDirsRef = useRef<Set<Direction>>(new Set())
+  const [knobOffset, setKnobOffset] = useState({ x: 0, y: 0 })
+  const [engaged, setEngaged] = useState(false)
+
+  const releaseAllKeys = useCallback(() => {
+    for (const dir of activeDirsRef.current) {
+      dispatchArrowKey(ARROW_KEYS[dir], 'keyup')
+    }
+    activeDirsRef.current = new Set()
+  }, [])
+
+  const applyDirections = useCallback(
+    (nextDirs: Direction[]) => {
+      const nextSet = new Set(nextDirs)
+      const prev = activeDirsRef.current
+
+      for (const dir of prev) {
+        if (!nextSet.has(dir)) dispatchArrowKey(ARROW_KEYS[dir], 'keyup')
       }
-      setActive(null)
-      dispatchArrowKey(key, 'keyup')
-    },
-    onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId)
+      for (const dir of nextSet) {
+        if (!prev.has(dir)) dispatchArrowKey(ARROW_KEYS[dir], 'keydown')
       }
-      setActive(null)
-      dispatchArrowKey(key, 'keyup')
+      activeDirsRef.current = nextSet
     },
+    [],
+  )
+
+  useEffect(() => () => releaseAllKeys(), [releaseAllKeys])
+
+  const updateFromClient = useCallback(
+    (clientX: number, clientY: number) => {
+      const zone = zoneRef.current
+      if (!zone) return
+
+      const rect = zone.getBoundingClientRect()
+      const cx = rect.left + rect.width / 2
+      const cy = rect.top + rect.height / 2
+      const rawDx = clientX - cx
+      const rawDy = clientY - cy
+      const zoneSize = Math.min(rect.width, rect.height)
+      const clamped = clampKnobOffset(rawDx, rawDy, maxThrowForZone(zoneSize))
+
+      setKnobOffset(clamped)
+      applyDirections(stickVectorToDirections(clamped.x, clamped.y))
+    },
+    [applyDirections],
+  )
+
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setEngaged(true)
+    updateFromClient(e.clientX, e.clientY)
   }
+
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+    e.preventDefault()
+    updateFromClient(e.clientX, e.clientY)
+  }
+
+  const resetStick = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    setEngaged(false)
+    setKnobOffset({ x: 0, y: 0 })
+    releaseAllKeys()
+  }
+
+  const onLostPointerCapture = () => {
+    setEngaged(false)
+    setKnobOffset({ x: 0, y: 0 })
+    releaseAllKeys()
+  }
+
+  return (
+    <div
+      ref={zoneRef}
+      className={`game-shell__joystick${engaged ? ' game-shell__joystick--engaged' : ''}`}
+      aria-label="Move stick"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={resetStick}
+      onPointerCancel={resetStick}
+      onLostPointerCapture={onLostPointerCapture}
+    >
+      <div className="game-shell__joystick-base" aria-hidden />
+      <div
+        className="game-shell__joystick-knob"
+        style={{ transform: `translate(calc(-50% + ${knobOffset.x}px), calc(-50% + ${knobOffset.y}px))` }}
+        aria-hidden
+      />
+    </div>
+  )
 }
 
 export function GameShell({
@@ -113,7 +224,6 @@ export function GameShell({
   onStart = () => {},
 }: Props) {
   const clock = useLiveClock()
-  const [dpadActive, setDpadActive] = useState<Direction | null>(null)
   const playing = useSyncExternalStore(
     subscribeMusicStore,
     isSoundtrackPlaying,
@@ -141,43 +251,7 @@ export function GameShell({
       </div>
 
       <div className="game-shell__controls">
-        <div
-          className={`game-shell__dpad${dpadActive ? ` game-shell__dpad--${dpadActive}` : ''}`}
-          aria-label="Direction pad"
-        >
-          <div className="game-shell__dpad-body" aria-hidden>
-            <div className="game-shell__dpad-bar game-shell__dpad-bar--h" />
-            <div className="game-shell__dpad-bar game-shell__dpad-bar--v" />
-            <span className="game-shell__dpad-arrow game-shell__dpad-arrow--up" />
-            <span className="game-shell__dpad-arrow game-shell__dpad-arrow--down" />
-            <span className="game-shell__dpad-arrow game-shell__dpad-arrow--left" />
-            <span className="game-shell__dpad-arrow game-shell__dpad-arrow--right" />
-          </div>
-          <button
-            type="button"
-            className="game-shell__dpad-hit game-shell__dpad-hit--up"
-            aria-label="Move up"
-            {...bindDpadKey('up', setDpadActive)}
-          />
-          <button
-            type="button"
-            className="game-shell__dpad-hit game-shell__dpad-hit--down"
-            aria-label="Move down"
-            {...bindDpadKey('down', setDpadActive)}
-          />
-          <button
-            type="button"
-            className="game-shell__dpad-hit game-shell__dpad-hit--left"
-            aria-label="Move left"
-            {...bindDpadKey('left', setDpadActive)}
-          />
-          <button
-            type="button"
-            className="game-shell__dpad-hit game-shell__dpad-hit--right"
-            aria-label="Move right"
-            {...bindDpadKey('right', setDpadActive)}
-          />
-        </div>
+        <GameShellJoystick />
 
         <div className="game-shell__center-btns">
           <button type="button" className="game-shell__pill-btn" onClick={onSelect}>
