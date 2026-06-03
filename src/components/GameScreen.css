@@ -10,6 +10,15 @@
   image-rendering: crisp-edges;
 }
 
+@media (max-width: 480px) {
+  .game-screen {
+    min-height: 100dvh;
+    height: 100dvh;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+}
+
 .game-screen-play {
   position: relative;
   width: 100%;

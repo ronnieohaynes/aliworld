@@ -1,7 +1,7 @@
 /* Screen viewport — internal canvas is 390×844, CSS stretches to fill the bezel slot */
 :root {
   --game-shell-viewport-w: 358px;
-  --game-shell-shift-x: -24px;
+  --game-shell-shift-x: 0px;
 }
 
 .game-shell {
@@ -400,4 +400,31 @@
 
 .game-shell__transport-btn:hover {
   color: #7f77dd;
+}
+
+@media (max-width: 480px) {
+  :root {
+    --game-shell-shift-x: 0px;
+    --game-shell-viewport-w: 100%;
+  }
+
+  .game-shell {
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100vw;
+    max-height: 100dvh;
+    transform: none;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    padding:
+      max(8px, env(safe-area-inset-top, 0px))
+      max(10px, env(safe-area-inset-right, 0px))
+      max(10px, env(safe-area-inset-bottom, 0px))
+      max(10px, env(safe-area-inset-left, 0px));
+  }
+
+  .game-shell__viewport {
+    max-width: none;
+  }
 }
