@@ -32,12 +32,17 @@
 
 @media (max-width: 480px) {
   .game-shell__viewport .game-canvas-wrap {
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin: 0;
+    max-width: none;
   }
 
   .game-shell__viewport .game-canvas-stage {
+    position: relative;
     aspect-ratio: 390 / 844;
     width: min(100cqw, calc(100cqh * 390 / 844));
     height: min(100cqh, calc(100cqw * 844 / 390));
@@ -47,9 +52,13 @@
 
   .game-shell__viewport .game-canvas {
     display: block;
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    aspect-ratio: 390 / 844;
     object-fit: contain;
+    margin: 0 auto;
   }
 }
 

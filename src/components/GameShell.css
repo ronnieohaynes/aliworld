@@ -425,12 +425,11 @@
   }
 
   .game-shell {
-    aspect-ratio: 390 / 844;
-    width: min(100vw, calc(100dvh * 390 / 844));
-    height: min(100dvh, calc(100vw * 844 / 390));
+    width: 100vw;
+    height: 100dvh;
     max-width: 100vw;
     max-height: 100dvh;
-    margin: 0 auto;
+    margin: 0;
     transform: none;
     border: none;
     border-radius: 0;
@@ -439,18 +438,30 @@
       max(10px, env(safe-area-inset-right, 0px))
       max(10px, env(safe-area-inset-bottom, 0px))
       max(10px, env(safe-area-inset-left, 0px));
-    grid-template-rows: 36px 1fr 150px 40px;
+    grid-template-rows: auto 1fr auto auto;
+    gap: 2px;
+    min-height: 0;
+  }
+
+  .game-shell__bezel {
+    min-height: 0;
   }
 
   .game-shell__viewport {
     max-width: none;
     container-type: size;
+    min-height: 0;
   }
 
   .game-shell__controls {
+    flex-shrink: 0;
     height: 150px;
     grid-template-columns: 132px 1fr 88px;
     gap: 10px;
+  }
+
+  .game-shell__music {
+    flex-shrink: 0;
   }
 
   .game-shell__dpad {
