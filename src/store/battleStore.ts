@@ -46,6 +46,7 @@ import {
   appendBattleFeedback,
   type BattleFeedbackEvent,
 } from '../data/battleFeedback'
+import { computeTimingBonusGrants } from '../data/timingBonusXp'
 import {
   applySkillCounterModifiers,
   getSkillCounterRelation,
@@ -755,7 +756,8 @@ function applySkillXpToState(
   log: string[],
 ): { state: BattleState; log: string[] } {
   const prevMaxHp = state.playerStats.maxHp
-  const xpResult = applyCombatSkillXp(r)
+  const timingBonuses = computeTimingBonusGrants(r, state.npc.leanSkill)
+  const xpResult = applyCombatSkillXp(r, timingBonuses)
   const skills = getPlayerSkills()
   const playerStats = computePlayerStats(
     state.archetype ?? DEFAULT_ARCHETYPE,
@@ -776,12 +778,22 @@ function applySkillXpToState(
     nextLog = appendLog(nextLog, xpResult.playerLevelLine)
   }
 
+  const bonusFeedback = xpResult.bonusCallouts
+  const feedbackEvents =
+    bonusFeedback.length > 0
+      ? [...state.feedbackEvents, ...bonusFeedback]
+      : state.feedbackEvents
+  const feedbackSeq =
+    bonusFeedback.length > 0 ? state.feedbackSeq + 1 : state.feedbackSeq
+
   return {
     state: {
       ...state,
       playerStats,
       playerHp,
       playerLevelFlash: xpResult.playerLevelLine != null,
+      feedbackEvents,
+      feedbackSeq,
     },
     log: nextLog,
   }
