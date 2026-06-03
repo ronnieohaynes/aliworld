@@ -467,10 +467,6 @@ export function GameScreen() {
     menuTransition,
   ])
 
-  const handleToggleDebug = useCallback(() => {
-    toggleShowDebug()
-  }, [])
-
   const startMarkBattle = useCallback(() => {
     if (battleNpcId || battleWipePhase) return
     setDialogue(null)
@@ -501,12 +497,6 @@ export function GameScreen() {
     },
     [],
   )
-
-  /** TEMP: debug grind fight — delete after testing. */
-  const startDummyFight = useCallback(() => {
-    setDialogue(null)
-    setBattleNpcId('dummy')
-  }, [])
 
   const showNotYetDialogue = useCallback((npc: NpcData, line: string) => {
     setDialogue({
@@ -1141,7 +1131,6 @@ export function GameScreen() {
     <div className="game-screen">
       <AccountSaveIndicator />
       <GameShell
-        onSelect={handleToggleDebug}
         onFannyPack={handleFannyPack}
         onScript={handleOpenLoadout}
         onInteract={handleInteract}
@@ -1156,21 +1145,9 @@ export function GameScreen() {
           onClick={handlePlayAreaClick}
         >
           {showDebug && (
-            <>
-              <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
-                {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
-              </pre>
-              <button
-                type="button"
-                className="debug-fight-dummy"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  startDummyFight()
-                }}
-              >
-                fight dummy
-              </button>
-            </>
+            <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
+              {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
+            </pre>
           )}
           {showQuestHelper && <QuestHelper />}
           {showInteractHint && (

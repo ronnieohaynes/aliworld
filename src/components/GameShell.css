@@ -170,19 +170,21 @@
 }
 
 .game-shell__pill-btn {
-  width: 36px;
-  height: 10px;
+  min-width: 80px;
+  min-height: 44px;
   margin: 0;
-  padding: 0;
+  padding: 10px 16px;
   border: 1px solid #3d3660;
   border-radius: 99px;
   background: #252035;
   font-family: 'Share Tech Mono', monospace;
-  font-size: 5px;
-  line-height: 8px;
+  font-size: 10px;
+  line-height: 1;
   color: #534ab7;
   cursor: pointer;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .game-shell__actions {
