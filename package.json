@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "admin:dev": "vite --config vite.admin.config.ts",
+    "admin:build": "tsc -p tsconfig.admin.json && vite build --config vite.admin.config.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "predeploy": "npm run build && cp dist/index.html dist/404.html",
@@ -15,7 +17,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.4"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
