@@ -51,11 +51,11 @@
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 85% 75% at 50% 42%, transparent 35%, rgba(10, 10, 18, 0.72) 100%),
-    linear-gradient(180deg, rgba(10, 10, 18, 0.35) 0%, transparent 28%, transparent 72%, rgba(10, 10, 18, 0.5) 100%);
+    radial-gradient(ellipse 85% 75% at 50% 42%, transparent 35%, rgba(10, 10, 18, 0.55) 100%),
+    linear-gradient(180deg, rgba(10, 10, 18, 0.28) 0%, transparent 28%, transparent 88%, rgba(10, 10, 18, 0.12) 100%);
 }
 
-/* ── Stacked zones (no overlap) ────────────────────────────────── */
+/* ── Layout: stage fills playfield; HUD/moves overlay bottom ─────── */
 
 .battle-screen__content {
   position: relative;
@@ -65,6 +65,24 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.battle-screen__playfield {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.battle-screen__bottom-stack {
+  position: relative;
+  z-index: 10;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 }
 
 /* 1 — Enemy name + HP + status */
@@ -170,11 +188,11 @@
   letter-spacing: 0.02em;
 }
 
-/* 3 — Character stage (background + fighters) */
+/* 3 — Character stage (background + fighters, fills playfield) */
 .battle-screen__stage {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 100px;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -214,16 +232,16 @@
   image-rendering: crisp-edges;
 }
 
-/* 4 — Battle log (3 lines max) */
+/* 4 — Battle log (overlays lower stage) */
 .battle-screen__log {
-  flex: 0 0 51px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: 3px;
   padding: 0 16px 4px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(10, 10, 18, 0) 0%, rgba(10, 10, 18, 0.82) 100%);
+  background: linear-gradient(180deg, rgba(10, 10, 18, 0) 0%, rgba(10, 10, 18, 0.35) 100%);
 }
 
 .battle-screen__log-line {
@@ -238,7 +256,7 @@
   opacity: 0.92;
 }
 
-/* 5 — Player HUD */
+/* 5 — Player HUD (translucent overlay on stage) */
 .battle-screen__player-hud {
   flex: 0 0 auto;
   padding: 4px 16px 6px;
@@ -246,8 +264,8 @@
   flex-direction: column;
   gap: 4px;
   background: rgba(12, 12, 18, 0.45);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .battle-screen__player-hud .battle-screen__hp-track {
@@ -334,12 +352,12 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* 6 — Action slot: move grid OR win narration */
+/* 6 — Action slot: move grid OR win narration (overlays stage) */
 .battle-screen__action {
   flex: 0 0 auto;
   padding: 0 12px 4px;
   box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(10, 10, 18, 0.92) 0%, #0a0a12 100%);
+  background: linear-gradient(180deg, rgba(10, 10, 18, 0.5) 0%, rgba(10, 10, 18, 0) 100%);
 }
 
 .battle-screen__moves {

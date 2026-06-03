@@ -484,145 +484,149 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
           </p>
         </section>
 
-        <section className="battle-screen__stage" ref={stageRef} aria-hidden>
-          <StageBackground location={battleLocation} />
-          <div className="battle-screen__arena">
-            <div
-              className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
-              style={{ left: BATTLE_ENEMY_PLACEMENT.x, top: BATTLE_ENEMY_DRAW_Y }}
-            >
-              <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
+        <div className="battle-screen__playfield">
+          <section className="battle-screen__stage" ref={stageRef} aria-hidden>
+            <StageBackground location={battleLocation} />
+            <div className="battle-screen__arena">
+              <div
+                className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
+                style={{ left: BATTLE_ENEMY_PLACEMENT.x, top: BATTLE_ENEMY_DRAW_Y }}
+              >
+                <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
+                  <canvas
+                    className="battle-screen__enemy-sprite-canvas"
+                    width={BATTLE_ENEMY_DISPLAY_W}
+                    height={BATTLE_ENEMY_DISPLAY_H}
+                  />
+                </div>
+              </div>
+              <div
+                className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ' battle-screen__fighter--attack' : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
+                style={{ left: BATTLE_PLAYER_PLACEMENT.x, top: BATTLE_PLAYER_DRAW_Y }}
+              >
                 <canvas
-                  className="battle-screen__enemy-sprite-canvas"
-                  width={BATTLE_ENEMY_DISPLAY_W}
-                  height={BATTLE_ENEMY_DISPLAY_H}
+                  ref={playerCanvasRef}
+                  className="battle-screen__player-sprite-canvas"
+                  width={WORLD_PLAYER_DISPLAY_WIDTH}
+                  height={WORLD_PLAYER_DISPLAY_HEIGHT}
                 />
               </div>
+              {floaters.map((f) => (
+                <span
+                  key={f.id}
+                  className={`battle-screen__floater battle-screen__floater--${f.target} battle-screen__floater--${FLOATER_TONE_CLASS[f.tone]}${f.kind === 'crit' ? ' battle-screen__floater--crit-pop' : ''}`}
+                >
+                  {f.text}
+                </span>
+              ))}
             </div>
-            <div
-              className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ' battle-screen__fighter--attack' : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
-              style={{ left: BATTLE_PLAYER_PLACEMENT.x, top: BATTLE_PLAYER_DRAW_Y }}
-            >
-              <canvas
-                ref={playerCanvasRef}
-                className="battle-screen__player-sprite-canvas"
-                width={WORLD_PLAYER_DISPLAY_WIDTH}
-                height={WORLD_PLAYER_DISPLAY_HEIGHT}
+            {showDebug && (
+              <BattlePlacementGrid
+                stageRef={stageRef}
+                enemyRef={enemyWrapRef}
+                playerRef={playerCanvasRef}
+                enemyPlacement={BATTLE_ENEMY_PLACEMENT}
+                playerPlacement={BATTLE_PLAYER_PLACEMENT}
               />
-            </div>
-            {floaters.map((f) => (
-              <span
-                key={f.id}
-                className={`battle-screen__floater battle-screen__floater--${f.target} battle-screen__floater--${FLOATER_TONE_CLASS[f.tone]}${f.kind === 'crit' ? ' battle-screen__floater--crit-pop' : ''}`}
-              >
-                {f.text}
-              </span>
-            ))}
-          </div>
-          {showDebug && (
-            <BattlePlacementGrid
-              stageRef={stageRef}
-              enemyRef={enemyWrapRef}
-              playerRef={playerCanvasRef}
-              enemyPlacement={BATTLE_ENEMY_PLACEMENT}
-              playerPlacement={BATTLE_PLAYER_PLACEMENT}
-            />
-          )}
-        </section>
+            )}
+          </section>
 
-        <section className="battle-screen__log" aria-live="polite">
-          {logLines.map((line, i) => (
-            <div key={`${i}-${line}`} className="battle-screen__log-line">
-              {line}
-            </div>
-          ))}
-        </section>
+          <div className="battle-screen__bottom-stack">
+            <section className="battle-screen__log" aria-live="polite">
+              {logLines.map((line, i) => (
+                <div key={`${i}-${line}`} className="battle-screen__log-line">
+                  {line}
+                </div>
+              ))}
+            </section>
 
-        <section className="battle-screen__player-hud">
-          <div className="battle-screen__player-build-row">
-            <div
-              className="battle-screen__player-build"
-              style={{ color: build.color }}
-            >
-              {build.name}
-            </div>
-            {matchupLabel ? (
-              <span
-                className={`battle-screen__matchup${
-                  counterRelation === 'disadvantage'
-                    ? ' battle-screen__matchup--outmatched'
-                    : ''
-                }`}
-                style={{ color: build.color }}
-              >
-                {matchupLabel}
-              </span>
-            ) : null}
-          </div>
-          <div className="battle-screen__player-label">
-            <span>YOU</span>
-            <span
-              className={`player-level-badge battle-screen__player-level${state.playerLevelFlash ? ' player-level-badge--flash' : ''}`}
-            >
-              LVL {playerLevel}
-            </span>
-          </div>
-          <div className="battle-screen__hp-track">
-            <div
-              className="battle-screen__hp-fill battle-screen__hp-fill--player"
-              style={{ width: `${playerHpPct}%` }}
-            />
-          </div>
-          <div className="battle-screen__hp-numbers">
-            {state.playerHp} / {state.playerStats.maxHp}
-          </div>
-          <div ref={playerStatusRef} className="battle-screen__player-status-anchor">
-            <FighterStatusTags tags={playerStatusTags} />
-          </div>
-          {battleTutorialBlocking && (
-            <p className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
-          )}
-        </section>
-
-        <section className="battle-screen__action">
-          {showWinNarration ? (
-            <button
-              type="button"
-              className="battle-screen__narration battle-screen__narration--payoff"
-              onClick={handleNarrationContinue}
-            >
-              <span className="battle-screen__narration-label">{state.npc.displayName}</span>
-              <p className="battle-screen__narration-text">{state.npc.losingLine}</p>
-              <span className="battle-screen__narration-continue">tap to continue ▸</span>
-            </button>
-          ) : (
-            <div
-              ref={movesRef}
-              className="battle-screen__moves"
-              role="group"
-              aria-label="Battle moves"
-            >
-              {battleMoveButtons.map(({ move, label, description, className }, slot) => {
-                const stolen = state.battleMove.snagStolen[slot]
-                const displayLabel = stolen
-                  ? stolen.replace('_', ' ')
-                  : label
-                return (
-                  <button
-                    key={`${slot}-${move}-${stolen ?? ''}`}
-                    type="button"
-                    className={`battle-screen__move ${className}${busy || battleTutorialBlocking ? ' battle-screen__move--busy' : ''}`}
-                    disabled={busy || battleTutorialBlocking}
-                    onClick={() => handleMove(move, slot)}
+            <section className="battle-screen__player-hud">
+              <div className="battle-screen__player-build-row">
+                <div
+                  className="battle-screen__player-build"
+                  style={{ color: build.color }}
+                >
+                  {build.name}
+                </div>
+                {matchupLabel ? (
+                  <span
+                    className={`battle-screen__matchup${
+                      counterRelation === 'disadvantage'
+                        ? ' battle-screen__matchup--outmatched'
+                        : ''
+                    }`}
+                    style={{ color: build.color }}
                   >
-                    <span className="battle-screen__move-name">{displayLabel}</span>
-                    <span className="battle-screen__move-desc">{description}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </section>
+                    {matchupLabel}
+                  </span>
+                ) : null}
+              </div>
+              <div className="battle-screen__player-label">
+                <span>YOU</span>
+                <span
+                  className={`player-level-badge battle-screen__player-level${state.playerLevelFlash ? ' player-level-badge--flash' : ''}`}
+                >
+                  LVL {playerLevel}
+                </span>
+              </div>
+              <div className="battle-screen__hp-track">
+                <div
+                  className="battle-screen__hp-fill battle-screen__hp-fill--player"
+                  style={{ width: `${playerHpPct}%` }}
+                />
+              </div>
+              <div className="battle-screen__hp-numbers">
+                {state.playerHp} / {state.playerStats.maxHp}
+              </div>
+              <div ref={playerStatusRef} className="battle-screen__player-status-anchor">
+                <FighterStatusTags tags={playerStatusTags} />
+              </div>
+              {battleTutorialBlocking && (
+                <p className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
+              )}
+            </section>
+
+            <section className="battle-screen__action">
+              {showWinNarration ? (
+                <button
+                  type="button"
+                  className="battle-screen__narration battle-screen__narration--payoff"
+                  onClick={handleNarrationContinue}
+                >
+                  <span className="battle-screen__narration-label">{state.npc.displayName}</span>
+                  <p className="battle-screen__narration-text">{state.npc.losingLine}</p>
+                  <span className="battle-screen__narration-continue">tap to continue ▸</span>
+                </button>
+              ) : (
+                <div
+                  ref={movesRef}
+                  className="battle-screen__moves"
+                  role="group"
+                  aria-label="Battle moves"
+                >
+                  {battleMoveButtons.map(({ move, label, description, className }, slot) => {
+                    const stolen = state.battleMove.snagStolen[slot]
+                    const displayLabel = stolen
+                      ? stolen.replace('_', ' ')
+                      : label
+                    return (
+                      <button
+                        key={`${slot}-${move}-${stolen ?? ''}`}
+                        type="button"
+                        className={`battle-screen__move ${className}${busy || battleTutorialBlocking ? ' battle-screen__move--busy' : ''}`}
+                        disabled={busy || battleTutorialBlocking}
+                        onClick={() => handleMove(move, slot)}
+                      >
+                        <span className="battle-screen__move-name">{displayLabel}</span>
+                        <span className="battle-screen__move-desc">{description}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
       </div>
       {battleTutorialOverlayOpen && (
         <BattleTutorialOverlay
