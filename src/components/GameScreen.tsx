@@ -730,6 +730,11 @@ export function GameScreen() {
 
   const handleDarklineClose = useCallback(() => {
     const config = CITY_CONFIGS[currentCity]
+    if (currentCity === 'five') {
+      playerRef.current?.setPosition(config.spawnX, config.spawnY)
+      setLastLocation(currentCity, config.spawnX, config.spawnY)
+      return
+    }
     playerRef.current?.setPosition(config.darklineSpawnX, config.darklineSpawnY)
     setLastLocation(currentCity, config.darklineSpawnX, config.darklineSpawnY)
   }, [currentCity])
