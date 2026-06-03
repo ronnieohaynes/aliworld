@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useSyncExternalStore } from 'react'
 import {
+  GAME_CANVAS_WIDTH,
   MIDNIGHT_WALK_FRAME_HEIGHT,
   MIDNIGHT_WALK_FRAME_WIDTH,
   MIDNIGHT_WALK_FRAMES_PER_DIRECTION,
@@ -116,10 +117,22 @@ function resolveNpcFacingTowardPlayer(
 const FEET_HITBOX_WIDTH = 30
 const FEET_HITBOX_HEIGHT = 20
 
-const ZOOM_MAX = 2.0
+const ZOOM_MAX = 2.5
 const ZOOM_DEFAULT = 1.0
 const ZOOM_STEP = 0.1
 const COORD_GRID_SPACING = 100
+const MOBILE_ZOOM_BREAKPOINT = 480
+const MOBILE_ZOOM_DEFAULT = 1.8
+
+function getDefaultZoom(screenW: number): number {
+  return screenW <= MOBILE_ZOOM_BREAKPOINT ? MOBILE_ZOOM_DEFAULT : ZOOM_DEFAULT
+}
+
+function readDisplayWidth(canvas: HTMLCanvasElement | null): number {
+  if (canvas && canvas.clientWidth > 0) return canvas.clientWidth
+  if (typeof window !== 'undefined') return window.innerWidth
+  return GAME_CANVAS_WIDTH
+}
 
 function getMinZoom(screenW: number, screenH: number, worldW: number, worldH: number): number {
   return Math.min(screenW / worldW, screenH / worldH)
@@ -553,16 +566,20 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const showCollisionDebug = useRef(false)
   const showCoordinateOverlay = useRef(false)
   const pointerWorldPos = useRef<PointerWorldState>({ x: 0, y: 0, active: false })
+  const initialZoom = getDefaultZoom(
+    typeof window !== 'undefined' ? window.innerWidth : GAME_CANVAS_WIDTH,
+  )
   const cameraRef = useRef({
-    zoom: ZOOM_DEFAULT,
+    zoom: initialZoom,
     focusX: cityConfig.spawnX,
     focusY: cityConfig.spawnY,
     width,
     height,
   })
-  const zoomLevel = useRef(ZOOM_DEFAULT)
+  const zoomLevel = useRef(initialZoom)
   const pinchStartSpan = useRef(0)
-  const pinchStartZoom = useRef(ZOOM_DEFAULT)
+  const pinchStartZoom = useRef(initialZoom)
+  const userPinchZoomed = useRef(false)
   const screenSizeRef = useRef({ width, height })
   const nearbyNpcIdRef = useRef<string | null>(null)
   const dialogueActiveRef = useRef(false)
@@ -687,6 +704,30 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   }, [width, height])
 
   useEffect(() => {
+    if (!canvas) return
+
+    const applyResponsiveZoom = () => {
+      if (userPinchZoomed.current) return
+      const cfg = cityConfigRef.current
+      const displayW = readDisplayWidth(canvas)
+      const next = clampZoom(
+        getDefaultZoom(displayW),
+        width,
+        height,
+        cfg.worldWidth,
+        cfg.worldHeight,
+      )
+      zoomLevel.current = next
+      cameraRef.current.zoom = next
+    }
+
+    applyResponsiveZoom()
+    const observer = new ResizeObserver(applyResponsiveZoom)
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [canvas, width, height])
+
+  useEffect(() => {
     let cancelled = false
     midnightSheetRef.current = null
     const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
@@ -775,6 +816,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       if (e.touches.length >= 2 && pinchStartSpan.current > 0) {
         const span = pinchSpan(e.touches)
         if (span > 0) {
+          userPinchZoomed.current = true
           const { width: sw, height: sh } = screenSizeRef.current
           const cfg = cityConfigRef.current
           zoomLevel.current = clampZoom(

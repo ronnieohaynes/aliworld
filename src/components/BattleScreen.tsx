@@ -579,7 +579,9 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
           <div ref={playerStatusRef} className="battle-screen__player-status-anchor">
             <FighterStatusTags tags={playerStatusTags} />
           </div>
-          <p className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
+          {battleTutorialBlocking && (
+            <p className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
+          )}
         </section>
 
         <section className="battle-screen__action">

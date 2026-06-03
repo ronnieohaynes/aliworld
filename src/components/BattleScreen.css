@@ -245,7 +245,21 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: linear-gradient(180deg, rgba(10, 10, 18, 0) 0%, rgba(10, 10, 18, 0.78) 35%, rgba(10, 10, 18, 0.96) 100%);
+  background: rgba(12, 12, 18, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.battle-screen__player-hud .battle-screen__hp-track {
+  background: rgba(14, 14, 24, 0.45);
+}
+
+.battle-screen__player-hud .battle-screen__hp-fill--player {
+  opacity: 1;
+}
+
+.battle-screen__player-hud .battle-screen__status-tag {
+  background: rgba(14, 14, 24, 0.45);
 }
 
 .battle-screen__player-hud .battle-screen__status-tags {
@@ -526,7 +540,9 @@
   font-size: 22px;
   font-weight: 700;
   color: #ff4d4d;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 2px 8px rgba(0, 0, 0, 0.85);
   pointer-events: none;
   animation: battle-floater-rise 0.9s ease-out forwards;
   z-index: 20;
