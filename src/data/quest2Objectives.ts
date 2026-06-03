@@ -33,7 +33,9 @@ export function buildQuest2ObjectiveContext(): Quest2ObjectiveContext {
     e2Active: isE2QuestUnlocked(),
     crowdAddressed: isCrowdAddressed(),
     crierConverted: isCrierConverted(),
-    inSouthside: world.citiesVisited.includes('southside'),
+    inSouthside:
+      world.citiesVisited.includes('southside') ||
+      world.citiesVisited.includes('blue-store'),
     clerkConverted: isClerkConverted(),
     restockerDefeated: isRestockerDefeated(),
     e2Seen: isE2Seen(),

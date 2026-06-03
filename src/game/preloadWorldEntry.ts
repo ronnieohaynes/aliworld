@@ -19,6 +19,9 @@ export async function preloadWorldEntry(
 
   await Promise.all([
     loadWorldBackgroundForSrc(city.mapSrc),
+    ...(city.foregroundMapSrc
+      ? [loadWorldBackgroundForSrc(city.foregroundMapSrc)]
+      : []),
     loadSpriteSheetWithFallback(walkSrc),
     ...npcSrcs.map((src) => loadImage(src)),
   ])

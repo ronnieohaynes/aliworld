@@ -4,7 +4,16 @@ import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Hand
 import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, type NpcData } from '../data/npcs'
 import { isE2QuestUnlocked } from '../data/quest2Objectives'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
-import { CITY_CONFIGS, DARKLINE_DESTINATIONS, INACTIVE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION, type CityConfig, type CityId } from '../data/cityConfig'
+import {
+  BLUE_STORE_EXTERIOR_RETURN,
+  CITY_CONFIGS,
+  DARKLINE_DESTINATIONS,
+  INACTIVE_DESTINATIONS,
+  POST_E1_DARKLINE_DESTINATION,
+  POST_E2_DARKLINE_DESTINATION,
+  type CityConfig,
+  type CityId,
+} from '../data/cityConfig'
 import { isMoveUnlocked } from '../data/moves'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
@@ -117,6 +126,12 @@ const FURY_SWEEP_UNLOCK_LEVEL = 17
 
 type CafeFadePhase = 'none' | 'in' | 'scene' | 'out'
 
+type MapTransitionTarget = {
+  cityId: CityId
+  x: number
+  y: number
+}
+
 /** How often to push live coords into the account save buffer while exploring. */
 const LOCATION_REPORT_INTERVAL_MS = 3_000
 
@@ -187,6 +202,10 @@ export function GameScreen() {
   const pendingRestoreRef = useRef<{ city: CityId; x: number; y: number } | null>(null)
   /** City to preload for world entry — resolved once after account hydrate. */
   const [bootCityId, setBootCityId] = useState<CityId | null>(null)
+  const [mapTransition, setMapTransition] = useState<MapTransitionTarget | null>(null)
+  const [mapTransitionReady, setMapTransitionReady] = useState(false)
+  const [mapTransitionPending, setMapTransitionPending] = useState(false)
+  const mapTransitionRef = useRef<MapTransitionTarget | null>(null)
 
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -227,8 +246,11 @@ export function GameScreen() {
     void quest2Revision
     if (!isCafeSceneSeen()) return [...DARKLINE_DESTINATIONS]
     const dest: CityId[] = [...DARKLINE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION]
-    if (isE2QuestUnlocked() && !isCrierConverted()) {
-      return dest.filter((id) => id !== 'southside')
+    if (isE2QuestUnlocked()) {
+      dest.push(POST_E2_DARKLINE_DESTINATION)
+    }
+    if (!isCrierConverted()) {
+      return dest.filter((id) => id !== 'southside' && id !== 'blue-store')
     }
     return dest
   }, [quest1Revision, quest2Revision])
@@ -326,7 +348,7 @@ export function GameScreen() {
       }
       return { ...baseCityConfig, npcs }
     }
-    if (currentCity === 'southside') {
+    if (currentCity === 'southside' || currentCity === 'blue-store') {
       let npcs = [...baseCityConfig.npcs]
       if (!isClerkConverted()) {
         npcs = npcs.filter((npc) => npc.id !== RESTOCKER_NPC_ID)
@@ -352,13 +374,60 @@ export function GameScreen() {
       !battleNpcId &&
       !battleWipePhase &&
       !menuTransition &&
+      !mapTransition &&
+      !mapTransitionPending &&
       !dialogue
     )
-  }, [worldEntryActive, battleNpcId, battleWipePhase, menuTransition, dialogue])
+  }, [
+    worldEntryActive,
+    battleNpcId,
+    battleWipePhase,
+    menuTransition,
+    mapTransition,
+    mapTransitionPending,
+    dialogue,
+  ])
 
   const beginMenuTransition = useCallback((target: MenuTransitionTarget) => {
     menuTransitionRef.current = target
     setMenuTransition(target)
+  }, [])
+
+  const beginMapTransition = useCallback(
+    (cityId: CityId, x: number, y: number) => {
+      if (mapTransitionRef.current || mapTransitionPending) return
+      const target: MapTransitionTarget = { cityId, x, y }
+      mapTransitionRef.current = target
+      setMapTransitionPending(true)
+      setMapTransitionReady(false)
+      setMapTransition(target)
+      void preloadWorldEntry(CITY_CONFIGS[cityId], selectedMidnightVariant)
+        .catch((err) => {
+          console.error(
+            '[map transition preload]',
+            err instanceof Error ? err.message : String(err),
+          )
+        })
+        .finally(() => setMapTransitionReady(true))
+    },
+    [mapTransitionPending, selectedMidnightVariant],
+  )
+
+  const handleMapTransitionMidpoint = useCallback(() => {
+    const target = mapTransitionRef.current
+    if (!target) return
+    setCurrentCity(target.cityId)
+    playerRef.current?.setPosition(target.x, target.y)
+    if (target.cityId !== 'blue-store-interior') {
+      setLastLocation(target.cityId, target.x, target.y)
+    }
+  }, [])
+
+  const handleMapTransitionComplete = useCallback(() => {
+    mapTransitionRef.current = null
+    setMapTransition(null)
+    setMapTransitionReady(false)
+    setMapTransitionPending(false)
   }, [])
 
   /** Leave pause flow and return to gameplay (same as choosing resume). */
@@ -604,22 +673,38 @@ export function GameScreen() {
         setDialogue(null)
         setCafeFade('in')
       } else if (action === 'OPEN_BLUE_STORE') {
+        if (currentCity !== 'blue-store') return
+        if (mapTransitionRef.current) return
         if (!isCrierConverted()) {
           showNotYetDialogue(CLERK_NPC, 'nobody gets in until the crier moves.')
           return
         }
-        if (isClerkConverted()) return
-        beginNpcDialogue(CLERK_NPC, { onComplete: () => startNpcBattle(CLERK_NPC_ID) })
+        {
+          const interior = CITY_CONFIGS['blue-store-interior']
+          beginMapTransition(
+            'blue-store-interior',
+            interior.spawnX,
+            interior.spawnY,
+          )
+        }
+      } else if (action === 'OPEN_BLUE_STORE_EXIT') {
+        if (currentCity !== 'blue-store-interior') return
+        if (mapTransitionRef.current) return
+        beginMapTransition(
+          'blue-store',
+          BLUE_STORE_EXTERIOR_RETURN.x,
+          BLUE_STORE_EXTERIOR_RETURN.y,
+        )
       }
     },
     [
-      beginNpcDialogue,
+      beginMapTransition,
       cafeFade,
       canApproachMark,
+      currentCity,
       showMarkBlockedDialogue,
       showNotYetDialogue,
       startMarkBattle,
-      startNpcBattle,
     ],
   )
 
@@ -747,7 +832,7 @@ export function GameScreen() {
     }
 
     if (nearbyId === CLERK_NPC_ID) {
-      if (currentCity !== 'southside') return
+      if (currentCity !== 'blue-store' && currentCity !== 'southside') return
       if (!isCrierConverted()) {
         showNotYetDialogue(CLERK_NPC, 'the crier has to go first.')
         return
@@ -1053,6 +1138,13 @@ export function GameScreen() {
         case 'loadout':
           beginMenuEntryTransition('loadout')
           break
+        case 'refresh': {
+          const cfg = CITY_CONFIGS[currentCity]
+          playerRef.current?.setPosition(cfg.spawnX, cfg.spawnY)
+          setLastLocation(currentCity, cfg.spawnX, cfg.spawnY)
+          resumeFromPauseMenu()
+          break
+        }
         case 'new-game':
           break
         case 'sign-out':
@@ -1062,7 +1154,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition, resumeFromPauseMenu],
+    [beginMenuEntryTransition, currentCity, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -1093,6 +1185,8 @@ export function GameScreen() {
     !battleNpcId &&
     !battleWipePhase &&
     !menuTransition &&
+    !mapTransition &&
+    !mapTransitionPending &&
     !showStartMenu &&
     !showLoadout &&
     !showFannyPack &&
@@ -1110,6 +1204,8 @@ export function GameScreen() {
     !battleNpcId &&
     !battleWipePhase &&
     !menuTransition &&
+    !mapTransition &&
+    !mapTransitionPending &&
     !showStartMenu &&
     !showLoadout &&
     !showFannyPack &&
@@ -1139,7 +1235,7 @@ export function GameScreen() {
         <div
           className={`game-screen-play${
             battleWipePhase ? ' game-screen-play--battle-wipe' : ''
-          }${menuTransition ? ' game-screen-play--menu-transition' : ''}${
+          }${menuTransition || mapTransition || mapTransitionPending ? ' game-screen-play--menu-transition' : ''}${
             worldEntryActive ? ' game-screen-play--world-entry' : ''
           }`}
           onClick={handlePlayAreaClick}
@@ -1179,6 +1275,8 @@ export function GameScreen() {
                 worldEntryActive ||
                 !!battleWipePhase ||
                 !!menuTransition ||
+                !!mapTransition ||
+                mapTransitionPending ||
                 showFannyPack ||
                 showLoadout ||
                 showStartMenu
@@ -1282,6 +1380,17 @@ export function GameScreen() {
               immediateMidpoint={menuTransition.kind === 'resume'}
               onMidpoint={handleMenuTransitionMidpoint}
               onComplete={handleMenuTransitionComplete}
+            />
+          )}
+          {mapTransitionPending && !mapTransitionReady && (
+            <div className="menu-entry-cover" aria-hidden>
+              <div className="menu-entry-cover__panel" style={{ opacity: 1 }} />
+            </div>
+          )}
+          {mapTransition && mapTransitionReady && (
+            <MenuEntryCover
+              onMidpoint={handleMapTransitionMidpoint}
+              onComplete={handleMapTransitionComplete}
             />
           )}
           {worldEntryActive && (

@@ -3,6 +3,7 @@ export type TriggerAction =
   | 'OPEN_DARKLINE'
   | 'OPEN_ONE_LOVE_CAFE'
   | 'OPEN_BLUE_STORE'
+  | 'OPEN_BLUE_STORE_EXIT'
 
 export type TriggerZone = {
   id: string
