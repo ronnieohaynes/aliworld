@@ -15,19 +15,17 @@ type Props = {
   currentCity: CityId
   destinations?: readonly CityId[]
   inactiveDestinations?: readonly { label: string; status: string }[]
-  onClose: () => void
-  onTravel: (destination: CityId) => void
+  /** Begin cult exit wipe — null closes back to overworld, CityId travels there. */
+  onBeginExit: (destination: CityId | null) => void
 }
 
 export function DarklineScreen({
   currentCity,
   destinations = DARKLINE_DESTINATIONS,
   inactiveDestinations = INACTIVE_DESTINATIONS,
-  onClose,
-  onTravel,
+  onBeginExit,
 }: Props) {
-  const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting'>('entering')
-  const [travelTarget, setTravelTarget] = useState<CityId | null>(null)
+  const [phase, setPhase] = useState<'entering' | 'visible'>('entering')
 
   useEffect(() => {
     if (phase !== 'entering') return
@@ -35,39 +33,22 @@ export function DarklineScreen({
     return () => window.clearTimeout(timer)
   }, [phase])
 
-  useEffect(() => {
-    if (phase !== 'exiting') return
-    const timer = window.setTimeout(() => {
-      if (travelTarget) {
-        onTravel(travelTarget)
-      } else {
-        onClose()
-      }
-    }, FADE_MS)
-    return () => window.clearTimeout(timer)
-  }, [phase, onClose, onTravel, travelTarget])
-
   const handleBack = useCallback(() => {
-    if (phase === 'visible') {
-      setTravelTarget(null)
-      setPhase('exiting')
-    }
-  }, [phase])
+    if (phase === 'visible') onBeginExit(null)
+  }, [onBeginExit, phase])
 
   const handleDestinationClick = useCallback(
     (cityId: CityId) => {
       if (phase === 'visible' && cityId !== currentCity) {
-        setTravelTarget(cityId)
-        setPhase('exiting')
+        onBeginExit(cityId)
       }
     },
-    [phase, currentCity],
+    [onBeginExit, currentCity, phase],
   )
 
   const className = [
     'darkline-screen',
     phase === 'entering' && 'darkline-screen--entering',
-    phase === 'exiting' && 'darkline-screen--exiting',
   ]
     .filter(Boolean)
     .join(' ')
@@ -98,7 +79,7 @@ export function DarklineScreen({
           return (
             <div
               key={cityId}
-              className={`darkline-screen__dest${isHere ? ' darkline-screen__dest--here' : ''} ${!isHere ? 'darkline-screen__dest--active' : ''}`}
+              className={`darkline-screen__dest${isHere ? ' darkline-screen__dest--here' : ''} ${!isHere ? ' darkline-screen__dest--active' : ''}`}
               onClick={!isHere ? () => handleDestinationClick(cityId) : undefined}
             >
               <span className="darkline-screen__dest-label">{config.label}</span>

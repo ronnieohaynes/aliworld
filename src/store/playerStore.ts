@@ -92,13 +92,14 @@ const VALID_CITY_IDS: readonly CityId[] = [
   'five',
   'san-bruno',
   'southside',
-  'blue-store',
   'blue-store-interior',
 ]
 
 function normalizeLastCity(raw: unknown): CityId | undefined {
   if (typeof raw !== 'string') return undefined
-  const id = raw === 'daly-city' || raw === '5ive' ? 'five' : raw
+  let id = raw
+  if (id === 'daly-city' || id === '5ive') id = 'five'
+  if (id === 'blue-store') id = 'southside'
   return VALID_CITY_IDS.includes(id as CityId) ? (id as CityId) : undefined
 }
 

@@ -5,7 +5,7 @@ import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, 
 import { isE2QuestUnlocked } from '../data/quest2Objectives'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import {
-  BLUE_STORE_EXTERIOR_RETURN,
+  SOUTHSIDE_EXTERIOR_RETURN,
   CITY_CONFIGS,
   DARKLINE_DESTINATIONS,
   INACTIVE_DESTINATIONS,
@@ -68,6 +68,7 @@ import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
 import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { PlayerLevelOverhead } from './PlayerLevelOverhead'
+import { CultTransition, type CultTransitionMode } from './CultTransition'
 import { DarklineScreen } from './DarklineScreen'
 import { DialogueBox } from './DialogueBox'
 import { GameCanvas } from './GameCanvas'
@@ -184,6 +185,8 @@ export function GameScreen() {
   const prevCityRef = useRef<CityId | null>(null)
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
+  const [cultDarklinePhase, setCultDarklinePhase] = useState<CultTransitionMode | null>(null)
+  const darklineExitTargetRef = useRef<CityId | 'close' | null>(null)
   const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
   const [cafeSceneLine, setCafeSceneLine] = useState(0)
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
@@ -252,11 +255,11 @@ export function GameScreen() {
     void quest2Revision
     if (!isCafeSceneSeen()) return [...DARKLINE_DESTINATIONS]
     const dest: CityId[] = [...DARKLINE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION]
-    if (isE2QuestUnlocked()) {
+    if (isE2QuestUnlocked() && POST_E2_DARKLINE_DESTINATION !== POST_E1_DARKLINE_DESTINATION) {
       dest.push(POST_E2_DARKLINE_DESTINATION)
     }
     if (!isCrierConverted()) {
-      return dest.filter((id) => id !== 'southside' && id !== 'blue-store')
+      return dest.filter((id) => id !== 'southside')
     }
     return dest
   }, [quest1Revision, quest2Revision])
@@ -363,7 +366,7 @@ export function GameScreen() {
       }
       return { ...baseCityConfig, npcs }
     }
-    if (currentCity === 'southside' || currentCity === 'blue-store') {
+    if (currentCity === 'southside') {
       let npcs = [...baseCityConfig.npcs]
       if (!isClerkConverted()) {
         npcs = npcs.filter((npc) => npc.id !== RESTOCKER_NPC_ID)
@@ -391,6 +394,7 @@ export function GameScreen() {
       !menuTransition &&
       !mapTransition &&
       !mapTransitionPending &&
+      !cultDarklinePhase &&
       !dialogue
     )
   }, [
@@ -400,6 +404,7 @@ export function GameScreen() {
     menuTransition,
     mapTransition,
     mapTransitionPending,
+    cultDarklinePhase,
     dialogue,
   ])
 
@@ -674,8 +679,9 @@ export function GameScreen() {
       if (action === 'OPEN_13GALLONS') {
         setShowInterior(true)
       } else if (action === 'OPEN_DARKLINE') {
+        if (cultDarklinePhase) return
         if (isMarkDefeated()) {
-          setShowDarkline(true)
+          setCultDarklinePhase('enter')
           return
         }
         if (!canApproachMark()) {
@@ -688,7 +694,7 @@ export function GameScreen() {
         setDialogue(null)
         setCafeFade('in')
       } else if (action === 'OPEN_BLUE_STORE') {
-        if (currentCity !== 'blue-store') return
+        if (currentCity !== 'southside') return
         if (mapTransitionRef.current) return
         if (!isCrierConverted()) {
           showNotYetDialogue(CLERK_NPC, 'nobody gets in until the crier moves.')
@@ -706,9 +712,9 @@ export function GameScreen() {
         if (currentCity !== 'blue-store-interior') return
         if (mapTransitionRef.current) return
         beginMapTransition(
-          'blue-store',
-          BLUE_STORE_EXTERIOR_RETURN.x,
-          BLUE_STORE_EXTERIOR_RETURN.y,
+          'southside',
+          SOUTHSIDE_EXTERIOR_RETURN.x,
+          SOUTHSIDE_EXTERIOR_RETURN.y,
         )
       }
     },
@@ -716,6 +722,7 @@ export function GameScreen() {
       beginMapTransition,
       cafeFade,
       canApproachMark,
+      cultDarklinePhase,
       currentCity,
       showMarkBlockedDialogue,
       showNotYetDialogue,
@@ -730,19 +737,43 @@ export function GameScreen() {
   }, [])
 
   const handleDarklineClose = useCallback(() => {
-    setShowDarkline(false)
     const config = CITY_CONFIGS[currentCity]
     playerRef.current?.setPosition(config.darklineSpawnX, config.darklineSpawnY)
     setLastLocation(currentCity, config.darklineSpawnX, config.darklineSpawnY)
   }, [currentCity])
 
   const handleDarklineTravel = useCallback((destination: CityId) => {
-    setShowDarkline(false)
     setCurrentCity(destination)
     markCityVisited(destination)
     const destConfig = CITY_CONFIGS[destination]
     playerRef.current?.setPosition(destConfig.spawnX, destConfig.spawnY)
     setLastLocation(destination, destConfig.spawnX, destConfig.spawnY)
+  }, [])
+
+  const handleDarklineBeginExit = useCallback((destination: CityId | null) => {
+    darklineExitTargetRef.current = destination ?? 'close'
+    setCultDarklinePhase('exit')
+  }, [])
+
+  const handleCultDarklineMidpoint = useCallback(() => {
+    if (cultDarklinePhase === 'enter') {
+      setShowDarkline(true)
+      return
+    }
+    if (cultDarklinePhase === 'exit') {
+      setShowDarkline(false)
+      const target = darklineExitTargetRef.current
+      if (target === 'close') {
+        handleDarklineClose()
+      } else if (target) {
+        handleDarklineTravel(target)
+      }
+      darklineExitTargetRef.current = null
+    }
+  }, [cultDarklinePhase, handleDarklineClose, handleDarklineTravel])
+
+  const handleCultDarklineComplete = useCallback(() => {
+    setCultDarklinePhase(null)
   }, [])
 
   const completeAdamMp3Handoff = useCallback(() => {
@@ -847,7 +878,7 @@ export function GameScreen() {
     }
 
     if (nearbyId === CLERK_NPC_ID) {
-      if (currentCity !== 'blue-store' && currentCity !== 'southside') return
+      if (currentCity !== 'southside') return
       if (!isCrierConverted()) {
         showNotYetDialogue(CLERK_NPC, 'the crier has to go first.')
         return
@@ -1189,6 +1220,8 @@ export function GameScreen() {
     setBattleWipePhase(null)
     setBattleReady(false)
     setShowDarkline(false)
+    setCultDarklinePhase(null)
+    darklineExitTargetRef.current = null
     setShowInterior(false)
 
     const cfg = CITY_CONFIGS.five
@@ -1206,6 +1239,7 @@ export function GameScreen() {
     !showLoadout &&
     !showFannyPack &&
     !showDarkline &&
+    !cultDarklinePhase &&
     !showInterior
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
@@ -1300,12 +1334,14 @@ export function GameScreen() {
                 !!dialogue ||
                 worldEntryActive ||
                 !!battleWipePhase ||
+                !!cultDarklinePhase ||
                 !!menuTransition ||
                 !!mapTransition ||
                 mapTransitionPending ||
                 showFannyPack ||
                 showLoadout ||
-                showStartMenu
+                showStartMenu ||
+                showDarkline
               }
               dialogueNpcId={dialogue?.npc.id ?? null}
               questPulseDescriptor={questPulseDescriptor}
@@ -1331,8 +1367,15 @@ export function GameScreen() {
               currentCity={currentCity}
               destinations={darklineDestinations}
               inactiveDestinations={INACTIVE_DESTINATIONS}
-              onClose={handleDarklineClose}
-              onTravel={handleDarklineTravel}
+              onBeginExit={handleDarklineBeginExit}
+            />
+          )}
+          {cultDarklinePhase && (
+            <CultTransition
+              key={cultDarklinePhase}
+              mode={cultDarklinePhase}
+              onMidpoint={handleCultDarklineMidpoint}
+              onComplete={handleCultDarklineComplete}
             />
           )}
           {dialogue && !battleNpcId && cafeFade !== 'scene' && (

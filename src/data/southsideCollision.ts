@@ -1,4 +1,4 @@
-// ALIWORLD collision zones for the BLUE STORE (Hillside Market) exterior map
+// ALIWORLD collision zones for the SOUTHSIDE city map
 // Auto-extracted from the magenta-painted collision overlay.
 // Source map: 1254x1254 px. Zones are in world pixel coordinates,
 // assuming the map renders at native size with top-left at world (0,0).
@@ -10,20 +10,18 @@ export interface CollisionZone {
   height: number;
 }
 
-export const BLUE_STORE_MAP_SIZE = { width: 1254, height: 1254 };
+export const SOUTHSIDE_MAP_SIZE = { width: 1254, height: 1254 };
 
 // Darkline entrance stairwell on this map.
-// Use as the Darkline trigger zone for this city.
-export const BLUE_STORE_DARKLINE_ZONE = { x: 150, y: 960, width: 112, height: 96 };
+export const SOUTHSIDE_DARKLINE_ZONE = { x: 150, y: 960, width: 112, height: 96 };
 
-// Blue Store entrance door — transition zone into the interior.
-// Wire this to the Blue Store interior map when that transition is built.
-export const BLUE_STORE_ENTRANCE_ZONE = { x: 650, y: 750, width: 88, height: 64 };
+// Store entrance door — transition zone into the interior map.
+export const SOUTHSIDE_ENTRANCE_ZONE = { x: 650, y: 750, width: 88, height: 64 };
 
 // Player spawns here when arriving via Darkline.
-export const BLUE_STORE_DARKLINE_ARRIVAL = { x: 197, y: 1035 };
+export const SOUTHSIDE_DARKLINE_ARRIVAL = { x: 197, y: 1035 };
 
-export const BLUE_STORE_COLLISION_ZONES: CollisionZone[] = [
+export const SOUTHSIDE_COLLISION_ZONES: CollisionZone[] = [
   { x: 0, y: 344, width: 1254, height: 136 },
   { x: 0, y: 488, width: 160, height: 544 },
   { x: 584, y: 496, width: 670, height: 256 },
@@ -41,7 +39,6 @@ export const BLUE_STORE_COLLISION_ZONES: CollisionZone[] = [
   { x: 0, y: 1120, width: 1254, height: 48 },
 ];
 
-// Generic AABB test. Reuse your existing helper if one exists.
 export function hitsCollision(
   x: number, y: number, w: number, h: number,
   zones: CollisionZone[]

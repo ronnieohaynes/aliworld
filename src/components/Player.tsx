@@ -364,8 +364,10 @@ function formatDebugText(
   { direction, frame, sx, sy, state }: DebugInfo,
   coords?: CoordinateReadout | null,
   tuningLines?: string,
+  cityId?: string,
 ): string {
   const lines = [
+    ...(cityId ? [`City: ${cityId}`] : []),
     `direction: ${direction}`,
     `frame: ${frame}`,
     `sx: ${sx.toFixed(1)}  sy: ${sy.toFixed(1)}`,
@@ -494,8 +496,9 @@ function drawDebugOverlay(
   ctx: CanvasRenderingContext2D,
   info: DebugInfo,
   coords?: CoordinateReadout | null,
+  cityId?: string,
 ) {
-  const lines = formatDebugText(info, coords).split('\n')
+  const lines = formatDebugText(info, coords, undefined, cityId).split('\n')
   const pad = 8
   const lineHeight = 18
   const boxW = 220
@@ -1337,8 +1340,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         : null
       if (getShowDebug()) {
         const tuningLines = formatMidnightVariantTuningDebug(variantId, renderTuning)
-        drawDebugOverlay(ctx, debugInfo, coordReadout)
-        setDebugHud(formatDebugText(debugInfo, coordReadout, tuningLines))
+        drawDebugOverlay(ctx, debugInfo, coordReadout, cfg.id)
+        setDebugHud(formatDebugText(debugInfo, coordReadout, tuningLines, cfg.id))
       } else {
         setDebugHud('')
       }

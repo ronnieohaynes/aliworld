@@ -16,6 +16,7 @@ function emptyState(): WorldMemoryState {
 /** Legacy city ids from before the five / the 5ive rename. */
 function normalizeCityId(cityId: string): string {
   if (cityId === 'daly-city' || cityId === '5ive') return 'five'
+  if (cityId === 'blue-store') return 'southside'
   return cityId
 }
 
