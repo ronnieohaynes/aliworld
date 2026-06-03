@@ -8,6 +8,7 @@ import {
 import { publicAsset } from '../utils/publicAsset'
 import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
+import { isDevSparNpcId } from '../data/devSpar'
 import {
   BATTLE_ENEMY_DISPLAY_H,
   BATTLE_ENEMY_DISPLAY_W,
@@ -243,7 +244,9 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   )
 
   useEffect(() => {
-    track('battle_start', { enemyId: npcId })
+    if (!isDevSparNpcId(npcId)) {
+      track('battle_start', { enemyId: npcId })
+    }
   }, [npcId])
 
   const shouldRunBattleTutorial =

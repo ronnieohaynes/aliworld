@@ -15,6 +15,7 @@ import {
   type CityId,
 } from '../data/cityConfig'
 import { isMoveUnlocked } from '../data/moves'
+import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
   getQuest1Snapshot,
@@ -564,6 +565,67 @@ export function GameScreen() {
     setBattleWipePhase('enter')
   }, [battleNpcId, battleWipePhase])
 
+  // ── DEV ONLY: K spawns the sparring dummy — REMOVE BEFORE LAUNCH ──
+  const startDevSparBattle = useCallback(() => {
+    if (battleNpcId || battleWipePhase) return
+    setDialogue(null)
+    setBattleReady(false)
+    setBattleNpcId(DEV_SPAR_NPC_ID)
+    setBattleWipePhase('enter')
+    console.log('dev spar — remove before launch')
+  }, [battleNpcId, battleWipePhase])
+
+  const canSpawnDevSpar = useCallback(() => {
+    return (
+      !worldEntryActive &&
+      !battleNpcId &&
+      !battleWipePhase &&
+      !menuTransition &&
+      !mapTransition &&
+      !mapTransitionPending &&
+      !cultDarklinePhase &&
+      !dialogue &&
+      !showStartMenu &&
+      !showLoadout &&
+      !showFannyPack &&
+      cafeFade !== 'scene'
+    )
+  }, [
+    worldEntryActive,
+    battleNpcId,
+    battleWipePhase,
+    menuTransition,
+    mapTransition,
+    mapTransitionPending,
+    cultDarklinePhase,
+    dialogue,
+    showStartMenu,
+    showLoadout,
+    showFannyPack,
+    cafeFade,
+  ])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'k' && e.key !== 'K') return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const target = e.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return
+      }
+      if (!canSpawnDevSpar()) return
+      e.preventDefault()
+      startDevSparBattle()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [canSpawnDevSpar, startDevSparBattle])
+
   const beginNpcDialogue = useCallback(
     (
       npc: NpcData,
@@ -1081,10 +1143,11 @@ export function GameScreen() {
   const handleBattleEnd = useCallback(
     (result: 'win' | 'lose', turns: number) => {
       const safeTurns = Number.isFinite(turns) && turns >= 0 ? turns : 0
-      if (battleNpcId) {
+      const isDevSpar = battleNpcId != null && isDevSparNpcId(battleNpcId)
+      if (battleNpcId && !isDevSpar) {
         track('battle_end', { enemyId: battleNpcId, result, turns: safeTurns })
       }
-      if (result === 'win') {
+      if (result === 'win' && !isDevSpar) {
         if (battleNpcId === WALKER_NPC_ID) {
           setWalkerConverted()
           track('npc_converted', { npcId: WALKER_NPC_ID })

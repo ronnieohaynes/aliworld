@@ -41,6 +41,7 @@ import {
   getNpcCombatEntry,
   type NpcCombatEntry,
 } from '../data/npcRegistry'
+import { buildDevSpar, isDevSparNpcId } from '../data/devSpar'
 import { deriveBuildLoopType } from '../data/buildName'
 import {
   appendBattleFeedback,
@@ -984,11 +985,16 @@ export function createInitialBattleState(
     carryHp?: number
   },
 ): BattleState {
-  const resolvedId = getNpcCombatEntry(npcId) ? npcId : 'walker'
-  const npc = getNpcCombatEntry(resolvedId)
-  if (!npc) {
-    throw new Error(`Unknown combat NPC: ${npcId}`)
-  }
+  const npc = isDevSparNpcId(npcId)
+    ? buildDevSpar()
+    : (() => {
+        const resolvedId = getNpcCombatEntry(npcId) ? npcId : 'walker'
+        const entry = getNpcCombatEntry(resolvedId)
+        if (!entry) {
+          throw new Error(`Unknown combat NPC: ${npcId}`)
+        }
+        return entry
+      })()
 
   const player = getPlayerStoreState()
   const archetype = options?.archetype ?? player.archetype ?? DEFAULT_ARCHETYPE

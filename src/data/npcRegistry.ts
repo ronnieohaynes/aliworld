@@ -1,4 +1,5 @@
 import { publicAsset } from '../utils/publicAsset'
+import { buildDevSpar, isDevSparNpcId } from './devSpar'
 import type { BattleLocationId } from './battleBackgrounds'
 import type { LeanSkill } from './skillCounter'
 import {
@@ -122,7 +123,7 @@ export function chooseMove(
   forced?: EnemyMoveId | null,
 ): EnemyMove {
   if (forced) return forced
-  const npc = getNpcCombatEntry(npcId)
+  const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
   if (!npc || npc.moves.length === 0) return 'STRIKE'
   const idx = Math.floor(Math.random() * npc.moves.length)
   return npc.moves[idx]!
