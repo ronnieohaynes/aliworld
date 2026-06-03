@@ -7,3 +7,4 @@ dist-admin
 .env.*.local
 *.local
 .DS_Store
+supabase/.temp/
