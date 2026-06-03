@@ -27,15 +27,20 @@ export function IntroNarrationScreen({ onComplete }: Props) {
 
   useEffect(() => {
     if (lineComplete || fading) return
-    if (visibleChars >= line.length) {
-      setLineComplete(true)
-      return
-    }
-    const timer = window.setTimeout(() => {
-      setVisibleChars((count) => count + 1)
+
+    const id = window.setInterval(() => {
+      setVisibleChars((count) => {
+        if (count >= line.length) return count
+        const next = count + 1
+        if (next >= line.length) {
+          setLineComplete(true)
+        }
+        return next
+      })
     }, CHAR_MS)
-    return () => window.clearTimeout(timer)
-  }, [visibleChars, line.length, lineComplete, fading])
+
+    return () => window.clearInterval(id)
+  }, [lineIndex, line.length, lineComplete, fading])
 
   const advance = useCallback(() => {
     if (fading) return

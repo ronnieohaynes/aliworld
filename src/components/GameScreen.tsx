@@ -190,6 +190,8 @@ export function GameScreen() {
   const pendingRestoreRef = useRef<{ city: CityId; x: number; y: number } | null>(null)
   /** City to preload for world entry — resolved once after account hydrate. */
   const [bootCityId, setBootCityId] = useState<CityId | null>(null)
+  /** True until account hydrate resolves whether intro should run. */
+  const [introPending, setIntroPending] = useState(true)
   const [introActive, setIntroActive] = useState(false)
 
   const selectedMidnightVariant = useSyncExternalStore(
@@ -265,11 +267,13 @@ export function GameScreen() {
         setCurrentCity(saved.city)
         setBootCityId(saved.city)
         setIntroActive(false)
+        setIntroPending(false)
         return
       }
       setBootCityId('five')
       setLocationReady(true)
       setIntroActive(!isWorldIntroSeen())
+      setIntroPending(false)
     })
     return () => {
       cancelled = true
@@ -1138,6 +1142,17 @@ export function GameScreen() {
     beginNpcDialogue(MANDO_NPC)
   }, [dialogue, advanceDialogue, beginNpcDialogue])
 
+  if (introPending || introActive) {
+    return (
+      <div
+        className="game-screen"
+        style={{ background: '#0a0a12', minHeight: '100dvh', height: '100dvh' }}
+      >
+        {introActive ? <IntroNarrationScreen onComplete={handleIntroComplete} /> : null}
+      </div>
+    )
+  }
+
   return (
     <div className="game-screen">
       <AccountSaveIndicator />
@@ -1295,10 +1310,9 @@ export function GameScreen() {
               onComplete={handleMenuTransitionComplete}
             />
           )}
-          {worldEntryActive && !introActive && (
+          {worldEntryActive && (
             <WorldEntryWipe ready={worldEntryReady} onComplete={handleWorldEntryComplete} />
           )}
-          {introActive && <IntroNarrationScreen onComplete={handleIntroComplete} />}
           <ArtifactAcquisitionToasts />
           {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
           {showStartMenu && <div className="game-screen-pause-scrim" aria-hidden />}
