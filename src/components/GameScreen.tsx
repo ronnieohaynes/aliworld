@@ -67,6 +67,7 @@ import {
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
 import { track } from '../lib/analytics'
+import { useCoarsePointer } from '../hooks/useCoarsePointer'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
   getLastSavedLocation,
@@ -1110,7 +1111,22 @@ export function GameScreen() {
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
 
-  const showInteractHint = showQuestHelper && !dialogue && nearbyNpcId !== null
+  const isCoarsePointer = useCoarsePointer()
+  const showInteractHint =
+    !isCoarsePointer && showQuestHelper && !dialogue && nearbyNpcId !== null
+  const showTouchTalkButton =
+    isCoarsePointer &&
+    !worldEntryActive &&
+    !battleNpcId &&
+    !battleWipePhase &&
+    !menuTransition &&
+    !showStartMenu &&
+    !showLoadout &&
+    !showFannyPack &&
+    (dialogue != null || cafeFade === 'scene' || nearbyNpcId != null)
+
+  const touchTalkLabel =
+    dialogue || cafeFade === 'scene' ? 'tap · next' : 'tap · talk'
 
   const handleInteriorClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -1161,6 +1177,19 @@ export function GameScreen() {
             <p className="game-screen-interact-hint" role="status">
               space · talk
             </p>
+          )}
+          {showTouchTalkButton && (
+            <button
+              type="button"
+              className="game-screen-talk-btn"
+              aria-label={touchTalkLabel}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleConfirm()
+              }}
+            >
+              {touchTalkLabel}
+            </button>
           )}
           <GameCanvas debugHudId={GAME_DEBUG_HUD_ID}>
             <Player

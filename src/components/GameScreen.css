@@ -64,6 +64,37 @@
   user-select: none;
 }
 
+.game-screen-talk-btn {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(168px, calc(150px + env(safe-area-inset-bottom, 0px)));
+  z-index: 45;
+  margin: 0;
+  padding: 12px 18px;
+  min-height: 44px;
+  min-width: 44px;
+  border: 1.5px solid #534ab7;
+  border-radius: 999px;
+  background: rgba(26, 21, 40, 0.94);
+  box-shadow:
+    0 0 0 1px rgba(127, 119, 221, 0.25),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: lowercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-screen-talk-btn:active {
+  transform: translateY(1px);
+  background: rgba(83, 74, 183, 0.35);
+}
+
 .game-screen-pause-scrim {
   position: absolute;
   inset: 0;
