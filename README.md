@@ -12,16 +12,10 @@ Real secrets, if ever needed, go in `.env.local` (gitignored) — never in `.env
 ## coming soon (play.dannyali.com)
 
 1. Run `db/004_email_signups.sql` in Supabase SQL Editor.
-2. Set `VITE_COMING_SOON=true` in **Cloudflare Pages production env** for `play.dannyali.com`.
-3. Leave the flag **unset** on the `.pages.dev` preview URL so Danny + Ronnie can test the real game.
+2. `play.dannyali.com` shows the coming-soon page automatically (see `COMING_SOON_HOSTS` in `src/config/comingSoon.ts`).
+3. `aliworld.pages.dev`, preview deploys, and localhost serve the **real game** for testing.
 4. Update `BLNT_TRACK_URL` in `src/config/comingSoon.ts` with the public stream link.
-5. At launch: remove the flag (or set `false`) to serve the game on the custom domain.
-
-Local preview with coming-soon:
-
-```bash
-VITE_COMING_SOON=true npm run dev
-```
+5. **Launch:** empty `COMING_SOON_HOSTS` (or remove `play.dannyali.com`), push — the public domain serves the game.
 
 ## analytics (mothership dashboard)
 
