@@ -82,7 +82,6 @@ import { track } from '../lib/analytics'
 import { useCoarsePointer } from '../hooks/useCoarsePointer'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
-  getLastSavedLocation,
   getPlayerSkills,
   getShowDebug,
   grantPlayerSkillXp,
@@ -285,18 +284,11 @@ export function GameScreen() {
     let cancelled = false
     void whenAccountHydrated().then(() => {
       if (cancelled) return
-      const saved = getLastSavedLocation()
-      if (saved) {
-        const pos = resolveSavedWorldPosition(saved.city, saved.x, saved.y)
-        pendingRestoreRef.current = { city: saved.city, x: pos.x, y: pos.y }
-        setCurrentCity(saved.city)
-        setBootCityId(saved.city)
-        setIntroActive(false)
-        setIntroPending(false)
-        return
-      }
+      const fiveCfg = CITY_CONFIGS.five
+      const pos = resolveSavedWorldPosition('five', fiveCfg.spawnX, fiveCfg.spawnY)
+      pendingRestoreRef.current = { city: 'five', x: pos.x, y: pos.y }
+      setCurrentCity('five')
       setBootCityId('five')
-      setLocationReady(true)
       setIntroActive(!isWorldIntroSeen())
       setIntroPending(false)
     })
