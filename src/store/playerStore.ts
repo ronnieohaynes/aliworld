@@ -5,6 +5,8 @@ import {
 } from '../data/moves'
 import { MOVES } from '../data/moveDefinitions'
 import type { CityId } from '../data/cityConfig'
+import { deriveBuildName } from '../data/buildName'
+import { track } from '../lib/analytics'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
 import { isCollectibleArtifactId, type CollectibleArtifactId } from '../data/artifacts'
@@ -232,6 +234,23 @@ export type PlayerStoreState = {
 }
 
 let state: PlayerStoreState = createDefaultPlayerState()
+let trackedBuildName = deriveBuildName(state.skills).name
+
+function trackBuildNameIfChanged(skills: SkillsState): void {
+  const next = deriveBuildName(skills).name
+  if (next === trackedBuildName) return
+  trackedBuildName = next
+  track('build_name_changed', { buildName: next })
+}
+
+function trackSkillLevelUps(before: SkillsState, after: SkillsState): void {
+  const combatSkills: SkillId[] = ['attack', 'speed', 'defense', 'luck']
+  for (const skill of combatSkills) {
+    if (after[skill].level > before[skill].level) {
+      track('skill_levelup', { skill, level: after[skill].level })
+    }
+  }
+}
 
 const listeners = new Set<() => void>()
 const saveStatusListeners = new Set<() => void>()
@@ -339,6 +358,7 @@ export async function hydrateFromAccount(): Promise<void> {
           skills: data.skills ?? state.skills,
           equippedMoves: data.equippedMoves ?? state.equippedMoves,
         }
+        trackedBuildName = deriveBuildName(state.skills).name
         for (const listener of listeners) {
           listener()
         }
@@ -387,6 +407,7 @@ export function resetProgression(): void {
   pendingSaveSnapshot = null
   setAccountSaveStatus('idle')
   state = createDefaultPlayerState()
+  trackedBuildName = deriveBuildName(state.skills).name
   for (const listener of listeners) {
     listener()
   }
@@ -436,6 +457,7 @@ export function setEquippedMove(slot: 0 | 1 | 2 | 3, moveId: PlayerMoveId): void
   ]
   slots[slot] = moveId
   state = { ...state, equippedMoves: slots }
+  track('move_equipped', { slot, moveId })
   emit()
 }
 
@@ -446,8 +468,11 @@ export function setPlayerSkills(skills: SkillsState): void {
 
 /** Story / milestone skill XP — persists and triggers account save. */
 export function grantPlayerSkillXp(skill: SkillId, amount: number): string[] {
-  const { skills, lines } = grantSkillXpAmount(state.skills, skill, amount)
+  const before = state.skills
+  const { skills, lines } = grantSkillXpAmount(before, skill, amount)
+  trackSkillLevelUps(before, skills)
   state = { ...state, skills }
+  trackBuildNameIfChanged(skills)
   emit()
   return lines
 }
@@ -477,8 +502,11 @@ export type CombatXpResult = {
 /** Apply combat XP to persistent skills; returns skill + combat level-up log lines. */
 export function applyCombatSkillXp(r: ResolveResult): CombatXpResult {
   const prevPlayerLevel = computePlayerLevel(state.skills)
-  const { skills, levelUpLines } = awardMoveXp(state.skills, r)
+  const before = state.skills
+  const { skills, levelUpLines } = awardMoveXp(before, r)
+  trackSkillLevelUps(before, skills)
   state = { ...state, skills }
+  trackBuildNameIfChanged(skills)
   emit()
   const playerLevel = computePlayerLevel(skills)
   const playerLevelLine =

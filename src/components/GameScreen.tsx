@@ -66,6 +66,7 @@ import {
   subscribeCharacterStore,
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
+import { track } from '../lib/analytics'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
   getLastSavedLocation,
@@ -161,6 +162,7 @@ type DialogueState = {
 export function GameScreen() {
   const playerRef = useRef<PlayerHandle>(null)
   const [currentCity, setCurrentCity] = useState<CityId>('five')
+  const prevCityRef = useRef<CityId | null>(null)
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
   const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
@@ -293,6 +295,15 @@ export function GameScreen() {
     pendingRestoreRef.current = null
     setLocationReady(true)
   }, [currentCity, locationReady, worldEntryReady])
+
+  useEffect(() => {
+    if (!locationReady) return
+    if (prevCityRef.current === currentCity) return
+    if (prevCityRef.current !== null) {
+      track('city_enter', { city: currentCity })
+    }
+    prevCityRef.current = currentCity
+  }, [currentCity, locationReady])
 
   const handleWorldEntryComplete = useCallback(() => {
     setWorldEntryActive(false)
@@ -522,6 +533,7 @@ export function GameScreen() {
 
   const finishCafeScene = useCallback(() => {
     setCafeSceneSeen()
+    track('episode_complete', { episode: 'e1' })
     if (!isMoveUnlocked('FURY_SWEEP', getPlayerSkills())) {
       const targetXp = totalXpForLevel(FURY_SWEEP_UNLOCK_LEVEL)
       const grant = Math.max(0, targetXp - getPlayerSkills().attack.xp)
@@ -663,6 +675,7 @@ export function GameScreen() {
         if (onComplete) onComplete()
         if (prev.npc.id === CROWD_2_NPC_ID && isE2QuestUnlocked() && !isCrowdAddressed()) {
           setCrowdAddressed()
+          track('npc_converted', { npcId: CROWD_2_NPC_ID })
         }
         return null
       }
@@ -947,19 +960,37 @@ export function GameScreen() {
   }, [reportCurrentLocation])
 
   const handleBattleEnd = useCallback(
-    (result: 'win' | 'lose') => {
+    (result: 'win' | 'lose', turns: number) => {
+      if (battleNpcId) {
+        track('battle_end', { enemyId: battleNpcId, result, turns })
+      }
       if (result === 'win') {
-        if (battleNpcId === WALKER_NPC_ID) setWalkerConverted()
-        if (battleNpcId === JACLYN_NPC_ID) setJaclynConverted()
+        if (battleNpcId === WALKER_NPC_ID) {
+          setWalkerConverted()
+          track('npc_converted', { npcId: WALKER_NPC_ID })
+        }
+        if (battleNpcId === JACLYN_NPC_ID) {
+          setJaclynConverted()
+          track('npc_converted', { npcId: JACLYN_NPC_ID })
+        }
         if (battleNpcId === MARK_NPC_ID) {
           setMarkDefeated()
           collectArtifact('subway-pass')
           showMarkVictoryNarration()
+          track('npc_converted', { npcId: MARK_NPC_ID })
         }
-        if (battleNpcId === TOWN_CRIER_NPC_ID) setCrierConverted()
-        if (battleNpcId === CLERK_NPC_ID) setClerkConverted()
+        if (battleNpcId === TOWN_CRIER_NPC_ID) {
+          setCrierConverted()
+          track('npc_converted', { npcId: TOWN_CRIER_NPC_ID })
+        }
+        if (battleNpcId === CLERK_NPC_ID) {
+          setClerkConverted()
+          track('npc_converted', { npcId: CLERK_NPC_ID })
+        }
         if (battleNpcId === RESTOCKER_NPC_ID) {
           setRestockerDefeated()
+          track('npc_converted', { npcId: RESTOCKER_NPC_ID })
+          track('episode_complete', { episode: 'e2' })
           showNarration(["something's wrong in the field.", 'you started it.'])
         }
       }
