@@ -75,24 +75,30 @@ function useLiveClock(): string {
   return time
 }
 
-function bindDpadKey(dir: Direction) {
+function bindDpadKey(
+  dir: Direction,
+  setActive: (dir: Direction | null) => void,
+) {
   const key = ARROW_KEYS[dir]
   return {
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
       e.preventDefault()
       e.currentTarget.setPointerCapture(e.pointerId)
+      setActive(dir)
       dispatchArrowKey(key, 'keydown')
     },
     onPointerUp: (e: PointerEvent<HTMLButtonElement>) => {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
+      setActive(null)
       dispatchArrowKey(key, 'keyup')
     },
     onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
+      setActive(null)
       dispatchArrowKey(key, 'keyup')
     },
   }
@@ -107,6 +113,7 @@ export function GameShell({
   onStart = () => {},
 }: Props) {
   const clock = useLiveClock()
+  const [dpadActive, setDpadActive] = useState<Direction | null>(null)
   const playing = useSyncExternalStore(
     subscribeMusicStore,
     isSoundtrackPlaying,
@@ -134,7 +141,10 @@ export function GameShell({
       </div>
 
       <div className="game-shell__controls">
-        <div className="game-shell__dpad" aria-label="Direction pad">
+        <div
+          className={`game-shell__dpad${dpadActive ? ` game-shell__dpad--${dpadActive}` : ''}`}
+          aria-label="Direction pad"
+        >
           <div className="game-shell__dpad-body" aria-hidden>
             <div className="game-shell__dpad-bar game-shell__dpad-bar--h" />
             <div className="game-shell__dpad-bar game-shell__dpad-bar--v" />
@@ -147,25 +157,25 @@ export function GameShell({
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--up"
             aria-label="Move up"
-            {...bindDpadKey('up')}
+            {...bindDpadKey('up', setDpadActive)}
           />
           <button
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--down"
             aria-label="Move down"
-            {...bindDpadKey('down')}
+            {...bindDpadKey('down', setDpadActive)}
           />
           <button
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--left"
             aria-label="Move left"
-            {...bindDpadKey('left')}
+            {...bindDpadKey('left', setDpadActive)}
           />
           <button
             type="button"
             className="game-shell__dpad-hit game-shell__dpad-hit--right"
             aria-label="Move right"
-            {...bindDpadKey('right')}
+            {...bindDpadKey('right', setDpadActive)}
           />
         </div>
 

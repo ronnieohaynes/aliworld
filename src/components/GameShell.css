@@ -215,9 +215,25 @@
   height: 36px;
 }
 
-.game-shell__dpad-hit:active {
-  background: rgba(83, 74, 183, 0.15);
+.game-shell__dpad-hit:active,
+.game-shell__dpad-hit--active {
+  background: rgba(83, 74, 183, 0.28);
   border-radius: 3px;
+}
+
+.game-shell__dpad--up .game-shell__dpad-hit--up,
+.game-shell__dpad--down .game-shell__dpad-hit--down,
+.game-shell__dpad--left .game-shell__dpad-hit--left,
+.game-shell__dpad--right .game-shell__dpad-hit--right {
+  background: rgba(127, 119, 221, 0.35);
+  border-radius: 3px;
+}
+
+.game-shell__dpad--up .game-shell__dpad-arrow--up,
+.game-shell__dpad--down .game-shell__dpad-arrow--down,
+.game-shell__dpad--left .game-shell__dpad-arrow--left,
+.game-shell__dpad--right .game-shell__dpad-arrow--right {
+  filter: brightness(1.45);
 }
 
 .game-shell__center-btns {
@@ -426,5 +442,67 @@
 
   .game-shell__viewport {
     max-width: none;
+  }
+
+  .game-shell {
+    grid-template-rows: 36px 1fr 150px 40px;
+  }
+
+  .game-shell__controls {
+    height: 150px;
+    grid-template-columns: 132px 1fr 88px;
+    gap: 10px;
+  }
+
+  .game-shell__dpad {
+    width: 132px;
+    height: 132px;
+  }
+
+  .game-shell__dpad-bar--h {
+    height: 38px;
+  }
+
+  .game-shell__dpad-bar--v {
+    width: 38px;
+  }
+
+  .game-shell__dpad-hit--up {
+    top: 0;
+    left: 34px;
+    width: 64px;
+    height: 48px;
+  }
+
+  .game-shell__dpad-hit--down {
+    bottom: 0;
+    left: 34px;
+    width: 64px;
+    height: 48px;
+  }
+
+  .game-shell__dpad-hit--left {
+    left: 0;
+    top: 34px;
+    width: 48px;
+    height: 64px;
+  }
+
+  .game-shell__dpad-hit--right {
+    right: 0;
+    top: 34px;
+    width: 48px;
+    height: 64px;
+  }
+
+  .game-shell__action {
+    width: 44px;
+    height: 44px;
+  }
+
+  .game-shell__actions {
+    grid-template-columns: 44px 44px;
+    grid-template-rows: 44px 44px;
+    gap: 10px;
   }
 }
