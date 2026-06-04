@@ -24,6 +24,7 @@ import {
 } from '../data/combatSystems'
 import type { DeathClock } from '../data/combatTypes'
 import {
+  getEnemyMoveDef,
   type EnemyMoveId,
   type UpcomingMove,
 } from '../data/enemyMoves'
@@ -37,10 +38,12 @@ import {
 } from '../data/moves'
 import {
   chooseMove,
-  formatTelegraph,
+  formatTelegraphDisplay,
   getNpcCombatEntry,
   type NpcCombatEntry,
+  type TelegraphDisplay,
 } from '../data/npcRegistry'
+import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
 import { buildDevSpar, isDevSparNpcId } from '../data/devSpar'
 import { deriveBuildLoopType } from '../data/buildName'
 import {
@@ -58,7 +61,7 @@ import {
   getPlayerSkills,
   getPlayerStoreState,
 } from './playerStore'
-import { getSkillStatBonuses, type SkillsState } from './skillStore'
+import { computePlayerLevel, getSkillStatBonuses, type SkillsState } from './skillStore'
 
 export type PlayerMove = PlayerMoveId
 export type ArchetypeId = 'lck' | 'atk' | 'def' | 'spd'
@@ -363,6 +366,7 @@ function buildResolveContext(
   const skills = getPlayerSkills()
   return {
     atk: state.playerStats.atk,
+    attackSkillLevel: skills.attack.level,
     eDmg: 0,
     def: skills.defense.level,
     spd: skills.speed.level,
@@ -527,7 +531,9 @@ function appendLog(log: string[], line: string): string[] {
 function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove'>): UpcomingMove {
   if (enemyLosesTurn(state.combatStatus)) return 'STUNNED'
   const forced = state.battleMove.forceEnemyMove
-  const pick = chooseMove(state.npc.id, state.turn, forced)
+  const pick = chooseMove(state.npc.id, state.turn, forced, {
+    walkerHeavyTutorial: isWalkerHeavyTutorialActive(state.npc.id),
+  })
   return pick
 }
 
@@ -601,6 +607,13 @@ function applyEnemyResolutionPhase(
     }
     const split = splitIncomingWithReflect(incoming, state.combatStatus.playerReflect)
     nextHp = Math.max(0, nextHp - split.damageToPlayer)
+    if (r.playerActed && split.damageToPlayer > 0 && r.eMove !== 'STUNNED') {
+      const moveName = getEnemyMoveDef(r.eMove as EnemyMoveId).displayName
+      nextLog = appendLog(
+        nextLog,
+        `${lower}'s ${moveName} — ${split.damageToPlayer}.`,
+      )
+    }
     if (split.damageToEnemy > 0) {
       nextEnemyHp = Math.max(0, nextEnemyHp - split.damageToEnemy)
       r.reflectedDmg = (r.reflectedDmg ?? 0) + split.damageToEnemy
@@ -805,7 +818,10 @@ function applySkillXpToState(
 ): { state: BattleState; log: string[] } {
   const prevMaxHp = state.playerStats.maxHp
   const timingBonuses = computeTimingBonusGrants(r, state.npc.leanSkill)
-  const xpResult = applyCombatSkillXp(r, timingBonuses)
+  const xpResult = applyCombatSkillXp(r, timingBonuses, {
+    enemyLevel: state.npc.level,
+    playerLevel: computePlayerLevel(getPlayerSkills()),
+  })
   const skills = getPlayerSkills()
   const playerStats = computePlayerStats(
     state.archetype ?? DEFAULT_ARCHETYPE,
@@ -1023,12 +1039,19 @@ export function getEnemyStatusText(state: BattleState): string {
   return getEnemyStatusLabels(state.combatStatus).join('   ')
 }
 
-export function getTelegraphText(state: BattleState): string {
-  return formatTelegraph(
-    state.npc.displayName,
+export function getTelegraphDisplay(state: BattleState): TelegraphDisplay | null {
+  return formatTelegraphDisplay(
+    state.npc,
     state.upcomingMove,
     enemyLosesTurn(state.combatStatus),
   )
+}
+
+export function getTelegraphText(state: BattleState): string {
+  const display = getTelegraphDisplay(state)
+  if (!display) return ''
+  if (!display.moveName) return display.prefix + display.suffix
+  return `${display.prefix}${display.moveName}${display.suffix}`
 }
 
 export function createInitialBattleState(
