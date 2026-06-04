@@ -20,6 +20,13 @@ export type AnalyticsSummary = {
   theaterOpens: number
 }
 
+export type AdminUserRow = {
+  email: string
+  handle: string | null
+  level: number
+  joined: string
+}
+
 export function isAnalyticsEmpty(summary: AnalyticsSummary): boolean {
   return (
     summary.dau.length === 0 &&

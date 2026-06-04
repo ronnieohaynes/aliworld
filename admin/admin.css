@@ -282,3 +282,224 @@ code {
   color: #534ab7;
   font-size: 0.85rem;
 }
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.admin-tabs__btn {
+  padding: 8px 14px;
+  border: 1px solid #2e2840;
+  border-radius: 8px;
+  background: #151020;
+  color: #7f77dd;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-tabs__btn--active {
+  border-color: #534ab7;
+  color: #f4e8c1;
+  background: rgba(83, 74, 183, 0.18);
+}
+
+.admin-users__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-users__count {
+  margin: 0;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: #afa9ec;
+  text-transform: lowercase;
+}
+
+.admin-users__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-users__search {
+  min-width: 220px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #3d3660;
+  background: #151020;
+  color: inherit;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+}
+
+.admin-users__export {
+  padding: 8px 14px;
+  border: 1px solid #534ab7;
+  border-radius: 8px;
+  background: rgba(83, 74, 183, 0.15);
+  color: #afa9ec;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.admin-users__export:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.admin-table--users td:nth-child(3) {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-danger {
+  margin-top: 28px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(40, 12, 18, 0.55);
+}
+
+.admin-danger__title {
+  margin: 0 0 6px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fca5a5;
+}
+
+.admin-danger__lede {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: #b87171;
+}
+
+.admin-danger__btn {
+  padding: 8px 14px;
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.admin-danger__btn:hover {
+  background: rgba(153, 27, 27, 0.45);
+}
+
+.admin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(3, 3, 3, 0.82);
+}
+
+.admin-modal__panel {
+  width: min(100%, 440px);
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: #151020;
+}
+
+.admin-modal__title {
+  margin: 0 0 10px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.9rem;
+  color: #fca5a5;
+  text-transform: lowercase;
+}
+
+.admin-modal__text {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #d4c4a8;
+}
+
+.admin-modal__input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid #3d3660;
+  background: #0a0a12;
+  color: inherit;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+}
+
+.admin-modal__error {
+  margin: 0 0 10px;
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+.admin-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-modal__cancel,
+.admin-modal__confirm {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.admin-modal__cancel {
+  border: 1px solid #3d3660;
+  background: transparent;
+  color: #afa9ec;
+}
+
+.admin-modal__confirm {
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  background: rgba(127, 29, 29, 0.45);
+  color: #fecaca;
+}
+
+.admin-modal__confirm:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.admin-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 110;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #534ab7;
+  background: rgba(21, 16, 32, 0.96);
+  color: #f4e8c1;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+  text-transform: lowercase;
+}
