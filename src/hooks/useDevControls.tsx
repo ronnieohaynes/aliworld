@@ -1,11 +1,19 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { clearMidnightVariant } from '../store/characterStore'
 import { toggleShowDebug } from '../store/playerStore'
 import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
 import type { PlayCutsceneOptions } from '../lib/playCutscene'
 import type { PlayerHandle } from '../components/Player'
-
-const DEV_MODE = import.meta.env.DEV
+import {
+  DevModeConfirmModal,
+  DevModeIndicator,
+  DevModeToast,
+} from '../components/DevModeUI'
+import {
+  isDevAllowedOnHost,
+  readDevModeSession,
+  writeDevModeSession,
+} from '../lib/devMode'
 
 type CutsceneDevPlayer = {
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
@@ -35,7 +43,6 @@ function devSkipActiveCutscene(): boolean {
     return true
   }
   if (!cutsceneDevPlayer) return false
-  // Fallback before skip handler registers; endSeconds is absolute YT time.
   cutsceneDevPlayer.seekTo(Math.max(0, cutsceneDevEndSeconds - 0.25), true)
   return true
 }
@@ -50,6 +57,7 @@ export type UseDevControlsOptions = {
   playerRef: RefObject<PlayerHandle | null>
   playCutscene: (opts: PlayCutsceneOptions) => void
   canPlayCutscene: () => boolean
+  canToggleDevMode: () => boolean
   spawnDevSpar: () => void
   canSpawnDevSpar: () => boolean
 }
@@ -63,24 +71,79 @@ function isTypingTarget(target: EventTarget | null): boolean {
   )
 }
 
-/** Dev-only global keyboard shortcuts (no-op in production builds). */
-export function useDevControls(options: UseDevControlsOptions): void {
+function isShiftDigit2(e: KeyboardEvent): boolean {
+  return e.shiftKey && e.code === 'Digit2'
+}
+
+type ConfirmKind = 'enable' | 'disable'
+
+/**
+ * Session-gated dev shortcuts. Hard-blocked on DEV_BLOCKED_HOSTS; enable via Shift+2 confirm.
+ */
+export function useDevControls(options: UseDevControlsOptions): ReactNode {
   const optionsRef = useRef(options)
   optionsRef.current = options
 
+  const devAllowed = isDevAllowedOnHost()
+  const [devModeEnabled, setDevModeEnabled] = useState(() =>
+    devAllowed ? readDevModeSession() : false,
+  )
+  const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message)
+    window.setTimeout(() => setToastMessage(null), 2000)
+  }, [])
+
+  const applyDevMode = useCallback(
+    (enabled: boolean) => {
+      writeDevModeSession(enabled)
+      setDevModeEnabled(enabled)
+      showToast(enabled ? 'dev mode on.' : 'dev mode off.')
+    },
+    [showToast],
+  )
+
+  const handleConfirmEnable = useCallback(() => {
+    setConfirmKind(null)
+    applyDevMode(true)
+  }, [applyDevMode])
+
+  const handleConfirmDisable = useCallback(() => {
+    setConfirmKind(null)
+    applyDevMode(false)
+  }, [applyDevMode])
+
+  const handleCancelConfirm = useCallback(() => {
+    setConfirmKind(null)
+  }, [])
+
   useEffect(() => {
-    if (!DEV_MODE) return
+    if (!devAllowed) return
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
 
       const {
         playerRef,
         playCutscene,
         canPlayCutscene,
+        canToggleDevMode,
         spawnDevSpar,
         canSpawnDevSpar,
       } = optionsRef.current
+
+      if (isShiftDigit2(e)) {
+        if (!canToggleDevMode()) return
+        if (confirmKind != null) return
+        e.preventDefault()
+        setConfirmKind(devModeEnabled ? 'disable' : 'enable')
+        return
+      }
+
+      if (!devModeEnabled) return
 
       if (e.key === '`' || e.code === 'Backquote') {
         e.preventDefault()
@@ -89,7 +152,6 @@ export function useDevControls(options: UseDevControlsOptions): void {
       }
 
       if (e.shiftKey && (e.code === 'Digit1' || e.key === '!' || e.key === '1')) {
-        if (e.ctrlKey || e.metaKey || e.altKey) return
         if (!canPlayCutscene()) return
         e.preventDefault()
         playCutscene({
@@ -102,7 +164,6 @@ export function useDevControls(options: UseDevControlsOptions): void {
       }
 
       if (e.shiftKey && (e.code === 'KeyE' || e.key === 'E')) {
-        if (e.ctrlKey || e.metaKey || e.altKey) return
         if (devSkipActiveCutscene()) {
           e.preventDefault()
           e.stopPropagation()
@@ -111,7 +172,6 @@ export function useDevControls(options: UseDevControlsOptions): void {
       }
 
       if (e.key === 'k' || e.key === 'K') {
-        if (e.ctrlKey || e.metaKey || e.altKey) return
         if (!canSpawnDevSpar()) return
         e.preventDefault()
         spawnDevSpar()
@@ -119,7 +179,6 @@ export function useDevControls(options: UseDevControlsOptions): void {
       }
 
       if (e.key === 'm' || e.key === 'M') {
-        if (e.ctrlKey || e.metaKey || e.altKey) return
         e.preventDefault()
         clearMidnightVariant()
         return
@@ -152,5 +211,28 @@ export function useDevControls(options: UseDevControlsOptions): void {
 
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [])
+  }, [confirmKind, devAllowed, devModeEnabled])
+
+  if (!devAllowed) return null
+
+  return (
+    <>
+      {confirmKind === 'enable' ? (
+        <DevModeConfirmModal
+          kind="enable"
+          onConfirm={handleConfirmEnable}
+          onCancel={handleCancelConfirm}
+        />
+      ) : null}
+      {confirmKind === 'disable' ? (
+        <DevModeConfirmModal
+          kind="disable"
+          onConfirm={handleConfirmDisable}
+          onCancel={handleCancelConfirm}
+        />
+      ) : null}
+      {devModeEnabled ? <DevModeIndicator /> : null}
+      {toastMessage ? <DevModeToast message={toastMessage} /> : null}
+    </>
+  )
 }

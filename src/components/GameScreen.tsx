@@ -854,10 +854,11 @@ export function GameScreen() {
     cultDarklinePhase,
   ])
 
-  useDevControls({
+  const devModeUi = useDevControls({
     playerRef,
     playCutscene,
     canPlayCutscene: canPlayDevCutscene,
+    canToggleDevMode: canSpawnDevSpar,
     spawnDevSpar: startDevSparBattle,
     canSpawnDevSpar,
   })
@@ -1826,6 +1827,7 @@ export function GameScreen() {
             <WorldEntryWipe ready={worldEntryReady} onComplete={handleWorldEntryComplete} />
           )}
           <ArtifactAcquisitionToasts />
+          {devModeUi}
           {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
           {showStartMenu && <div className="game-screen-pause-scrim" aria-hidden />}
           {showStartMenu && (

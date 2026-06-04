@@ -1,0 +1,102 @@
+.dev-mode-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(10, 10, 18, 0.88);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.dev-mode-confirm__panel {
+  width: min(100%, 320px);
+  padding: 16px 18px 14px;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  background: #0a0a12;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.dev-mode-confirm__text {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #e8e8f0;
+  text-transform: lowercase;
+}
+
+.dev-mode-confirm__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.dev-mode-confirm__btn {
+  padding: 6px 14px;
+  border: 1px solid #3a3a52;
+  border-radius: 4px;
+  background: transparent;
+  color: #c8c8d8;
+  font: inherit;
+  font-size: 12px;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.dev-mode-confirm__btn:hover {
+  border-color: #c084fc;
+  color: #e8e8f0;
+}
+
+.dev-mode-confirm__btn--primary {
+  border-color: #c084fc;
+  color: #c084fc;
+}
+
+.dev-mode-indicator {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 350;
+  padding: 3px 7px;
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: 4px;
+  background: rgba(10, 10, 18, 0.72);
+  color: rgba(192, 132, 252, 0.65);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dev-mode-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 401;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border: 1px solid #2a2a3e;
+  border-radius: 6px;
+  background: rgba(10, 10, 18, 0.94);
+  color: #c8c8d8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: dev-mode-toast-fade 2s ease forwards;
+}
+
+@keyframes dev-mode-toast-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
