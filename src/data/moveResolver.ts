@@ -32,6 +32,8 @@ import {
   SEALED_FATE_TURN_MAX,
   SEALED_FATE_TURN_MIN,
   braceIncomingMultiplier,
+  EARLY_STRIKE_ATK_CONTRIB_MULT,
+  earlyStrikeDamageScale,
   LCK_CRIT_STAT_SCALE,
   perfectGuardDamageBonus,
   speedCounterBonus,
@@ -51,6 +53,8 @@ export type { PlayerMoveResolveOut }
 
 export type ResolveMoveContext = {
   atk: number
+  /** Player attack skill level — scales early STRIKE damage down. */
+  attackSkillLevel: number
   eDmg: number
   /** Raw defense skill level — mitigation tuned in moveBalance; matchup loop outweighs level gaps. */
   def: number
@@ -116,10 +120,18 @@ function applyDamageProfile(
   out: PlayerMoveResolveOut,
   enemyAttacks: boolean,
 ): void {
-  const { atk, eDmg, lck } = ctx
-  let dmg = Math.floor(atk * profile.damageMult)
+  const { atk, eDmg, lck, attackSkillLevel } = ctx
+  const earlyScale = earlyStrikeDamageScale(attackSkillLevel)
+  const effectiveAtk =
+    earlyScale < 1
+      ? Math.max(1, Math.floor(atk * (EARLY_STRIKE_ATK_CONTRIB_MULT + (1 - EARLY_STRIKE_ATK_CONTRIB_MULT) * earlyScale)))
+      : atk
+  let dmg = Math.floor(effectiveAtk * profile.damageMult)
   if (!enemyAttacks && profile.openingBonusMult != null) {
     dmg = Math.floor(dmg * profile.openingBonusMult)
+  }
+  if (earlyScale < 1) {
+    dmg = Math.max(1, Math.floor(dmg * earlyScale))
   }
   if (profile.crit) {
     const c = profile.crit
