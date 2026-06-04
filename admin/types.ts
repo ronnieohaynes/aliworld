@@ -21,11 +21,55 @@ export type AnalyticsSummary = {
 }
 
 export type AdminUserRow = {
+  user_id: string
   email: string
   handle: string | null
   level: number
   joined: string
 }
+
+export type AdminUserDetail = {
+  user_id: string
+  email: string
+  handle: string | null
+  created: string | null
+  last_sign_in: string | null
+  last_played_at: string | null
+  level: number
+  skills: Record<string, { level: number; xp: number }>
+  equipped_moves: unknown
+  moves_unlocked: unknown
+  current_episode: number
+  episodes_completed: unknown
+  quest1: unknown
+  quest2: unknown
+  world_memory: unknown
+  artifacts: unknown
+  event_count: number
+  last_seen: string | null
+}
+
+export type EmailSignupRow = {
+  email: string
+  created_at: string
+}
+
+export type CombinedEmailRow = {
+  email: string
+  source: 'account' | 'signup'
+  created_at: string
+}
+
+export type RecentEventRow = {
+  id: string
+  ts: string
+  type: string
+  metadata: unknown
+  user_id: string | null
+  handle: string | null
+}
+
+export type AdminTabId = 'overview' | 'users' | 'emails' | 'events' | 'ops'
 
 export function isAnalyticsEmpty(summary: AnalyticsSummary): boolean {
   return (

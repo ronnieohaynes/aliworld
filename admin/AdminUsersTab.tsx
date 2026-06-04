@@ -7,9 +7,10 @@ type Props = {
   loading: boolean
   error: string | null
   onRefresh: () => void
+  onSelectUser: (userId: string) => void
 }
 
-export function AdminUsersTab({ rows, loading, error, onRefresh }: Props) {
+export function AdminUsersTab({ rows, loading, error, onRefresh, onSelectUser }: Props) {
   const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => {
@@ -38,12 +39,7 @@ export function AdminUsersTab({ rows, loading, error, onRefresh }: Props) {
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search users"
           />
-          <button
-            type="button"
-            className="admin-refresh"
-            onClick={onRefresh}
-            disabled={loading}
-          >
+          <button type="button" className="admin-refresh" onClick={onRefresh} disabled={loading}>
             {loading ? 'Loading…' : 'Refresh'}
           </button>
           <button
@@ -72,7 +68,7 @@ export function AdminUsersTab({ rows, loading, error, onRefresh }: Props) {
 
       {filtered.length > 0 ? (
         <div className="admin-table-wrap">
-          <table className="admin-table admin-table--users">
+          <table className="admin-table admin-table--users admin-table--clickable">
             <thead>
               <tr>
                 <th>Email</th>
@@ -83,7 +79,7 @@ export function AdminUsersTab({ rows, loading, error, onRefresh }: Props) {
             </thead>
             <tbody>
               {filtered.map((row) => (
-                <tr key={`${row.email}-${row.joined}`}>
+                <tr key={row.user_id} onClick={() => onSelectUser(row.user_id)}>
                   <td>{row.email || '—'}</td>
                   <td>{row.handle ? `@${row.handle}` : '—'}</td>
                   <td>{row.level}</td>

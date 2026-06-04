@@ -1,4 +1,11 @@
-import type { AdminUserRow, AnalyticsSummary } from './types'
+import type {
+  AdminUserDetail,
+  AdminUserRow,
+  AnalyticsSummary,
+  CombinedEmailRow,
+  EmailSignupRow,
+  RecentEventRow,
+} from './types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -25,6 +32,7 @@ async function analyticsRequest<T>(
     headers: {
       Authorization: `Bearer ${anonKey}`,
       apikey: anonKey,
+      'Content-Type': 'application/json',
       'x-analytics-admin-secret': adminSecret,
       ...(init.headers ?? {}),
     },
@@ -44,6 +52,13 @@ async function analyticsRequest<T>(
   return (await res.json()) as T
 }
 
+function postAction<T>(adminSecret: string, action: string, body: Record<string, unknown>): Promise<T> {
+  return analyticsRequest<T>(adminSecret, `action=${action}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
 export async function fetchAnalyticsSummary(
   adminSecret: string,
   days = 30,
@@ -55,38 +70,102 @@ export async function fetchAdminUsers(adminSecret: string): Promise<AdminUserRow
   return analyticsRequest<AdminUserRow[]>(adminSecret, 'action=users')
 }
 
-export async function clearAnalyticsEvents(adminSecret: string): Promise<{ cleared: number }> {
-  return analyticsRequest<{ cleared: number }>(adminSecret, 'action=clear_events', {
-    method: 'POST',
-  })
+export async function fetchUserDetail(
+  adminSecret: string,
+  userId: string,
+): Promise<AdminUserDetail> {
+  return postAction<AdminUserDetail>(adminSecret, 'user_detail', { user_id: userId })
 }
 
-export function downloadUsersCsv(rows: AdminUserRow[]): void {
+export async function deleteUser(
+  adminSecret: string,
+  userId: string,
+): Promise<{ events_deleted: number; profiles_deleted: number; aw_users_deleted: number }> {
+  return postAction(adminSecret, 'user_delete', { user_id: userId })
+}
+
+export async function resetUserProgress(
+  adminSecret: string,
+  userId: string,
+): Promise<{ reset: boolean }> {
+  return postAction(adminSecret, 'user_reset', { user_id: userId })
+}
+
+export async function setUserHandle(
+  adminSecret: string,
+  userId: string,
+  handle: string,
+): Promise<{ handle: string }> {
+  return postAction(adminSecret, 'user_set_handle', { user_id: userId, handle })
+}
+
+export async function fetchEmailSignups(adminSecret: string): Promise<EmailSignupRow[]> {
+  return analyticsRequest<EmailSignupRow[]>(adminSecret, 'action=signups')
+}
+
+export async function deleteEmailSignup(
+  adminSecret: string,
+  email: string,
+): Promise<{ deleted: number }> {
+  return postAction(adminSecret, 'signup_delete', { email })
+}
+
+export async function fetchCombinedEmails(adminSecret: string): Promise<CombinedEmailRow[]> {
+  return analyticsRequest<CombinedEmailRow[]>(adminSecret, 'action=emails_combined')
+}
+
+export async function fetchRecentEvents(
+  adminSecret: string,
+  limit = 100,
+): Promise<RecentEventRow[]> {
+  return analyticsRequest<RecentEventRow[]>(adminSecret, `action=events_recent&limit=${limit}`)
+}
+
+export async function clearAnalyticsEvents(adminSecret: string): Promise<{ cleared: number }> {
+  return postAction(adminSecret, 'events_clear', {})
+}
+
+export async function sweepOrphans(
+  adminSecret: string,
+): Promise<{ profiles_deleted: number; events_deleted: number; aw_users_deleted: number }> {
+  return postAction(adminSecret, 'orphans_sweep', {})
+}
+
+export function downloadCsv(filename: string, header: string, rows: string[][]): void {
   const escape = (value: string) => {
     if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
     return value
   }
 
-  const header = 'email,handle,level,joined'
-  const lines = rows.map((row) => {
-    const joined = row.joined.slice(0, 10)
-    return [
-      escape(row.email),
-      escape(row.handle ?? ''),
-      String(row.level),
-      escape(joined),
-    ].join(',')
-  })
-
-  const blob = new Blob([[header, ...lines].join('\n')], {
-    type: 'text/csv;charset=utf-8',
-  })
+  const lines = rows.map((row) => row.map((cell) => escape(cell)).join(','))
+  const blob = new Blob([[header, ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `aliworld-users-${new Date().toISOString().slice(0, 10)}.csv`
+  anchor.download = filename
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+export function downloadUsersCsv(rows: AdminUserRow[]): void {
+  downloadCsv(
+    `aliworld-users-${new Date().toISOString().slice(0, 10)}.csv`,
+    'email,handle,level,joined',
+    rows.map((row) => [
+      row.email,
+      row.handle ?? '',
+      String(row.level),
+      row.joined.slice(0, 10),
+    ]),
+  )
+}
+
+export function downloadCombinedEmailsCsv(rows: CombinedEmailRow[]): void {
+  downloadCsv(
+    `aliworld-mailing-list-${new Date().toISOString().slice(0, 10)}.csv`,
+    'email,source,created_at',
+    rows.map((row) => [row.email, row.source, row.created_at.slice(0, 10)]),
+  )
 }
 
 export function formatJoinedDate(iso: string): string {
@@ -96,5 +175,18 @@ export function formatJoinedDate(iso: string): string {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+  })
+}
+
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
   })
 }

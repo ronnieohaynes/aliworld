@@ -503,3 +503,213 @@ code {
   font-size: 0.82rem;
   text-transform: lowercase;
 }
+
+.admin-tabs--inline {
+  margin-bottom: 0;
+}
+
+.admin-table--clickable tbody tr {
+  cursor: pointer;
+}
+
+.admin-table--clickable tbody tr:hover {
+  background: rgba(83, 74, 183, 0.1);
+}
+
+.admin-modal__panel--wide {
+  width: min(100%, 720px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.admin-detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-detail__title {
+  margin: 0;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 1rem;
+  text-transform: lowercase;
+  color: #f4e8c1;
+}
+
+.admin-detail__sub {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #7f77dd;
+}
+
+.admin-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.admin-detail__stat {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #2e2840;
+  background: #0a0a12;
+}
+
+.admin-detail__value {
+  display: block;
+  margin-top: 4px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+
+.admin-detail__section {
+  margin-bottom: 14px;
+}
+
+.admin-detail__section h4 {
+  margin: 0 0 6px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7f77dd;
+}
+
+.admin-detail__json {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #2e2840;
+  background: #0a0a12;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  max-height: 200px;
+}
+
+.admin-detail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #2e2840;
+}
+
+.admin-detail__handle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-detail__handle-row label {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: #afa9ec;
+  text-transform: lowercase;
+}
+
+.admin-detail__handle-row .admin-modal__input {
+  flex: 1;
+  min-width: 160px;
+  margin-bottom: 0;
+}
+
+.admin-detail__btn {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border: 1px solid #534ab7;
+  border-radius: 8px;
+  background: rgba(83, 74, 183, 0.15);
+  color: #afa9ec;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.admin-detail__btn--small {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+
+.admin-detail__confirm {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #3d3660;
+  background: rgba(21, 16, 32, 0.8);
+}
+
+.admin-detail__confirm--danger {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.admin-events__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-events__item {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #2e2840;
+  background: #151020;
+}
+
+.admin-events__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.admin-events__time {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: #7f77dd;
+}
+
+.admin-events__type {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+  color: #f4e8c1;
+  text-transform: lowercase;
+}
+
+.admin-events__who {
+  font-size: 0.82rem;
+  color: #afa9ec;
+}
+
+.admin-events__meta {
+  max-height: 160px;
+}
+
+.admin-ops__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-ops__boundary {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #2e2840;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: #534ab7;
+  line-height: 1.5;
+  text-transform: lowercase;
+}
+
+.admin-ops .admin-danger {
+  margin-top: 0;
+}
