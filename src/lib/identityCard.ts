@@ -160,18 +160,18 @@ function drawSpriteHero(
   const displayH = SPRITE_VISIBLE_TARGET_H
   const displayW = Math.floor(sw * (displayH / sh))
   const spriteX = (IDENTITY_CARD_WIDTH - displayW) / 2
-  const spriteY = 320
+  const spriteY = 360
 
   const groundY = spriteY + displayH + 8
   ctx.save()
   ctx.fillStyle = buildColor
-  ctx.globalAlpha = 0.22
+  ctx.globalAlpha = 0.18
   ctx.beginPath()
   ctx.ellipse(
     IDENTITY_CARD_WIDTH / 2,
     groundY,
     displayW * 0.42,
-    18,
+    16,
     0,
     0,
     Math.PI * 2,
@@ -179,12 +179,8 @@ function drawSpriteHero(
   ctx.fill()
   ctx.restore()
 
-  ctx.save()
-  ctx.shadowColor = buildColor
-  ctx.shadowBlur = 56
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(spriteSource, spriteX, spriteY, displayW, displayH)
-  ctx.restore()
 
   return spriteY + displayH
 }
@@ -200,7 +196,7 @@ function drawIdentityTypography(
   const buildUpper = build.name.toUpperCase()
   const article = articleForBuildName(build.name)
 
-  let y = contentTop + 72
+  let y = contentTop + 108
 
   ctx.font = `500 28px ${MONO}`
   ctx.fillStyle = CREAM
@@ -265,21 +261,41 @@ function roundRect(
 }
 
 function drawCardFooter(ctx: CanvasRenderingContext2D): void {
-  const footerY = IDENTITY_CARD_HEIGHT - FRAME_INSET - 72
+  const marginX = FRAME_INSET + 32
+  const maxTextW = IDENTITY_CARD_WIDTH - marginX * 2
+  const innerBottom = IDENTITY_CARD_HEIGHT - FRAME_INSET - 14
+  const ruleY = innerBottom - 78
+
   ctx.strokeStyle = GOLD
   ctx.globalAlpha = 0.65
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(FRAME_INSET + 40, footerY)
-  ctx.lineTo(IDENTITY_CARD_WIDTH - FRAME_INSET - 40, footerY)
+  ctx.moveTo(marginX, ruleY)
+  ctx.lineTo(IDENTITY_CARD_WIDTH - marginX, ruleY)
   ctx.stroke()
   ctx.globalAlpha = 1
 
-  ctx.font = `500 22px ${MONO}`
-  ctx.fillStyle = GOLD
+  const lines = [
+    '@officialdannyali · @aliworld_official',
+    'play.dannyali.com',
+  ]
+  let fontSize = 22
   ctx.textAlign = 'center'
-  const line = '@officialdannyali · @aliworld_official · play.dannyali.com'
-  ctx.fillText(line, IDENTITY_CARD_WIDTH / 2, footerY + 40)
+  ctx.fillStyle = GOLD
+
+  while (fontSize >= 16) {
+    ctx.font = `500 ${fontSize}px ${MONO}`
+    const fits = lines.every((line) => ctx.measureText(line).width <= maxTextW)
+    if (fits) break
+    fontSize -= 1
+  }
+
+  const lineHeight = Math.floor(fontSize * 1.45)
+  let textY = ruleY + 36
+  for (const line of lines) {
+    ctx.fillText(line, IDENTITY_CARD_WIDTH / 2, textY)
+    textY += lineHeight
+  }
   ctx.textAlign = 'left'
 }
 
