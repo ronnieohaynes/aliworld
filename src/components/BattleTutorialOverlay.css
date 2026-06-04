@@ -103,3 +103,13 @@
   text-transform: lowercase;
   color: #9696b0;
 }
+
+.battle-tutorial--panel-top {
+  align-items: flex-start;
+  padding-top: max(20px, env(safe-area-inset-top, 0px));
+  padding-bottom: 16px;
+}
+
+.battle-tutorial--panel-top .battle-tutorial__panel {
+  max-height: min(38vh, 220px);
+}

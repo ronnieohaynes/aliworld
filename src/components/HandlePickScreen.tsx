@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { createProfile } from '../store/authStore'
 import './HandlePickScreen.css'
 
