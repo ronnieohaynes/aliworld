@@ -323,6 +323,11 @@
   }
 }
 
+.game-shell__transport-btn--ghost {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
 .game-shell__transport {
   display: flex;
   align-items: center;

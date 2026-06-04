@@ -9,7 +9,7 @@ import {
   type RefObject,
 } from 'react'
 import {
-  isSoundtrackPlaying,
+  getMusicStoreSnapshot,
   subscribeMusicStore,
   toggleSoundtrackPlaying,
 } from '../store/musicStore'
@@ -227,11 +227,13 @@ export function GameShell({
   startButtonRef,
 }: Props) {
   const clock = useLiveClock()
-  const playing = useSyncExternalStore(
+  const music = useSyncExternalStore(
     subscribeMusicStore,
-    isSoundtrackPlaying,
-    isSoundtrackPlaying,
+    getMusicStoreSnapshot,
+    getMusicStoreSnapshot,
   )
+  const playing = music.playing
+  const track = music.current
 
   const togglePlay = useCallback(() => {
     toggleSoundtrackPlaying()
@@ -325,32 +327,48 @@ export function GameShell({
       </div>
 
       <div
-        className={`game-shell__music${playing ? ' game-shell__music--playing' : ''}`}
+        className={`game-shell__music${playing && track ? ' game-shell__music--playing' : ''}`}
         aria-live="polite"
       >
         <div className="game-shell__album-art" aria-hidden>
           <span className="game-shell__album-hole" />
         </div>
         <div className="game-shell__track">
-          <div className="game-shell__track-title">BETTER LUCK NEXT TIME</div>
-          <div className="game-shell__track-artist">Danny Ali</div>
+          <div className="game-shell__track-title">
+            {track ? track.title : 'no track'}
+          </div>
+          <div className="game-shell__track-artist">
+            {track ? track.artist : '—'}
+          </div>
           <div className="game-shell__progress">
             <div className="game-shell__progress-fill" />
           </div>
         </div>
         <div className="game-shell__transport">
-          <button type="button" className="game-shell__transport-btn" aria-label="Previous track">
+          <button
+            type="button"
+            className="game-shell__transport-btn game-shell__transport-btn--ghost"
+            aria-hidden
+            tabIndex={-1}
+            disabled
+          >
             ◀◀
           </button>
           <button
             type="button"
             className="game-shell__transport-btn"
-            aria-label={playing ? 'Pause' : 'Play'}
+            aria-label={playing ? 'Mute music' : 'Unmute music'}
             onClick={togglePlay}
           >
             {playing ? '❚❚' : '▶'}
           </button>
-          <button type="button" className="game-shell__transport-btn" aria-label="Next track">
+          <button
+            type="button"
+            className="game-shell__transport-btn game-shell__transport-btn--ghost"
+            aria-hidden
+            tabIndex={-1}
+            disabled
+          >
             ▶▶
           </button>
         </div>

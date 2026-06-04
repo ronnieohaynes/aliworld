@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react'
+import { setMusicContext } from '../lib/audioManager'
 import { publicAsset } from '../utils/publicAsset'
 import './TitleCard.css'
 
@@ -12,6 +13,10 @@ export function TitleCard({ onStart }: Props) {
   const handleStart = useCallback(() => {
     onStart()
   }, [onStart])
+
+  useEffect(() => {
+    setMusicContext('title')
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

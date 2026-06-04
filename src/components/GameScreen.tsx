@@ -64,6 +64,7 @@ import {
   markCityVisited,
   subscribeWorldMemoryStore,
 } from '../store/worldMemory'
+import { setMusicContext } from '../lib/audioManager'
 import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
@@ -1352,6 +1353,26 @@ export function GameScreen() {
     reportCurrentLocation,
     showFannyPack,
     showLoadout,
+    worldEntryActive,
+  ])
+
+  useEffect(() => {
+    if (cutscene != null || episodeCutsceneAftermath) {
+      setMusicContext('cutscene')
+      return
+    }
+    if (battleNpcId) {
+      setMusicContext(`battle:${battleNpcId}`)
+      return
+    }
+    if (!locationReady || worldEntryActive) return
+    setMusicContext(`city:${currentCity}`)
+  }, [
+    battleNpcId,
+    currentCity,
+    cutscene,
+    episodeCutsceneAftermath,
+    locationReady,
     worldEntryActive,
   ])
 

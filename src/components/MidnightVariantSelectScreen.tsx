@@ -13,6 +13,7 @@ import {
   WORLD_PLAYER_DISPLAY_WIDTH,
 } from '../game/worldSpriteRender'
 import { getBattleBackgroundSrc } from '../data/battleBackgrounds'
+import { setMusicContext } from '../lib/audioManager'
 import { clearMidnightVariant, setMidnightVariant } from '../store/characterStore'
 import { GameShell } from './GameShell'
 import { MIDNIGHT_SELECT_TRANSITION_MS } from '../constants/midnightSelectTransition'
@@ -222,6 +223,10 @@ export function MidnightVariantSelectScreen() {
   const [focusedIndex, setFocusedIndex] = useState(0)
   const trackRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  useEffect(() => {
+    setMusicContext('title')
+  }, [])
 
   useEffect(() => {
     let cancelled = false

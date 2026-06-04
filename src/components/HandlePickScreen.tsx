@@ -1,4 +1,5 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { setMusicContext } from '../lib/audioManager'
 import { createProfile } from '../store/authStore'
 import './HandlePickScreen.css'
 
@@ -16,6 +17,10 @@ function validateHandle(raw: string): string | null {
 }
 
 export function HandlePickScreen() {
+  useEffect(() => {
+    setMusicContext('title')
+  }, [])
+
   const [handle, setHandle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
