@@ -254,6 +254,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const stageRef = useRef<HTMLElement>(null)
   const [enemyPlacement, setEnemyPlacement] = useState<BattleSpritePlacement>(DEFAULT_ENEMY_PLACEMENT)
   const [playerPlacement, setPlayerPlacement] = useState<BattleSpritePlacement>(DEFAULT_PLAYER_PLACEMENT)
+  const [playerLayoutReady, setPlayerLayoutReady] = useState(false)
+  const [enemyLayoutReady, setEnemyLayoutReady] = useState(false)
   const midnightSheetRef = useRef<SpriteSheet | null>(null)
   const endHandledRef = useRef(false)
   const winPayoffCommittedRef = useRef(false)
@@ -285,10 +287,16 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
   useEffect(() => {
     if (!battleTutorialBlocking || battleTutorialOverlayOpen) return
-    if (!battleRevealed) return
+    if (!battleRevealed || !playerLayoutReady || !enemyLayoutReady) return
     const t = window.setTimeout(() => setBattleTutorialOverlayOpen(true), 0)
     return () => window.clearTimeout(t)
-  }, [battleTutorialBlocking, battleTutorialOverlayOpen, battleRevealed])
+  }, [
+    battleTutorialBlocking,
+    battleTutorialOverlayOpen,
+    battleRevealed,
+    playerLayoutReady,
+    enemyLayoutReady,
+  ])
 
   const closeBattleTutorial = useCallback(() => {
     setBattleTutorialBlocking(false)
@@ -339,11 +347,14 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
   const showWinNarration = state.phase === 'ended' && state.result === 'win'
   const payoffNpc = winPayoffNpc ?? state.npc
+  const battleSettled = battleRevealed && playerLayoutReady && enemyLayoutReady
 
   useEffect(() => {
     setWinPayoffNpc(null)
     winPayoffCommittedRef.current = false
     endHandledRef.current = false
+    setPlayerLayoutReady(false)
+    setEnemyLayoutReady(false)
   }, [npcId])
 
   useLayoutEffect(() => {
@@ -542,6 +553,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         BATTLE_PLAYER_FEET_NUDGE,
       )
       setPlayerPlacement(placement)
+      setPlayerLayoutReady(true)
     })
 
     return () => {
@@ -592,7 +604,10 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         enemyTarget,
         BATTLE_ENEMY_FEET_NUDGE,
       )
-      if (!cancelled) setEnemyPlacement(placement)
+      if (!cancelled) {
+        setEnemyPlacement(placement)
+        setEnemyLayoutReady(true)
+      }
     })()
 
     return () => {
@@ -603,9 +618,10 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   return (
     <div
       ref={battleScreenRef}
-      className="battle-screen"
+      className={`battle-screen${battleSettled ? '' : ' battle-screen--settling'}`}
       aria-label={`Battle vs ${state.npc.displayName}`}
     >
+      {!battleSettled ? <div className="battle-screen__settle-cover" aria-hidden /> : null}
       <div className="battle-screen__content">
         <section className="battle-screen__enemy-hud">
           <span className="battle-screen__enemy-name">{state.npc.displayName}</span>

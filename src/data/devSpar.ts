@@ -78,5 +78,6 @@ export function buildDevSpar(): NpcCombatEntry {
     losingLine: 'good. again?',
     spriteSrc: DEV_SPAR_SPRITE,
     battleLocation: 'five',
+    battleSizeMult: 1,
   }
 }

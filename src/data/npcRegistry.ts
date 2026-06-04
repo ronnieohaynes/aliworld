@@ -48,6 +48,7 @@ const WALKER: NpcCombatEntry = {
   losingLine: 'i get it now. tell me where to go.',
   spriteSrc: WALKER_SPRITE,
   battleLocation: 'five',
+  battleSizeMult: 1.02,
 }
 
 /** Status check — fast and slippery; rewards debuffs and defense-lean builds. */
@@ -60,6 +61,7 @@ const JACLYN: NpcCombatEntry = {
   losingLine: "...oh. you're right. of course you're right.",
   spriteSrc: JACLYN_SPRITE,
   battleLocation: 'five',
+  battleSizeMult: 0.92,
 }
 
 /** Boss wall — braces heavy, telegraphs LOOP; attack builds grind, speed slips through. */
@@ -85,6 +87,7 @@ const CLERK: NpcCombatEntry = {
   losingLine: "the gift... it's priceless.",
   spriteSrc: ADAM_SPRITE,
   battleLocation: 'five',
+  battleSizeMult: 1,
 }
 
 /** E2 boss — restocker in the back room; defense wall. */
@@ -97,6 +100,7 @@ const RESTOCKER: NpcCombatEntry = {
   losingLine: "it CAN stop...",
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',
+  battleSizeMult: 1.08,
 }
 
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {

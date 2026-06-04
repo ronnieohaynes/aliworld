@@ -1,3 +1,15 @@
+.battle-screen--settling .battle-screen__content {
+  visibility: hidden;
+}
+
+.battle-screen__settle-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: #030303;
+  pointer-events: none;
+}
+
 .battle-screen {
   position: absolute;
   inset: 0;
