@@ -32,7 +32,7 @@ export const BATTLE_ENEMY_FEET_NUDGE = -37
 export const BATTLE_PLAYER_FEET_NUDGE = -27
 
 /** Player visible height matches enemy target (no protagonist bump). */
-export const BATTLE_PLAYER_VISIBLE_MULT = 0.8
+export const BATTLE_PLAYER_VISIBLE_MULT = 0.65
 
 /** Enemy sprite drawn to this canvas before visible-bounds measure. */
 export const BATTLE_ENEMY_SOURCE_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
