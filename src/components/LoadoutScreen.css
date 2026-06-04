@@ -129,6 +129,34 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
 
+.loadout-screen__share-card {
+  margin: 8px 0 0;
+  padding: 10px 16px;
+  border: 2px solid #2a2a3e;
+  border-radius: 4px;
+  background: rgba(127, 119, 221, 0.28);
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.loadout-screen__share-card:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.loadout-screen__card-error {
+  margin: 6px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  color: #cc6666;
+  text-align: center;
+}
+
 .loadout-screen__section-label {
   margin: 0 0 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

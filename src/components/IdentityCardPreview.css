@@ -1,0 +1,120 @@
+.identity-card-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.identity-card-preview__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.82);
+  cursor: pointer;
+}
+
+.identity-card-preview__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 360px);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 12px 16px;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  background: #0a0a12;
+  box-shadow: 0 0 40px rgba(127, 119, 221, 0.15);
+  pointer-events: auto;
+}
+
+.identity-card-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.identity-card-preview__title {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: #f4e8c1;
+}
+
+.identity-card-preview__close {
+  margin: 0;
+  padding: 6px 10px;
+  border: 2px solid #2a2a3e;
+  border-radius: 4px;
+  background: rgba(26, 26, 46, 0.92);
+  color: #d4b87a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.identity-card-preview__frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid #2a2a3e;
+  background: #06060c;
+}
+
+.identity-card-preview__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(68vh, 640px);
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.identity-card-preview__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.identity-card-preview__share,
+.identity-card-preview__save {
+  margin: 0;
+  padding: 12px 10px;
+  border: 2px solid #2a2a3e;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.identity-card-preview__share {
+  background: rgba(127, 119, 221, 0.35);
+  color: #f4e8c1;
+}
+
+.identity-card-preview__save {
+  background: rgba(26, 26, 46, 0.92);
+  color: #d4b87a;
+}
+
+.identity-card-preview__share:active,
+.identity-card-preview__save:active {
+  transform: scale(0.98);
+}

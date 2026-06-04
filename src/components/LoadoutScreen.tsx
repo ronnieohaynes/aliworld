@@ -39,8 +39,11 @@ import {
   MAX_SKILL_LEVEL,
   totalXpForLevel,
 } from '../store/skillStore'
+import { generateIdentityCard } from '../lib/identityCard'
+import { IdentityCardPreview } from './IdentityCardPreview'
 import './BattleScreen.css'
 import './LoadoutScreen.css'
+import { getAuthState } from '../store/authStore'
 
 const FADE_MS = 150
 
@@ -138,6 +141,10 @@ export function LoadoutScreen({ onClose }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>(0)
   const [expandedSkill, setExpandedSkill] = useState<MoveSkill | null>(null)
   const [alreadyEquippedNote, setAlreadyEquippedNote] = useState<string | null>(null)
+  const [cardPreviewUrl, setCardPreviewUrl] = useState<string | null>(null)
+  const [cardBlob, setCardBlob] = useState<Blob | null>(null)
+  const [cardGenerating, setCardGenerating] = useState(false)
+  const [cardError, setCardError] = useState<string | null>(null)
   const portraitRef = useRef<HTMLCanvasElement>(null)
 
   const skills = usePlayerStore(getPlayerSkills)
@@ -206,6 +213,32 @@ export function LoadoutScreen({ onClose }: Props) {
     setExpandedSkill((current) => (current === skill ? null : skill))
   }
 
+  const closeCardPreview = useCallback(() => {
+    if (cardPreviewUrl) URL.revokeObjectURL(cardPreviewUrl)
+    setCardPreviewUrl(null)
+    setCardBlob(null)
+    setCardError(null)
+  }, [cardPreviewUrl])
+
+  const handleShareCard = useCallback(async () => {
+    if (cardGenerating) return
+    setCardError(null)
+    setCardGenerating(true)
+    try {
+      const blob = await generateIdentityCard()
+      const url = URL.createObjectURL(blob)
+      setCardBlob(blob)
+      setCardPreviewUrl(url)
+    } catch (err) {
+      console.error('[identity card]', err)
+      setCardError('could not build your card. try again.')
+    } finally {
+      setCardGenerating(false)
+    }
+  }, [cardGenerating])
+
+  const playerHandle = getAuthState().profile?.handle?.toLowerCase()
+
   return (
     <div
       className={`loadout-screen${closing ? ' loadout-screen--closing' : ''}`}
@@ -237,7 +270,22 @@ export function LoadoutScreen({ onClose }: Props) {
             >
               {build.name}
             </div>
-            <p className="loadout-screen__level">level {playerLevel}</p>
+            <p className="loadout-screen__level">
+              {playerHandle ? `@${playerHandle} · ` : ''}lvl {playerLevel}
+            </p>
+            <button
+              type="button"
+              className="loadout-screen__share-card"
+              disabled={cardGenerating}
+              onClick={handleShareCard}
+            >
+              {cardGenerating ? 'building card…' : 'share card'}
+            </button>
+            {cardError ? (
+              <p className="loadout-screen__card-error" role="alert">
+                {cardError}
+              </p>
+            ) : null}
           </section>
 
           <section className="loadout-screen__equipped" aria-label="Equipped move slots">
@@ -342,6 +390,14 @@ export function LoadoutScreen({ onClose }: Props) {
           </section>
         </div>
       </div>
+
+      {cardPreviewUrl && cardBlob ? (
+        <IdentityCardPreview
+          previewUrl={cardPreviewUrl}
+          blob={cardBlob}
+          onClose={closeCardPreview}
+        />
+      ) : null}
     </div>
   )
 }
