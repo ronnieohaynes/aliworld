@@ -28,11 +28,11 @@ export const BATTLE_TARGET_VISIBLE_H = 150
 export const BATTLE_ENEMY_DISPLAY_H = BATTLE_TARGET_VISIBLE_H
 
 /** Per-fighter vertical offset from the ground line (negative = up). */
-export const BATTLE_ENEMY_FEET_NUDGE = -17
-export const BATTLE_PLAYER_FEET_NUDGE = -7
+export const BATTLE_ENEMY_FEET_NUDGE = -37
+export const BATTLE_PLAYER_FEET_NUDGE = -27
 
 /** Player visible height matches enemy target (no protagonist bump). */
-export const BATTLE_PLAYER_VISIBLE_MULT = 1.0
+export const BATTLE_PLAYER_VISIBLE_MULT = 0.8
 
 /** Enemy sprite drawn to this canvas before visible-bounds measure. */
 export const BATTLE_ENEMY_SOURCE_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
