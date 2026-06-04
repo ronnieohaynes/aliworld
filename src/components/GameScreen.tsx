@@ -15,7 +15,6 @@ import {
   type CityConfig,
   type CityId,
 } from '../data/cityConfig'
-import { isMoveUnlocked } from '../data/moves'
 import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
@@ -106,12 +105,9 @@ import {
 import { useCoarsePointer } from '../hooks/useCoarsePointer'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
-  getPlayerSkills,
   getShowDebug,
-  grantPlayerSkillXp,
   setLastLocation,
   subscribePlayerStore,
-  totalXpForLevel,
   whenAccountHydrated,
 } from '../store/playerStore'
 import { signOut } from '../store/authStore'
@@ -163,8 +159,6 @@ const CAFE_SCENE_LINES = [
   "he is the most ordinary thing you've seen since spawning.",
   "you're here to destroy him. he doesn't notice you exist.",
 ] as const
-
-const FURY_SWEEP_UNLOCK_LEVEL = 17
 
 type CafeFadePhase = 'none' | 'in' | 'scene' | 'out'
 
@@ -231,6 +225,7 @@ export function GameScreen() {
   const [cutsceneQuestHelperHidden, setCutsceneQuestHelperHidden] = useState(false)
   const pendingCafeVideoHandoffRef = useRef(false)
   const cafeVideoHandoffStartedRef = useRef(false)
+  const pendingPostE1NarrationRef = useRef(false)
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -749,16 +744,12 @@ export function GameScreen() {
   const finishCafeScene = useCallback(() => {
     setCafeSceneSeen()
     track('episode_complete', { episode: 'e1' })
-    if (!isMoveUnlocked('FURY_SWEEP', getPlayerSkills())) {
-      const targetXp = totalXpForLevel(FURY_SWEEP_UNLOCK_LEVEL)
-      const grant = Math.max(0, targetXp - getPlayerSkills().attack.xp)
-      if (grant > 0) grantPlayerSkillXp('attack', grant)
-    }
     setCafeFade('out')
   }, [])
 
   const runCafeVideoHandoffOnce = useCallback(() => {
     if (cafeVideoHandoffStartedRef.current) {
+      pendingPostE1NarrationRef.current = true
       finishCafeScene()
       return
     }
@@ -784,11 +775,11 @@ export function GameScreen() {
       },
       onComplete: () => {
         setEpisodeWorldReveal('visible')
+        pendingPostE1NarrationRef.current = true
         finishCafeScene()
-        showNarration(["word is there's a gym opening in the 5ive. get your weight up."])
       },
     })
-  }, [finishCafeScene, showNarration, showQuestTransition])
+  }, [finishCafeScene, showQuestTransition])
 
   const completeQuest1AfterCafe = useCallback(() => {
     runCafeVideoHandoffOnce()
@@ -860,7 +851,10 @@ export function GameScreen() {
     if (cafeFade === 'out') {
       const t = window.setTimeout(() => {
         setCafeFade('none')
-        showNarration(['the jacket. you feel it. something opens.'])
+        if (pendingPostE1NarrationRef.current) {
+          pendingPostE1NarrationRef.current = false
+          showNarration(["word is there's a gym opening in the 5ive. get your weight up."])
+        }
       }, 400)
       return () => window.clearTimeout(t)
     }
@@ -1760,13 +1754,6 @@ export function GameScreen() {
               onComplete={handleCultDarklineComplete}
             />
           )}
-          {dialogue && !battleNpcId && cafeFade !== 'scene' && (
-            <DialogueBox
-              name={dialogue.speakerLines[dialogue.lineIndex]?.speaker ?? dialogue.npc.name}
-              line={dialogue.speakerLines[dialogue.lineIndex]?.text ?? ''}
-              onAdvance={advanceDialogue}
-            />
-          )}
           {cafeFade !== 'none' && (
             <div
               className={`game-screen-cafe-fade${
@@ -1886,6 +1873,13 @@ export function GameScreen() {
             />
           ) : null}
           </div>
+          {dialogue && !battleNpcId && cafeFade !== 'scene' && (
+            <DialogueBox
+              name={dialogue.speakerLines[dialogue.lineIndex]?.speaker ?? dialogue.npc.name}
+              line={dialogue.speakerLines[dialogue.lineIndex]?.text ?? ''}
+              onAdvance={advanceDialogue}
+            />
+          )}
           {cutscene && (
             <CutsceneOverlay {...cutscene} onEnded={handleCutsceneEnded} />
           )}
