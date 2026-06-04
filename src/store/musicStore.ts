@@ -74,6 +74,16 @@ export function getMusicTrackIdSnapshot(): string | null {
   return getMusicCurrent()?.trackId ?? null
 }
 
+export function getMusicTrackTitleSnapshot(): string {
+  if (!hasMusicPlayer()) return ''
+  return getMusicCurrent()?.title ?? ''
+}
+
+export function getMusicTrackArtistSnapshot(): string {
+  if (!hasMusicPlayer()) return ''
+  return getMusicCurrent()?.artist ?? ''
+}
+
 export function isSoundtrackPlaying(): boolean {
   return hasMusicPlayer() && !isMusicMuted()
 }

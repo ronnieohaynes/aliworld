@@ -19,7 +19,7 @@ import { isMoveUnlocked } from '../data/moves'
 import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
-  getQuest1Snapshot,
+  getQuest1Revision,
   hasTalkedToAllGatingNpcs,
   isGatingNpcId,
   isCafeSceneSeen,
@@ -280,8 +280,8 @@ export function GameScreen() {
   const baseCityConfig = CITY_CONFIGS[currentCity]
   const quest1Revision = useSyncExternalStore(
     subscribeQuest1Store,
-    getQuest1Snapshot,
-    getQuest1Snapshot,
+    getQuest1Revision,
+    getQuest1Revision,
   )
   const quest2Revision = useSyncExternalStore(
     subscribeQuest2Store,
@@ -1637,7 +1637,13 @@ export function GameScreen() {
         className="game-screen"
         style={{ background: '#0a0a12', minHeight: '100dvh', height: '100dvh' }}
       >
-        {introActive ? <IntroNarrationScreen onComplete={handleIntroComplete} /> : null}
+        {introPending ? (
+          <div className="app-loading" aria-live="polite" aria-busy="true">
+            loading world…
+          </div>
+        ) : (
+          <IntroNarrationScreen onComplete={handleIntroComplete} />
+        )}
       </div>
     )
   }

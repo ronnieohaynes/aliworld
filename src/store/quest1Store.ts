@@ -94,13 +94,20 @@ function saveQuest1ToStorage(): void {
 }
 
 let state: Quest1State = loadQuest1FromStorage()
+let storeRevision = 0
 
 const listeners = new Set<() => void>()
 
 function emit(): void {
+  storeRevision++
   for (const listener of listeners) {
     listener()
   }
+}
+
+/** Monotonic counter for useSyncExternalStore — never return mutable state as snapshot. */
+export function getQuest1Revision(): number {
+  return storeRevision
 }
 
 export function subscribeQuest1Store(listener: () => void): () => void {

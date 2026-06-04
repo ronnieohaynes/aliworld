@@ -9,7 +9,10 @@ import {
   type RefObject,
 } from 'react'
 import {
-  getMusicStoreSnapshot,
+  getMusicPlayerGrantedSnapshot,
+  getMusicPlayingSnapshot,
+  getMusicTrackArtistSnapshot,
+  getMusicTrackTitleSnapshot,
   subscribeMusicStore,
   toggleSoundtrackPlaying,
 } from '../store/musicStore'
@@ -227,14 +230,27 @@ export function GameShell({
   startButtonRef,
 }: Props) {
   const clock = useLiveClock()
-  const music = useSyncExternalStore(
+  const playerGranted = useSyncExternalStore(
     subscribeMusicStore,
-    getMusicStoreSnapshot,
-    getMusicStoreSnapshot,
+    getMusicPlayerGrantedSnapshot,
+    getMusicPlayerGrantedSnapshot,
   )
-  const playerGranted = music.playerGranted
-  const playing = music.playing
-  const track = music.current
+  const playing = useSyncExternalStore(
+    subscribeMusicStore,
+    getMusicPlayingSnapshot,
+    getMusicPlayingSnapshot,
+  )
+  const trackTitle = useSyncExternalStore(
+    subscribeMusicStore,
+    getMusicTrackTitleSnapshot,
+    getMusicTrackTitleSnapshot,
+  )
+  const trackArtist = useSyncExternalStore(
+    subscribeMusicStore,
+    getMusicTrackArtistSnapshot,
+    getMusicTrackArtistSnapshot,
+  )
+  const hasTrackMeta = trackTitle.length > 0
 
   const togglePlay = useCallback(() => {
     toggleSoundtrackPlaying()
@@ -330,7 +346,7 @@ export function GameShell({
       <div
         className={`game-shell__music${
           !playerGranted ? ' game-shell__music--locked' : ''
-        }${playing && track ? ' game-shell__music--playing' : ''}`}
+        }${playing && hasTrackMeta ? ' game-shell__music--playing' : ''}`}
         aria-live="polite"
       >
         <div className="game-shell__album-art" aria-hidden>
@@ -338,10 +354,10 @@ export function GameShell({
         </div>
         <div className="game-shell__track">
           <div className="game-shell__track-title">
-            {!playerGranted ? 'no player yet' : track ? track.title : 'no track'}
+            {!playerGranted ? 'no player yet' : hasTrackMeta ? trackTitle : 'no track'}
           </div>
           <div className="game-shell__track-artist">
-            {!playerGranted ? '—' : track ? track.artist : '—'}
+            {!playerGranted ? '—' : hasTrackMeta ? trackArtist : '—'}
           </div>
           <div className="game-shell__progress">
             <div className="game-shell__progress-fill" />

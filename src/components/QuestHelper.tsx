@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { buildQuestObjectiveContext, resolvePrimaryQuestObjective } from '../data/questObjectives'
 import { track } from '../lib/analytics'
 import { getArtifactStoreSnapshot, subscribeArtifactStore } from '../store/artifactStore'
-import { getQuest1Snapshot, subscribeQuest1Store } from '../store/quest1Store'
+import { getQuest1Revision, subscribeQuest1Store } from '../store/quest1Store'
 import { getQuest2Snapshot, subscribeQuest2Store } from '../store/quest2Store'
 import { getWorldMemorySnapshot, subscribeWorldMemoryStore } from '../store/worldMemory'
 import './QuestHelper.css'
@@ -15,8 +15,8 @@ export function QuestHelper() {
   )
   const quest1Revision = useSyncExternalStore(
     subscribeQuest1Store,
-    getQuest1Snapshot,
-    getQuest1Snapshot,
+    getQuest1Revision,
+    getQuest1Revision,
   )
   const worldRevision = useSyncExternalStore(
     subscribeWorldMemoryStore,
