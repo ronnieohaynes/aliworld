@@ -36,14 +36,22 @@ type Props = {
   targetRefs: Record<Exclude<BattleTutorialTarget, 'none'>, RefObject<HTMLElement | null>>
   onNext: () => void
   onSkip: () => void
+  stepsOverride?: ReadonlyArray<{ text: string; target: BattleTutorialTarget }>
 }
 
 function padRect(rect: DOMRect, px: number): DOMRect {
   return new DOMRect(rect.x - px, rect.y - px, rect.width + px * 2, rect.height + px * 2)
 }
 
-export function BattleTutorialOverlay({ stepIndex, targetRefs, onNext, onSkip }: Props) {
-  const step = BATTLE_TUTORIAL_STEPS[stepIndex]!
+export function BattleTutorialOverlay({
+  stepIndex,
+  targetRefs,
+  onNext,
+  onSkip,
+  stepsOverride,
+}: Props) {
+  const steps = stepsOverride ?? BATTLE_TUTORIAL_STEPS
+  const step = steps[stepIndex]!
   const [targetRects, setTargetRects] = useState<TargetRects>({})
 
   const measureTargets = useCallback(() => {
@@ -116,7 +124,7 @@ export function BattleTutorialOverlay({ stepIndex, targetRefs, onNext, onSkip }:
       ? padRect(targetRects[step.target]!, 6)
       : null
 
-  const isLastStep = stepIndex >= BATTLE_TUTORIAL_STEPS.length - 1
+  const isLastStep = stepIndex >= steps.length - 1
 
   return createPortal(
     <div

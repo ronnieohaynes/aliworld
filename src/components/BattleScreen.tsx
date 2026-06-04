@@ -47,7 +47,7 @@ import {
   BATTLE_ROUND_END_GAP_MS,
   battleReducer,
   createInitialBattleState,
-  getTelegraphText,
+  getTelegraphDisplay,
   type PlayerMove,
 } from '../store/battleStore'
 import {
@@ -64,6 +64,7 @@ import {
 import {
   isBattleTutorialSeen,
   setBattleTutorialSeen,
+  setWalkerHeavyTutorialBeatSeen,
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import { getMoveUiMeta } from '../data/moves'
@@ -73,7 +74,9 @@ import { getBuildName } from '../data/buildName'
 import {
   counterMatchupLabel,
   getPlayerCounterRelation,
+  leanSkillAccentColor,
 } from '../data/skillCounter'
+import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
 import { getEnemyMoveDef, type EnemyMoveId } from '../data/enemyMoves'
 import {
   STATUS_EFFECT_HINTS,
@@ -89,6 +92,24 @@ import './BattleScreen.css'
 import './PlayerLevelBadge.css'
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/mark-idle.png')
+
+const WALKER_HEAVY_TEACH_STEPS = [
+  {
+    text: 'that wind-up is a HEAVY. big damage if it lands.',
+    target: 'telegraph' as const,
+  },
+  {
+    text: 'read the telegraph. HOLD braces it. SLIP dodges it. pick your answer.',
+    target: 'telegraph' as const,
+  },
+]
+
+const WALKER_HEAVY_CONFIRM_STEPS = [
+  {
+    text: "that's reading. it pays.",
+    target: 'telegraph' as const,
+  },
+]
 
 type BattleFloater = {
   id: number
@@ -284,6 +305,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const [battleTutorialBlocking, setBattleTutorialBlocking] = useState(shouldRunBattleTutorial)
   const [battleTutorialOverlayOpen, setBattleTutorialOverlayOpen] = useState(false)
   const [battleTutorialStep, setBattleTutorialStep] = useState(0)
+  const walkerHeavyTutorial =
+    npcId === WALKER_NPC_ID && isWalkerHeavyTutorialActive(npcId)
+  const [walkerHeavyBeat, setWalkerHeavyBeat] = useState<
+    null | 'teach' | 'acting' | 'confirm'
+  >(null)
+  const [walkerHeavyTeachStep, setWalkerHeavyTeachStep] = useState(0)
 
   useEffect(() => {
     if (!battleTutorialBlocking || battleTutorialOverlayOpen) return
@@ -372,10 +399,17 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     onWinPayoff?.(npcId)
   }, [state.phase, state.result, npcId, onWinPayoff])
   const logLines = state.log.slice(-2)
+  const telegraphDisplay = getTelegraphDisplay(state)
+  const telegraphAccent = leanSkillAccentColor(state.npc.leanSkill)
   const heavyTelegraph =
     state.upcomingMove !== 'STUNNED' &&
     state.phase !== 'ended' &&
-    getEnemyMoveDef(state.upcomingMove as EnemyMoveId).damageMult >= 1.6
+    (telegraphDisplay?.heavy ??
+      getEnemyMoveDef(state.upcomingMove as EnemyMoveId).damageMult >= 1.6)
+  const walkerHeavyBlocking =
+    walkerHeavyTutorial &&
+    (walkerHeavyBeat === 'teach' || walkerHeavyBeat === 'confirm')
+  const inputBlocked = battleTutorialBlocking || walkerHeavyBlocking || showWinNarration
 
   const finishBattle = useCallback(
     (result: 'win' | 'lose') => {
@@ -396,14 +430,38 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
   const battleMoveButtons = equippedMoves.map((move) => getMoveUiMeta(move))
 
+  useEffect(() => {
+    if (!walkerHeavyTutorial || battleTutorialBlocking) return
+    if (state.phase === 'ended' || walkerHeavyBeat != null) return
+    if (state.upcomingMove !== 'HAYMAKER' || state.turn < 1) return
+    setWalkerHeavyTeachStep(0)
+    setWalkerHeavyBeat('teach')
+  }, [
+    walkerHeavyTutorial,
+    battleTutorialBlocking,
+    state.phase,
+    state.upcomingMove,
+    state.turn,
+    walkerHeavyBeat,
+  ])
+
+  useEffect(() => {
+    if (walkerHeavyBeat !== 'acting') return
+    const readBeat = state.feedbackEvents.some((e) =>
+      e.text.toLowerCase().includes('read the telegraph'),
+    )
+    if (!readBeat) return
+    setWalkerHeavyBeat('confirm')
+    setWalkerHeavyTutorialBeatSeen()
+  }, [walkerHeavyBeat, state.feedbackEvents, state.feedbackSeq])
+
   const handleMove = useCallback(
     (move: PlayerMove, slot: number) => {
-      if (battleTutorialBlocking) return
-      if (showWinNarration) return
+      if (inputBlocked && walkerHeavyBeat !== 'acting') return
       if (state.phase !== 'player') return
       dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
-    [battleTutorialBlocking, showWinNarration, state.phase],
+    [inputBlocked, walkerHeavyBeat, state.phase],
   )
 
   const handleNarrationContinue = useCallback(() => {
@@ -624,7 +682,15 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       {!battleSettled ? <div className="battle-screen__settle-cover" aria-hidden /> : null}
       <div className="battle-screen__content">
         <section className="battle-screen__enemy-hud">
-          <span className="battle-screen__enemy-name">{state.npc.displayName}</span>
+          <span className="battle-screen__enemy-name">
+            {state.npc.displayName.toUpperCase()}
+            {state.npc.level > 0 ? (
+              <>
+                {' '}
+                <span className="battle-screen__enemy-level">· LVL {state.npc.level}</span>
+              </>
+            ) : null}
+          </span>
           <div className="battle-screen__hp-track">
             <div
               className="battle-screen__hp-fill battle-screen__hp-fill--enemy"
@@ -639,7 +705,20 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
             <p
               className={`battle-screen__telegraph${heavyTelegraph ? ' battle-screen__telegraph--heavy' : ''}`}
             >
-              {getTelegraphText(state)}
+              {telegraphDisplay ? (
+                <>
+                  {telegraphDisplay.prefix}
+                  {telegraphDisplay.moveName ? (
+                    <span
+                      className="battle-screen__telegraph-move"
+                      style={{ color: telegraphAccent }}
+                    >
+                      {telegraphDisplay.moveName}
+                    </span>
+                  ) : null}
+                  {telegraphDisplay.suffix}
+                </>
+              ) : null}
             </p>
           </section>
         )}
@@ -783,8 +862,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                       <button
                         key={`${slot}-${move}-${stolen ?? ''}`}
                         type="button"
-                        className={`battle-screen__move ${className}${busy || battleTutorialBlocking ? ' battle-screen__move--busy' : ''}`}
-                        disabled={busy || battleTutorialBlocking}
+                        className={`battle-screen__move ${className}${busy || (inputBlocked && walkerHeavyBeat !== 'acting') ? ' battle-screen__move--busy' : ''}`}
+                        disabled={busy || (inputBlocked && walkerHeavyBeat !== 'acting')}
                         onPointerDown={(e) => {
                           if (e.pointerType === 'mouse' || e.pointerType === 'touch') {
                             e.preventDefault()
@@ -821,6 +900,40 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           }}
           onNext={advanceBattleTutorial}
           onSkip={closeBattleTutorial}
+        />
+      )}
+      {walkerHeavyBeat === 'teach' && (
+        <BattleTutorialOverlay
+          stepIndex={walkerHeavyTeachStep}
+          targetRefs={{
+            battle: battleScreenRef,
+            telegraph: telegraphRowRef,
+            moves: movesRef,
+            status: playerStatusRef,
+          }}
+          onNext={() => {
+            if (walkerHeavyTeachStep < 1) {
+              setWalkerHeavyTeachStep(1)
+              return
+            }
+            setWalkerHeavyBeat('acting')
+          }}
+          onSkip={() => setWalkerHeavyBeat('acting')}
+          stepsOverride={WALKER_HEAVY_TEACH_STEPS}
+        />
+      )}
+      {walkerHeavyBeat === 'confirm' && (
+        <BattleTutorialOverlay
+          stepIndex={0}
+          targetRefs={{
+            battle: battleScreenRef,
+            telegraph: telegraphRowRef,
+            moves: movesRef,
+            status: playerStatusRef,
+          }}
+          onNext={() => setWalkerHeavyBeat(null)}
+          onSkip={() => setWalkerHeavyBeat(null)}
+          stepsOverride={WALKER_HEAVY_CONFIRM_STEPS}
         />
       )}
     </div>

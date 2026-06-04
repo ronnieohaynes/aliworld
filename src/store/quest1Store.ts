@@ -19,6 +19,7 @@ type Quest1State = {
   cafeSceneSeen: boolean
   e1CutscenePlayed: boolean
   battleTutorialSeen: boolean
+  walkerHeavyTutorialBeatSeen: boolean
   tutorialPhase2Seen: boolean
   worldIntroSeen: boolean
   mp3PlayerOwned: boolean
@@ -34,6 +35,7 @@ function emptyQuest1State(): Quest1State {
     cafeSceneSeen: false,
     e1CutscenePlayed: false,
     battleTutorialSeen: false,
+    walkerHeavyTutorialBeatSeen: false,
     tutorialPhase2Seen: false,
     worldIntroSeen: false,
     mp3PlayerOwned: false,
@@ -72,6 +74,7 @@ function loadQuest1FromStorage(): Quest1State {
       cafeSceneSeen: o.cafeSceneSeen === true,
       e1CutscenePlayed: o.e1CutscenePlayed === true,
       battleTutorialSeen: o.battleTutorialSeen === true,
+      walkerHeavyTutorialBeatSeen: o.walkerHeavyTutorialBeatSeen === true,
       tutorialPhase2Seen: o.tutorialPhase2Seen === true,
       worldIntroSeen: o.worldIntroSeen === true,
       mp3PlayerOwned: o.mp3PlayerOwned === true,
@@ -197,6 +200,17 @@ export function setBattleTutorialSeen(): void {
   emit()
 }
 
+export function isWalkerHeavyTutorialBeatSeen(): boolean {
+  return state.walkerHeavyTutorialBeatSeen
+}
+
+export function setWalkerHeavyTutorialBeatSeen(): void {
+  if (state.walkerHeavyTutorialBeatSeen) return
+  state = { ...state, walkerHeavyTutorialBeatSeen: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export function isTutorialPhase2Seen(): boolean {
   return state.tutorialPhase2Seen
 }
@@ -249,6 +263,7 @@ export type Quest1Serialized = {
   cafeSceneSeen?: boolean
   e1CutscenePlayed?: boolean
   battleTutorialSeen?: boolean
+  walkerHeavyTutorialBeatSeen?: boolean
   tutorialPhase2Seen?: boolean
   worldIntroSeen?: boolean
   mp3PlayerOwned?: boolean
@@ -264,6 +279,7 @@ export function serialize(): Quest1Serialized {
     cafeSceneSeen: state.cafeSceneSeen,
     e1CutscenePlayed: state.e1CutscenePlayed,
     battleTutorialSeen: state.battleTutorialSeen,
+    walkerHeavyTutorialBeatSeen: state.walkerHeavyTutorialBeatSeen,
     tutorialPhase2Seen: state.tutorialPhase2Seen,
     worldIntroSeen: state.worldIntroSeen,
     mp3PlayerOwned: state.mp3PlayerOwned,
@@ -286,6 +302,7 @@ export function applyState(data: Partial<Quest1Serialized>): void {
     cafeSceneSeen: data.cafeSceneSeen === true,
     e1CutscenePlayed: data.e1CutscenePlayed === true,
     battleTutorialSeen: data.battleTutorialSeen === true,
+    walkerHeavyTutorialBeatSeen: data.walkerHeavyTutorialBeatSeen === true,
     tutorialPhase2Seen: data.tutorialPhase2Seen === true,
     worldIntroSeen: data.worldIntroSeen === true,
     mp3PlayerOwned: data.mp3PlayerOwned === true,
