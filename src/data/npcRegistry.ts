@@ -72,6 +72,7 @@ const MARK: NpcCombatEntry = {
   losingLine: 'huh. ...where do you want me.',
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',
+  battleSizeMult: 1.04,
 }
 
 /** E2 gate — blue store clerk; attack-lean scrapper. */

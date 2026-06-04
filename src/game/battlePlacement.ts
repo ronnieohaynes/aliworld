@@ -24,6 +24,12 @@ export const BATTLE_PLAYER_X = 198
 /** Target visible body height for enemies (one dial for all NPCs). */
 export const BATTLE_TARGET_VISIBLE_H = 150
 
+/** @deprecated Alias for enemy target height — use with battleSizeMult. */
+export const BATTLE_ENEMY_DISPLAY_H = BATTLE_TARGET_VISIBLE_H
+
+/** Nudge sprites down so visible feet meet the street line (px). */
+export const BATTLE_GROUND_FEET_NUDGE = 3
+
 /** Player protagonist bump over enemy target. */
 export const BATTLE_PLAYER_VISIBLE_MULT = 1.05
 
@@ -62,7 +68,7 @@ export function layoutSpriteFromVisibleBounds(
   const displayH = Math.floor(visH * bodyScale)
   const uniformScale = displayH / sourceH
   const displayW = Math.floor(sourceW * uniformScale)
-  const drawY = Math.floor(groundY - bounds.bottom * uniformScale)
+  const drawY = Math.floor(groundY - bounds.bottom * uniformScale + BATTLE_GROUND_FEET_NUDGE)
 
   return {
     x,
