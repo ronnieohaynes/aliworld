@@ -15,6 +15,8 @@ export function isInvalidVisibleBounds(bounds: VisibleBounds, h: number, w: numb
   if (bounds.visH <= 0 || bounds.visW <= 0) return true
   if (bounds.visH >= h - 1 || bounds.visH >= h * 0.98) return true
   if (bounds.visW >= w - 1 || bounds.visW >= w * 0.98) return true
+  /** Tiny visH makes bodyScale explode (garbage scan / measure-before-load). */
+  if (bounds.visH < Math.max(8, Math.floor(h * 0.12))) return true
   return false
 }
 
@@ -145,7 +147,7 @@ export function measureNaturalImageFrame(
 ): VisibleBounds {
   const frameW = Math.max(1, Math.floor(img.naturalWidth / spriteColumns))
   const frameH = Math.max(1, Math.floor(img.naturalHeight))
-  const key = `nat:${cacheKey}:${frameCol}@${frameW}x${frameH}`
+  const key = `nat:v2:${cacheKey}:${frameCol}@${frameW}x${frameH}`
   const cached = boundsCache.get(key)
   if (cached) return cached
 

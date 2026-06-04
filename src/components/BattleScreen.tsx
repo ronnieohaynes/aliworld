@@ -466,13 +466,14 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
         `player:${walkSrc}`,
         'player',
       )
+      const playerTarget = Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT)
       const placement = layoutSpriteFromVisibleBounds(
         bounds,
         BATTLE_PLAYER_SOURCE_W,
         BATTLE_PLAYER_SOURCE_H,
         BATTLE_GROUND_Y,
         BATTLE_PLAYER_X,
-        Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT),
+        playerTarget,
       )
       setPlayerPlacement(placement)
     })

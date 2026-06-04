@@ -45,6 +45,10 @@ export type BattleSpritePlacement = {
   facing: 'left' | 'right'
 }
 
+/**
+ * Map source pixels → display using one uniform scale derived from visible height.
+ * displayH ≈ targetVisibleH (body), not sourceH * scale (which inflates padded frames).
+ */
 export function layoutSpriteFromVisibleBounds(
   bounds: VisibleBounds,
   sourceW: number,
@@ -54,10 +58,11 @@ export function layoutSpriteFromVisibleBounds(
   targetVisibleH: number,
 ): BattleSpritePlacement {
   const visH = Math.max(1, bounds.visH)
-  const scale = targetVisibleH / visH
-  const displayH = Math.floor(sourceH * scale)
-  const displayW = Math.floor(sourceW * scale)
-  const drawY = Math.floor(groundY - bounds.bottom * scale)
+  const bodyScale = targetVisibleH / visH
+  const displayH = Math.floor(visH * bodyScale)
+  const uniformScale = displayH / sourceH
+  const displayW = Math.floor(sourceW * uniformScale)
+  const drawY = Math.floor(groundY - bounds.bottom * uniformScale)
 
   return {
     x,
