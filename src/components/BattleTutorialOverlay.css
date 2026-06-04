@@ -11,6 +11,10 @@
   cursor: pointer;
 }
 
+.battle-tutorial--elevated {
+  z-index: 10002;
+}
+
 .battle-tutorial__dim-full {
   position: fixed;
   inset: 0;
@@ -91,4 +95,11 @@
 
 .battle-tutorial__skip:hover {
   color: #c084fc;
+}
+
+.battle-tutorial__wait {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: #9696b0;
 }

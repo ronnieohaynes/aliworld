@@ -240,6 +240,7 @@ export function GameScreen() {
     npcId: string | null
   } | null>(null)
   const loadoutMenuBtnRef = useRef<HTMLButtonElement>(null)
+  const startMenuBtnRef = useRef<HTMLButtonElement>(null)
   const [loadoutTutorialStep, setLoadoutTutorialStep] = useState<number | null>(null)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
@@ -555,6 +556,7 @@ export function GameScreen() {
     }
     if (!canOpenStartMenu()) return
     setShowStartMenu(true)
+    setLoadoutTutorialStep((step) => (step === 1 ? 2 : step))
   }, [
     beginResumeTransition,
     canOpenStartMenu,
@@ -622,6 +624,7 @@ export function GameScreen() {
       }
       if (!canOpenStartMenu()) return
       setShowStartMenu(true)
+      setLoadoutTutorialStep((step) => (step === 1 ? 2 : step))
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -1378,7 +1381,7 @@ export function GameScreen() {
 
   const advanceLoadoutTutorial = useCallback(() => {
     setLoadoutTutorialStep((step) => {
-      if (step == null || step === 0) return step
+      if (step == null) return step
       if (step >= LOADOUT_TUTORIAL_STEPS.length - 1) {
         finishLoadoutTutorial()
         return null
@@ -1405,7 +1408,6 @@ export function GameScreen() {
       !isTutorialPhase2Seen()
     ) {
       setLoadoutTutorialStep(0)
-      setShowStartMenu(true)
     }
   }, [reportCurrentLocation])
 
@@ -1519,8 +1521,8 @@ export function GameScreen() {
           beginMenuEntryTransition('fanny-pack')
           break
         case 'loadout':
-          if (loadoutTutorialStep === 0) {
-            setLoadoutTutorialStep(1)
+          if (loadoutTutorialStep === 2) {
+            setLoadoutTutorialStep(3)
           }
           beginMenuEntryTransition('loadout')
           break
@@ -1635,6 +1637,7 @@ export function GameScreen() {
         onScript={handleOpenLoadout}
         onInteract={handleInteract}
         onStart={toggleStartMenu}
+        startButtonRef={startMenuBtnRef}
       >
         <div
           className={`game-screen-play${
@@ -1838,16 +1841,31 @@ export function GameScreen() {
               onConfirmNewGame={handleConfirmNewGame}
             />
           )}
-          {loadoutTutorialStep === 0 && showStartMenu && (
+          {loadoutTutorialStep != null &&
+          loadoutTutorialStep <= 1 &&
+          !showStartMenu &&
+          !showLoadout ? (
             <GuidedTutorialOverlay<LoadoutTutorialTarget | 'none'>
               ariaLabel="Loadout tutorial"
               steps={LOADOUT_TUTORIAL_STEPS}
-              stepIndex={0}
-              targetRefs={{ menu_loadout: loadoutMenuBtnRef }}
+              stepIndex={loadoutTutorialStep}
+              targetRefs={{ menu_button: startMenuBtnRef }}
+              elevated
               onNext={advanceLoadoutTutorial}
               onSkip={skipLoadoutTutorial}
             />
-          )}
+          ) : null}
+          {loadoutTutorialStep === 2 && showStartMenu ? (
+            <GuidedTutorialOverlay<LoadoutTutorialTarget | 'none'>
+              ariaLabel="Loadout tutorial"
+              steps={LOADOUT_TUTORIAL_STEPS}
+              stepIndex={2}
+              targetRefs={{ menu_loadout: loadoutMenuBtnRef }}
+              elevated
+              onNext={advanceLoadoutTutorial}
+              onSkip={skipLoadoutTutorial}
+            />
+          ) : null}
           </div>
           {cutscene && (
             <CutsceneOverlay {...cutscene} onEnded={handleCutsceneEnded} />

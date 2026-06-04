@@ -2,9 +2,21 @@ import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } fro
 import { createPortal } from 'react-dom'
 import './BattleTutorialOverlay.css'
 
+export type TutorialHighlightColor = 'default' | 'attack' | 'speed' | 'defense' | 'luck'
+
 export type GuidedTutorialStep<T extends string> = {
   text: string
   target: T | 'none'
+  waitForAction?: boolean
+  highlight?: TutorialHighlightColor
+}
+
+const HIGHLIGHT_COLORS: Record<TutorialHighlightColor, string> = {
+  default: '#c084fc',
+  attack: '#cc4444',
+  speed: '#44cc66',
+  defense: '#4488cc',
+  luck: '#cc44cc',
 }
 
 function padRect(rect: DOMRect, px: number): DOMRect {
@@ -18,6 +30,7 @@ type Props<T extends string> = {
   targetRefs: Partial<Record<T, RefObject<HTMLElement | null>>>
   scrollRootRef?: RefObject<HTMLElement | null>
   lastStepLabel?: string
+  elevated?: boolean
   onNext: () => void
   onSkip: () => void
 }
@@ -29,10 +42,13 @@ export function GuidedTutorialOverlay<T extends string>({
   targetRefs,
   scrollRootRef,
   lastStepLabel = 'done ▸',
+  elevated = false,
   onNext,
   onSkip,
 }: Props<T>) {
   const step = steps[stepIndex]!
+  const waitForAction = step.waitForAction === true
+  const highlightColor = HIGHLIGHT_COLORS[step.highlight ?? 'default']
   const [targetRects, setTargetRects] = useState<Partial<Record<T, DOMRect>>>({})
 
   const measureTargets = useCallback(() => {
@@ -83,6 +99,7 @@ export function GuidedTutorialOverlay<T extends string>({
   }, [measureTargets])
 
   useEffect(() => {
+    if (waitForAction) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return
       const target = e.target
@@ -98,24 +115,29 @@ export function GuidedTutorialOverlay<T extends string>({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onNext])
+  }, [onNext, waitForAction])
 
   const highlightRect =
     step.target === 'none'
       ? null
-      : targetRects[step.target]
+      : targetRefs[step.target]?.current && targetRects[step.target]
         ? padRect(targetRects[step.target]!, 6)
         : null
 
   const isLastStep = stepIndex >= steps.length - 1
 
+  const handleBackdropClick = () => {
+    if (waitForAction) return
+    onNext()
+  }
+
   return createPortal(
     <div
-      className="battle-tutorial"
+      className={`battle-tutorial${elevated ? ' battle-tutorial--elevated' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
-      onClick={onNext}
+      onClick={handleBackdropClick}
     >
       {highlightRect ? (
         <div
@@ -125,6 +147,8 @@ export function GuidedTutorialOverlay<T extends string>({
             left: highlightRect.left,
             width: highlightRect.width,
             height: highlightRect.height,
+            borderColor: highlightColor,
+            boxShadow: `0 0 0 9999px rgba(8, 8, 14, 0.78), 0 0 12px ${highlightColor}66`,
           }}
           aria-hidden
         />
@@ -139,9 +163,13 @@ export function GuidedTutorialOverlay<T extends string>({
       >
         <p className="battle-tutorial__text">{step.text}</p>
         <div className="battle-tutorial__actions">
-          <button type="button" className="battle-tutorial__next" onClick={onNext}>
-            {isLastStep ? lastStepLabel : 'next ▸'}
-          </button>
+          {waitForAction ? (
+            <span className="battle-tutorial__wait">tap highlighted</span>
+          ) : (
+            <button type="button" className="battle-tutorial__next" onClick={onNext}>
+              {isLastStep ? lastStepLabel : 'next ▸'}
+            </button>
+          )}
           <button type="button" className="battle-tutorial__skip" onClick={onSkip}>
             skip
           </button>

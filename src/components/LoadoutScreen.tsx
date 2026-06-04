@@ -68,7 +68,7 @@ const SKILL_SHORT: Record<MoveSkill, string> = {
 
 type Props = {
   onClose: () => void
-  /** Loadout tutorial steps 1–4 (skills → counter card); step 0 is on the start menu. */
+  /** Loadout tutorial steps 3–9 (stat rows → counter card); steps 0–2 are on overworld / start menu. */
   loadoutTutorialStep?: number | null
   onLoadoutTutorialNext?: () => void
   onLoadoutTutorialSkip?: () => void
@@ -160,13 +160,16 @@ export function LoadoutScreen({
   const [cardGenerating, setCardGenerating] = useState(false)
   const [cardError, setCardError] = useState<string | null>(null)
   const portraitRef = useRef<HTMLCanvasElement>(null)
-  const skillsSectionRef = useRef<HTMLElement>(null)
-  const equippedSectionRef = useRef<HTMLElement>(null)
-  const buildSectionRef = useRef<HTMLElement>(null)
+  const statAttackRef = useRef<HTMLDivElement>(null)
+  const statSpeedRef = useRef<HTMLDivElement>(null)
+  const statDefenseRef = useRef<HTMLDivElement>(null)
+  const statLuckRef = useRef<HTMLDivElement>(null)
+  const buildNameRef = useRef<HTMLParagraphElement>(null)
+  const shareCardRef = useRef<HTMLButtonElement>(null)
   const scrollRootRef = useRef<HTMLDivElement>(null)
 
   const showLoadoutTutorial =
-    loadoutTutorialStep != null && loadoutTutorialStep >= 1 && loadoutTutorialStep <= 4
+    loadoutTutorialStep != null && loadoutTutorialStep >= 3 && loadoutTutorialStep <= 9
 
   const skills = usePlayerStore(getPlayerSkills)
   const equipped = usePlayerStore(getEquippedMoves)
@@ -192,6 +195,13 @@ export function LoadoutScreen({
     const timer = window.setTimeout(() => onClose(), FADE_MS)
     return () => window.clearTimeout(timer)
   }, [closing, onClose])
+
+  useEffect(() => {
+    if (loadoutTutorialStep == null || loadoutTutorialStep < 3 || loadoutTutorialStep > 6) return
+    const refs = [statAttackRef, statSpeedRef, statDefenseRef, statLuckRef]
+    const index = loadoutTutorialStep - 3
+    refs[index]?.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [loadoutTutorialStep])
 
   useEffect(() => {
     if (!alreadyEquippedNote) return
@@ -278,27 +288,25 @@ export function LoadoutScreen({
         </header>
 
         <div ref={scrollRootRef} className="loadout-screen__scroll">
-          <section
-            ref={buildSectionRef}
-            className="loadout-screen__hero"
-            aria-label="Player portrait"
-          >
+          <section className="loadout-screen__hero" aria-label="Player portrait">
             <canvas
               ref={portraitRef}
               className="loadout-screen__portrait"
               width={WORLD_PLAYER_DISPLAY_WIDTH}
               height={WORLD_PLAYER_DISPLAY_HEIGHT}
             />
-            <div
+            <p
+              ref={buildNameRef}
               className="loadout-screen__build"
               style={{ color: build.color }}
             >
               {build.name}
-            </div>
+            </p>
             <p className="loadout-screen__level">
               {playerHandle ? `@${playerHandle} · ` : ''}lvl {playerLevel}
             </p>
             <button
+              ref={shareCardRef}
               type="button"
               className="loadout-screen__share-card"
               disabled={cardGenerating}
@@ -313,11 +321,7 @@ export function LoadoutScreen({
             ) : null}
           </section>
 
-          <section
-            ref={equippedSectionRef}
-            className="loadout-screen__equipped"
-            aria-label="Equipped move slots"
-          >
+          <section className="loadout-screen__equipped" aria-label="Equipped move slots">
             <h2 className="loadout-screen__section-label">equipped</h2>
             {alreadyEquippedNote && (
               <p className="loadout-screen__note" role="status">
@@ -347,17 +351,22 @@ export function LoadoutScreen({
             </div>
           </section>
 
-          <section
-            ref={skillsSectionRef}
-            className="loadout-screen__skills"
-            aria-label="Skill ladders"
-          >
+          <section className="loadout-screen__skills" aria-label="Skill ladders">
             <h2 className="loadout-screen__section-label">skills</h2>
             {skillSections.map((section) => {
               const expanded = expandedSkill === section.skill
+              const statRef =
+                section.skill === 'attack'
+                  ? statAttackRef
+                  : section.skill === 'speed'
+                    ? statSpeedRef
+                    : section.skill === 'defense'
+                      ? statDefenseRef
+                      : statLuckRef
               return (
                 <div
                   key={section.skill}
+                  ref={statRef}
                   className={`loadout-screen__skill-block loadout-screen__skill-block--${section.skill}${
                     expanded ? ' loadout-screen__skill-block--expanded' : ''
                   }`}
@@ -438,11 +447,15 @@ export function LoadoutScreen({
           steps={LOADOUT_TUTORIAL_STEPS}
           stepIndex={loadoutTutorialStep}
           targetRefs={{
-            skills: skillsSectionRef,
-            equipped: equippedSectionRef,
-            build: buildSectionRef,
+            stat_attack: statAttackRef,
+            stat_speed: statSpeedRef,
+            stat_defense: statDefenseRef,
+            stat_luck: statLuckRef,
+            build: buildNameRef,
+            share_card: shareCardRef,
           }}
           scrollRootRef={scrollRootRef}
+          elevated
           onNext={onLoadoutTutorialNext}
           onSkip={onLoadoutTutorialSkip}
         />

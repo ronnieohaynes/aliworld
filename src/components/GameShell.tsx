@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
   type PointerEvent,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import {
   isSoundtrackPlaying,
@@ -81,6 +82,7 @@ type Props = {
   onFannyPack?: () => void
   onSelect?: () => void
   onStart?: () => void
+  startButtonRef?: RefObject<HTMLButtonElement | null>
 }
 
 function CultSigil({ size = 22 }: { size?: number }) {
@@ -222,6 +224,7 @@ export function GameShell({
   onFannyPack = () => {},
   onSelect = () => {},
   onStart = () => {},
+  startButtonRef,
 }: Props) {
   const clock = useLiveClock()
   const playing = useSyncExternalStore(
@@ -257,7 +260,12 @@ export function GameShell({
           <button type="button" className="game-shell__pill-btn" onClick={onSelect}>
             SELECT
           </button>
-          <button type="button" className="game-shell__pill-btn" onClick={onStart}>
+          <button
+            type="button"
+            ref={startButtonRef}
+            className="game-shell__pill-btn"
+            onClick={onStart}
+          >
             START
           </button>
         </div>
