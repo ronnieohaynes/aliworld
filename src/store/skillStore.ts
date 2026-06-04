@@ -177,15 +177,21 @@ export function grantSkillXpAmount(
 }
 
 /** Award move-based XP from a resolved combat turn. */
-export function awardMoveXp(skills: SkillsState, r: ResolveResult): {
+export function awardMoveXp(
+  skills: SkillsState,
+  r: ResolveResult,
+  scaleAmount: (amount: number) => number = (n) => n,
+): {
   skills: SkillsState
   levelUpLines: string[]
 } {
   let next = skills
   let lines: string[] = []
 
-  for (const grant of xpGrantsForMove(toMoveXpContext(r))) {
-    ;({ skills: next, lines } = mergeGrant(next, lines, grant.skill, grant.amount))
+  const xpCtx = toMoveXpContext(r)
+  for (const grant of xpGrantsForMove(xpCtx)) {
+    const amount = scaleAmount(grant.amount)
+    ;({ skills: next, lines } = mergeGrant(next, lines, grant.skill, amount))
   }
 
   return { skills: next, levelUpLines: lines }

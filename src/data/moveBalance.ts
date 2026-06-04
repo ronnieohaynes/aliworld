@@ -84,8 +84,30 @@ export const ENEMY_SHAKE_OUTGOING_MULT = 0.4
 export const ENEMY_SLOW_OUTGOING_MULT = 0.56
 /** Bleed chip each turn as a fraction of enemy max hp. */
 export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
-/** Shared enemy LOOP strike multiplier — mark's telegraphed heavy. */
+/** Shared enemy LOOP / HAYMAKER strike multiplier — telegraphed heavies. */
 export const ENEMY_LOOP_STRIKE_MULT = 2
+
+/** Combat XP scales with enemy level vs player level (clamp). */
+export const XP_LEVEL_GAP_PER_LEVEL = 0.15
+export const XP_LEVEL_MULT_MIN = 0.6
+export const XP_LEVEL_MULT_MAX = 2
+
+export function combatXpLevelMultiplier(enemyLevel: number, playerLevel: number): number {
+  const gap = enemyLevel - playerLevel
+  const raw = 1 + XP_LEVEL_GAP_PER_LEVEL * gap
+  return Math.min(XP_LEVEL_MULT_MAX, Math.max(XP_LEVEL_MULT_MIN, raw))
+}
+
+/** Flatten early STRIKE damage so tutorial fights breathe (~4–6 turns). */
+export const EARLY_STRIKE_SKILL_LEVEL_MAX = 3
+export const EARLY_STRIKE_DAMAGE_FLOOR_MULT = 0.55
+export const EARLY_STRIKE_ATK_CONTRIB_MULT = 0.65
+
+export function earlyStrikeDamageScale(attackSkillLevel: number): number {
+  if (attackSkillLevel > EARLY_STRIKE_SKILL_LEVEL_MAX) return 1
+  const t = attackSkillLevel / EARLY_STRIKE_SKILL_LEVEL_MAX
+  return EARLY_STRIKE_DAMAGE_FLOOR_MULT + (1 - EARLY_STRIKE_DAMAGE_FLOOR_MULT) * t
+}
 
 /** Defense skill — brace blocks more per level (multiplier reduction, capped). */
 export const DEF_MITIGATION_PER_LEVEL = 0.025

@@ -8,6 +8,7 @@ import type { CityId } from '../data/cityConfig'
 import { deriveBuildName } from '../data/buildName'
 import type { BattleFeedbackEvent } from '../data/battleFeedback'
 import type { TimingBonusGrant } from '../data/timingBonusXp'
+import { combatXpLevelMultiplier } from '../data/moveBalance'
 import { track } from '../lib/analytics'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
@@ -507,21 +508,28 @@ export type CombatXpResult = {
   playerLevelLine: string | null
   playerLevel: number
   bonusCallouts: BattleFeedbackEvent[]
+  levelXpMult: number
 }
 
 /** Apply combat XP to persistent skills; returns skill + combat level-up log lines. */
 export function applyCombatSkillXp(
   r: ResolveResult,
   timingBonuses: TimingBonusGrant[] = [],
+  options?: { enemyLevel?: number; playerLevel?: number },
 ): CombatXpResult {
   const prevPlayerLevel = computePlayerLevel(state.skills)
+  const playerLevelBefore = options?.playerLevel ?? prevPlayerLevel
+  const enemyLevel = options?.enemyLevel ?? playerLevelBefore
+  const levelXpMult = combatXpLevelMultiplier(enemyLevel, playerLevelBefore)
+  const scaleXp = (amount: number) => Math.max(0, Math.round(amount * levelXpMult))
+
   const before = state.skills
-  const { skills: afterMoveXp, levelUpLines } = awardMoveXp(before, r)
+  const { skills: afterMoveXp, levelUpLines } = awardMoveXp(before, r, scaleXp)
   let skills = afterMoveXp
   let levelUpLinesAll = [...levelUpLines]
 
   for (const bonus of timingBonuses) {
-    const result = grantSkillXpAmount(skills, bonus.skill, bonus.amount)
+    const result = grantSkillXpAmount(skills, bonus.skill, scaleXp(bonus.amount))
     skills = result.skills
     levelUpLinesAll = [...levelUpLinesAll, ...result.lines]
   }
@@ -533,11 +541,21 @@ export function applyCombatSkillXp(
   const playerLevel = computePlayerLevel(skills)
   const playerLevelLine =
     playerLevel > prevPlayerLevel ? playerLevelUpLine(playerLevel) : null
+  const bonusCallouts: BattleFeedbackEvent[] = timingBonuses.map((bonus) => bonus.callout)
+  if (levelXpMult > 1.01) {
+    bonusCallouts.unshift({
+      kind: 'xp-bonus',
+      text: '+xp · outleveled bonus',
+      target: 'player',
+      tone: 'attack',
+    })
+  }
   return {
     skillLines: levelUpLinesAll,
     playerLevelLine,
     playerLevel,
-    bonusCallouts: timingBonuses.map((bonus) => bonus.callout),
+    bonusCallouts,
+    levelXpMult,
   }
 }
 
