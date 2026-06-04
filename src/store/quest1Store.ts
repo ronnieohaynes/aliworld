@@ -19,6 +19,7 @@ type Quest1State = {
   cafeSceneSeen: boolean
   e1CutscenePlayed: boolean
   battleTutorialSeen: boolean
+  tutorialPhase2Seen: boolean
   worldIntroSeen: boolean
 }
 
@@ -31,6 +32,7 @@ function emptyQuest1State(): Quest1State {
     cafeSceneSeen: false,
     e1CutscenePlayed: false,
     battleTutorialSeen: false,
+    tutorialPhase2Seen: false,
     worldIntroSeen: false,
   }
 }
@@ -66,6 +68,7 @@ function loadQuest1FromStorage(): Quest1State {
       cafeSceneSeen: o.cafeSceneSeen === true,
       e1CutscenePlayed: o.e1CutscenePlayed === true,
       battleTutorialSeen: o.battleTutorialSeen === true,
+      tutorialPhase2Seen: o.tutorialPhase2Seen === true,
       worldIntroSeen: o.worldIntroSeen === true,
     }
   } catch {
@@ -188,6 +191,17 @@ export function setBattleTutorialSeen(): void {
   emit()
 }
 
+export function isTutorialPhase2Seen(): boolean {
+  return state.tutorialPhase2Seen
+}
+
+export function setTutorialPhase2Seen(): void {
+  if (state.tutorialPhase2Seen) return
+  state = { ...state, tutorialPhase2Seen: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export function isWorldIntroSeen(): boolean {
   return state.worldIntroSeen
 }
@@ -207,6 +221,7 @@ export type Quest1Serialized = {
   cafeSceneSeen?: boolean
   e1CutscenePlayed?: boolean
   battleTutorialSeen?: boolean
+  tutorialPhase2Seen?: boolean
   worldIntroSeen?: boolean
 }
 
@@ -219,6 +234,7 @@ export function serialize(): Quest1Serialized {
     cafeSceneSeen: state.cafeSceneSeen,
     e1CutscenePlayed: state.e1CutscenePlayed,
     battleTutorialSeen: state.battleTutorialSeen,
+    tutorialPhase2Seen: state.tutorialPhase2Seen,
     worldIntroSeen: state.worldIntroSeen,
   }
 }
@@ -238,6 +254,7 @@ export function applyState(data: Partial<Quest1Serialized>): void {
     cafeSceneSeen: data.cafeSceneSeen === true,
     e1CutscenePlayed: data.e1CutscenePlayed === true,
     battleTutorialSeen: data.battleTutorialSeen === true,
+    tutorialPhase2Seen: data.tutorialPhase2Seen === true,
     worldIntroSeen: data.worldIntroSeen === true,
   }
   emit()

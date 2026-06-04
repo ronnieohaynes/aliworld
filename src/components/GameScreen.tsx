@@ -27,6 +27,8 @@ import {
   isJaclynConverted,
   isMarkDefeated,
   subscribeQuest1Store,
+  isBattleTutorialSeen,
+  isTutorialPhase2Seen,
   isWalkerConverted,
   isWorldIntroSeen,
   JACLYN_NPC_ID,
@@ -36,6 +38,7 @@ import {
   setE1CutscenePlayed,
   setJaclynConverted,
   setMarkDefeated,
+  setTutorialPhase2Seen,
   setWalkerConverted,
   setWorldIntroSeen,
   WALKER_NPC_ID,
@@ -116,6 +119,11 @@ import {
 } from './StartMenuScreen'
 import { AccountSaveIndicator } from './AccountSaveIndicator'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
+import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
+import {
+  LOADOUT_TUTORIAL_STEPS,
+  type LoadoutTutorialTarget,
+} from '../data/loadoutTutorial'
 import './GameScreen.css'
 
 export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
@@ -231,6 +239,8 @@ export function GameScreen() {
     result: 'win' | 'lose'
     npcId: string | null
   } | null>(null)
+  const loadoutMenuBtnRef = useRef<HTMLButtonElement>(null)
+  const [loadoutTutorialStep, setLoadoutTutorialStep] = useState<number | null>(null)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
@@ -1360,12 +1370,42 @@ export function GameScreen() {
     setBattleReady(false)
   }, [])
 
+  const finishLoadoutTutorial = useCallback(() => {
+    setLoadoutTutorialStep(null)
+    setTutorialPhase2Seen()
+  }, [])
+
+  const advanceLoadoutTutorial = useCallback(() => {
+    setLoadoutTutorialStep((step) => {
+      if (step == null || step === 0) return step
+      if (step >= LOADOUT_TUTORIAL_STEPS.length - 1) {
+        finishLoadoutTutorial()
+        return null
+      }
+      return step + 1
+    })
+  }, [finishLoadoutTutorial])
+
+  const skipLoadoutTutorial = useCallback(() => {
+    finishLoadoutTutorial()
+  }, [finishLoadoutTutorial])
+
   const handleBattleExitComplete = useCallback(() => {
+    const exit = pendingBattleExitRef.current
     pendingBattleExitRef.current = null
     setBattleNpcId(null)
     setBattleReady(false)
     setBattleWipePhase(null)
     reportCurrentLocation()
+    if (
+      exit?.result === 'win' &&
+      exit.npcId === WALKER_NPC_ID &&
+      isBattleTutorialSeen() &&
+      !isTutorialPhase2Seen()
+    ) {
+      setLoadoutTutorialStep(0)
+      setShowStartMenu(true)
+    }
   }, [reportCurrentLocation])
 
   const handleWinPayoff = useCallback((npcId: string) => {
@@ -1478,6 +1518,9 @@ export function GameScreen() {
           beginMenuEntryTransition('fanny-pack')
           break
         case 'loadout':
+          if (loadoutTutorialStep === 0) {
+            setLoadoutTutorialStep(1)
+          }
           beginMenuEntryTransition('loadout')
           break
         case 'refresh': {
@@ -1496,7 +1539,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition, currentCity, resumeFromPauseMenu],
+    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -1515,6 +1558,7 @@ export function GameScreen() {
     setBattleNpcId(null)
     setBattleWipePhase(null)
     setBattleReady(false)
+    setLoadoutTutorialStep(null)
     setShowDarkline(false)
     setCultDarklinePhase(null)
     darklineExitTargetRef.current = null
@@ -1787,8 +1831,19 @@ export function GameScreen() {
           {showStartMenu && (
             <StartMenuScreen
               ref={startMenuRef}
+              loadoutButtonRef={loadoutMenuBtnRef}
               onAction={handleStartMenuAction}
               onConfirmNewGame={handleConfirmNewGame}
+            />
+          )}
+          {loadoutTutorialStep === 0 && showStartMenu && (
+            <GuidedTutorialOverlay<LoadoutTutorialTarget | 'none'>
+              ariaLabel="Loadout tutorial"
+              steps={LOADOUT_TUTORIAL_STEPS}
+              stepIndex={0}
+              targetRefs={{ menu_loadout: loadoutMenuBtnRef }}
+              onNext={advanceLoadoutTutorial}
+              onSkip={skipLoadoutTutorial}
             />
           )}
           </div>
@@ -1798,7 +1853,14 @@ export function GameScreen() {
           <QuestTransition ref={questTransitionRef} />
         </div>
       </GameShell>
-      {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}
+      {showLoadout && (
+        <LoadoutScreen
+          onClose={handleLoadoutClose}
+          loadoutTutorialStep={loadoutTutorialStep}
+          onLoadoutTutorialNext={advanceLoadoutTutorial}
+          onLoadoutTutorialSkip={skipLoadoutTutorial}
+        />
+      )}
     </div>
   )
 }

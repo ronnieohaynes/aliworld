@@ -41,6 +41,11 @@ import {
 } from '../store/skillStore'
 import { generateIdentityCard } from '../lib/identityCard'
 import { IdentityCardPreview } from './IdentityCardPreview'
+import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
+import {
+  LOADOUT_TUTORIAL_STEPS,
+  type LoadoutTutorialTarget,
+} from '../data/loadoutTutorial'
 import './BattleScreen.css'
 import './LoadoutScreen.css'
 import { getAuthState } from '../store/authStore'
@@ -63,6 +68,10 @@ const SKILL_SHORT: Record<MoveSkill, string> = {
 
 type Props = {
   onClose: () => void
+  /** Loadout tutorial steps 1–4 (skills → counter card); step 0 is on the start menu. */
+  loadoutTutorialStep?: number | null
+  onLoadoutTutorialNext?: () => void
+  onLoadoutTutorialSkip?: () => void
 }
 
 type EquipSlot = 0 | 1 | 2 | 3
@@ -136,7 +145,12 @@ function buildSkillSections(
   })
 }
 
-export function LoadoutScreen({ onClose }: Props) {
+export function LoadoutScreen({
+  onClose,
+  loadoutTutorialStep = null,
+  onLoadoutTutorialNext,
+  onLoadoutTutorialSkip,
+}: Props) {
   const [closing, setClosing] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>(0)
   const [expandedSkill, setExpandedSkill] = useState<MoveSkill | null>(null)
@@ -146,6 +160,13 @@ export function LoadoutScreen({ onClose }: Props) {
   const [cardGenerating, setCardGenerating] = useState(false)
   const [cardError, setCardError] = useState<string | null>(null)
   const portraitRef = useRef<HTMLCanvasElement>(null)
+  const skillsSectionRef = useRef<HTMLElement>(null)
+  const equippedSectionRef = useRef<HTMLElement>(null)
+  const buildSectionRef = useRef<HTMLElement>(null)
+  const scrollRootRef = useRef<HTMLDivElement>(null)
+
+  const showLoadoutTutorial =
+    loadoutTutorialStep != null && loadoutTutorialStep >= 1 && loadoutTutorialStep <= 4
 
   const skills = usePlayerStore(getPlayerSkills)
   const equipped = usePlayerStore(getEquippedMoves)
@@ -256,8 +277,12 @@ export function LoadoutScreen({ onClose }: Props) {
           </button>
         </header>
 
-        <div className="loadout-screen__scroll">
-          <section className="loadout-screen__hero" aria-label="Player portrait">
+        <div ref={scrollRootRef} className="loadout-screen__scroll">
+          <section
+            ref={buildSectionRef}
+            className="loadout-screen__hero"
+            aria-label="Player portrait"
+          >
             <canvas
               ref={portraitRef}
               className="loadout-screen__portrait"
@@ -288,7 +313,11 @@ export function LoadoutScreen({ onClose }: Props) {
             ) : null}
           </section>
 
-          <section className="loadout-screen__equipped" aria-label="Equipped move slots">
+          <section
+            ref={equippedSectionRef}
+            className="loadout-screen__equipped"
+            aria-label="Equipped move slots"
+          >
             <h2 className="loadout-screen__section-label">equipped</h2>
             {alreadyEquippedNote && (
               <p className="loadout-screen__note" role="status">
@@ -318,7 +347,11 @@ export function LoadoutScreen({ onClose }: Props) {
             </div>
           </section>
 
-          <section className="loadout-screen__skills" aria-label="Skill ladders">
+          <section
+            ref={skillsSectionRef}
+            className="loadout-screen__skills"
+            aria-label="Skill ladders"
+          >
             <h2 className="loadout-screen__section-label">skills</h2>
             {skillSections.map((section) => {
               const expanded = expandedSkill === section.skill
@@ -396,6 +429,22 @@ export function LoadoutScreen({ onClose }: Props) {
           previewUrl={cardPreviewUrl}
           blob={cardBlob}
           onClose={closeCardPreview}
+        />
+      ) : null}
+
+      {showLoadoutTutorial && onLoadoutTutorialNext && onLoadoutTutorialSkip ? (
+        <GuidedTutorialOverlay<LoadoutTutorialTarget | 'none'>
+          ariaLabel="Loadout tutorial"
+          steps={LOADOUT_TUTORIAL_STEPS}
+          stepIndex={loadoutTutorialStep}
+          targetRefs={{
+            skills: skillsSectionRef,
+            equipped: equippedSectionRef,
+            build: buildSectionRef,
+          }}
+          scrollRootRef={scrollRootRef}
+          onNext={onLoadoutTutorialNext}
+          onSkip={onLoadoutTutorialSkip}
         />
       ) : null}
     </div>

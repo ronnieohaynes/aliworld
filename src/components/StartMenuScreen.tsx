@@ -4,6 +4,7 @@ import {
   useEffect,
   useImperativeHandle,
   useState,
+  type RefObject,
 } from 'react'
 import './StartMenuScreen.css'
 
@@ -31,10 +32,11 @@ export type StartMenuHandle = {
 type Props = {
   onAction: (action: StartMenuAction) => void
   onConfirmNewGame: () => void
+  loadoutButtonRef?: RefObject<HTMLButtonElement | null>
 }
 
 export const StartMenuScreen = forwardRef<StartMenuHandle, Props>(function StartMenuScreen(
-  { onAction, onConfirmNewGame },
+  { onAction, onConfirmNewGame, loadoutButtonRef },
   ref,
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -191,6 +193,7 @@ export const StartMenuScreen = forwardRef<StartMenuHandle, Props>(function Start
           {MENU_ITEMS.map((item, index) => (
             <li key={item.id} className="start-menu-screen__item">
               <button
+                ref={item.id === 'loadout' ? loadoutButtonRef : undefined}
                 type="button"
                 className={`start-menu-screen__btn${
                   index === selectedIndex ? ' start-menu-screen__btn--selected' : ''
