@@ -1,0 +1,7 @@
+{
+  "title": "Episode 1 cutscene player and quest handoff",
+  "head": "ron/Alliworld-episode-1-cutscene",
+  "base": "main",
+  "draft": true,
+  "body": "## Summary\n- Adds a YouTube-based Episode 1 cutscene overlay with home-movie style captions, progress bar, and dev preview/skip shortcuts.\n- Wires the cafe beat into a post-clip handoff: black hold, fade to black, Episode 2 title card, and world fade-in at The 5ive.\n- Introduces quest transition UI and renames the quest to Midnight's Story (Episode 2: trust the signal).\n\n## Test plan\n- [ ] Shift+1: play E1 cutscene, confirm video, captions, and progress bar\n- [ ] Shift+E: skip to end; confirm 5s hold, 1.5s fade to black, title card, and 1.6s world fade-in\n- [ ] Cafe flow: finish cafe scene → cutscene → Episode 2 transition → spawn at The 5ive\n- [ ] First visit to San Bruno shows Episode 1 title card\n"
+}
