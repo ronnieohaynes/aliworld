@@ -27,11 +27,12 @@ export const BATTLE_TARGET_VISIBLE_H = 150
 /** @deprecated Alias for enemy target height — use with battleSizeMult. */
 export const BATTLE_ENEMY_DISPLAY_H = BATTLE_TARGET_VISIBLE_H
 
-/** Nudge sprites down so visible feet meet the street line (px). */
-export const BATTLE_GROUND_FEET_NUDGE = 3
+/** Per-fighter vertical offset from the ground line (negative = up). */
+export const BATTLE_ENEMY_FEET_NUDGE = -17
+export const BATTLE_PLAYER_FEET_NUDGE = -7
 
-/** Player protagonist bump over enemy target. */
-export const BATTLE_PLAYER_VISIBLE_MULT = 1.05
+/** Player visible height matches enemy target (no protagonist bump). */
+export const BATTLE_PLAYER_VISIBLE_MULT = 1.0
 
 /** Enemy sprite drawn to this canvas before visible-bounds measure. */
 export const BATTLE_ENEMY_SOURCE_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
@@ -62,13 +63,14 @@ export function layoutSpriteFromVisibleBounds(
   groundY: number,
   x: number,
   targetVisibleH: number,
+  feetNudge: number,
 ): BattleSpritePlacement {
   const visH = Math.max(1, bounds.visH)
   const bodyScale = targetVisibleH / visH
   const displayH = Math.floor(visH * bodyScale)
   const uniformScale = displayH / sourceH
   const displayW = Math.floor(sourceW * uniformScale)
-  const drawY = Math.floor(groundY - bounds.bottom * uniformScale + BATTLE_GROUND_FEET_NUDGE)
+  const drawY = Math.floor(groundY - bounds.bottom * uniformScale + feetNudge)
 
   return {
     x,
@@ -89,6 +91,7 @@ export const DEFAULT_ENEMY_PLACEMENT: BattleSpritePlacement = layoutSpriteFromVi
   BATTLE_GROUND_Y,
   BATTLE_ENEMY_X,
   BATTLE_TARGET_VISIBLE_H,
+  BATTLE_ENEMY_FEET_NUDGE,
 )
 
 export const DEFAULT_PLAYER_PLACEMENT: BattleSpritePlacement = layoutSpriteFromVisibleBounds(
@@ -98,4 +101,5 @@ export const DEFAULT_PLAYER_PLACEMENT: BattleSpritePlacement = layoutSpriteFromV
   BATTLE_GROUND_Y,
   BATTLE_PLAYER_X,
   Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT),
+  BATTLE_PLAYER_FEET_NUDGE,
 )

@@ -19,10 +19,12 @@ import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '
 import type { SpriteSheet } from '../game/SpriteSheet'
 import { isDevSparNpcId } from '../data/devSpar'
 import {
+  BATTLE_ENEMY_FEET_NUDGE,
   BATTLE_ENEMY_SOURCE_H,
   BATTLE_ENEMY_SOURCE_W,
   BATTLE_ENEMY_X,
   BATTLE_GROUND_Y,
+  BATTLE_PLAYER_FEET_NUDGE,
   BATTLE_PLAYER_SOURCE_H,
   BATTLE_PLAYER_SOURCE_W,
   BATTLE_PLAYER_VISIBLE_MULT,
@@ -510,6 +512,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         BATTLE_GROUND_Y,
         BATTLE_PLAYER_X,
         playerTarget,
+        BATTLE_PLAYER_FEET_NUDGE,
       )
       setPlayerPlacement(placement)
     })
@@ -560,6 +563,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         BATTLE_GROUND_Y,
         BATTLE_ENEMY_X,
         enemyTarget,
+        BATTLE_ENEMY_FEET_NUDGE,
       )
       if (!cancelled) setEnemyPlacement(placement)
     })()
