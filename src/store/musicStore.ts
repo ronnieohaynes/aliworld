@@ -5,6 +5,7 @@
 import { ADAM_MP3_ARTIFACT_ID } from '../data/adamMp3Handoff'
 import { hasArtifact, subscribeArtifactStore } from './artifactStore'
 import { hasMp3PlayerOwned, subscribeQuest1Store } from './quest1Store'
+import type { MusicCurrent } from '../lib/audioManager'
 import {
   getMusicCurrent,
   grantMusicPlayer,
@@ -14,6 +15,19 @@ import {
   subscribeAudioManager,
   toggleMusicMuted,
 } from '../lib/audioManager'
+
+export type MusicStoreSnapshot = {
+  playing: boolean
+  current: MusicCurrent | null
+  playerGranted: boolean
+}
+
+/** Stable reference for useSyncExternalStore — only replaced when values change. */
+let musicStoreSnapshot: MusicStoreSnapshot = {
+  playing: false,
+  current: null,
+  playerGranted: false,
+}
 
 export function hasMusicPlayer(): boolean {
   return hasMp3PlayerOwned() || hasArtifact(ADAM_MP3_ARTIFACT_ID)
@@ -30,16 +44,34 @@ export function subscribeMusicStore(listener: () => void): () => void {
   }
 }
 
-export function getMusicStoreSnapshot(): {
-  playing: boolean
-  current: ReturnType<typeof getMusicCurrent>
-  playerGranted: boolean
-} {
-  return {
-    playing: hasMusicPlayer() && !isMusicMuted(),
-    current: hasMusicPlayer() ? getMusicCurrent() : null,
-    playerGranted: hasMusicPlayer(),
+export function getMusicStoreSnapshot(): MusicStoreSnapshot {
+  const playerGranted = hasMusicPlayer()
+  const playing = playerGranted && !isMusicMuted()
+  const current = playerGranted ? getMusicCurrent() : null
+  const prev = musicStoreSnapshot
+  if (
+    prev.playerGranted === playerGranted &&
+    prev.playing === playing &&
+    prev.current === current
+  ) {
+    return prev
   }
+  musicStoreSnapshot = { playerGranted, playing, current }
+  return musicStoreSnapshot
+}
+
+/** Primitive selectors — safe for useSyncExternalStore without object snapshots. */
+export function getMusicPlayerGrantedSnapshot(): boolean {
+  return hasMusicPlayer()
+}
+
+export function getMusicPlayingSnapshot(): boolean {
+  return hasMusicPlayer() && !isMusicMuted()
+}
+
+export function getMusicTrackIdSnapshot(): string | null {
+  if (!hasMusicPlayer()) return null
+  return getMusicCurrent()?.trackId ?? null
 }
 
 export function isSoundtrackPlaying(): boolean {
