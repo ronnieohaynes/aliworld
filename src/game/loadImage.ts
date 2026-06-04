@@ -1,9 +1,20 @@
-export function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.decoding = 'async'
-    img.onload = () => resolve(img)
+export async function loadImage(src: string): Promise<HTMLImageElement> {
+  const img = new Image()
+  img.decoding = 'async'
+  img.src = src
+
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve()
     img.onerror = () => reject(new Error(`Failed to load image: ${src}`))
-    img.src = src
   })
+
+  if (typeof img.decode === 'function') {
+    try {
+      await img.decode()
+    } catch {
+      /* decode can reject on broken images; onload still fired */
+    }
+  }
+
+  return img
 }
