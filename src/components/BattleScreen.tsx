@@ -24,7 +24,11 @@ import {
   layoutSpriteFromVisibleBounds,
   type BattleSpritePlacement,
 } from '../game/battlePlacement'
-import { measureCanvasVisibleBounds } from '../game/spriteBounds'
+import {
+  ensureImageDecoded,
+  measureCanvasVisibleBounds,
+  measureNaturalImageFrame,
+} from '../game/spriteBounds'
 import {
   applyBattleEndHealing,
   BATTLE_END_LOSE_DELAY_MS,
@@ -449,26 +453,28 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   useEffect(() => {
     let cancelled = false
     const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
-
     const tuning = getMidnightVariantRenderTuning(selectedMidnightVariant)
 
-    loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
+    void loadSpriteSheetWithFallback(walkSrc).then(async (sheet) => {
       if (cancelled || !sheet?.loaded) return
       midnightSheetRef.current = sheet
       const canvas = playerCanvasRef.current
       if (!canvas) return
       drawPlayerBattleSprite(canvas, sheet, tuning)
-      const bounds = measureCanvasVisibleBounds(canvas, `player:${walkSrc}`)
-      setPlayerPlacement(
-        layoutSpriteFromVisibleBounds(
-          bounds,
-          BATTLE_PLAYER_SOURCE_W,
-          BATTLE_PLAYER_SOURCE_H,
-          BATTLE_GROUND_Y,
-          BATTLE_PLAYER_X,
-          Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT),
-        ),
+      const bounds = measureCanvasVisibleBounds(
+        canvas,
+        `player:${walkSrc}`,
+        'player',
       )
+      const placement = layoutSpriteFromVisibleBounds(
+        bounds,
+        BATTLE_PLAYER_SOURCE_W,
+        BATTLE_PLAYER_SOURCE_H,
+        BATTLE_GROUND_Y,
+        BATTLE_PLAYER_X,
+        Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT),
+      )
+      setPlayerPlacement(placement)
     })
 
     return () => {
@@ -478,32 +484,50 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   }, [selectedMidnightVariant])
 
   useEffect(() => {
+    let cancelled = false
     const canvas = enemyWrapRef.current?.querySelector('canvas')
     if (!canvas) return
 
     const spriteSrc = state.npc.spriteSrc ?? MARK_SPRITE_SRC
-    const img = new Image()
-    img.src = spriteSrc
-    img.onload = () => {
-      drawEnemyBattleSprite(canvas, img, 4)
-      const bounds = measureCanvasVisibleBounds(canvas, `enemy:${spriteSrc}`)
-      setEnemyPlacement(
-        layoutSpriteFromVisibleBounds(
-          bounds,
-          BATTLE_ENEMY_SOURCE_W,
-          BATTLE_ENEMY_SOURCE_H,
-          BATTLE_GROUND_Y,
-          BATTLE_ENEMY_X,
-          BATTLE_TARGET_VISIBLE_H,
-        ),
+    const spriteColumns = 4
+    const frameCol = 2
+    const label = state.npc.displayName.toLowerCase()
+
+    void (async () => {
+      const img = new Image()
+      img.src = spriteSrc
+      try {
+        await ensureImageDecoded(img)
+      } catch {
+        return
+      }
+      if (cancelled) return
+
+      const frameW = Math.max(1, Math.floor(img.naturalWidth / spriteColumns))
+      const frameH = Math.max(1, Math.floor(img.naturalHeight))
+      const bounds = measureNaturalImageFrame(
+        img,
+        frameCol,
+        spriteColumns,
+        spriteSrc,
+        label,
       )
+      drawEnemyBattleSprite(canvas, img, spriteColumns)
+      const placement = layoutSpriteFromVisibleBounds(
+        bounds,
+        frameW,
+        frameH,
+        BATTLE_GROUND_Y,
+        BATTLE_ENEMY_X,
+        BATTLE_TARGET_VISIBLE_H,
+      )
+      if (!cancelled) setEnemyPlacement(placement)
+    })()
+
+    return () => {
+      cancelled = true
     }
-    img.onerror = () => {
-      const ctx = canvas.getContext('2d', { alpha: true })
-      if (!ctx) return
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-    }
-  }, [state.npc.spriteSrc])
+  }, [state.npc.spriteSrc, state.npc.displayName])
 
   return (
     <div
@@ -550,8 +574,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
                 <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
                   <canvas
                     className="battle-screen__enemy-sprite-canvas"
-                    width={enemyPlacement.sourceWidth}
-                    height={enemyPlacement.sourceHeight}
+                    width={BATTLE_ENEMY_SOURCE_W}
+                    height={BATTLE_ENEMY_SOURCE_H}
                     style={{
                       width: enemyPlacement.displayWidth,
                       height: enemyPlacement.displayHeight,
@@ -566,8 +590,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
                 <canvas
                   ref={playerCanvasRef}
                   className="battle-screen__player-sprite-canvas"
-                  width={playerPlacement.sourceWidth}
-                  height={playerPlacement.sourceHeight}
+                  width={BATTLE_PLAYER_SOURCE_W}
+                  height={BATTLE_PLAYER_SOURCE_H}
                   style={{
                     width: playerPlacement.displayWidth,
                     height: playerPlacement.displayHeight,
