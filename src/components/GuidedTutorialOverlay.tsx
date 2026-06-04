@@ -126,6 +126,9 @@ export function GuidedTutorialOverlay<T extends string>({
 
   const isLastStep = stepIndex >= steps.length - 1
 
+  const panelAboveTarget =
+    highlightRect != null && highlightRect.top > window.innerHeight * 0.42
+
   const handleBackdropClick = () => {
     if (waitForAction) return
     onNext()
@@ -133,7 +136,9 @@ export function GuidedTutorialOverlay<T extends string>({
 
   return createPortal(
     <div
-      className={`battle-tutorial${elevated ? ' battle-tutorial--elevated' : ''}`}
+      className={`battle-tutorial${elevated ? ' battle-tutorial--elevated' : ''}${
+        panelAboveTarget ? ' battle-tutorial--panel-top' : ''
+      }`}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}

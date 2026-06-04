@@ -8,6 +8,10 @@ export const BATTLE_TUTORIAL_STEPS: ReadonlyArray<{
   text: string
   target: BattleTutorialTarget
 }> = [
+  {
+    text: "the ▲ button talks. walk up to someone and press it — on phone, that's tap-to-talk.",
+    target: 'none',
+  },
   { text: 'this is a fight. you and them trade turns.', target: 'battle' },
   {
     text: "watch the telegraph. it tells you what they're about to do.",

@@ -36,7 +36,9 @@ import {
   MARK_NPC_ID,
   markGatingNpcTalked,
   setCafeSceneSeen,
+  setEpisode1TitleCardSeen,
   setE1CutscenePlayed,
+  setMp3PlayerOwned,
   setJaclynConverted,
   setMarkDefeated,
   setTutorialPhase2Seen,
@@ -1213,6 +1215,7 @@ export function GameScreen() {
 
   const handleInteract = useCallback(() => {
     if (worldEntryActive) return
+    if (loadoutTutorialStep != null) return
     if (cutsceneFlowActive || questTransitionActive) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
@@ -1230,6 +1233,7 @@ export function GameScreen() {
       return
     openNearbyNpcDialogue()
   }, [
+    loadoutTutorialStep,
     advanceCafeScene,
     cafeFade,
     cutsceneFlowActive,
@@ -1248,6 +1252,7 @@ export function GameScreen() {
 
   const handlePlayAreaClick = useCallback(() => {
     if (cutsceneFlowActive || questTransitionActive) return
+    if (loadoutTutorialStep != null) return
     if (worldEntryActive || showStartMenu) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
@@ -1259,6 +1264,7 @@ export function GameScreen() {
     }
     openNearbyNpcDialogue()
   }, [
+    loadoutTutorialStep,
     advanceCafeScene,
     cafeFade,
     cutscene,
