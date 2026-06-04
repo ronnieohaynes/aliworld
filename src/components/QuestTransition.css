@@ -1,0 +1,60 @@
+/* Canvas viewport only (390×844 logical area inside GameShell) */
+.quest-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 13000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(3, 3, 8, 0.78);
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity var(--quest-transition-fade-out-ms, 800ms) ease;
+}
+
+.quest-transition--solid-black {
+  background: #000;
+}
+
+.quest-transition--visible {
+  opacity: 1;
+  transition: opacity var(--quest-transition-fade-in-ms, 1600ms) ease;
+}
+
+.quest-transition__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 320px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--quest-transition-fade-in-ms, 1600ms) ease;
+}
+
+.quest-transition--visible .quest-transition__content {
+  opacity: 1;
+}
+
+.quest-transition__quest {
+  margin: 0;
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.quest-transition__episode {
+  margin: 0;
+  color: #d4cce8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  text-transform: none;
+}

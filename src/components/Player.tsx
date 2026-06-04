@@ -554,6 +554,10 @@ export type PlayerHandle = {
   setPosition: (x: number, y: number) => void
   getPosition: () => { x: number; y: number }
   getNearbyNpcId: () => string | null
+  devToggleCollisionDebug: () => void
+  devToggleCoordinateOverlay: () => void
+  devZoomIn: () => void
+  devZoomOut: () => void
 }
 
 type PlayerProps = {
@@ -699,6 +703,37 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     getNearbyNpcId() {
       return nearbyNpcIdRef.current
     },
+    devToggleCollisionDebug() {
+      showCollisionDebug.current = !showCollisionDebug.current
+    },
+    devToggleCoordinateOverlay() {
+      showCoordinateOverlay.current = !showCoordinateOverlay.current
+      if (!showCoordinateOverlay.current) {
+        pointerWorldPos.current.active = false
+      }
+    },
+    devZoomIn() {
+      const { width: sw, height: sh } = screenSizeRef.current
+      const cfg = cityConfigRef.current
+      zoomLevel.current = clampZoom(
+        zoomLevel.current + ZOOM_STEP,
+        sw,
+        sh,
+        cfg.worldWidth,
+        cfg.worldHeight,
+      )
+    },
+    devZoomOut() {
+      const { width: sw, height: sh } = screenSizeRef.current
+      const cfg = cityConfigRef.current
+      zoomLevel.current = clampZoom(
+        zoomLevel.current - ZOOM_STEP,
+        sw,
+        sh,
+        cfg.worldWidth,
+        cfg.worldHeight,
+      )
+    },
   }))
 
   useEffect(() => {
@@ -796,31 +831,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'c' || e.key === 'C') {
-        showCollisionDebug.current = !showCollisionDebug.current
-        return
-      }
-      if (e.key === 'x' || e.key === 'X') {
-        showCoordinateOverlay.current = !showCoordinateOverlay.current
-        if (!showCoordinateOverlay.current) {
-          pointerWorldPos.current.active = false
-        }
-        return
-      }
-      if (e.key === '+' || e.key === '=' || e.key === 'Equal') {
-        e.preventDefault()
-        const { width: sw, height: sh } = screenSizeRef.current
-        const cfg = cityConfigRef.current
-        zoomLevel.current = clampZoom(zoomLevel.current + ZOOM_STEP, sw, sh, cfg.worldWidth, cfg.worldHeight)
-        return
-      }
-      if (e.key === '-' || e.key === 'Minus') {
-        e.preventDefault()
-        const { width: sw, height: sh } = screenSizeRef.current
-        const cfg = cityConfigRef.current
-        zoomLevel.current = clampZoom(zoomLevel.current - ZOOM_STEP, sw, sh, cfg.worldWidth, cfg.worldHeight)
-        return
-      }
       if (e.key in KEY_TO_DIR) {
         e.preventDefault()
         keysDown.current.add(e.key)
