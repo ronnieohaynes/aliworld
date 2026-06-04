@@ -1047,7 +1047,7 @@ export function createInitialBattleState(
         if (!entry) {
           throw new Error(`Unknown combat NPC: ${npcId}`)
         }
-        return entry
+        return { ...entry }
       })()
 
   const player = getPlayerStoreState()

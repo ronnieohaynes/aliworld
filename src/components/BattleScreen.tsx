@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
+import type { NpcCombatEntry } from '../data/npcRegistry'
 import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
 import {
   DEFAULT_BATTLE_LOCATION,
@@ -146,6 +155,8 @@ function FighterStatusTags({ tags }: { tags: StatusTag[] }) {
 type Props = {
   npcId: string
   onBattleEnd: (result: 'win' | 'lose', turns: number) => void
+  /** Commits conversion flags the moment the player wins, before exit narration ends. */
+  onWinPayoff?: (npcId: string) => void
   /** True once enter wipe has lifted and the battle is visible. */
   battleRevealed?: boolean
 }
@@ -230,7 +241,7 @@ function drawEnemyBattleSprite(
   )
 }
 
-export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Props) {
+export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed = true }: Props) {
   const battleScreenRef = useRef<HTMLDivElement>(null)
   const telegraphRowRef = useRef<HTMLElement>(null)
   const movesRef = useRef<HTMLDivElement>(null)
@@ -242,6 +253,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const [playerPlacement, setPlayerPlacement] = useState<BattleSpritePlacement>(DEFAULT_PLAYER_PLACEMENT)
   const midnightSheetRef = useRef<SpriteSheet | null>(null)
   const endHandledRef = useRef(false)
+  const winPayoffCommittedRef = useRef(false)
+  const [winPayoffNpc, setWinPayoffNpc] = useState<NpcCombatEntry | null>(null)
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
@@ -310,6 +323,28 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const matchupLabel = counterMatchupLabel(counterRelation, state.npc.leanSkill)
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
   const showWinNarration = state.phase === 'ended' && state.result === 'win'
+  const payoffNpc = winPayoffNpc ?? state.npc
+
+  useEffect(() => {
+    setWinPayoffNpc(null)
+    winPayoffCommittedRef.current = false
+    endHandledRef.current = false
+  }, [npcId])
+
+  useLayoutEffect(() => {
+    if (state.phase === 'ended' && state.result === 'win') {
+      setWinPayoffNpc((prev) => prev ?? { ...state.npc })
+      return
+    }
+    setWinPayoffNpc(null)
+  }, [state.phase, state.result, state.npc])
+
+  useEffect(() => {
+    if (state.phase !== 'ended' || state.result !== 'win') return
+    if (winPayoffCommittedRef.current) return
+    winPayoffCommittedRef.current = true
+    onWinPayoff?.(npcId)
+  }, [state.phase, state.result, npcId, onWinPayoff])
   const logLines = state.log.slice(-2)
   const heavyTelegraph =
     state.upcomingMove !== 'STUNNED' &&
@@ -338,10 +373,11 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const handleMove = useCallback(
     (move: PlayerMove, slot: number) => {
       if (battleTutorialBlocking) return
+      if (showWinNarration) return
       if (state.phase !== 'player') return
       dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
-    [battleTutorialBlocking, state.phase],
+    [battleTutorialBlocking, showWinNarration, state.phase],
   )
 
   const handleNarrationContinue = useCallback(() => {
@@ -551,22 +587,26 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
           <FighterStatusTags tags={enemyStatusTags} />
         </section>
 
-        <section className="battle-screen__telegraph-row" ref={telegraphRowRef} aria-live="polite">
-          <p
-            className={`battle-screen__telegraph${heavyTelegraph ? ' battle-screen__telegraph--heavy' : ''}`}
-          >
-            {getTelegraphText(state)}
-          </p>
-        </section>
+        {!showWinNarration && (
+          <section className="battle-screen__telegraph-row" ref={telegraphRowRef} aria-live="polite">
+            <p
+              className={`battle-screen__telegraph${heavyTelegraph ? ' battle-screen__telegraph--heavy' : ''}`}
+            >
+              {getTelegraphText(state)}
+            </p>
+          </section>
+        )}
 
         <div className="battle-screen__playfield">
-          <section className="battle-screen__log" aria-live="polite">
-            {logLines.map((line, i) => (
-              <div key={`${i}-${line}`} className="battle-screen__log-line">
-                {line}
-              </div>
-            ))}
-          </section>
+          {!showWinNarration && (
+            <section className="battle-screen__log" aria-live="polite">
+              {logLines.map((line, i) => (
+                <div key={`${i}-${line}`} className="battle-screen__log-line">
+                  {line}
+                </div>
+              ))}
+            </section>
+          )}
 
           <section className="battle-screen__stage" ref={stageRef} aria-hidden>
             <StageBackground location={battleLocation} />
@@ -676,8 +716,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
                   className="battle-screen__narration battle-screen__narration--payoff"
                   onClick={handleNarrationContinue}
                 >
-                  <span className="battle-screen__narration-label">{state.npc.displayName}</span>
-                  <p className="battle-screen__narration-text">{state.npc.losingLine}</p>
+                  <span className="battle-screen__narration-label">{payoffNpc.displayName}</span>
+                  <p className="battle-screen__narration-text">{payoffNpc.losingLine}</p>
                   <span className="battle-screen__narration-continue">tap to continue ▸</span>
                 </button>
               ) : (

@@ -227,7 +227,10 @@ export function GameScreen() {
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
   const [battleReady, setBattleReady] = useState(false)
-  const pendingBattleExitRef = useRef<{ result: 'win' | 'lose' } | null>(null)
+  const pendingBattleExitRef = useRef<{
+    result: 'win' | 'lose'
+    npcId: string | null
+  } | null>(null)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
@@ -1365,6 +1368,36 @@ export function GameScreen() {
     reportCurrentLocation()
   }, [reportCurrentLocation])
 
+  const handleWinPayoff = useCallback((npcId: string) => {
+    if (isDevSparNpcId(npcId)) return
+    if (npcId === WALKER_NPC_ID) {
+      setWalkerConverted()
+      track('npc_converted', { npcId: WALKER_NPC_ID })
+    }
+    if (npcId === JACLYN_NPC_ID) {
+      setJaclynConverted()
+      track('npc_converted', { npcId: JACLYN_NPC_ID })
+    }
+    if (npcId === MARK_NPC_ID) {
+      setMarkDefeated()
+      collectArtifact('subway-pass')
+      track('npc_converted', { npcId: MARK_NPC_ID })
+    }
+    if (npcId === TOWN_CRIER_NPC_ID) {
+      setCrierConverted()
+      track('npc_converted', { npcId: TOWN_CRIER_NPC_ID })
+    }
+    if (npcId === CLERK_NPC_ID) {
+      setClerkConverted()
+      track('npc_converted', { npcId: CLERK_NPC_ID })
+    }
+    if (npcId === RESTOCKER_NPC_ID) {
+      setRestockerDefeated()
+      track('npc_converted', { npcId: RESTOCKER_NPC_ID })
+      track('episode_complete', { episode: 'e2' })
+    }
+  }, [])
+
   const handleBattleEnd = useCallback(
     (result: 'win' | 'lose', turns: number) => {
       const safeTurns = Number.isFinite(turns) && turns >= 0 ? turns : 0
@@ -1373,36 +1406,14 @@ export function GameScreen() {
         track('battle_end', { enemyId: battleNpcId, result, turns: safeTurns })
       }
       if (result === 'win' && !isDevSpar) {
-        if (battleNpcId === WALKER_NPC_ID) {
-          setWalkerConverted()
-          track('npc_converted', { npcId: WALKER_NPC_ID })
-        }
-        if (battleNpcId === JACLYN_NPC_ID) {
-          setJaclynConverted()
-          track('npc_converted', { npcId: JACLYN_NPC_ID })
-        }
         if (battleNpcId === MARK_NPC_ID) {
-          setMarkDefeated()
-          collectArtifact('subway-pass')
           showMarkVictoryNarration()
-          track('npc_converted', { npcId: MARK_NPC_ID })
-        }
-        if (battleNpcId === TOWN_CRIER_NPC_ID) {
-          setCrierConverted()
-          track('npc_converted', { npcId: TOWN_CRIER_NPC_ID })
-        }
-        if (battleNpcId === CLERK_NPC_ID) {
-          setClerkConverted()
-          track('npc_converted', { npcId: CLERK_NPC_ID })
         }
         if (battleNpcId === RESTOCKER_NPC_ID) {
-          setRestockerDefeated()
-          track('npc_converted', { npcId: RESTOCKER_NPC_ID })
-          track('episode_complete', { episode: 'e2' })
           showNarration(["something's wrong in the field.", 'you started it.'])
         }
       }
-      pendingBattleExitRef.current = { result }
+      pendingBattleExitRef.current = { result, npcId: battleNpcId }
       setBattleWipePhase('exit')
     },
     [battleNpcId, showMarkVictoryNarration, showNarration],
@@ -1729,6 +1740,7 @@ export function GameScreen() {
                 npcId={battleNpcId}
                 battleRevealed={!battleWipePhase}
                 onBattleEnd={handleBattleEnd}
+                onWinPayoff={handleWinPayoff}
               />
             )}
             {battleWipePhase && (
