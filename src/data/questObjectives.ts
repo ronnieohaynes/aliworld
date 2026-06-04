@@ -26,6 +26,7 @@ import {
   type Quest2ObjectiveContext,
 } from './quest2Objectives'
 import {
+  E2_ENABLED,
   RESTOCKER_NPC_ID,
   TOWN_CRIER_NPC_ID,
   CROWD_2_NPC_ID,
@@ -125,10 +126,16 @@ const QUEST_1_STEPS: readonly QuestObjectiveStep[] = [
   },
   {
     id: 'darkline',
-    isComplete: () => false,
+    isComplete: (ctx) => ctx.cafeSeen && ctx.markDefeated && !E2_ENABLED,
     getText: () => "take the darkline. (the world's bigger now.)",
   },
 ]
+
+export function isE1ArcComplete(ctx: QuestObjectiveContext): boolean {
+  return ctx.markDefeated && ctx.cafeSeen
+}
+
+const E1_CLOSING_OBJECTIVE_TEXT = 'episode 2 — soon.'
 
 /** Ordered quests — quest 2 activates after e1 cafe beat. */
 export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
@@ -173,6 +180,14 @@ export function resolveActiveObjective(
 export function resolvePrimaryQuestObjective(
   ctx: QuestObjectiveContext = buildQuestObjectiveContext(),
 ): ResolvedObjective {
+  if (isE1ArcComplete(ctx) && !E2_ENABLED) {
+    return {
+      questId: 'quest-1-five',
+      stepId: 'e1-closing',
+      text: E1_CLOSING_OBJECTIVE_TEXT,
+    }
+  }
+
   if (shouldShowQuest2(ctx)) {
     const quest2 = QUEST_DEFINITIONS[1]
     if (quest2) {
@@ -196,6 +211,7 @@ export function resolvePrimaryQuestObjective(
 
 /** First incomplete quest step id across active quest, or null when complete. */
 export function getActiveStepId(ctx: QuestObjectiveContext): string | null {
+  if (isE1ArcComplete(ctx) && !E2_ENABLED) return null
   if (shouldShowQuest2(ctx)) {
     return getQuest2ActiveStepId(ctx)
   }

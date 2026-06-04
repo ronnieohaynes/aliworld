@@ -18,14 +18,14 @@ export const BATTLE_ENEMY_GROUND_Y = BATTLE_GROUND_Y
 export const BATTLE_PLAYER_GROUND_Y = BATTLE_GROUND_Y
 
 export const BATTLE_ENEMY_X = 36
-export const BATTLE_PLAYER_X = 206
+export const BATTLE_PLAYER_X = 198
 
 export const BATTLE_ENEMY_DISPLAY_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
 export const BATTLE_ENEMY_DISPLAY_H = Math.floor(WORLD_NPC_DISPLAY_H * BATTLE_SPRITE_SCALE)
 
 /** Player vs enemy BOX multiplier — tuned for VISIBLE-body parity
- *  (enemy sources are padded; their visible body ≈ 60–70% of the box). */
-export const BATTLE_PLAYER_BOX_MULT = 0.78
+ *  (enemy idle sheets are padded; player draws tight to the box). */
+export const BATTLE_PLAYER_BOX_MULT = 0.9
 export const BATTLE_PLAYER_DISPLAY_H = Math.floor(BATTLE_ENEMY_DISPLAY_H * BATTLE_PLAYER_BOX_MULT)
 export const BATTLE_PLAYER_DISPLAY_W = Math.floor(
   WORLD_PLAYER_DISPLAY_WIDTH * (BATTLE_PLAYER_DISPLAY_H / WORLD_PLAYER_DISPLAY_HEIGHT),
@@ -35,8 +35,8 @@ export const BATTLE_PLAYER_DISPLAY_W = Math.floor(
  * Per-sprite drawY tweak so visible feet meet BATTLE_GROUND_Y (source padding differs).
  * Increase to push sprite down; decrease to raise.
  */
-export const BATTLE_ENEMY_FOOT_INSET = -4
-export const BATTLE_PLAYER_FOOT_INSET = 4
+export const BATTLE_ENEMY_FOOT_INSET = 6
+export const BATTLE_PLAYER_FOOT_INSET = 0
 
 export function battleDrawY(
   groundY: number,

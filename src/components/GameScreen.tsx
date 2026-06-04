@@ -3,6 +3,7 @@ import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
 import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, type NpcData } from '../data/npcs'
 import { isE2QuestUnlocked } from '../data/quest2Objectives'
+import { E2_ENABLED } from '../store/quest2Store'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import {
   SOUTHSIDE_EXTERIOR_RETURN,
@@ -254,6 +255,7 @@ export function GameScreen() {
     void quest1Revision
     void quest2Revision
     if (!isCafeSceneSeen()) return [...DARKLINE_DESTINATIONS]
+    if (!E2_ENABLED) return [...DARKLINE_DESTINATIONS]
     const dest: CityId[] = [...DARKLINE_DESTINATIONS, POST_E1_DARKLINE_DESTINATION]
     if (isE2QuestUnlocked() && POST_E2_DARKLINE_DESTINATION !== POST_E1_DARKLINE_DESTINATION) {
       dest.push(POST_E2_DARKLINE_DESTINATION)
@@ -263,6 +265,15 @@ export function GameScreen() {
     }
     return dest
   }, [quest1Revision, quest2Revision])
+
+  const darklineInactiveDestinations = useMemo(() => {
+    void quest1Revision
+    const inactive = [...INACTIVE_DESTINATIONS]
+    if (isCafeSceneSeen() && !E2_ENABLED) {
+      return [{ label: 'southside', status: 'SOON' }, ...inactive]
+    }
+    return inactive
+  }, [quest1Revision])
 
   const questPulseDescriptor = useMemo(() => {
     void artifactRevision
@@ -1426,7 +1437,7 @@ export function GameScreen() {
             <DarklineScreen
               currentCity={currentCity}
               destinations={darklineDestinations}
-              inactiveDestinations={INACTIVE_DESTINATIONS}
+              inactiveDestinations={darklineInactiveDestinations}
               onBeginExit={handleDarklineBeginExit}
             />
           )}

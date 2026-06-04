@@ -5,6 +5,7 @@
 import type { QuestObjectiveContext, QuestObjectiveStep } from './questObjectives'
 import { isCafeSceneSeen, isMarkDefeated } from '../store/quest1Store'
 import {
+  E2_ENABLED,
   isClerkConverted,
   isCrierConverted,
   isCrowdAddressed,
@@ -24,7 +25,7 @@ export type Quest2ObjectiveContext = {
 }
 
 export function isE2QuestUnlocked(): boolean {
-  return isMarkDefeated() && isCafeSceneSeen()
+  return E2_ENABLED && isMarkDefeated() && isCafeSceneSeen()
 }
 
 export function buildQuest2ObjectiveContext(): Quest2ObjectiveContext {
