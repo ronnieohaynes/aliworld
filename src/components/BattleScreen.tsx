@@ -514,13 +514,16 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
         label,
       )
       drawEnemyBattleSprite(canvas, img, spriteColumns)
+      const enemyTarget = Math.floor(
+        BATTLE_TARGET_VISIBLE_H * (state.npc.battleSizeMult ?? 1),
+      )
       const placement = layoutSpriteFromVisibleBounds(
         bounds,
         frameW,
         frameH,
         BATTLE_GROUND_Y,
         BATTLE_ENEMY_X,
-        BATTLE_TARGET_VISIBLE_H,
+        enemyTarget,
       )
       if (!cancelled) setEnemyPlacement(placement)
     })()
@@ -528,7 +531,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
     return () => {
       cancelled = true
     }
-  }, [state.npc.spriteSrc, state.npc.displayName])
+  }, [state.npc.spriteSrc, state.npc.displayName, state.npc.battleSizeMult])
 
   return (
     <div

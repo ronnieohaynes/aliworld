@@ -29,6 +29,8 @@ export type NpcCombatEntry = {
   losingLine: string
   spriteSrc?: string
   battleLocation: BattleLocationId
+  /** Scales enemy visible body height in battle (default 1). */
+  battleSizeMult?: number
 }
 
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
