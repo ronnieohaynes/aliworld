@@ -110,6 +110,7 @@ export function CutsceneOverlay({
   const playbackLatchedRef = useRef(false)
   const lastApiClipTimeRef = useRef(0)
   const completePlaybackRef = useRef<() => void>(() => {})
+  const skipToClipEndRef = useRef<() => void>(() => {})
   const pendingDevSkipRef = useRef(false)
   const devSkipAnchorClipRef = useRef<number | null>(null)
   const endedRef = useRef(false)
@@ -118,6 +119,7 @@ export function CutsceneOverlay({
   const [progress, setProgress] = useState(0)
   const [activeCaption, setActiveCaption] = useState<Caption | null>(null)
   const [postHoldPhase, setPostHoldPhase] = useState<'none' | 'hold' | 'fade-to-black'>('none')
+  const [skipVisible, setSkipVisible] = useState(false)
   onCompleteRef.current = onComplete
   onEndedRef.current = onEnded
 
@@ -133,7 +135,9 @@ export function CutsceneOverlay({
     setProgress(0)
     setActiveCaption(null)
     setPostHoldPhase('none')
+    setSkipVisible(false)
     let pollId = 0
+    let skipRevealId = 0
     let failId = 0
     let holdId = 0
     let fadeOutId = 0
@@ -233,7 +237,10 @@ export function CutsceneOverlay({
         tryCompleteIfSeekAtEnd()
       }, 1200)
     }
+    skipToClipEndRef.current = skipToEndForDev
     registerCutsceneDevSkip(skipToEndForDev)
+
+    skipRevealId = window.setTimeout(() => setSkipVisible(true), 5000)
 
     const pollPlaybackProgress = () => {
       const player = playerRef.current
@@ -403,6 +410,7 @@ export function CutsceneOverlay({
       window.clearTimeout(failId)
       window.clearTimeout(holdId)
       window.clearTimeout(fadeOutId)
+      window.clearTimeout(skipRevealId)
       if (!endedRef.current) {
         registerCutsceneDevPlayer(null)
         playerRef.current?.destroy()
@@ -460,6 +468,15 @@ export function CutsceneOverlay({
           style={{ width: `${Math.round(progress * 10000) / 100}%` }}
         />
       </div>
+      {skipVisible ? (
+        <button
+          type="button"
+          className="cutscene-overlay__skip"
+          onClick={() => skipToClipEndRef.current()}
+        >
+          skip ▸
+        </button>
+      ) : null}
     </div>
   )
 }

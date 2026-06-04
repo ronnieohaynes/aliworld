@@ -229,16 +229,15 @@ export function GameScreen() {
   const [cafeSceneLine, setCafeSceneLine] = useState(0)
   const [cutscene, setCutscene] = useState<PlayCutsceneOptions | null>(null)
   const [cutsceneQuestHelperHidden, setCutsceneQuestHelperHidden] = useState(false)
-  const [episodeCutsceneAftermath, setEpisodeCutsceneAftermath] = useState(false)
-  const episodeHandoffStartedRef = useRef(false)
-  const episodeUserOnCompleteRef = useRef<(() => void) | null>(null)
+  const pendingCafeVideoHandoffRef = useRef(false)
+  const cafeVideoHandoffStartedRef = useRef(false)
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
     'visible' | 'hidden' | 'fade-in-pending' | 'fade-in'
   >('visible')
 
-  const cutsceneFlowActive = cutscene != null || episodeCutsceneAftermath
+  const cutsceneFlowActive = cutscene != null
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
@@ -758,96 +757,71 @@ export function GameScreen() {
     setCafeFade('out')
   }, [])
 
-  const completeQuest1AfterCafe = useCallback(() => {
-    if (isCafeSceneSeen()) {
+  const runCafeVideoHandoffOnce = useCallback(() => {
+    if (cafeVideoHandoffStartedRef.current) {
       finishCafeScene()
       return
     }
+    cafeVideoHandoffStartedRef.current = true
+    setCutsceneQuestHelperHidden(false)
+    setCurrentCity('five')
+    markCityVisited('five')
+    const fiveCfg = CITY_CONFIGS.five
+    playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
+    setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
+    setEpisodeWorldReveal('hidden')
     showQuestTransition({
       questName: PRELUDE_QUEST_NAME,
-      type: 'quest_complete',
-      onComplete: finishCafeScene,
+      episodeName: EPISODE_2_NAME,
+      episodeNumber: 2,
+      type: 'episode_start',
+      solidBlackBackdrop: true,
+      onExitFadeStart: () => {
+        setEpisodeWorldReveal('fade-in-pending')
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setEpisodeWorldReveal('fade-in'))
+        })
+      },
+      onComplete: () => {
+        setEpisodeWorldReveal('visible')
+        finishCafeScene()
+        showNarration(["word is there's a gym opening in the 5ive. get your weight up."])
+      },
     })
-  }, [finishCafeScene, showQuestTransition])
+  }, [finishCafeScene, showNarration, showQuestTransition])
 
-  const runEpisodePostCutsceneFlow = useCallback(
-    (userOnComplete: () => void) => {
-      setEpisodeCutsceneAftermath(false)
-      setCurrentCity('five')
-      markCityVisited('five')
-      const fiveCfg = CITY_CONFIGS.five
-      playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
-      setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
-      setCutsceneQuestHelperHidden(false)
-      setEpisodeWorldReveal('hidden')
-      showQuestTransition({
-        questName: PRELUDE_QUEST_NAME,
-        episodeName: EPISODE_2_NAME,
-        episodeNumber: 2,
-        type: 'episode_start',
-        solidBlackBackdrop: true,
-        onExitFadeStart: () => {
-          setEpisodeWorldReveal('fade-in-pending')
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => setEpisodeWorldReveal('fade-in'))
-          })
-        },
-        onComplete: () => {
-          setEpisodeWorldReveal('visible')
-          userOnComplete()
-        },
-      })
-    },
-    [showQuestTransition],
-  )
+  const completeQuest1AfterCafe = useCallback(() => {
+    runCafeVideoHandoffOnce()
+  }, [runCafeVideoHandoffOnce])
 
-  const beginEpisodeHandoff = useCallback(
-    (userOnComplete: () => void) => {
-      if (episodeHandoffStartedRef.current) return
-      episodeHandoffStartedRef.current = true
-      episodeUserOnCompleteRef.current = null
-      setEpisodeCutsceneAftermath(false)
-      setCutscene(null)
-      runEpisodePostCutsceneFlow(userOnComplete)
-    },
-    [runEpisodePostCutsceneFlow],
-  )
-
-  const playCutscene = useCallback(
-    (opts: PlayCutsceneOptions) => {
-      episodeHandoffStartedRef.current = false
-      episodeUserOnCompleteRef.current = null
-      setEpisodeCutsceneAftermath(false)
-      setCutsceneQuestHelperHidden(true)
-      const { isEpisodeCutscene, onComplete: userOnComplete, ...rest } = opts
-      const holdMs = isEpisodeCutscene ? EPISODE_CUTSCENE_POST_HOLD_MS : 0
-      setCutscene({
-        ...rest,
-        postCompleteHoldMs: holdMs > 0 ? holdMs : undefined,
-        postCompleteFadeToBlackMs: isEpisodeCutscene
-          ? EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS
-          : undefined,
-        onComplete: () => {
-          if (isEpisodeCutscene) {
-            episodeUserOnCompleteRef.current = userOnComplete
-            setEpisodeCutsceneAftermath(true)
-            return
-          }
-          setCutsceneQuestHelperHidden(false)
-          userOnComplete()
-        },
-      })
-    },
-    [beginEpisodeHandoff],
-  )
+  const playCutscene = useCallback((opts: PlayCutsceneOptions) => {
+    setCutsceneQuestHelperHidden(true)
+    const { isEpisodeCutscene, onComplete: userOnComplete, ...rest } = opts
+    const holdMs = isEpisodeCutscene ? EPISODE_CUTSCENE_POST_HOLD_MS : 0
+    setCutscene({
+      ...rest,
+      postCompleteHoldMs: holdMs > 0 ? holdMs : undefined,
+      postCompleteFadeToBlackMs: isEpisodeCutscene
+        ? EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS
+        : undefined,
+      onComplete: () => {
+        if (isEpisodeCutscene) {
+          setE1CutscenePlayed()
+          pendingCafeVideoHandoffRef.current = true
+          return
+        }
+        setCutsceneQuestHelperHidden(false)
+        userOnComplete?.()
+      },
+    })
+  }, [])
 
   const handleCutsceneEnded = useCallback(() => {
     setCutscene(null)
-    const userOnComplete = episodeUserOnCompleteRef.current
-    if (userOnComplete && !episodeHandoffStartedRef.current) {
-      beginEpisodeHandoff(userOnComplete)
-    }
-  }, [beginEpisodeHandoff])
+    if (!pendingCafeVideoHandoffRef.current) return
+    pendingCafeVideoHandoffRef.current = false
+    runCafeVideoHandoffOnce()
+  }, [runCafeVideoHandoffOnce])
 
   const canPlayDevCutscene = useCallback(() => {
     return (
@@ -1023,22 +997,11 @@ export function GameScreen() {
 
   const handleDarklineTravel = useCallback(
     (destination: CityId) => {
-      const firstSanBruno =
-        destination === 'san-bruno' &&
-        !getWorldMemorySnapshot().citiesVisited.includes('san-bruno')
       setCurrentCity(destination)
       markCityVisited(destination)
       const destConfig = CITY_CONFIGS[destination]
       playerRef.current?.setPosition(destConfig.spawnX, destConfig.spawnY)
       setLastLocation(destination, destConfig.spawnX, destConfig.spawnY)
-      if (firstSanBruno) {
-        showQuestTransition({
-          questName: PRELUDE_QUEST_NAME,
-          episodeName: EPISODE_1_NAME,
-          episodeNumber: 1,
-          type: 'episode_start',
-        })
-      }
     },
     [showQuestTransition],
   )
@@ -1372,7 +1335,7 @@ export function GameScreen() {
 
   useEffect(() => {
     if (!hasMusicPlayer()) return
-    if (cutscene != null || episodeCutsceneAftermath) {
+    if (cutscene != null) {
       setMusicContext('cutscene')
       return
     }
@@ -1386,7 +1349,6 @@ export function GameScreen() {
     battleNpcId,
     currentCity,
     cutscene,
-    episodeCutsceneAftermath,
     locationReady,
     worldEntryActive,
   ])
@@ -1437,15 +1399,30 @@ export function GameScreen() {
     setBattleReady(false)
     setBattleWipePhase(null)
     reportCurrentLocation()
-    if (
-      exit?.result === 'win' &&
-      exit.npcId === WALKER_NPC_ID &&
-      isBattleTutorialSeen() &&
-      !isTutorialPhase2Seen()
-    ) {
-      setLoadoutTutorialStep(0)
+
+    const startPhase2Tutorial = () => {
+      if (isBattleTutorialSeen() && !isTutorialPhase2Seen()) {
+        setLoadoutTutorialStep(0)
+      }
     }
-  }, [reportCurrentLocation])
+
+    if (exit?.result === 'win' && exit.npcId === WALKER_NPC_ID) {
+      if (!isEpisode1TitleCardSeen()) {
+        showQuestTransition({
+          questName: PRELUDE_QUEST_NAME,
+          episodeName: EPISODE_1_NAME,
+          episodeNumber: 1,
+          type: 'episode_start',
+          onComplete: () => {
+            setEpisode1TitleCardSeen()
+            startPhase2Tutorial()
+          },
+        })
+        return
+      }
+      startPhase2Tutorial()
+    }
+  }, [reportCurrentLocation, showQuestTransition])
 
   const handleWinPayoff = useCallback((npcId: string) => {
     if (isDevSparNpcId(npcId)) return

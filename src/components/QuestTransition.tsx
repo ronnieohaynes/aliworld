@@ -8,9 +8,10 @@ import {
 } from 'react'
 import './QuestTransition.css'
 
-const FADE_IN_MS = 1_600
-const FADE_OUT_MS = 800
-const HOLD_MS = 3000
+/** Story / episode cards: 0.2s in, 1s hold, 0.2s out (~1.4s total). */
+const FADE_IN_MS = 200
+const FADE_OUT_MS = 200
+const HOLD_MS = 1000
 
 export type QuestTransitionType =
   | 'quest_start'
