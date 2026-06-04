@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { setMusicContext } from '../lib/audioManager'
 import {
   getAuthState,
   requestPasswordReset,
@@ -11,10 +10,6 @@ import './AuthScreen.css'
 type Mode = 'login' | 'signup' | 'forgot'
 
 export function AuthScreen() {
-  useEffect(() => {
-    setMusicContext('title')
-  }, [])
-
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

@@ -28,6 +28,7 @@ import {
   isMarkDefeated,
   subscribeQuest1Store,
   isBattleTutorialSeen,
+  isEpisode1TitleCardSeen,
   isTutorialPhase2Seen,
   isWalkerConverted,
   isWorldIntroSeen,
@@ -65,7 +66,11 @@ import {
   subscribeWorldMemoryStore,
 } from '../store/worldMemory'
 import { setMusicContext } from '../lib/audioManager'
-import { resumeSoundtrackIfNeeded, startSoundtrack } from '../store/musicStore'
+import {
+  grantMusicPlayerFromAdam,
+  hasMusicPlayer,
+  resumeMusicPlayerIfOwned,
+} from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
@@ -1063,11 +1068,14 @@ export function GameScreen() {
   }, [])
 
   const completeAdamMp3Handoff = useCallback(() => {
-    if (!hasArtifact(ADAM_MP3_ARTIFACT_ID)) {
-      collectArtifact(ADAM_MP3_ARTIFACT_ID)
-      startSoundtrack()
-    }
-  }, [])
+    if (hasArtifact(ADAM_MP3_ARTIFACT_ID)) return
+    collectArtifact(ADAM_MP3_ARTIFACT_ID)
+    setMp3PlayerOwned()
+    void grantMusicPlayerFromAdam().then(() => {
+      setMusicContext(`city:${currentCity}`)
+    })
+    showNarration(['adam handed you his old mp3 player.'])
+  }, [currentCity, showNarration])
 
   const advanceDialogue = useCallback(() => {
     setDialogue((prev) => {
@@ -1357,6 +1365,7 @@ export function GameScreen() {
   ])
 
   useEffect(() => {
+    if (!hasMusicPlayer()) return
     if (cutscene != null || episodeCutsceneAftermath) {
       setMusicContext('cutscene')
       return
@@ -1377,7 +1386,7 @@ export function GameScreen() {
   ])
 
   useEffect(() => {
-    resumeSoundtrackIfNeeded(hasArtifact(ADAM_MP3_ARTIFACT_ID))
+    resumeMusicPlayerIfOwned()
     if (hasArtifact('subway-pass') && !isMarkDefeated()) {
       setMarkDefeated()
     }

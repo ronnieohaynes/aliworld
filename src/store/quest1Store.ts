@@ -21,6 +21,8 @@ type Quest1State = {
   battleTutorialSeen: boolean
   tutorialPhase2Seen: boolean
   worldIntroSeen: boolean
+  mp3PlayerOwned: boolean
+  episode1TitleCardSeen: boolean
 }
 
 function emptyQuest1State(): Quest1State {
@@ -34,6 +36,8 @@ function emptyQuest1State(): Quest1State {
     battleTutorialSeen: false,
     tutorialPhase2Seen: false,
     worldIntroSeen: false,
+    mp3PlayerOwned: false,
+    episode1TitleCardSeen: false,
   }
 }
 
@@ -70,6 +74,8 @@ function loadQuest1FromStorage(): Quest1State {
       battleTutorialSeen: o.battleTutorialSeen === true,
       tutorialPhase2Seen: o.tutorialPhase2Seen === true,
       worldIntroSeen: o.worldIntroSeen === true,
+      mp3PlayerOwned: o.mp3PlayerOwned === true,
+      episode1TitleCardSeen: o.episode1TitleCardSeen === true,
     }
   } catch {
     return base
@@ -213,6 +219,28 @@ export function setWorldIntroSeen(): void {
   emit()
 }
 
+export function hasMp3PlayerOwned(): boolean {
+  return state.mp3PlayerOwned
+}
+
+export function setMp3PlayerOwned(): void {
+  if (state.mp3PlayerOwned) return
+  state = { ...state, mp3PlayerOwned: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
+export function isEpisode1TitleCardSeen(): boolean {
+  return state.episode1TitleCardSeen
+}
+
+export function setEpisode1TitleCardSeen(): void {
+  if (state.episode1TitleCardSeen) return
+  state = { ...state, episode1TitleCardSeen: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export type Quest1Serialized = {
   markDefeated: boolean
   talkedGatingNpcs: Record<GatingNpcId, boolean>
@@ -223,6 +251,8 @@ export type Quest1Serialized = {
   battleTutorialSeen?: boolean
   tutorialPhase2Seen?: boolean
   worldIntroSeen?: boolean
+  mp3PlayerOwned?: boolean
+  episode1TitleCardSeen?: boolean
 }
 
 export function serialize(): Quest1Serialized {
@@ -236,6 +266,8 @@ export function serialize(): Quest1Serialized {
     battleTutorialSeen: state.battleTutorialSeen,
     tutorialPhase2Seen: state.tutorialPhase2Seen,
     worldIntroSeen: state.worldIntroSeen,
+    mp3PlayerOwned: state.mp3PlayerOwned,
+    episode1TitleCardSeen: state.episode1TitleCardSeen,
   }
 }
 
@@ -256,6 +288,8 @@ export function applyState(data: Partial<Quest1Serialized>): void {
     battleTutorialSeen: data.battleTutorialSeen === true,
     tutorialPhase2Seen: data.tutorialPhase2Seen === true,
     worldIntroSeen: data.worldIntroSeen === true,
+    mp3PlayerOwned: data.mp3PlayerOwned === true,
+    episode1TitleCardSeen: data.episode1TitleCardSeen === true,
   }
   emit()
 }

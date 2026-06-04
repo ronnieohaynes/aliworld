@@ -15,12 +15,17 @@ export const TRACKS: TrackDef[] = [
 
 export const CONTEXT_TRACKS: Record<string, string> = {
   // context → track id. resolution: exact → base segment → silence
-  // 'title': 'theme',
-  // 'city:five': 'theme',
-  // 'city:san-bruno': 'theme',
-  // 'city:southside': 'theme',
-  // 'battle': 'theme',
-  // 'battle:mark': 'theme',
+  // map each city/interior (danny fills track ids after dropping mp3s):
+  // 'city:five': 'five-theme',
+  // 'city:san-bruno': 'san-bruno-theme',
+  // 'city:southside': 'southside-theme',
+  // 'city:blue-store-interior': 'blue-store-theme',
+  // 'battle': 'battle-theme',
+  // 'battle:walker': 'battle-theme',
+  // 'battle:jaclyn': 'battle-theme',
+  // 'battle:mark': 'mark-battle-theme',
+  // 'battle:clerk': 'battle-theme',
+  // 'battle:restocker': 'battle-theme',
 }
 
 const tracksById = new Map(TRACKS.map((track) => [track.id, track]))

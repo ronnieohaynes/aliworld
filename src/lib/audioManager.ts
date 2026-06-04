@@ -22,8 +22,8 @@ type FadeKind = 'out' | 'in' | 'duck' | 'unduck'
 class AudioManager {
   private listeners = new Set<() => void>()
   private unlocked = false
-  private unlockListenersAttached = false
-  private pendingContext: string | null = 'title'
+  private playerGranted = false
+  private pendingContext: string | null = 'city:five'
   private activeContext: string | null = null
   private muted: boolean
   private volume: number
@@ -40,7 +40,10 @@ class AudioManager {
     this.volume = clampVolume(readVolume())
     this.audio.preload = 'auto'
     this.audio.volume = 0
-    this.attachUnlockListeners()
+  }
+
+  isPlayerGranted(): boolean {
+    return this.playerGranted
   }
 
   subscribe(listener: () => void): () => void {
@@ -88,10 +91,9 @@ class AudioManager {
   }
 
   setContext(context: string): void {
-    if (!this.unlocked) {
-      this.pendingContext = context
-      return
-    }
+    this.pendingContext = context
+    if (!this.playerGranted) return
+    if (!this.unlocked) return
 
     if (context === 'cutscene') {
       this.enterCutscene()
@@ -256,16 +258,16 @@ class AudioManager {
     })
   }
 
-  private attachUnlockListeners(): void {
-    if (this.unlockListenersAttached || typeof window === 'undefined') return
-    this.unlockListenersAttached = true
-
-    const unlock = () => {
-      void this.unlockAudio()
+  /** Called when Adam hands off the MP3 player (must run inside a user gesture). */
+  async grantPlayer(): Promise<void> {
+    if (this.playerGranted && this.unlocked) {
+      const ctx = this.pendingContext ?? 'city:five'
+      await this.applyContext(ctx)
+      this.emit()
+      return
     }
-
-    window.addEventListener('pointerdown', unlock, { capture: true, once: false })
-    window.addEventListener('keydown', unlock, { capture: true, once: false })
+    this.playerGranted = true
+    await this.unlockAudio()
   }
 
   private async unlockAudio(): Promise<void> {
@@ -280,7 +282,7 @@ class AudioManager {
       // still mark unlocked — later play() may succeed
     }
 
-    const ctx = this.pendingContext ?? this.activeContext ?? 'title'
+    const ctx = this.pendingContext ?? this.activeContext ?? 'city:five'
     await this.applyContext(ctx, true)
     this.emit()
   }
@@ -358,4 +360,12 @@ export function getMusicCurrent(): MusicCurrent | null {
 
 export function isMusicMuted(): boolean {
   return getManager().isMuted()
+}
+
+export function isMusicPlayerGranted(): boolean {
+  return getManager().isPlayerGranted()
+}
+
+export function grantMusicPlayer(): Promise<void> {
+  return getManager().grantPlayer()
 }

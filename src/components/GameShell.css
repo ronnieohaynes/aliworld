@@ -240,6 +240,14 @@
   filter: brightness(1.12);
 }
 
+.game-shell__music--locked {
+  opacity: 0.42;
+}
+
+.game-shell__music--locked .game-shell__track-title {
+  color: #6a6488;
+}
+
 .game-shell__music {
   display: grid;
   grid-template-columns: 22px 1fr auto;
