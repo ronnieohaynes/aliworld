@@ -10,15 +10,21 @@ import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '
 import type { SpriteSheet } from '../game/SpriteSheet'
 import { isDevSparNpcId } from '../data/devSpar'
 import {
-  BATTLE_ENEMY_DISPLAY_H,
-  BATTLE_ENEMY_DISPLAY_W,
-  BATTLE_ENEMY_DRAW_Y,
-  BATTLE_ENEMY_PLACEMENT,
-  BATTLE_PLAYER_DISPLAY_H,
-  BATTLE_PLAYER_DISPLAY_W,
-  BATTLE_PLAYER_DRAW_Y,
-  BATTLE_PLAYER_PLACEMENT,
+  BATTLE_ENEMY_SOURCE_H,
+  BATTLE_ENEMY_SOURCE_W,
+  BATTLE_ENEMY_X,
+  BATTLE_GROUND_Y,
+  BATTLE_PLAYER_SOURCE_H,
+  BATTLE_PLAYER_SOURCE_W,
+  BATTLE_PLAYER_VISIBLE_MULT,
+  BATTLE_PLAYER_X,
+  BATTLE_TARGET_VISIBLE_H,
+  DEFAULT_ENEMY_PLACEMENT,
+  DEFAULT_PLAYER_PLACEMENT,
+  layoutSpriteFromVisibleBounds,
+  type BattleSpritePlacement,
 } from '../game/battlePlacement'
+import { measureCanvasVisibleBounds } from '../game/spriteBounds'
 import {
   applyBattleEndHealing,
   BATTLE_END_LOSE_DELAY_MS,
@@ -178,8 +184,8 @@ function drawPlayerBattleSprite(
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
 
-  const dw = BATTLE_PLAYER_DISPLAY_W
-  const dh = BATTLE_PLAYER_DISPLAY_H
+  const dw = BATTLE_PLAYER_SOURCE_W
+  const dh = BATTLE_PLAYER_SOURCE_H
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
@@ -194,8 +200,8 @@ function drawEnemyBattleSprite(
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
 
-  const dw = BATTLE_ENEMY_DISPLAY_W
-  const dh = BATTLE_ENEMY_DISPLAY_H
+  const dw = BATTLE_ENEMY_SOURCE_W
+  const dh = BATTLE_ENEMY_SOURCE_H
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
@@ -228,6 +234,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const playerCanvasRef = useRef<HTMLCanvasElement>(null)
   const enemyWrapRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLElement>(null)
+  const [enemyPlacement, setEnemyPlacement] = useState<BattleSpritePlacement>(DEFAULT_ENEMY_PLACEMENT)
+  const [playerPlacement, setPlayerPlacement] = useState<BattleSpritePlacement>(DEFAULT_PLAYER_PLACEMENT)
   const midnightSheetRef = useRef<SpriteSheet | null>(null)
   const endHandledRef = useRef(false)
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
@@ -448,7 +456,19 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
       if (cancelled || !sheet?.loaded) return
       midnightSheetRef.current = sheet
       const canvas = playerCanvasRef.current
-      if (canvas) drawPlayerBattleSprite(canvas, sheet, tuning)
+      if (!canvas) return
+      drawPlayerBattleSprite(canvas, sheet, tuning)
+      const bounds = measureCanvasVisibleBounds(canvas, `player:${walkSrc}`)
+      setPlayerPlacement(
+        layoutSpriteFromVisibleBounds(
+          bounds,
+          BATTLE_PLAYER_SOURCE_W,
+          BATTLE_PLAYER_SOURCE_H,
+          BATTLE_GROUND_Y,
+          BATTLE_PLAYER_X,
+          Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT),
+        ),
+      )
     })
 
     return () => {
@@ -466,6 +486,17 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
     img.src = spriteSrc
     img.onload = () => {
       drawEnemyBattleSprite(canvas, img, 4)
+      const bounds = measureCanvasVisibleBounds(canvas, `enemy:${spriteSrc}`)
+      setEnemyPlacement(
+        layoutSpriteFromVisibleBounds(
+          bounds,
+          BATTLE_ENEMY_SOURCE_W,
+          BATTLE_ENEMY_SOURCE_H,
+          BATTLE_GROUND_Y,
+          BATTLE_ENEMY_X,
+          BATTLE_TARGET_VISIBLE_H,
+        ),
+      )
     }
     img.onerror = () => {
       const ctx = canvas.getContext('2d', { alpha: true })
@@ -514,25 +545,33 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
             <div className="battle-screen__arena">
               <div
                 className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
-                style={{ left: BATTLE_ENEMY_PLACEMENT.x, top: BATTLE_ENEMY_DRAW_Y }}
+                style={{ left: enemyPlacement.x, top: enemyPlacement.drawY }}
               >
                 <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
                   <canvas
                     className="battle-screen__enemy-sprite-canvas"
-                    width={BATTLE_ENEMY_DISPLAY_W}
-                    height={BATTLE_ENEMY_DISPLAY_H}
+                    width={enemyPlacement.sourceWidth}
+                    height={enemyPlacement.sourceHeight}
+                    style={{
+                      width: enemyPlacement.displayWidth,
+                      height: enemyPlacement.displayHeight,
+                    }}
                   />
                 </div>
               </div>
               <div
                 className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ' battle-screen__fighter--attack' : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
-                style={{ left: BATTLE_PLAYER_PLACEMENT.x, top: BATTLE_PLAYER_DRAW_Y }}
+                style={{ left: playerPlacement.x, top: playerPlacement.drawY }}
               >
                 <canvas
                   ref={playerCanvasRef}
                   className="battle-screen__player-sprite-canvas"
-                  width={BATTLE_PLAYER_DISPLAY_W}
-                  height={BATTLE_PLAYER_DISPLAY_H}
+                  width={playerPlacement.sourceWidth}
+                  height={playerPlacement.sourceHeight}
+                  style={{
+                    width: playerPlacement.displayWidth,
+                    height: playerPlacement.displayHeight,
+                  }}
                 />
               </div>
               {floaters.map((f) => (
@@ -549,8 +588,8 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
                 stageRef={stageRef}
                 enemyRef={enemyWrapRef}
                 playerRef={playerCanvasRef}
-                enemyPlacement={BATTLE_ENEMY_PLACEMENT}
-                playerPlacement={BATTLE_PLAYER_PLACEMENT}
+                enemyPlacement={enemyPlacement}
+                playerPlacement={playerPlacement}
               />
             )}
           </section>

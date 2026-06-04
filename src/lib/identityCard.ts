@@ -19,13 +19,15 @@ export const IDENTITY_CARD_HEIGHT = 1920
 const VOID_BG = '#0a0a12'
 const CREAM = '#f4e8c1'
 const GOLD = '#d4b87a'
-const GLOW_PURPLE = 'rgba(127, 119, 221, 0.22)'
+const GLOW_PURPLE = 'rgba(127, 119, 221, 0.24)'
+const FRAME_INSET = 36
 
 const SIGIL_SRC = publicAsset('Assets/ui/AW%20GAME%20LOGO.svg')
 const MONO =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace'
 
-const SPRITE_TARGET_H = 520
+/** Visible sprite height ≈ 40% of card. */
+const SPRITE_VISIBLE_TARGET_H = Math.floor(IDENTITY_CARD_HEIGHT * 0.4)
 
 export function articleForBuildName(name: string): 'a' | 'an' {
   const letter = name.trim().charAt(0).toLowerCase()
@@ -66,7 +68,222 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   })
 }
 
-/** Renders a 9:16 story card PNG from live player state. */
+function drawVoidBackground(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = VOID_BG
+  ctx.fillRect(0, 0, IDENTITY_CARD_WIDTH, IDENTITY_CARD_HEIGHT)
+
+  const glow = ctx.createRadialGradient(
+    IDENTITY_CARD_WIDTH / 2,
+    IDENTITY_CARD_HEIGHT * 0.34,
+    60,
+    IDENTITY_CARD_WIDTH / 2,
+    IDENTITY_CARD_HEIGHT * 0.34,
+    IDENTITY_CARD_WIDTH * 0.55,
+  )
+  glow.addColorStop(0, GLOW_PURPLE)
+  glow.addColorStop(0.45, 'rgba(127, 119, 221, 0.08)')
+  glow.addColorStop(1, 'rgba(10, 10, 18, 0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, IDENTITY_CARD_WIDTH, IDENTITY_CARD_HEIGHT)
+
+  const hillBase = IDENTITY_CARD_HEIGHT * 0.62
+  ctx.fillStyle = 'rgba(20, 18, 32, 0.08)'
+  ctx.beginPath()
+  ctx.moveTo(0, hillBase + 220)
+  ctx.lineTo(0, IDENTITY_CARD_HEIGHT)
+  ctx.lineTo(IDENTITY_CARD_WIDTH, IDENTITY_CARD_HEIGHT)
+  ctx.lineTo(IDENTITY_CARD_WIDTH, hillBase + 160)
+  ctx.quadraticCurveTo(IDENTITY_CARD_WIDTH * 0.72, hillBase + 80, IDENTITY_CARD_WIDTH * 0.5, hillBase + 120)
+  ctx.quadraticCurveTo(IDENTITY_CARD_WIDTH * 0.28, hillBase + 40, 0, hillBase + 220)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.fillStyle = 'rgba(30, 26, 48, 0.07)'
+  ctx.beginPath()
+  ctx.moveTo(0, hillBase + 280)
+  ctx.lineTo(IDENTITY_CARD_WIDTH, hillBase + 240)
+  ctx.lineTo(IDENTITY_CARD_WIDTH, IDENTITY_CARD_HEIGHT)
+  ctx.lineTo(0, IDENTITY_CARD_HEIGHT)
+  ctx.closePath()
+  ctx.fill()
+
+  for (let y = 0; y < IDENTITY_CARD_HEIGHT; y += 3) {
+    ctx.fillStyle = y % 6 === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)'
+    ctx.fillRect(0, y, IDENTITY_CARD_WIDTH, 1)
+  }
+
+  const towerX = IDENTITY_CARD_WIDTH * 0.78
+  const towerTop = hillBase + 40
+  ctx.fillStyle = 'rgba(40, 36, 58, 0.08)'
+  ctx.fillRect(towerX, towerTop, 14, hillBase + 200 - towerTop)
+  ctx.fillRect(towerX - 6, towerTop + 30, 26, 8)
+}
+
+function drawCardFrame(ctx: CanvasRenderingContext2D, buildColor: string): void {
+  const outer = FRAME_INSET
+  const inner = outer + 10
+  const w = IDENTITY_CARD_WIDTH
+  const h = IDENTITY_CARD_HEIGHT
+
+  ctx.strokeStyle = buildColor
+  ctx.lineWidth = 2
+  ctx.strokeRect(outer, outer, w - outer * 2, h - outer * 2)
+
+  ctx.strokeStyle = GOLD
+  ctx.lineWidth = 1
+  ctx.strokeRect(inner, inner, w - inner * 2, h - inner * 2)
+
+  const tick = 14
+  ctx.fillStyle = GOLD
+  const corners: [number, number, number, number][] = [
+    [inner, inner, tick, 2],
+    [inner, inner, 2, tick],
+    [w - inner - tick, inner, tick, 2],
+    [w - inner - 2, inner, 2, tick],
+    [inner, h - inner - 2, tick, 2],
+    [inner, h - inner - tick, 2, tick],
+    [w - inner - tick, h - inner - 2, tick, 2],
+    [w - inner - 2, h - inner - tick, 2, tick],
+  ]
+  for (const [x, y, tw, th] of corners) {
+    ctx.fillRect(x, y, tw, th)
+  }
+}
+
+function drawSpriteHero(
+  ctx: CanvasRenderingContext2D,
+  spriteSource: HTMLCanvasElement,
+  buildColor: string,
+): number {
+  const sw = spriteSource.width
+  const sh = spriteSource.height
+  const displayH = SPRITE_VISIBLE_TARGET_H
+  const displayW = Math.floor(sw * (displayH / sh))
+  const spriteX = (IDENTITY_CARD_WIDTH - displayW) / 2
+  const spriteY = 320
+
+  const groundY = spriteY + displayH + 8
+  ctx.save()
+  ctx.fillStyle = buildColor
+  ctx.globalAlpha = 0.22
+  ctx.beginPath()
+  ctx.ellipse(
+    IDENTITY_CARD_WIDTH / 2,
+    groundY,
+    displayW * 0.42,
+    18,
+    0,
+    0,
+    Math.PI * 2,
+  )
+  ctx.fill()
+  ctx.restore()
+
+  ctx.save()
+  ctx.shadowColor = buildColor
+  ctx.shadowBlur = 56
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(spriteSource, spriteX, spriteY, displayW, displayH)
+  ctx.restore()
+
+  return spriteY + displayH
+}
+
+function drawIdentityTypography(
+  ctx: CanvasRenderingContext2D,
+  build: { name: string; color: string },
+  handle: string,
+  level: number,
+  sigil: HTMLImageElement,
+  contentTop: number,
+): void {
+  const buildUpper = build.name.toUpperCase()
+  const article = articleForBuildName(build.name)
+
+  let y = contentTop + 72
+
+  ctx.font = `500 28px ${MONO}`
+  ctx.fillStyle = CREAM
+  ctx.textAlign = 'center'
+  ctx.letterSpacing = '0.28em'
+  ctx.fillText(`i am ${article}`, IDENTITY_CARD_WIDTH / 2, y)
+  ctx.letterSpacing = '0'
+
+  y += 88
+  ctx.font = `800 92px ${MONO}`
+  ctx.fillStyle = build.color
+  ctx.fillText(buildUpper, IDENTITY_CARD_WIDTH / 2, y)
+
+  y += 72
+  const sigilH = 36
+  const sigilW = Math.floor((sigil.naturalWidth / sigil.naturalHeight) * sigilH)
+  const aliworldText = 'in aliworld'
+  ctx.font = `600 40px ${MONO}`
+  const aliW = ctx.measureText(aliworldText).width
+  const rowW = sigilW + 16 + aliW
+  let rowX = (IDENTITY_CARD_WIDTH - rowW) / 2
+
+  ctx.drawImage(sigil, rowX, y - sigilH + 8, sigilW, sigilH)
+  rowX += sigilW + 16
+  ctx.fillStyle = GOLD
+  ctx.fillText(aliworldText, rowX + aliW / 2, y)
+
+  y += 64
+  const pill = `@${handle} · lvl ${level}`
+  ctx.font = `500 26px ${MONO}`
+  const pillW = ctx.measureText(pill).width + 48
+  const pillX = (IDENTITY_CARD_WIDTH - pillW) / 2
+  const pillY = y - 28
+  ctx.fillStyle = 'rgba(14, 14, 24, 0.55)'
+  roundRect(ctx, pillX, pillY, pillW, 44, 22)
+  ctx.fill()
+  ctx.fillStyle = CREAM
+  ctx.fillText(pill, IDENTITY_CARD_WIDTH / 2, y)
+
+  ctx.textAlign = 'left'
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.lineTo(x, y + r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
+}
+
+function drawCardFooter(ctx: CanvasRenderingContext2D): void {
+  const footerY = IDENTITY_CARD_HEIGHT - FRAME_INSET - 72
+  ctx.strokeStyle = GOLD
+  ctx.globalAlpha = 0.65
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(FRAME_INSET + 40, footerY)
+  ctx.lineTo(IDENTITY_CARD_WIDTH - FRAME_INSET - 40, footerY)
+  ctx.stroke()
+  ctx.globalAlpha = 1
+
+  ctx.font = `500 22px ${MONO}`
+  ctx.fillStyle = GOLD
+  ctx.textAlign = 'center'
+  const line = '@officialdannyali · @aliworld_official · play.dannyali.com'
+  ctx.fillText(line, IDENTITY_CARD_WIDTH / 2, footerY + 40)
+  ctx.textAlign = 'left'
+}
+
+/** Renders a 9:16 collectible story card PNG from live player state. */
 export async function generateIdentityCard(): Promise<Blob> {
   const build = getBuildName()
   const level = getPlayerLevel()
@@ -85,10 +302,6 @@ export async function generateIdentityCard(): Promise<Blob> {
   }
 
   const spriteSource = drawPlayerSpriteToCanvas(sheet, tuning)
-  const sw = spriteSource.width
-  const sh = spriteSource.height
-  const displayH = SPRITE_TARGET_H
-  const displayW = Math.floor(sw * (displayH / sh))
 
   const canvas = document.createElement('canvas')
   canvas.width = IDENTITY_CARD_WIDTH
@@ -96,77 +309,11 @@ export async function generateIdentityCard(): Promise<Blob> {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas 2d unavailable')
 
-  ctx.fillStyle = VOID_BG
-  ctx.fillRect(0, 0, IDENTITY_CARD_WIDTH, IDENTITY_CARD_HEIGHT)
-
-  const glow = ctx.createRadialGradient(
-    IDENTITY_CARD_WIDTH / 2,
-    IDENTITY_CARD_HEIGHT * 0.36,
-    40,
-    IDENTITY_CARD_WIDTH / 2,
-    IDENTITY_CARD_HEIGHT * 0.36,
-    IDENTITY_CARD_WIDTH * 0.62,
-  )
-  glow.addColorStop(0, GLOW_PURPLE)
-  glow.addColorStop(1, 'rgba(10, 10, 18, 0)')
-  ctx.fillStyle = glow
-  ctx.fillRect(0, 0, IDENTITY_CARD_WIDTH, IDENTITY_CARD_HEIGHT)
-
-  const sigilW = 96
-  const sigilH = Math.floor((sigil.naturalHeight / sigil.naturalWidth) * sigilW)
-  const sigilX = (IDENTITY_CARD_WIDTH - sigilW) / 2
-  ctx.drawImage(sigil, sigilX, 72, sigilW, sigilH)
-
-  const spriteX = (IDENTITY_CARD_WIDTH - displayW) / 2
-  const spriteY = 280
-  ctx.save()
-  ctx.shadowColor = build.color
-  ctx.shadowBlur = 48
-  ctx.imageSmoothingEnabled = false
-  ctx.drawImage(spriteSource, spriteX, spriteY, displayW, displayH)
-  ctx.restore()
-
-  const article = articleForBuildName(build.name)
-  const buildLower = build.name.toLowerCase()
-  const linePrefix = `i am ${article} `
-  const lineSuffix = ' in aliworld'
-
-  ctx.font = `600 44px ${MONO}`
-  ctx.textBaseline = 'alphabetic'
-  const prefixW = ctx.measureText(linePrefix).width
-  const buildW = ctx.measureText(buildLower).width
-  const suffixW = ctx.measureText(lineSuffix).width
-  const lineTotalW = prefixW + buildW + suffixW
-  const lineY = spriteY + displayH + 100
-  let lineX = (IDENTITY_CARD_WIDTH - lineTotalW) / 2
-
-  ctx.fillStyle = CREAM
-  ctx.fillText(linePrefix, lineX, lineY)
-  lineX += prefixW
-  ctx.fillStyle = build.color
-  ctx.fillText(buildLower, lineX, lineY)
-  lineX += buildW
-  ctx.fillStyle = CREAM
-  ctx.fillText(lineSuffix, lineX, lineY)
-
-  ctx.font = `500 32px ${MONO}`
-  ctx.fillStyle = CREAM
-  const identityLine = `@${handle} · lvl ${level}`
-  const identityW = ctx.measureText(identityLine).width
-  ctx.fillText(identityLine, (IDENTITY_CARD_WIDTH - identityW) / 2, lineY + 72)
-
-  ctx.font = `500 26px ${MONO}`
-  ctx.fillStyle = GOLD
-  const footerLines = [
-    '@officialdannyali · @aliworld_official',
-    'play.dannyali.com',
-  ]
-  let footerY = IDENTITY_CARD_HEIGHT - 120
-  for (const line of footerLines) {
-    const w = ctx.measureText(line).width
-    ctx.fillText(line, (IDENTITY_CARD_WIDTH - w) / 2, footerY)
-    footerY += 36
-  }
+  drawVoidBackground(ctx)
+  drawCardFrame(ctx, build.color)
+  const contentBottom = drawSpriteHero(ctx, spriteSource, build.color)
+  drawIdentityTypography(ctx, build, handle, level, sigil, contentBottom)
+  drawCardFooter(ctx)
 
   return canvasToPngBlob(canvas)
 }

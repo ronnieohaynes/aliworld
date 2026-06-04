@@ -206,7 +206,7 @@ function SpriteLabel({
       <span>h:{displayHeight}</span>
       <span>
         bottom:{bottom}
-        {aligned ? ' ✓' : ' ≠ GROUND_Y'}
+        {aligned ? ' ok' : ' off ground'}
       </span>
       <span>
         {width}×{displayHeight}

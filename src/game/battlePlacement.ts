@@ -4,11 +4,12 @@ import {
   WORLD_PLAYER_DISPLAY_HEIGHT,
   WORLD_PLAYER_DISPLAY_WIDTH,
 } from './worldSpriteRender'
+import type { VisibleBounds } from './spriteBounds'
 
-/** Battle sprite scale vs overworld display size (enemy). */
+/** Battle enemy source canvas scale vs overworld NPC display. */
 export const BATTLE_SPRITE_SCALE = 1.2
 
-/** Shared feet baseline — both fighters align visible feet to this arena Y. */
+/** Shared feet baseline — visible feet align here via auto-fit. */
 export const BATTLE_GROUND_Y = 258
 
 /** @deprecated Use BATTLE_GROUND_Y */
@@ -20,69 +21,70 @@ export const BATTLE_PLAYER_GROUND_Y = BATTLE_GROUND_Y
 export const BATTLE_ENEMY_X = 36
 export const BATTLE_PLAYER_X = 198
 
-export const BATTLE_ENEMY_DISPLAY_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
-export const BATTLE_ENEMY_DISPLAY_H = Math.floor(WORLD_NPC_DISPLAY_H * BATTLE_SPRITE_SCALE)
+/** Target visible body height for enemies (one dial for all NPCs). */
+export const BATTLE_TARGET_VISIBLE_H = 150
 
-/** Player vs enemy BOX multiplier — tuned for VISIBLE-body parity
- *  (enemy idle sheets are padded; player draws tight to the box). */
-export const BATTLE_PLAYER_BOX_MULT = 0.9
-export const BATTLE_PLAYER_DISPLAY_H = Math.floor(BATTLE_ENEMY_DISPLAY_H * BATTLE_PLAYER_BOX_MULT)
-export const BATTLE_PLAYER_DISPLAY_W = Math.floor(
-  WORLD_PLAYER_DISPLAY_WIDTH * (BATTLE_PLAYER_DISPLAY_H / WORLD_PLAYER_DISPLAY_HEIGHT),
-)
+/** Player protagonist bump over enemy target. */
+export const BATTLE_PLAYER_VISIBLE_MULT = 1.05
 
-/**
- * Per-sprite drawY tweak so visible feet meet BATTLE_GROUND_Y (source padding differs).
- * Increase to push sprite down; decrease to raise.
- */
-export const BATTLE_ENEMY_FOOT_INSET = 6
-export const BATTLE_PLAYER_FOOT_INSET = 0
+/** Enemy sprite drawn to this canvas before visible-bounds measure. */
+export const BATTLE_ENEMY_SOURCE_W = Math.floor(WORLD_NPC_DISPLAY_W * BATTLE_SPRITE_SCALE)
+export const BATTLE_ENEMY_SOURCE_H = Math.floor(WORLD_NPC_DISPLAY_H * BATTLE_SPRITE_SCALE)
 
-export function battleDrawY(
-  groundY: number,
-  displayHeight: number,
-  footInset = 0,
-): number {
-  return groundY - displayHeight + footInset
-}
-
-export const BATTLE_ENEMY_DRAW_Y = battleDrawY(
-  BATTLE_GROUND_Y,
-  BATTLE_ENEMY_DISPLAY_H,
-  BATTLE_ENEMY_FOOT_INSET,
-)
-export const BATTLE_PLAYER_DRAW_Y = battleDrawY(
-  BATTLE_GROUND_Y,
-  BATTLE_PLAYER_DISPLAY_H,
-  BATTLE_PLAYER_FOOT_INSET,
-)
+export const BATTLE_PLAYER_SOURCE_W = WORLD_PLAYER_DISPLAY_WIDTH
+export const BATTLE_PLAYER_SOURCE_H = WORLD_PLAYER_DISPLAY_HEIGHT
 
 export type BattleSpritePlacement = {
   x: number
   drawY: number
   displayWidth: number
   displayHeight: number
+  sourceWidth: number
+  sourceHeight: number
   groundY: number
-  footInset: number
   facing: 'left' | 'right'
 }
 
-export const BATTLE_ENEMY_PLACEMENT: BattleSpritePlacement = {
-  x: BATTLE_ENEMY_X,
-  drawY: BATTLE_ENEMY_DRAW_Y,
-  displayWidth: BATTLE_ENEMY_DISPLAY_W,
-  displayHeight: BATTLE_ENEMY_DISPLAY_H,
-  groundY: BATTLE_GROUND_Y,
-  footInset: BATTLE_ENEMY_FOOT_INSET,
-  facing: 'left',
+export function layoutSpriteFromVisibleBounds(
+  bounds: VisibleBounds,
+  sourceW: number,
+  sourceH: number,
+  groundY: number,
+  x: number,
+  targetVisibleH: number,
+): BattleSpritePlacement {
+  const visH = Math.max(1, bounds.visH)
+  const scale = targetVisibleH / visH
+  const displayH = Math.floor(sourceH * scale)
+  const displayW = Math.floor(sourceW * scale)
+  const drawY = Math.floor(groundY - bounds.bottom * scale)
+
+  return {
+    x,
+    drawY,
+    displayWidth: displayW,
+    displayHeight: displayH,
+    sourceWidth: sourceW,
+    sourceHeight: sourceH,
+    groundY,
+    facing: 'left',
+  }
 }
 
-export const BATTLE_PLAYER_PLACEMENT: BattleSpritePlacement = {
-  x: BATTLE_PLAYER_X,
-  drawY: BATTLE_PLAYER_DRAW_Y,
-  displayWidth: BATTLE_PLAYER_DISPLAY_W,
-  displayHeight: BATTLE_PLAYER_DISPLAY_H,
-  groundY: BATTLE_GROUND_Y,
-  footInset: BATTLE_PLAYER_FOOT_INSET,
-  facing: 'left',
-}
+export const DEFAULT_ENEMY_PLACEMENT: BattleSpritePlacement = layoutSpriteFromVisibleBounds(
+  { top: 0, bottom: BATTLE_ENEMY_SOURCE_H - 1, left: 0, right: BATTLE_ENEMY_SOURCE_W - 1, visH: BATTLE_ENEMY_SOURCE_H, visW: BATTLE_ENEMY_SOURCE_W },
+  BATTLE_ENEMY_SOURCE_W,
+  BATTLE_ENEMY_SOURCE_H,
+  BATTLE_GROUND_Y,
+  BATTLE_ENEMY_X,
+  BATTLE_TARGET_VISIBLE_H,
+)
+
+export const DEFAULT_PLAYER_PLACEMENT: BattleSpritePlacement = layoutSpriteFromVisibleBounds(
+  { top: 0, bottom: BATTLE_PLAYER_SOURCE_H - 1, left: 0, right: BATTLE_PLAYER_SOURCE_W - 1, visH: BATTLE_PLAYER_SOURCE_H, visW: BATTLE_PLAYER_SOURCE_W },
+  BATTLE_PLAYER_SOURCE_W,
+  BATTLE_PLAYER_SOURCE_H,
+  BATTLE_GROUND_Y,
+  BATTLE_PLAYER_X,
+  Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT),
+)
