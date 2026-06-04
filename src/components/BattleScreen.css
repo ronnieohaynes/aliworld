@@ -6,6 +6,7 @@
   height: 100%;
   margin: 0;
   overflow: hidden;
+  overflow-anchor: none;
   background: #0a0a12;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -74,6 +75,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overflow-anchor: none;
 }
 
 .battle-screen__bottom-stack {
@@ -198,6 +200,7 @@
   justify-content: space-between;
   padding: 0 24px 12px;
   overflow: hidden;
+  overflow-anchor: none;
 }
 
 .battle-screen__arena {
@@ -208,6 +211,7 @@
   bottom: 130px;
   height: 270px;
   z-index: 2;
+  overflow: hidden;
 }
 
 .battle-screen__fighter {

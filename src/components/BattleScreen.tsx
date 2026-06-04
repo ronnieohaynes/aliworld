@@ -245,6 +245,7 @@ function drawEnemyBattleSprite(
 
 export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed = true }: Props) {
   const battleScreenRef = useRef<HTMLDivElement>(null)
+  const playfieldRef = useRef<HTMLDivElement>(null)
   const telegraphRowRef = useRef<HTMLElement>(null)
   const movesRef = useRef<HTMLDivElement>(null)
   const playerStatusRef = useRef<HTMLDivElement>(null)
@@ -313,6 +314,18 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const [playerDodgeFx, setPlayerDodgeFx] = useState(false)
   const [enemyCritFx, setEnemyCritFx] = useState(false)
   const [floaters, setFloaters] = useState<BattleFloater[]>([])
+
+  const clampBattleScrollDrift = useCallback(() => {
+    for (const el of [
+      battleScreenRef.current,
+      playfieldRef.current,
+      stageRef.current,
+    ]) {
+      if (!el) continue
+      if (el.scrollTop !== 0) el.scrollTop = 0
+      if (el.scrollLeft !== 0) el.scrollLeft = 0
+    }
+  }, [])
 
   const busy = state.phase !== 'player'
   const playerHpPct = Math.max(0, (state.playerHp / state.playerStats.maxHp) * 100)
@@ -425,6 +438,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       window.setTimeout(() => setEnemyHitFx(false), 320)
       window.setTimeout(() => setPlayerAtkFx(false), 240)
       window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      clampBattleScrollDrift()
     }
     if (playerDelta > 0) {
       setPlayerHitFx(true)
@@ -435,11 +449,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       ])
       window.setTimeout(() => setPlayerHitFx(false), 320)
       window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      clampBattleScrollDrift()
     }
 
     prevEnemyHpRef.current = state.enemyHp
     prevPlayerHpRef.current = state.playerHp
-  }, [state.enemyHp, state.playerHp])
+  }, [state.enemyHp, state.playerHp, clampBattleScrollDrift])
 
   useEffect(() => {
     if (state.feedbackSeq === prevFeedbackSeqRef.current) return
@@ -468,7 +483,19 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), durationMs)
       }, index * 80)
     })
-  }, [state.feedbackSeq, state.feedbackEvents])
+    clampBattleScrollDrift()
+  }, [state.feedbackSeq, state.feedbackEvents, clampBattleScrollDrift])
+
+  useLayoutEffect(() => {
+    clampBattleScrollDrift()
+  }, [
+    enemyHitFx,
+    playerHitFx,
+    playerAtkFx,
+    playerDodgeFx,
+    enemyCritFx,
+    clampBattleScrollDrift,
+  ])
 
   useEffect(() => {
     if (state.phase !== 'busy') return
@@ -601,7 +628,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           </section>
         )}
 
-        <div className="battle-screen__playfield">
+        <div className="battle-screen__playfield" ref={playfieldRef}>
           {!showWinNarration && (
             <section className="battle-screen__log" aria-live="polite">
               {logLines.map((line, i) => (
@@ -742,6 +769,18 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                         type="button"
                         className={`battle-screen__move ${className}${busy || battleTutorialBlocking ? ' battle-screen__move--busy' : ''}`}
                         disabled={busy || battleTutorialBlocking}
+                        onPointerDown={(e) => {
+                          if (e.pointerType === 'mouse' || e.pointerType === 'touch') {
+                            e.preventDefault()
+                          }
+                        }}
+                        onFocus={(e) => {
+                          try {
+                            e.currentTarget.focus({ preventScroll: true })
+                          } catch {
+                            // ignore unsupported browsers
+                          }
+                        }}
                         onClick={() => handleMove(move, slot)}
                       >
                         <span className="battle-screen__move-name">{displayLabel}</span>
