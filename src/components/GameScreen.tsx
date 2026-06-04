@@ -22,6 +22,7 @@ import {
   hasTalkedToAllGatingNpcs,
   isGatingNpcId,
   isCafeSceneSeen,
+  isE1CutscenePlayed,
   isJaclynConverted,
   isMarkDefeated,
   subscribeQuest1Store,
@@ -31,6 +32,7 @@ import {
   MARK_NPC_ID,
   markGatingNpcTalked,
   setCafeSceneSeen,
+  setE1CutscenePlayed,
   setJaclynConverted,
   setMarkDefeated,
   setWalkerConverted,
@@ -80,6 +82,15 @@ import {
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
 import { track } from '../lib/analytics'
+import type { PlayCutsceneOptions } from '../lib/playCutscene'
+import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
+import { useDevControls } from '../hooks/useDevControls'
+import { CutsceneOverlay } from './CutsceneOverlay'
+import {
+  QuestTransition,
+  type QuestTransitionHandle,
+  type ShowQuestTransitionParams,
+} from './QuestTransition'
 import { useCoarsePointer } from '../hooks/useCoarsePointer'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
@@ -88,7 +99,6 @@ import {
   grantPlayerSkillXp,
   setLastLocation,
   subscribePlayerStore,
-  toggleShowDebug,
   totalXpForLevel,
   whenAccountHydrated,
 } from '../store/playerStore'
@@ -119,6 +129,17 @@ const NARRATOR_NPC: NpcData = {
   lines: [],
   color: '#000',
 }
+
+const PRELUDE_QUEST_NAME = "Midnight's Story"
+const EPISODE_1_NAME = 'The Field & The Cafe'
+const EPISODE_2_NAME = 'trust the signal'
+/** Black hold on cutscene overlay after episode clip ends (ms). */
+const EPISODE_CUTSCENE_POST_HOLD_MS = 4_000
+/** Fade cutscene remnants to full black after post-clip hold (ms). */
+const EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS = 1_500
+/** World fade-in after episode title card exits (ms). */
+const EPISODE_WORLD_REVEAL_FADE_MS = 1_600
+const QUEST_START_TRANSITION_SESSION_KEY = 'aliworld:prelude-quest-start-shown'
 
 const CAFE_SCENE_LINES = [
   'danny sits at the cafe. he does not look up.',
@@ -189,6 +210,18 @@ export function GameScreen() {
   const darklineExitTargetRef = useRef<CityId | 'close' | null>(null)
   const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
   const [cafeSceneLine, setCafeSceneLine] = useState(0)
+  const [cutscene, setCutscene] = useState<PlayCutsceneOptions | null>(null)
+  const [cutsceneQuestHelperHidden, setCutsceneQuestHelperHidden] = useState(false)
+  const [episodeCutsceneAftermath, setEpisodeCutsceneAftermath] = useState(false)
+  const episodeHandoffStartedRef = useRef(false)
+  const episodeUserOnCompleteRef = useRef<(() => void) | null>(null)
+  const questTransitionRef = useRef<QuestTransitionHandle>(null)
+  const [questTransitionActive, setQuestTransitionActive] = useState(false)
+  const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
+    'visible' | 'hidden' | 'fade-in-pending' | 'fade-in'
+  >('visible')
+
+  const cutsceneFlowActive = cutscene != null || episodeCutsceneAftermath
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
@@ -334,9 +367,46 @@ export function GameScreen() {
     prevCityRef.current = currentCity
   }, [currentCity, locationReady])
 
-  const handleWorldEntryComplete = useCallback(() => {
-    setWorldEntryActive(false)
+  const showQuestTransition = useCallback((params: ShowQuestTransitionParams) => {
+    setQuestTransitionActive(true)
+    const wrapped: ShowQuestTransitionParams = {
+      ...params,
+      onComplete: () => {
+        setQuestTransitionActive(false)
+        params.onComplete?.()
+      },
+    }
+
+    const run = (attempt = 0) => {
+      if (questTransitionRef.current) {
+        questTransitionRef.current.showTransition(wrapped)
+        return
+      }
+      if (attempt < 12) {
+        window.requestAnimationFrame(() => run(attempt + 1))
+      }
+    }
+    run()
   }, [])
+
+  const handleWorldEntryComplete = useCallback(() => {
+    const finishEntry = () => setWorldEntryActive(false)
+    try {
+      if (sessionStorage.getItem(QUEST_START_TRANSITION_SESSION_KEY) === '1') {
+        finishEntry()
+        return
+      }
+      sessionStorage.setItem(QUEST_START_TRANSITION_SESSION_KEY, '1')
+    } catch {
+      finishEntry()
+      return
+    }
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      type: 'quest_start',
+      onComplete: finishEntry,
+    })
+  }, [showQuestTransition])
 
   const handleIntroComplete = useCallback(() => {
     setWorldIntroSeen()
@@ -369,16 +439,6 @@ export function GameScreen() {
     return baseCityConfig
   }, [baseCityConfig, currentCity, markDefeated, quest2Revision])
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== '`' && e.code !== 'Backquote') return
-      e.preventDefault()
-      toggleShowDebug()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
-
   const canOpenStartMenu = useCallback(() => {
     return (
       !worldEntryActive &&
@@ -388,7 +448,9 @@ export function GameScreen() {
       !mapTransition &&
       !mapTransitionPending &&
       !cultDarklinePhase &&
-      !dialogue
+      !dialogue &&
+      !cutsceneFlowActive &&
+      !questTransitionActive
     )
   }, [
     worldEntryActive,
@@ -399,6 +461,8 @@ export function GameScreen() {
     mapTransitionPending,
     cultDarklinePhase,
     dialogue,
+    cutsceneFlowActive,
+    questTransitionActive,
   ])
 
   const beginMenuTransition = useCallback((target: MenuTransitionTarget) => {
@@ -585,6 +649,8 @@ export function GameScreen() {
       !mapTransitionPending &&
       !cultDarklinePhase &&
       !dialogue &&
+      !cutsceneFlowActive &&
+      !questTransitionActive &&
       !showStartMenu &&
       !showLoadout &&
       !showFannyPack &&
@@ -599,32 +665,13 @@ export function GameScreen() {
     mapTransitionPending,
     cultDarklinePhase,
     dialogue,
+    cutsceneFlowActive,
+    questTransitionActive,
     showStartMenu,
     showLoadout,
     showFannyPack,
     cafeFade,
   ])
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'k' && e.key !== 'K') return
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-      const target = e.target
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return
-      }
-      if (!canSpawnDevSpar()) return
-      e.preventDefault()
-      startDevSparBattle()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [canSpawnDevSpar, startDevSparBattle])
 
   const beginNpcDialogue = useCallback(
     (
@@ -676,6 +723,121 @@ export function GameScreen() {
     setCafeFade('out')
   }, [])
 
+  const completeQuest1AfterCafe = useCallback(() => {
+    if (isCafeSceneSeen()) {
+      finishCafeScene()
+      return
+    }
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      type: 'quest_complete',
+      onComplete: finishCafeScene,
+    })
+  }, [finishCafeScene, showQuestTransition])
+
+  const runEpisodePostCutsceneFlow = useCallback(
+    (userOnComplete: () => void) => {
+      setEpisodeCutsceneAftermath(false)
+      setCurrentCity('five')
+      markCityVisited('five')
+      const fiveCfg = CITY_CONFIGS.five
+      playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
+      setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
+      setCutsceneQuestHelperHidden(false)
+      setEpisodeWorldReveal('hidden')
+      showQuestTransition({
+        questName: PRELUDE_QUEST_NAME,
+        episodeName: EPISODE_2_NAME,
+        episodeNumber: 2,
+        type: 'episode_start',
+        solidBlackBackdrop: true,
+        onExitFadeStart: () => {
+          setEpisodeWorldReveal('fade-in-pending')
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => setEpisodeWorldReveal('fade-in'))
+          })
+        },
+        onComplete: () => {
+          setEpisodeWorldReveal('visible')
+          userOnComplete()
+        },
+      })
+    },
+    [showQuestTransition],
+  )
+
+  const beginEpisodeHandoff = useCallback(
+    (userOnComplete: () => void) => {
+      if (episodeHandoffStartedRef.current) return
+      episodeHandoffStartedRef.current = true
+      episodeUserOnCompleteRef.current = null
+      setEpisodeCutsceneAftermath(false)
+      setCutscene(null)
+      runEpisodePostCutsceneFlow(userOnComplete)
+    },
+    [runEpisodePostCutsceneFlow],
+  )
+
+  const playCutscene = useCallback(
+    (opts: PlayCutsceneOptions) => {
+      episodeHandoffStartedRef.current = false
+      episodeUserOnCompleteRef.current = null
+      setEpisodeCutsceneAftermath(false)
+      setCutsceneQuestHelperHidden(true)
+      const { isEpisodeCutscene, onComplete: userOnComplete, ...rest } = opts
+      const holdMs = isEpisodeCutscene ? EPISODE_CUTSCENE_POST_HOLD_MS : 0
+      setCutscene({
+        ...rest,
+        postCompleteHoldMs: holdMs > 0 ? holdMs : undefined,
+        postCompleteFadeToBlackMs: isEpisodeCutscene
+          ? EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS
+          : undefined,
+        onComplete: () => {
+          if (isEpisodeCutscene) {
+            episodeUserOnCompleteRef.current = userOnComplete
+            setEpisodeCutsceneAftermath(true)
+            return
+          }
+          setCutsceneQuestHelperHidden(false)
+          userOnComplete()
+        },
+      })
+    },
+    [beginEpisodeHandoff],
+  )
+
+  const handleCutsceneEnded = useCallback(() => {
+    setCutscene(null)
+    const userOnComplete = episodeUserOnCompleteRef.current
+    if (userOnComplete && !episodeHandoffStartedRef.current) {
+      beginEpisodeHandoff(userOnComplete)
+    }
+  }, [beginEpisodeHandoff])
+
+  const canPlayDevCutscene = useCallback(() => {
+    return (
+      !introPending &&
+      !introActive &&
+      !worldEntryActive &&
+      !questTransitionActive &&
+      !cultDarklinePhase
+    )
+  }, [
+    introPending,
+    introActive,
+    worldEntryActive,
+    questTransitionActive,
+    cultDarklinePhase,
+  ])
+
+  useDevControls({
+    playerRef,
+    playCutscene,
+    canPlayCutscene: canPlayDevCutscene,
+    spawnDevSpar: startDevSparBattle,
+    canSpawnDevSpar,
+  })
+
   useEffect(() => {
     if (cafeFade === 'none') return
     if (cafeFade === 'in') {
@@ -695,14 +857,36 @@ export function GameScreen() {
   }, [cafeFade, showNarration])
 
   const advanceCafeScene = useCallback(() => {
+    if (cutsceneFlowActive || questTransitionActive) return
     if (cafeFade !== 'scene') return
     const next = cafeSceneLine + 1
     if (next >= CAFE_SCENE_LINES.length) {
-      finishCafeScene()
+      if (!isE1CutscenePlayed()) {
+        playCutscene({
+          videoId: '6t83Cdmq1fM',
+          startSeconds: 112,
+          endSeconds: 204,
+          isEpisodeCutscene: true,
+          captions: EPISODE_1_CAPTIONS,
+          onComplete: () => {
+            setE1CutscenePlayed()
+            completeQuest1AfterCafe()
+          },
+        })
+        return
+      }
+      completeQuest1AfterCafe()
       return
     }
     setCafeSceneLine(next)
-  }, [cafeFade, cafeSceneLine, finishCafeScene])
+  }, [
+    cafeFade,
+    cafeSceneLine,
+    cutsceneFlowActive,
+    questTransitionActive,
+    completeQuest1AfterCafe,
+    playCutscene,
+  ])
 
   const showMarkGateDialogue = useCallback(() => {
     beginNpcDialogue(MARK_NPC, { blocked: true })
@@ -801,13 +985,27 @@ export function GameScreen() {
     setLastLocation(currentCity, config.darklineSpawnX, config.darklineSpawnY)
   }, [currentCity])
 
-  const handleDarklineTravel = useCallback((destination: CityId) => {
-    setCurrentCity(destination)
-    markCityVisited(destination)
-    const destConfig = CITY_CONFIGS[destination]
-    playerRef.current?.setPosition(destConfig.spawnX, destConfig.spawnY)
-    setLastLocation(destination, destConfig.spawnX, destConfig.spawnY)
-  }, [])
+  const handleDarklineTravel = useCallback(
+    (destination: CityId) => {
+      const firstSanBruno =
+        destination === 'san-bruno' &&
+        !getWorldMemorySnapshot().citiesVisited.includes('san-bruno')
+      setCurrentCity(destination)
+      markCityVisited(destination)
+      const destConfig = CITY_CONFIGS[destination]
+      playerRef.current?.setPosition(destConfig.spawnX, destConfig.spawnY)
+      setLastLocation(destination, destConfig.spawnX, destConfig.spawnY)
+      if (firstSanBruno) {
+        showQuestTransition({
+          questName: PRELUDE_QUEST_NAME,
+          episodeName: EPISODE_1_NAME,
+          episodeNumber: 1,
+          type: 'episode_start',
+        })
+      }
+    },
+    [showQuestTransition],
+  )
 
   const handleDarklineBeginExit = useCallback((destination: CityId | null) => {
     darklineExitTargetRef.current = destination ?? 'close'
@@ -978,6 +1176,7 @@ export function GameScreen() {
 
   const handleInteract = useCallback(() => {
     if (worldEntryActive) return
+    if (cutsceneFlowActive || questTransitionActive) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -996,6 +1195,8 @@ export function GameScreen() {
   }, [
     advanceCafeScene,
     cafeFade,
+    cutsceneFlowActive,
+    questTransitionActive,
     dialogue,
     advanceDialogue,
     battleWipePhase,
@@ -1009,6 +1210,7 @@ export function GameScreen() {
   ])
 
   const handlePlayAreaClick = useCallback(() => {
+    if (cutsceneFlowActive || questTransitionActive) return
     if (worldEntryActive || showStartMenu) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
@@ -1019,7 +1221,16 @@ export function GameScreen() {
       return
     }
     openNearbyNpcDialogue()
-  }, [advanceCafeScene, cafeFade, dialogue, advanceDialogue, openNearbyNpcDialogue, showStartMenu])
+  }, [
+    advanceCafeScene,
+    cafeFade,
+    cutscene,
+    questTransitionActive,
+    dialogue,
+    advanceDialogue,
+    openNearbyNpcDialogue,
+    showStartMenu,
+  ])
 
   const handleConfirm = handleInteract
 
@@ -1036,6 +1247,7 @@ export function GameScreen() {
       ) {
         return
       }
+      if (cutsceneFlowActive || questTransitionActive) return
       if (cafeFade === 'scene') {
         e.preventDefault()
         advanceCafeScene()
@@ -1062,6 +1274,8 @@ export function GameScreen() {
     battleWipePhase,
     battleNpcId,
     cafeFade,
+    cutsceneFlowActive,
+    questTransitionActive,
     handleConfirm,
     menuTransition,
     showFannyPack,
@@ -1300,7 +1514,8 @@ export function GameScreen() {
     !showFannyPack &&
     !showDarkline &&
     !cultDarklinePhase &&
-    !showInterior
+    !showInterior &&
+    !cutsceneQuestHelperHidden
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
 
@@ -1318,6 +1533,8 @@ export function GameScreen() {
     !showStartMenu &&
     !showLoadout &&
     !showFannyPack &&
+    !cutsceneFlowActive &&
+    !questTransitionActive &&
     (dialogue != null || cafeFade === 'scene' || nearbyNpcId != null)
 
   const touchTalkLabel =
@@ -1360,6 +1577,20 @@ export function GameScreen() {
           }`}
           onClick={handlePlayAreaClick}
         >
+          <div
+            className={`game-screen-play__world${
+              episodeWorldReveal === 'hidden' || episodeWorldReveal === 'fade-in-pending'
+                ? ' game-screen-play__world--episode-hidden'
+                : ''
+            }${episodeWorldReveal === 'fade-in' ? ' game-screen-play__world--episode-fade-in' : ''}`}
+            style={
+              episodeWorldReveal === 'fade-in'
+                ? {
+                    ['--episode-world-reveal-ms' as string]: `${EPISODE_WORLD_REVEAL_FADE_MS}ms`,
+                  }
+                : undefined
+            }
+          >
           {showDebug && (
             <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
               {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
@@ -1401,7 +1632,9 @@ export function GameScreen() {
                 showFannyPack ||
                 showLoadout ||
                 showStartMenu ||
-                showDarkline
+                showDarkline ||
+                cutsceneFlowActive ||
+                questTransitionActive
               }
               dialogueNpcId={dialogue?.npc.id ?? null}
               questPulseDescriptor={questPulseDescriptor}
@@ -1462,7 +1695,7 @@ export function GameScreen() {
               }
             />
           )}
-          {cafeFade === 'scene' && (
+          {cafeFade === 'scene' && !cutsceneFlowActive && !questTransitionActive && (
             <div
               className="game-screen-cafe-scene"
               onClick={(e) => {
@@ -1535,6 +1768,11 @@ export function GameScreen() {
               onConfirmNewGame={handleConfirmNewGame}
             />
           )}
+          </div>
+          {cutscene && (
+            <CutsceneOverlay {...cutscene} onEnded={handleCutsceneEnded} />
+          )}
+          <QuestTransition ref={questTransitionRef} />
         </div>
       </GameShell>
       {showLoadout && <LoadoutScreen onClose={handleLoadoutClose} />}

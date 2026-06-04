@@ -27,6 +27,21 @@
   height: 100%;
 }
 
+.game-screen-play__world {
+  position: absolute;
+  inset: 0;
+}
+
+.game-screen-play__world--episode-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.game-screen-play__world--episode-fade-in {
+  opacity: 1;
+  transition: opacity var(--episode-world-reveal-ms, 1600ms) ease;
+}
+
 .game-screen-play--battle-wipe,
 .game-screen-play--world-entry,
 .game-screen-play--menu-transition {

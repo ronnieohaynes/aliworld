@@ -10,7 +10,6 @@ import { TitleCard } from './components/TitleCard'
 import { isComingSoonMode } from './config/comingSoon'
 import { useAuthStore } from './store/authStore'
 import {
-  clearMidnightVariant,
   getSelectedMidnightVariant,
   subscribeCharacterStore,
 } from './store/characterStore'
@@ -63,26 +62,6 @@ function GameApp() {
     if (!window.location.hash && !window.location.search) return
     clearAuthParamsFromUrl()
   }, [auth.passwordRecoveryPending, auth.status])
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'm' && e.key !== 'M') return
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-      const target = e.target
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return
-      }
-      e.preventDefault()
-      clearMidnightVariant()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
 
   if (!started) {
     return <TitleCard onStart={() => setStarted(true)} />

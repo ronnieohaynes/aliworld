@@ -17,6 +17,7 @@ type Quest1State = {
   walkerConverted: boolean
   jaclynConverted: boolean
   cafeSceneSeen: boolean
+  e1CutscenePlayed: boolean
   battleTutorialSeen: boolean
   worldIntroSeen: boolean
 }
@@ -28,6 +29,7 @@ function emptyQuest1State(): Quest1State {
     walkerConverted: false,
     jaclynConverted: false,
     cafeSceneSeen: false,
+    e1CutscenePlayed: false,
     battleTutorialSeen: false,
     worldIntroSeen: false,
   }
@@ -62,6 +64,7 @@ function loadQuest1FromStorage(): Quest1State {
       walkerConverted: o.walkerConverted === true,
       jaclynConverted: o.jaclynConverted === true,
       cafeSceneSeen: o.cafeSceneSeen === true,
+      e1CutscenePlayed: o.e1CutscenePlayed === true,
       battleTutorialSeen: o.battleTutorialSeen === true,
       worldIntroSeen: o.worldIntroSeen === true,
     }
@@ -163,6 +166,17 @@ export function setCafeSceneSeen(): void {
   emit()
 }
 
+export function isE1CutscenePlayed(): boolean {
+  return state.e1CutscenePlayed
+}
+
+export function setE1CutscenePlayed(): void {
+  if (state.e1CutscenePlayed) return
+  state = { ...state, e1CutscenePlayed: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export function isBattleTutorialSeen(): boolean {
   return state.battleTutorialSeen
 }
@@ -191,6 +205,7 @@ export type Quest1Serialized = {
   walkerConverted?: boolean
   jaclynConverted?: boolean
   cafeSceneSeen?: boolean
+  e1CutscenePlayed?: boolean
   battleTutorialSeen?: boolean
   worldIntroSeen?: boolean
 }
@@ -202,6 +217,7 @@ export function serialize(): Quest1Serialized {
     walkerConverted: state.walkerConverted,
     jaclynConverted: state.jaclynConverted,
     cafeSceneSeen: state.cafeSceneSeen,
+    e1CutscenePlayed: state.e1CutscenePlayed,
     battleTutorialSeen: state.battleTutorialSeen,
     worldIntroSeen: state.worldIntroSeen,
   }
@@ -220,6 +236,7 @@ export function applyState(data: Partial<Quest1Serialized>): void {
     walkerConverted: data.walkerConverted === true,
     jaclynConverted: data.jaclynConverted === true,
     cafeSceneSeen: data.cafeSceneSeen === true,
+    e1CutscenePlayed: data.e1CutscenePlayed === true,
     battleTutorialSeen: data.battleTutorialSeen === true,
     worldIntroSeen: data.worldIntroSeen === true,
   }
