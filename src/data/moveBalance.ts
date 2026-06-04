@@ -32,6 +32,19 @@ export const CANNON_CRIT_MULT = 1.5
 export const CANNON_DEF_SHATTER_CHANCE = 0.05
 
 export const BLACKOUT_ARMED_DAMAGE_MULT = 3.2
+/** Dodge chance multiplier on blackout release (huge hit — not free, but answerable). */
+export const BLACKOUT_RELEASE_DODGE_MULT = 0.62
+
+export const SECOND_WIND_HEAL_BASE_PCT = 0.2
+export const SECOND_WIND_HEAL_PER_DEF_PCT = 0.01
+export const SECOND_WIND_HEAL_CAP_PCT = 0.4
+
+export const DEVILS_CUT_TURNS_MIN = 2
+export const DEVILS_CUT_TURNS_MAX = 3
+export const DEVILS_CUT_DAMAGE_MULT = 0.42
+export const DEVILS_CUT_LIFESTEAL_BASE = 0.1
+export const DEVILS_CUT_LIFESTEAL_PER_LCK = 0.0035
+export const DEVILS_CUT_LIFESTEAL_CAP = 0.2
 
 export const PARRY_DODGE_COUNTER_MULT = 0.72
 export const PARRY_DODGE_WEAK_MULT = 0.35

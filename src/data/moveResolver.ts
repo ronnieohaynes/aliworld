@@ -2,6 +2,16 @@ import type { DeathClock } from './combatTypes'
 import type { BattleMoveState } from './battleMoveState'
 import {
   BLACKOUT_ARMED_DAMAGE_MULT,
+  BLACKOUT_RELEASE_DODGE_MULT,
+  DEVILS_CUT_DAMAGE_MULT,
+  DEVILS_CUT_LIFESTEAL_BASE,
+  DEVILS_CUT_LIFESTEAL_CAP,
+  DEVILS_CUT_LIFESTEAL_PER_LCK,
+  DEVILS_CUT_TURNS_MAX,
+  DEVILS_CUT_TURNS_MIN,
+  SECOND_WIND_HEAL_BASE_PCT,
+  SECOND_WIND_HEAL_CAP_PCT,
+  SECOND_WIND_HEAL_PER_DEF_PCT,
   COUNTERWEIGHT_BLOCK_PCT_MAX,
   COUNTERWEIGHT_BLOCK_PCT_MIN,
   COUNTERWEIGHT_REFLECT_CHANCE,
@@ -298,7 +308,16 @@ export function applyMoveBehavior(
         out.incoming = enemyAttacks ? eDmg : 0
       } else if (battle.blackoutPhase === 'armed') {
         out.playerDmg = jitter(Math.floor(atk * BLACKOUT_ARMED_DAMAGE_MULT))
-        out.incoming = enemyAttacks ? eDmg : 0
+        if (enemyAttacks && eDmg > 0) {
+          if (Math.random() < speedDodgeSuccessChance(ctx.spd) * BLACKOUT_RELEASE_DODGE_MULT) {
+            out.dodged = true
+            out.incoming = 0
+          } else {
+            out.incoming = eDmg
+          }
+        } else {
+          out.incoming = 0
+        }
         battle.blackoutPhase = 'recharging'
       } else {
         out.playerDmg = 0
@@ -397,6 +416,29 @@ export function applyMoveBehavior(
       })
       out.playerDmg = 0
       out.incoming = enemyAttacks ? eDmg : 0
+      break
+    }
+
+    case 'second-wind': {
+      const pct = Math.min(
+        SECOND_WIND_HEAL_CAP_PCT,
+        SECOND_WIND_HEAL_BASE_PCT + ctx.def * SECOND_WIND_HEAL_PER_DEF_PCT,
+      )
+      post.healPlayer = Math.floor(ctx.playerMaxHp * pct)
+      out.playerDmg = 0
+      out.incoming = enemyAttacks ? eDmg : 0
+      battle.oncePerBattleUsed.SECOND_WIND = true
+      break
+    }
+
+    case 'devils-cut': {
+      out.playerDmg = jitter(Math.floor(atk * DEVILS_CUT_DAMAGE_MULT))
+      out.incoming = enemyAttacks ? eDmg : 0
+      battle.devilsCutTurns = randomInt(DEVILS_CUT_TURNS_MIN, DEVILS_CUT_TURNS_MAX)
+      battle.devilsCutPct = Math.min(
+        DEVILS_CUT_LIFESTEAL_CAP,
+        DEVILS_CUT_LIFESTEAL_BASE + ctx.lck * DEVILS_CUT_LIFESTEAL_PER_LCK,
+      )
       break
     }
   }

@@ -1,4 +1,4 @@
-/** All 20 player move ids (4 ladders × 5 rungs). */
+/** All 22 player move ids (attack/speed × 5; defense/luck × 6). */
 export const PLAYER_MOVE_IDS = [
   'STRIKE',
   'FURY_SWEEP',
@@ -12,11 +12,13 @@ export const PLAYER_MOVE_IDS = [
   'HYPERDRIVE',
   'HOLD',
   'ANCHOR',
+  'SECOND_WIND',
   'COUNTERWEIGHT',
   'BRICK_WALL',
   'INVINCIBLE',
   'WHISPER',
   'LOOP',
+  'DEVILS_CUT',
   'SNAG',
   'PHENOMENA',
   'SEALED_FATE',
@@ -37,6 +39,6 @@ export const MOVE_SKILL_LADDERS: Record<
 > = {
   attack: ['STRIKE', 'FURY_SWEEP', 'DARK_BREAK', 'CANNON', 'BLACKOUT'],
   speed: ['SLIP', 'PARRY', 'GRAVITY_SHIFT', 'REFRACT', 'HYPERDRIVE'],
-  defense: ['HOLD', 'ANCHOR', 'COUNTERWEIGHT', 'BRICK_WALL', 'INVINCIBLE'],
-  luck: ['WHISPER', 'LOOP', 'SNAG', 'PHENOMENA', 'SEALED_FATE'],
+  defense: ['HOLD', 'ANCHOR', 'SECOND_WIND', 'COUNTERWEIGHT', 'BRICK_WALL', 'INVINCIBLE'],
+  luck: ['WHISPER', 'LOOP', 'DEVILS_CUT', 'SNAG', 'PHENOMENA', 'SEALED_FATE'],
 }

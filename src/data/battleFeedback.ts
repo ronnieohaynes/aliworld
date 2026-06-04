@@ -55,6 +55,15 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
+  if (r.healApplied > 0) {
+    events.push({
+      kind: 'damage',
+      text: `+${r.healApplied}`,
+      target: 'player',
+      tone: 'defense',
+    })
+  }
+
   if (r.perfectGuardBonus) {
     events.push({
       kind: 'perfect-guard',

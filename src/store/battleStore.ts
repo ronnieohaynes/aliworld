@@ -224,6 +224,8 @@ export type ResolveResult = {
   damageAvoided: number
   /** Next strike boosted after a successful brace (perfect guard). */
   perfectGuardBonus: boolean
+  /** Healing applied this turn (second wind, lifesteal, phenomena). */
+  healApplied: number
   eMove: UpcomingMove
   pMove: PlayerMove
 }
@@ -255,8 +257,34 @@ function emptyResolveResult(
     damageBlocked: 0,
     damageAvoided: 0,
     perfectGuardBonus: false,
+    healApplied: 0,
     eMove,
     pMove,
+  }
+}
+
+function isDefensiveExposedMove(pMove: PlayerMove): boolean {
+  const kind = getMoveDef(pMove).behavior.kind
+  return (
+    kind === 'brace' ||
+    kind === 'dodge' ||
+    kind === 'brick-wall' ||
+    kind === 'counterweight'
+  )
+}
+
+function applyPostResolveEffects(
+  state: BattleState,
+  post: import('../data/moves').PostResolveEffects,
+): void {
+  if (post.selfDamage > 0) {
+    state.playerHp = Math.max(0, state.playerHp - post.selfDamage)
+  }
+  if (post.healPlayer > 0) {
+    state.playerHp = Math.min(state.playerStats.maxHp, state.playerHp + post.healPlayer)
+  }
+  if (post.deathClocks.length > 0) {
+    state.deathClocks = [...state.deathClocks, ...post.deathClocks]
   }
 }
 
@@ -439,7 +467,13 @@ export function resolveExposedTurn(
   state: BattleState,
   pMove: PlayerMove,
   eMove: UpcomingMove,
-): ResolveResult {
+): { out: ResolveResult; post: import('../data/moves').PostResolveEffects } {
+  if (isDefensiveExposedMove(pMove)) {
+    const { out, post } = resolvePlayerMoveBody(state, pMove, eMove)
+    if (post.healPlayer > 0) out.healApplied = post.healPlayer
+    return { out, post }
+  }
+
   const { enemyStunned, enemyAttacks, eDmg } = resolveEnemyIncoming(state, eMove)
   const out = emptyResolveResult(eMove, pMove, enemyStunned, enemyAttacks)
   out.playerActed = false
@@ -469,7 +503,7 @@ export function resolveExposedTurn(
     if (BLACKOUT_INTERRUPTIBLE) state.battleMove.blackoutPhase = 'idle'
   }
 
-  return out
+  return { out, post: { deathClocks: [], selfDamage: 0, healPlayer: 0 } }
 }
 
 export function resolveMoves(
@@ -479,17 +513,8 @@ export function resolveMoves(
   slot?: number,
 ): ResolveResult {
   const { out, post } = resolvePlayerMoveBody(state, pMove, eMove, slot)
-
-  if (post.selfDamage > 0) {
-    state.playerHp = Math.max(0, state.playerHp - post.selfDamage)
-  }
-  if (post.healPlayer > 0) {
-    state.playerHp = Math.min(state.playerStats.maxHp, state.playerHp + post.healPlayer)
-  }
-  if (post.deathClocks.length > 0) {
-    state.deathClocks = [...state.deathClocks, ...post.deathClocks]
-  }
-
+  applyPostResolveEffects(state, post)
+  if (post.healPlayer > 0) out.healApplied = post.healPlayer
   return out
 }
 
@@ -633,6 +658,23 @@ function applyPlayerResolutionPhase(
     nextEnemyHp = Math.max(0, nextEnemyHp - damageToEnemy)
   }
 
+  if (
+    r.playerActed &&
+    damageToEnemy > 0 &&
+    working.battleMove.devilsCutTurns > 0 &&
+    working.battleMove.devilsCutPct > 0
+  ) {
+    const steal = Math.max(
+      1,
+      Math.floor(damageToEnemy * working.battleMove.devilsCutPct),
+    )
+    nextPlayerHp = Math.min(
+      working.playerStats.maxHp,
+      nextPlayerHp + steal,
+    )
+    r.healApplied += steal
+  }
+
   if (r.playerActed) {
     nextLog = appendLog(
       nextLog,
@@ -728,6 +770,11 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     battleMove.blackoutPhase = 'idle'
   }
 
+  if (battleMove.devilsCutTurns > 0) {
+    battleMove.devilsCutTurns = Math.max(0, battleMove.devilsCutTurns - 1)
+    if (battleMove.devilsCutTurns <= 0) battleMove.devilsCutPct = 0
+  }
+
   const turn = state.turn + 1
   const upcomingMove = showTelegraph({
     npc: state.npc,
@@ -813,9 +860,16 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
     playerSkipTurns: consumed.flags.playerSkipTurns,
   }
 
-  const r = consumed.wasExposed
+  const resolved = consumed.wasExposed
     ? resolveExposedTurn(working, pMove, working.upcomingMove)
-    : resolveMoves(working, pMove, working.upcomingMove, slot)
+    : {
+        out: resolveMoves(working, pMove, working.upcomingMove, slot),
+        post: { deathClocks: [], selfDamage: 0, healPlayer: 0 },
+      }
+  if (consumed.wasExposed) {
+    applyPostResolveEffects(working, resolved.post)
+  }
+  const r = resolved.out
 
   working = withResolveFeedback(working, r)
 

@@ -58,6 +58,8 @@ export type MoveBehavior =
   | { kind: 'snag' }
   | { kind: 'phenomena' }
   | { kind: 'sealed-fate' }
+  | { kind: 'second-wind' }
+  | { kind: 'devils-cut' }
 
 export type MoveXpContext = {
   pMove: PlayerMoveId
@@ -77,6 +79,7 @@ export type MoveXpContext = {
   missApplied: boolean
   doubleApplied: boolean
   reflectApplied: boolean
+  healApplied: number
 }
 
 export type MoveXpGrant = {
@@ -96,6 +99,7 @@ export type PlayerLogContext = {
   enemyStunned: boolean
   displayName: string
   phenomenaLine?: string
+  healApplied?: number
 }
 
 export type PlayerMoveResolveOut = {
@@ -118,7 +122,7 @@ export type MoveDefinition = {
   id: PlayerMoveId
   displayName: string
   skill: MoveSkill
-  ladderRung: 1 | 2 | 3 | 4 | 5
+  ladderRung: 1 | 2 | 3 | 4 | 5 | 6
   unlockAtSkillLevel: number
   cost: MoveCost
   behavior: MoveBehavior

@@ -30,6 +30,30 @@ import type { PlayerMoveId } from './moveIds'
 import { unlockLevelForRung } from './moveUnlock'
 import type { MoveDefinition, MoveXpContext } from './moveTypes'
 
+/**
+ * Counter-web audit — every big move needs an answer (see behavior + comments on caps).
+ * STRIKE — answered by: enemy skip/stun, HOLD/SLIP
+ * FURY_SWEEP — answered by: burst before bleed stacks, ANCHOR/bleed out-sustain
+ * DARK_BREAK — answered by: kill before accuracy debuff stacks, tempo
+ * CANNON — answered by: brace, dodge, def shatter is rng
+ * BLACKOUT — answered by: HOLD/ANCHOR/BRICK_WALL on load exposed + release; SLIP/PARRY exposed; release dodge (reduced)
+ * SLIP/PARRY — answered by: enemy skip, trade damage
+ * GRAVITY_SHIFT — answered by: burst while slowed, ANCHOR
+ * REFRACT — answered by: don't heavy-hit before refract, stun/skip
+ * HYPERDRIVE — answered by: punish recharge exposed turn (brace/dodge/skip)
+ * HOLD/ANCHOR — answered by: skip turns, burst through brace, ANCHOR vs status
+ * SECOND_WIND — answered by: burst before heal, once/fight limits stall
+ * COUNTERWEIGHT/BRICK_WALL — answered by: skip/feint, multi-hit, wait out wall
+ * INVINCIBLE — answered by: burst before pop, once/fight
+ * WHISPER/LOOP — answered by: ANCHOR cleanses shake, kill before loop value
+ * DEVILS_CUT — answered by: burst through modest lifesteal window
+ * SNAG — answered by: deny value by killing fast
+ * PHENOMENA — answered by: ANCHOR vs status procs, rng
+ * SEALED_FATE — answered by: kill before clock, SECOND_WIND/out-sustain, clock miss gamble
+ * Enemy status on player (stun/bleed/shake) — not implemented yet; future enemy-design lever.
+ *   When added: ANCHOR cleanses, brace reduces chip.
+ */
+
 function luckProcCount(r: MoveXpContext): number {
   let count = 0
   if (r.crit) count++
@@ -189,6 +213,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   }),
 
   BLACKOUT: def({
+    // answered by: HOLD/ANCHOR/BRICK_WALL (load exposed + release); SLIP/PARRY (exposed); release dodge (reduced)
     id: 'BLACKOUT',
     displayName: 'BLACKOUT',
     skill: 'attack',
@@ -306,6 +331,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   }),
 
   HYPERDRIVE: def({
+    // answered by: punish recharge exposed turn (HOLD/SLIP/BRICK_WALL on exposed window)
     id: 'HYPERDRIVE',
     displayName: 'HYPERDRIVE',
     skill: 'speed',
@@ -365,11 +391,32 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
         : 'anchored. nothing lands.',
   }),
 
+  SECOND_WIND: def({
+    // answered by: burst before heal; once/fight — not an infinite stall loop
+    id: 'SECOND_WIND',
+    displayName: 'SECOND WIND',
+    skill: 'defense',
+    ladderRung: 3,
+    cost: { kind: 'oncePerBattle' },
+    behavior: { kind: 'second-wind' },
+    onResolve: [],
+    xpGrants: [
+      { skill: 'defense', amount: (r) => Math.max(14, r.healApplied) },
+      { skill: 'hp', amount: (r) => Math.max(8, Math.floor(r.healApplied * 0.5)) },
+    ],
+    uiDescription: 'breathe. get some back. once a fight.',
+    uiClassName: 'battle-screen__move--second-wind',
+    playerLogLine: (r) =>
+      r.healApplied && r.healApplied > 0
+        ? `second wind. +${r.healApplied} back.`
+        : 'second wind.',
+  }),
+
   COUNTERWEIGHT: def({
     id: 'COUNTERWEIGHT',
     displayName: 'COUNTERWEIGHT',
     skill: 'defense',
-    ladderRung: 3,
+    ladderRung: 4,
     cost: { kind: 'none' },
     behavior: {
       kind: 'counterweight',
@@ -388,7 +435,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     id: 'BRICK_WALL',
     displayName: 'BRICK WALL',
     skill: 'defense',
-    ladderRung: 4,
+    ladderRung: 5,
     cost: { kind: 'none' },
     behavior: { kind: 'brick-wall' },
     onResolve: [],
@@ -408,10 +455,11 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   }),
 
   INVINCIBLE: def({
+    // answered by: burst before blocks pop; once/fight
     id: 'INVINCIBLE',
     displayName: 'INVINCIBLE',
     skill: 'defense',
-    ladderRung: 5,
+    ladderRung: 6,
     cost: { kind: 'oncePerBattle' },
     behavior: { kind: 'invincible' },
     onResolve: [],
@@ -467,11 +515,30 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       `loop. ${r.playerDmg}. they repeat themselves.`,
   }),
 
+  DEVILS_CUT: def({
+    // answered by: burst through modest lifesteal window (2–3 turns)
+    id: 'DEVILS_CUT',
+    displayName: "DEVIL'S CUT",
+    skill: 'luck',
+    ladderRung: 3,
+    cost: { kind: 'none' },
+    behavior: { kind: 'devils-cut' },
+    onResolve: [],
+    xpGrants: [
+      { skill: 'luck', amount: (r) => 14 + r.playerDmg * XP_LUCK_DAMAGE_MULT },
+      { skill: 'hp', amount: 6 },
+    ],
+    uiDescription: 'take your cut. hits feed you for a few turns.',
+    uiClassName: 'battle-screen__move--devils-cut',
+    playerLogLine: (r) =>
+      `devil's cut. ${r.playerDmg}. your hits feed you.`,
+  }),
+
   SNAG: def({
     id: 'SNAG',
     displayName: 'SNAG',
     skill: 'luck',
-    ladderRung: 3,
+    ladderRung: 4,
     cost: { kind: 'none' },
     behavior: { kind: 'snag' },
     onResolve: [],
@@ -486,7 +553,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     id: 'PHENOMENA',
     displayName: 'PHENOMENA',
     skill: 'luck',
-    ladderRung: 4,
+    ladderRung: 5,
     cost: { kind: 'none' },
     behavior: { kind: 'phenomena' },
     onResolve: [],
@@ -505,10 +572,11 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   }),
 
   SEALED_FATE: def({
+    // answered by: kill before clock; SECOND_WIND/out-sustain; miss self-damage gamble
     id: 'SEALED_FATE',
     displayName: 'SEALED FATE',
     skill: 'luck',
-    ladderRung: 5,
+    ladderRung: 6,
     cost: { kind: 'none' },
     behavior: { kind: 'sealed-fate' },
     onResolve: [],

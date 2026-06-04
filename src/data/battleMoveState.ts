@@ -20,6 +20,9 @@ export type BattleMoveState = {
   /** SNAG: stolen enemy move per slot (replaces SNAG in that slot). */
   snagStolen: Partial<Record<number, EnemyMoveId>>
   oncePerBattleUsed: Partial<Record<PlayerMoveId, boolean>>
+  /** DEVIL'S CUT — turns remaining where player hits heal. */
+  devilsCutTurns: number
+  devilsCutPct: number
   /** Pending counterweight mitigation for incoming this turn. */
   counterweightBlockPct: number | null
   counterweightReflectPct: number | null
@@ -43,6 +46,8 @@ export function createBattleMoveState(): BattleMoveState {
     lastEnemyDamage: 0,
     snagStolen: {},
     oncePerBattleUsed: {},
+    devilsCutTurns: 0,
+    devilsCutPct: 0,
     counterweightBlockPct: null,
     counterweightReflectPct: null,
     playerPerfectGuard: false,

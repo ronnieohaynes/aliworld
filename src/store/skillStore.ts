@@ -164,6 +164,7 @@ function toMoveXpContext(r: ResolveResult): MoveXpContext {
     missApplied: r.missApplied,
     doubleApplied: r.doubleApplied,
     reflectApplied: r.reflectApplied,
+    healApplied: r.healApplied,
   }
 }
 
