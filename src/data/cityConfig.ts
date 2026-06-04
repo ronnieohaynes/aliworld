@@ -77,8 +77,8 @@ const SAN_BRUNO_TRIGGER_ZONES: TriggerZone[] = [
   },
   {
     id: 'one-love-cafe-entrance',
-    x: 825,
-    y: 540,
+    x: 730,
+    y: 740,
     width: 35,
     height: 80,
     action: 'OPEN_ONE_LOVE_CAFE',
