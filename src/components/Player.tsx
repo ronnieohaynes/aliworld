@@ -22,6 +22,7 @@ import {
 import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
 import { getCollisionZones, type CollisionZone } from '../data/collisionZones'
 import { NPC_INTERACT_RANGE, NPC_SIZE } from '../data/npcs'
+import { getNpcCombatLevel } from '../data/npcRegistry'
 import { drawStoryIdleNpcPose, type StoryIdlePoses } from '../game/npcIdleSprites'
 import {
   assignStripSpriteToNpc,
@@ -1265,47 +1266,61 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
               displayH,
             )
           } else {
-          const spriteImg = npcSpritesRef.current.get(npc.id)
+            const spriteImg = npcSpritesRef.current.get(npc.id)
 
-          if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
-            const cols = npc.spriteColumns ?? 4
-            const frameW = Math.floor(spriteImg.naturalWidth / cols)
-            const frameH = spriteImg.naturalHeight
-            const col = NPC_SPRITE_COL[npcFacing]
-            const nsx = Math.floor(col * frameW)
+            if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
+              const cols = npc.spriteColumns ?? 4
+              const frameW = Math.floor(spriteImg.naturalWidth / cols)
+              const frameH = spriteImg.naturalHeight
+              const col = NPC_SPRITE_COL[npcFacing]
+              const nsx = Math.floor(col * frameW)
 
-            ctx.imageSmoothingEnabled = false
-            ctx.drawImage(
-              spriteImg,
-              nsx,
-              0,
-              frameW,
-              frameH,
-              Math.floor(dx),
-              Math.floor(dy),
-              Math.floor(displayW),
-              Math.floor(displayH),
-            )
-          } else {
-            const nx = Math.floor(npc.x - half)
-            const ny = Math.floor(npc.y - half)
-            ctx.fillStyle = npc.color
-            ctx.fillRect(nx, ny, NPC_SIZE, NPC_SIZE)
+              ctx.imageSmoothingEnabled = false
+              ctx.drawImage(
+                spriteImg,
+                nsx,
+                0,
+                frameW,
+                frameH,
+                Math.floor(dx),
+                Math.floor(dy),
+                Math.floor(displayW),
+                Math.floor(displayH),
+              )
+            } else {
+              const nx = Math.floor(npc.x - half)
+              const ny = Math.floor(npc.y - half)
+              ctx.fillStyle = npc.color
+              ctx.fillRect(nx, ny, NPC_SIZE, NPC_SIZE)
 
-            const cx = Math.floor(npc.x)
-            const cy = Math.floor(npc.y)
-            ctx.fillStyle = 'rgba(255,255,255,0.8)'
-            if (npcFacing === 'down') {
-              ctx.fillRect(cx - 5, cy + 1, 3, 3)
-              ctx.fillRect(cx + 3, cy + 1, 3, 3)
-            } else if (npcFacing === 'left') {
-              ctx.fillRect(cx - 8, cy - 2, 3, 3)
-              ctx.fillRect(cx - 8, cy + 3, 3, 3)
-            } else if (npcFacing === 'right') {
-              ctx.fillRect(cx + 6, cy - 2, 3, 3)
-              ctx.fillRect(cx + 6, cy + 3, 3, 3)
+              const cx = Math.floor(npc.x)
+              const cy = Math.floor(npc.y)
+              ctx.fillStyle = 'rgba(255,255,255,0.8)'
+              if (npcFacing === 'down') {
+                ctx.fillRect(cx - 5, cy + 1, 3, 3)
+                ctx.fillRect(cx + 3, cy + 1, 3, 3)
+              } else if (npcFacing === 'left') {
+                ctx.fillRect(cx - 8, cy - 2, 3, 3)
+                ctx.fillRect(cx - 8, cy + 3, 3, 3)
+              } else if (npcFacing === 'right') {
+                ctx.fillRect(cx + 6, cy - 2, 3, 3)
+                ctx.fillRect(cx + 6, cy + 3, 3, 3)
+              }
             }
           }
+
+          const combatLevel = getNpcCombatLevel(npc.id)
+          if (combatLevel != null) {
+            ctx.save()
+            ctx.font = '9px monospace'
+            ctx.textAlign = 'center'
+            ctx.fillStyle = 'rgba(244, 232, 193, 0.95)'
+            ctx.fillText(
+              `LVL ${combatLevel}`,
+              Math.floor(dx + displayW / 2),
+              Math.floor(dy - 6),
+            )
+            ctx.restore()
           }
         }
       }

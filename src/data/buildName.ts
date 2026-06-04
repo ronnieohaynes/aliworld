@@ -15,8 +15,11 @@ const BALANCED: BuildName = {
   color: '#f4e8c1',
 }
 
-/** Top skill must lead second by at least this much for a pure build. */
-const PURE_THRESHOLD = 4
+/** One stat must lead the next closest by this much before any build name applies. */
+export const BUILD_NAME_UNLOCK_GAP = 2
+
+/** Top skill must lead second by at least this much for a pure build (after unlock). */
+const PURE_THRESHOLD = BUILD_NAME_UNLOCK_GAP
 
 /** Second skill must lead third by at least this much for a combo build. */
 const COMBO_THRESHOLD = 3
@@ -104,6 +107,11 @@ function allFinalForm(skills: SkillsState): boolean {
   )
 }
 
+function buildNameUnlocked(skills: SkillsState): boolean {
+  const ranked = rankedCombatSkills(skills)
+  return ranked[0]!.level - ranked[1]!.level >= BUILD_NAME_UNLOCK_GAP
+}
+
 function isEquilibrium(skills: SkillsState): boolean {
   const levels = rankedCombatSkills(skills).map((s) => s.level)
   const spread = levels[0]! - levels[levels.length - 1]!
@@ -144,6 +152,10 @@ function deriveLowStatBuild(skills: SkillsState): BuildName | null {
 
 /** Derive build identity from combat skill levels (attack/speed/defense/luck). */
 export function deriveBuildName(skills: SkillsState): BuildName {
+  if (!buildNameUnlocked(skills)) {
+    return BALANCED
+  }
+
   if (allFinalForm(skills)) {
     if (isEquilibrium(skills)) {
       return { name: 'equilibrium', color: CREAM }
@@ -182,6 +194,8 @@ export function getBuildName(): BuildName {
 
 /** Dominant skill for matchup counters; null when still blank slate. */
 export function deriveBuildLoopType(skills: SkillsState): BuildLoopSkill | null {
+  if (!buildNameUnlocked(skills)) return null
+
   const ranked = rankedCombatSkills(skills)
   const top = ranked[0]!
   const second = ranked[1]!

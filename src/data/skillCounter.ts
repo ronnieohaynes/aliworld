@@ -9,6 +9,19 @@ import { getPlayerSkills } from '../store/playerStore'
 
 export type LeanSkill = BuildLoopSkill | 'none'
 
+const LEAN_ACCENT: Record<BuildLoopSkill, string> = {
+  attack: '#cc4444',
+  speed: '#44cc66',
+  defense: '#4488cc',
+  luck: '#c084fc',
+}
+
+/** Battle telegraph + move callout accent for an enemy lean. */
+export function leanSkillAccentColor(lean: LeanSkill): string {
+  if (lean === 'none') return '#e8c878'
+  return LEAN_ACCENT[lean]
+}
+
 export type CounterRelation = 'advantage' | 'disadvantage' | 'neutral'
 
 /** attack > speed > luck > defense > attack */
@@ -58,10 +71,9 @@ export function applySkillCounterModifiers(
 
 export function counterMatchupLabel(
   relation: CounterRelation,
-  enemyLean: LeanSkill = 'none',
+  _enemyLean: LeanSkill = 'none',
 ): string | null {
   if (relation === 'advantage') return 'type advantage'
   if (relation === 'disadvantage') return 'outmatched'
-  if (enemyLean !== 'none') return `${enemyLean} lean`
   return null
 }
