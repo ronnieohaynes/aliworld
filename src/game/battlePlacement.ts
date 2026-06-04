@@ -19,7 +19,7 @@ export const BATTLE_ENEMY_GROUND_Y = BATTLE_GROUND_Y
 export const BATTLE_PLAYER_GROUND_Y = BATTLE_GROUND_Y
 
 export const BATTLE_ENEMY_X = 36
-export const BATTLE_PLAYER_X = 198
+export const BATTLE_PLAYER_X = 203
 
 /** Target visible body height for enemies (one dial for all NPCs). */
 export const BATTLE_TARGET_VISIBLE_H = 150
