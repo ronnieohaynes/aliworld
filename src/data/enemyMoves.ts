@@ -2,7 +2,14 @@ import type { StatusApplySpec } from './combatTypes'
 import { ENEMY_LOOP_STRIKE_MULT } from './moveBalance'
 
 /** Enemy move ids — shared pool for all NPCs (snag steals from this set). */
-export const ENEMY_MOVE_IDS = ['STRIKE', 'LOOP', 'SLIP', 'WHISPER', 'HOLD'] as const
+export const ENEMY_MOVE_IDS = [
+  'STRIKE',
+  'LOOP',
+  'HAYMAKER',
+  'SLIP',
+  'WHISPER',
+  'HOLD',
+] as const
 export type EnemyMoveId = (typeof ENEMY_MOVE_IDS)[number]
 
 export type UpcomingMove = EnemyMoveId | 'STUNNED'
@@ -34,6 +41,14 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
     id: 'LOOP',
     displayName: 'LOOP',
     telegraphLine: 'draws back — a heavy loop is coming.',
+    isAttacking: true,
+    damageMult: ENEMY_LOOP_STRIKE_MULT,
+    onResolve: [],
+  },
+  HAYMAKER: {
+    id: 'HAYMAKER',
+    displayName: 'HAYMAKER',
+    telegraphLine: 'winds up — HAYMAKER incoming.',
     isAttacking: true,
     damageMult: ENEMY_LOOP_STRIKE_MULT,
     onResolve: [],
