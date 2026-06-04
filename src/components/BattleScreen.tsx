@@ -279,6 +279,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const prevEnemyHpRef = useRef(state.enemyHp)
   const prevPlayerHpRef = useRef(state.playerHp)
   const prevFeedbackSeqRef = useRef(state.feedbackSeq)
+  const winMatchupCalloutRef = useRef(false)
   const [enemyHitFx, setEnemyHitFx] = useState(false)
   const [playerHitFx, setPlayerHitFx] = useState(false)
   const [playerAtkFx, setPlayerAtkFx] = useState(false)
@@ -294,7 +295,7 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
   const playerLevel = getPlayerLevel()
   const build = getBuildName()
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
-  const matchupLabel = counterMatchupLabel(counterRelation)
+  const matchupLabel = counterMatchupLabel(counterRelation, state.npc.leanSkill)
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
   const showWinNarration = state.phase === 'ended' && state.result === 'win'
   const logLines = state.log.slice(-2)
@@ -342,6 +343,22 @@ export function BattleScreen({ npcId, onBattleEnd, battleRevealed = true }: Prop
       return () => window.clearTimeout(timer)
     }
   }, [state.phase, state.result, finishBattle])
+
+  useEffect(() => {
+    winMatchupCalloutRef.current = false
+  }, [npcId])
+
+  useEffect(() => {
+    if (state.phase !== 'ended' || state.result !== 'win') return
+    if (counterRelation !== 'advantage' || winMatchupCalloutRef.current) return
+    winMatchupCalloutRef.current = true
+    const id = Date.now() + Math.random()
+    setFloaters((f) => [
+      ...f,
+      { id, text: 'type win.', target: 'player', tone: 'attack', kind: 'counter' },
+    ])
+    window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 1400)
+  }, [state.phase, state.result, counterRelation])
 
   useEffect(() => {
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp

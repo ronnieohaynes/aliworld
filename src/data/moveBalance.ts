@@ -1,4 +1,12 @@
-/** Tunable combat balance — adjust here during playtests. */
+/** Tunable combat balance — adjust here during playtests.
+ *  Leveling depth: display level is cosmetic; fights use skill bonuses below + counter loop.
+ *  Build matchup + timing should beat a modest (~3–5 skill step) raw-stat gap. */
+
+/** Sub-linear stat steps: full linear growth through this raw skill level, then tail factor. */
+export const SKILL_STAT_BONUS_LINEAR_CAP = 18
+export const SKILL_STAT_BONUS_TAIL_FACTOR = 0.72
+/** Max HP per effective skill step (softened from 2 — keeps attrition fights winnable). */
+export const SKILL_HP_BONUS_PER_STEP = 1.5
 
 export const BLACKOUT_INTERRUPTIBLE = true
 
@@ -68,8 +76,8 @@ export const ENEMY_LOOP_STRIKE_MULT = 2
 
 /** Defense skill — brace blocks more per level (multiplier reduction, capped). */
 export const DEF_MITIGATION_PER_LEVEL = 0.025
-/** Defense skill — passive incoming damage reduction per level. */
-export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.01
+/** Defense skill — passive incoming damage reduction per level (kept modest vs counter loop). */
+export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.009
 /** Hard cap on total defense mitigation so builds never become invincible. */
 export const DEF_MAX_MITIGATION = 0.6
 /** Brace never shrinks incoming below this fraction of raw hit damage. */
@@ -157,7 +165,7 @@ export const ADVANTAGE_XP_BONUS = 12
 export const TELEGRAPH_READ_XP_BONUS = 18
 
 /** Soft skill counter loop — attack > speed > luck > defense > attack. */
-export const COUNTER_ADVANTAGE_DMG_MULT = 1.18
-export const COUNTER_DISADVANTAGE_DMG_MULT = 0.85
-export const COUNTER_ADVANTAGE_INCOMING_MULT = 0.85
-export const COUNTER_DISADVANTAGE_INCOMING_MULT = 1.18
+export const COUNTER_ADVANTAGE_DMG_MULT = 1.22
+export const COUNTER_DISADVANTAGE_DMG_MULT = 0.82
+export const COUNTER_ADVANTAGE_INCOMING_MULT = 0.82
+export const COUNTER_DISADVANTAGE_INCOMING_MULT = 1.22

@@ -56,8 +56,12 @@ export function applySkillCounterModifiers(
   }
 }
 
-export function counterMatchupLabel(relation: CounterRelation): string | null {
-  if (relation === 'advantage') return 'advantage'
+export function counterMatchupLabel(
+  relation: CounterRelation,
+  enemyLean: LeanSkill = 'none',
+): string | null {
+  if (relation === 'advantage') return 'type advantage'
   if (relation === 'disadvantage') return 'outmatched'
+  if (enemyLean !== 'none') return `${enemyLean} lean`
   return null
 }

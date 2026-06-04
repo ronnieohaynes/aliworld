@@ -42,7 +42,7 @@ export type { PlayerMoveResolveOut }
 export type ResolveMoveContext = {
   atk: number
   eDmg: number
-  /** Defense skill level — scales mitigation. */
+  /** Raw defense skill level — mitigation rates live in moveBalance (kept soft vs matchup). */
   def: number
   /** Speed skill level — scales dodge and initiative. */
   spd: number

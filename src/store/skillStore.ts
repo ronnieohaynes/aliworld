@@ -1,3 +1,8 @@
+import {
+  SKILL_HP_BONUS_PER_STEP,
+  SKILL_STAT_BONUS_LINEAR_CAP,
+  SKILL_STAT_BONUS_TAIL_FACTOR,
+} from '../data/moveBalance'
 import { xpGrantsForMove, type MoveXpContext } from '../data/moves'
 import type { ResolveResult } from './battleStore'
 
@@ -76,14 +81,22 @@ export type SkillStatBonuses = {
   maxHp: number
 }
 
+/** Effective bonus steps from raw skill level — sub-linear past mid levels. */
+export function skillBonusSteps(level: number): number {
+  const raw = Math.max(0, level - 1)
+  if (raw <= SKILL_STAT_BONUS_LINEAR_CAP) return raw
+  const excess = raw - SKILL_STAT_BONUS_LINEAR_CAP
+  return SKILL_STAT_BONUS_LINEAR_CAP + Math.floor(excess * SKILL_STAT_BONUS_TAIL_FACTOR)
+}
+
 /** Stat bonuses from skill levels (level 1 = no bonus). */
 export function getSkillStatBonuses(skills: SkillsState): SkillStatBonuses {
   return {
-    atk: Math.max(0, skills.attack.level - 1),
-    spd: Math.max(0, skills.speed.level - 1),
-    def: Math.max(0, skills.defense.level - 1),
-    lck: Math.max(0, skills.luck.level - 1),
-    maxHp: Math.max(0, skills.hp.level - 1) * 2,
+    atk: skillBonusSteps(skills.attack.level),
+    spd: skillBonusSteps(skills.speed.level),
+    def: skillBonusSteps(skills.defense.level),
+    lck: skillBonusSteps(skills.luck.level),
+    maxHp: Math.floor(skillBonusSteps(skills.hp.level) * SKILL_HP_BONUS_PER_STEP),
   }
 }
 
