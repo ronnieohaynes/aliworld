@@ -9,7 +9,7 @@ export const SOCIAL_TWITTER_URL = ''
  *  else (aliworld.pages.dev, preview deploys, localhost) so danny + ronnie can test.
  *  TO LAUNCH: remove the domain(s) from this list (or empty it) — then the public
  *  domain serves the real game. */
-const COMING_SOON_HOSTS = ['play.dannyali.com']
+const COMING_SOON_HOSTS: string[] = []
 
 export function isComingSoonMode(): boolean {
   if (typeof window === 'undefined') return false
