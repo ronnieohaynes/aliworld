@@ -10,6 +10,7 @@ import type { BattleFeedbackEvent } from '../data/battleFeedback'
 import type { TimingBonusGrant } from '../data/timingBonusXp'
 import { combatXpLevelMultiplier } from '../data/moveBalance'
 import { track } from '../lib/analytics'
+import { isDevModeEnabled, subscribeDevMode } from '../lib/devMode'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
 import { isCollectibleArtifactId, type CollectibleArtifactId } from '../data/artifacts'
@@ -354,6 +355,12 @@ function emit(): void {
   }
 }
 
+subscribeDevMode(() => {
+  for (const listener of listeners) {
+    listener()
+  }
+})
+
 /** Save current progression + quest/world/artifact state to the account. */
 export function triggerAccountProgressionSave(): void {
   persistProgressionToAccount()
@@ -584,11 +591,18 @@ export function getPlayerLevel(): number {
 }
 
 export function getShowDebug(): boolean {
-  return state.showDebug
+  return isDevModeEnabled() && state.showDebug
 }
 
 export function toggleShowDebug(): void {
+  if (!isDevModeEnabled()) return
   state = { ...state, showDebug: !state.showDebug }
+  emit()
+}
+
+export function clearShowDebug(): void {
+  if (!state.showDebug) return
+  state = { ...state, showDebug: false }
   emit()
 }
 

@@ -29,9 +29,9 @@ export const GALLONS_ENTRANCE_ZONE: TriggerZone = {
 export const TRIGGER_ZONES: TriggerZone[] = [
   {
     id: 'darkline-entrance',
-    x: 580,
+    x: 550,
     y: 850,
-    width: 70,
+    width: 100,
     height: 20,
     action: 'OPEN_DARKLINE',
   },

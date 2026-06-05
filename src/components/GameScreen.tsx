@@ -672,12 +672,24 @@ export function GameScreen() {
 
   const handleFannyPack = useCallback(() => {
     if (menuTransition || worldEntryActive || showStartMenu) return
-    if (menuReturnPending) {
-      beginResumeTransition()
+    if (showFannyPack) {
+      if (menuReturnPending) {
+        beginResumeTransition()
+      } else {
+        setShowFannyPack(false)
+      }
       return
     }
-    setShowFannyPack((open) => !open)
-  }, [beginResumeTransition, menuReturnPending, menuTransition, showStartMenu])
+    setMenuReturnPending(false)
+    setShowFannyPack(true)
+  }, [
+    beginResumeTransition,
+    menuReturnPending,
+    menuTransition,
+    showFannyPack,
+    showStartMenu,
+    worldEntryActive,
+  ])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1868,7 +1880,7 @@ export function GameScreen() {
               {touchTalkLabel}
             </button>
           )}
-          <GameCanvas debugHudId={GAME_DEBUG_HUD_ID}>
+          <GameCanvas debugHudId={showDebug ? GAME_DEBUG_HUD_ID : undefined}>
             <Player
               ref={playerRef}
               cityConfig={cityConfig}

@@ -3,6 +3,14 @@ export const DEV_BLOCKED_HOSTS = ['play.dannyali.com'] as const
 
 export const DEV_MODE_SESSION_KEY = 'aliworld-dev-mode'
 
+const devModeListeners = new Set<() => void>()
+
+function emitDevModeChange(): void {
+  for (const listener of devModeListeners) {
+    listener()
+  }
+}
+
 export function isDevAllowedOnHost(): boolean {
   if (typeof window === 'undefined') return false
   return !(DEV_BLOCKED_HOSTS as readonly string[]).includes(window.location.hostname)
@@ -17,6 +25,20 @@ export function readDevModeSession(): boolean {
   }
 }
 
+/** True when dev mode is enabled for this session (and host allows it). */
+export function isDevModeEnabled(): boolean {
+  return readDevModeSession()
+}
+
+export function subscribeDevMode(listener: () => void): () => void {
+  devModeListeners.add(listener)
+  return () => devModeListeners.delete(listener)
+}
+
+export function getDevModeEnabledSnapshot(): boolean {
+  return isDevModeEnabled()
+}
+
 export function writeDevModeSession(enabled: boolean): void {
   if (!isDevAllowedOnHost()) return
   try {
@@ -25,4 +47,5 @@ export function writeDevModeSession(enabled: boolean): void {
   } catch {
     // ignore quota / private mode
   }
+  emitDevModeChange()
 }

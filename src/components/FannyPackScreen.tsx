@@ -12,6 +12,7 @@ import {
   resetArtifactsForDebug,
   subscribeArtifactStore,
 } from '../store/artifactStore'
+import { useDevModeEnabled } from '../hooks/useDevModeEnabled'
 import { publicAsset } from '../utils/publicAsset'
 import './FannyPackScreen.css'
 
@@ -109,6 +110,7 @@ function FannyPackBackground() {
 }
 
 export function FannyPackScreen({ onClose }: Props) {
+  const devModeEnabled = useDevModeEnabled()
   const [closing, setClosing] = useState(false)
   const collected = useArtifactStore((s) => s.collected)
   const newlyCollected = useArtifactStore(() => getNewlyCollectedArtifact())
@@ -169,21 +171,30 @@ export function FannyPackScreen({ onClose }: Props) {
           </div>
         </div>
 
-        <footer className="fanny-pack-screen__footer">
-          <button
-            type="button"
-            className="fanny-pack-screen__debug-collect"
-            onClick={handleDebugCollectNext}
-            disabled={collectedCount >= FANNY_PACK_ARTIFACTS.length}
-          >
-            collect next (debug)
-          </button>
-          <button type="button" className="fanny-pack-screen__debug-reset" onClick={handleDebugReset}>
-            reset artifacts (debug)
-          </button>
-          <p className="fanny-pack-screen__debug-hint">
-            {collectedCount} / {FANNY_PACK_ARTIFACTS.length} collected
-          </p>
+        <footer
+          className={`fanny-pack-screen__footer${
+            !devModeEnabled ? ' fanny-pack-screen__footer--layout-only' : ''
+          }`}
+          aria-hidden={!devModeEnabled}
+        >
+          {devModeEnabled ? (
+            <>
+              <button
+                type="button"
+                className="fanny-pack-screen__debug-collect"
+                onClick={handleDebugCollectNext}
+                disabled={collectedCount >= FANNY_PACK_ARTIFACTS.length}
+              >
+                collect next (debug)
+              </button>
+              <button type="button" className="fanny-pack-screen__debug-reset" onClick={handleDebugReset}>
+                reset artifacts (debug)
+              </button>
+              <p className="fanny-pack-screen__debug-hint">
+                {collectedCount} / {FANNY_PACK_ARTIFACTS.length} collected
+              </p>
+            </>
+          ) : null}
         </footer>
       </div>
     </div>

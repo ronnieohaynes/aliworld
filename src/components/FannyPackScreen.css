@@ -257,8 +257,15 @@
   gap: 6px;
   margin: 4px 2px 0;
   padding: 8px 10px 6px;
+  min-height: 92px;
+  box-sizing: border-box;
   border-radius: 4px;
   background: rgba(10, 10, 18, 0.78);
+}
+
+.fanny-pack-screen__footer--layout-only {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .fanny-pack-screen__debug-collect,
