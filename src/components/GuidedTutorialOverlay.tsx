@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from 'react'
 import { createPortal } from 'react-dom'
 import './BattleTutorialOverlay.css'
 
@@ -21,6 +28,44 @@ const HIGHLIGHT_COLORS: Record<TutorialHighlightColor, string> = {
 
 function padRect(rect: DOMRect, px: number): DOMRect {
   return new DOMRect(rect.x - px, rect.y - px, rect.width + px * 2, rect.height + px * 2)
+}
+
+const DIM_RGBA = 'rgba(8, 8, 14, 0.78)'
+
+/** Four fixed panels around the hole so the highlighted UI stays clickable. */
+function TutorialDimPanels({ rect, borderColor }: { rect: DOMRect; borderColor: string }) {
+  const top = rect.top
+  const left = rect.left
+  const width = rect.width
+  const height = rect.height
+  const right = left + width
+  const bottom = top + height
+  const panel: CSSProperties = {
+    position: 'fixed',
+    background: DIM_RGBA,
+    pointerEvents: 'auto',
+  }
+
+  return (
+    <>
+      <div style={{ ...panel, top: 0, left: 0, right: 0, height: top }} aria-hidden />
+      <div style={{ ...panel, top, left: 0, width: left, height }} aria-hidden />
+      <div style={{ ...panel, top, left: right, right: 0, height }} aria-hidden />
+      <div style={{ ...panel, top: bottom, left: 0, right: 0, bottom: 0 }} aria-hidden />
+      <div
+        className="battle-tutorial__spotlight battle-tutorial__spotlight--ring"
+        style={{
+          top,
+          left,
+          width,
+          height,
+          borderColor,
+          boxShadow: `0 0 12px ${borderColor}66`,
+        }}
+        aria-hidden
+      />
+    </>
+  )
 }
 
 type Props<T extends string> = {
@@ -134,17 +179,21 @@ export function GuidedTutorialOverlay<T extends string>({
     onNext()
   }
 
+  const passThroughHole = waitForAction && highlightRect != null
+
   return createPortal(
     <div
       className={`battle-tutorial${elevated ? ' battle-tutorial--elevated' : ''}${
         panelAboveTarget ? ' battle-tutorial--panel-top' : ''
-      }`}
+      }${passThroughHole ? ' battle-tutorial--pass-through' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
-      onClick={handleBackdropClick}
+      onClick={passThroughHole ? undefined : handleBackdropClick}
     >
-      {highlightRect ? (
+      {passThroughHole ? (
+        <TutorialDimPanels rect={highlightRect} borderColor={highlightColor} />
+      ) : highlightRect ? (
         <div
           className="battle-tutorial__spotlight"
           style={{
@@ -153,7 +202,7 @@ export function GuidedTutorialOverlay<T extends string>({
             width: highlightRect.width,
             height: highlightRect.height,
             borderColor: highlightColor,
-            boxShadow: `0 0 0 9999px rgba(8, 8, 14, 0.78), 0 0 12px ${highlightColor}66`,
+            boxShadow: `0 0 0 9999px ${DIM_RGBA}, 0 0 12px ${highlightColor}66`,
           }}
           aria-hidden
         />
@@ -163,6 +212,7 @@ export function GuidedTutorialOverlay<T extends string>({
 
       <div
         className="battle-tutorial__panel"
+        style={passThroughHole ? { pointerEvents: 'auto' } : undefined}
         onClick={(e) => e.stopPropagation()}
         role="document"
       >

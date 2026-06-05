@@ -11,6 +11,12 @@
   cursor: pointer;
 }
 
+/* waitForAction + highlight: dim is four panels; hole passes clicks to game UI */
+.battle-tutorial--pass-through {
+  pointer-events: none;
+  cursor: default;
+}
+
 .battle-tutorial--elevated {
   z-index: 10002;
 }
@@ -34,6 +40,11 @@
     left 180ms ease,
     width 180ms ease,
     height 180ms ease;
+}
+
+.battle-tutorial__spotlight--ring {
+  box-shadow: none;
+  pointer-events: none;
 }
 
 .battle-tutorial__panel {

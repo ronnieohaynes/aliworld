@@ -125,6 +125,7 @@ import { AccountSaveIndicator } from './AccountSaveIndicator'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
 import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
 import {
+  blocksWorldInteractDuringLoadoutTutorial,
   LOADOUT_TUTORIAL_STEPS,
   type LoadoutTutorialTarget,
 } from '../data/loadoutTutorial'
@@ -558,8 +559,11 @@ export function GameScreen() {
     }
     if (!canOpenStartMenu()) return
     setShowStartMenu(true)
-    setLoadoutTutorialStep((step) => (step === 1 ? 2 : step))
+    if (loadoutTutorialStep === 1) {
+      setLoadoutTutorialStep(2)
+    }
   }, [
+    loadoutTutorialStep,
     beginResumeTransition,
     canOpenStartMenu,
     menuReturnPending,
@@ -626,7 +630,9 @@ export function GameScreen() {
       }
       if (!canOpenStartMenu()) return
       setShowStartMenu(true)
-      setLoadoutTutorialStep((step) => (step === 1 ? 2 : step))
+      if (loadoutTutorialStep === 1) {
+        setLoadoutTutorialStep(2)
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -635,12 +641,19 @@ export function GameScreen() {
     battleNpcId,
     beginResumeTransition,
     canOpenStartMenu,
+    loadoutTutorialStep,
     menuReturnPending,
     showFannyPack,
     showLoadout,
     showStartMenu,
     menuTransition,
   ])
+
+  useEffect(() => {
+    if (loadoutTutorialStep === 1 && showStartMenu) {
+      setLoadoutTutorialStep(2)
+    }
+  }, [loadoutTutorialStep, showStartMenu])
 
   const startMarkBattle = useCallback(() => {
     if (battleNpcId || battleWipePhase) return
@@ -1172,7 +1185,7 @@ export function GameScreen() {
 
   const handleInteract = useCallback(() => {
     if (worldEntryActive) return
-    if (loadoutTutorialStep != null) return
+    if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
     if (cutsceneFlowActive || questTransitionActive) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
@@ -1209,7 +1222,7 @@ export function GameScreen() {
 
   const handlePlayAreaClick = useCallback(() => {
     if (cutsceneFlowActive || questTransitionActive) return
-    if (loadoutTutorialStep != null) return
+    if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
     if (worldEntryActive || showStartMenu) return
     if (cafeFade === 'scene') {
       advanceCafeScene()

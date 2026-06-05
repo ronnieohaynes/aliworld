@@ -10,6 +10,11 @@ export type LoadoutTutorialTarget =
   | 'build'
   | 'share_card'
 
+/** Steps 0–1: block overworld talk; UI targets (START, loadout) stay clickable. */
+export function blocksWorldInteractDuringLoadoutTutorial(step: number | null): boolean {
+  return step != null && step <= 1
+}
+
 export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
   LoadoutTutorialTarget | 'none'
 >[] = [
