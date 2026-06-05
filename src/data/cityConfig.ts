@@ -228,7 +228,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnX: FIVE_GYM_INTERIOR_ENTRY.x,
     darklineSpawnY: FIVE_GYM_INTERIOR_ENTRY.y,
     collisionZones: FIVE_GYM_INTERIOR_COLLISION_ZONES.map(scaleFiveGymInteriorZone),
-    occlusionZones: getOcclusionZones('five-gym-interior'),
+    occlusionZones: getOcclusionZones('five-gym-interior').map(scaleFiveGymInteriorZone),
     triggerZones: FIVE_GYM_INTERIOR_TRIGGER_ZONES,
     npcs: [...FIVE_GYM_INTERIOR_NPCS],
   },

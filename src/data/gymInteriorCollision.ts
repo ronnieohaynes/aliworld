@@ -56,10 +56,10 @@ export const FIVE_GYM_EXIT_ZONE = {
 
 /** Outer shell + center boxing ring (native map pixels — scale via `scaleFiveGymInteriorZone`). */
 export const FIVE_GYM_INTERIOR_COLLISION_ZONES: CollisionZone[] = [
-  { x: 0, y: 0, width: 1224, height: 96 },
-  { x: 0, y: 96, width: 96, height: 1128 },
-  { x: 1128, y: 96, width: 96, height: 1128 },
-  { x: 96, y: 1128, width: 456, height: 96 },
-  { x: 672, y: 1128, width: 552, height: 96 },
-  { x: 372, y: 372, width: 480, height: 480 },
+  { x: 0,    y: 0,    width: 1224, height: 252  }, // top wall (taller)
+  { x: 0,    y: 252,  width: 96,   height: 876  }, // left wall
+  { x: 1133, y: 252,  width: 91,   height: 876  }, // right wall
+  { x: 96,   y: 1128, width: 461,  height: 96   }, // bottom wall left of door
+  { x: 667,  y: 1128, width: 557,  height: 96   }, // bottom wall right of door
+  { x: 400,  y: 435,  width: 440,  height: 390  }, // boxing ring
 ]
