@@ -4,6 +4,8 @@
   --text: #e8e8e8;
   --font-pixel: 'Press Start 2P', ui-monospace, monospace;
   --font-ui: 'DM Sans', system-ui, sans-serif;
+  --title-letter-spacing: -0.04em;
+  --label-letter-spacing: 0.06em;
 }
 
 *,

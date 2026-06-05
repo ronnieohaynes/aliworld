@@ -106,8 +106,11 @@ export const QuestTransition = forwardRef<QuestTransitionHandle>(function QuestT
 
   const episodeLabel =
     showEpisode && active.episodeNumber != null
-      ? `EPISODE ${active.episodeNumber} — ${active.episodeName}`
-      : active.episodeName
+      ? `episode ${active.episodeNumber}`
+      : null
+
+  const displayTitle =
+    showEpisode && active.episodeName ? active.episodeName : active.questName
 
   return (
     <div
@@ -121,10 +124,10 @@ export const QuestTransition = forwardRef<QuestTransitionHandle>(function QuestT
       aria-label="Quest transition"
     >
       <div className="quest-transition__content">
-        <p className="quest-transition__quest">{active.questName}</p>
-        {showEpisode ? (
-          <p className="quest-transition__episode">{episodeLabel}</p>
+        {episodeLabel ? (
+          <p className="quest-transition__eyebrow">{episodeLabel}</p>
         ) : null}
+        <p className="quest-transition__title">{displayTitle}</p>
       </div>
     </div>
   )
