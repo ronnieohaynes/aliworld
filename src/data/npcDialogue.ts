@@ -1,9 +1,9 @@
 import {
   isJaclynConverted,
-  isGymTier1Cleared,
   isMarkDefeated,
   isWalkerConverted,
 } from '../store/quest1Store'
+import { FIVE_GYM1_ID, isGym5ive1Cleared } from '../store/gymStore'
 import {
   CLERK_NPC_ID,
   isClerkConverted,
@@ -12,7 +12,6 @@ import {
   RESTOCKER_NPC_ID,
   TOWN_CRIER_NPC_ID,
 } from '../store/quest2Store'
-import { GYM_TRAINER_NPC_ID } from './gymNpcs'
 import type { NpcData, NpcDialogueLine } from './npcs'
 
 export type ResolvedDialogueLine = {
@@ -42,7 +41,7 @@ function isNpcConverted(npcId: string): boolean {
   if (npcId === TOWN_CRIER_NPC_ID) return isCrierConverted()
   if (npcId === CLERK_NPC_ID) return isClerkConverted()
   if (npcId === RESTOCKER_NPC_ID) return isRestockerDefeated()
-  if (npcId === GYM_TRAINER_NPC_ID) return isGymTier1Cleared()
+  if (npcId === FIVE_GYM1_ID) return isGym5ive1Cleared()
   return false
 }
 

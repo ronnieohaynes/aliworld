@@ -1,27 +1,27 @@
 import { publicAsset } from '../utils/publicAsset'
+import { FIVE_GYM1_ID } from '../store/gymStore'
 import type { NpcData } from './npcs'
 
-export const GYM_TRAINER_NPC_ID = 'gym-trainer'
-export const GYM_TIER_1_NPC_ID = 'gym-tier-1'
+export { FIVE_GYM1_ID }
 
-const TRAINER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
+const FIVE_GYM1_SPRITE = publicAsset('Assets/Characters/npcs/5ive-gym1.png')
 
-/** Oceanview Gym trainer — tier 1 gatekeeper (walker sprite by the ring). */
-export const GYM_TRAINER_NPC: NpcData = {
-  id: GYM_TRAINER_NPC_ID,
+/** Week 1 head — Oceanview Gym (`5ive-gym1`). */
+export const FIVE_GYM1_HEAD_NPC: NpcData = {
+  id: FIVE_GYM1_ID,
   name: 'trainer',
   x: 506,
   y: 319,
-  lines: ["you want the work? welcome to day one. show me something."],
-  linesConverted: ["tier one's yours. tier two? soon."],
+  lines: ['week one. i run this floor. you want the work?'],
+  linesConverted: ["week one's yours. don't get comfortable."],
   color: '#afa9ec',
-  spriteSrc: TRAINER_SPRITE,
-  spriteLayout: 'horizontal-bbox',
+  spriteSrc: FIVE_GYM1_SPRITE,
+  spriteColumns: 4,
   fixedFacing: 'left',
 }
 
-export function isGymTierCombatNpcId(npcId: string): boolean {
-  return npcId === GYM_TIER_1_NPC_ID
+export function isGymHeadCombatId(npcId: string): boolean {
+  return npcId === FIVE_GYM1_ID
 }
 
-export const FIVE_GYM_INTERIOR_NPCS: readonly NpcData[] = [GYM_TRAINER_NPC]
+export const FIVE_GYM1_INTERIOR_NPCS: readonly NpcData[] = [FIVE_GYM1_HEAD_NPC]

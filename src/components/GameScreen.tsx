@@ -17,12 +17,14 @@ import {
 } from '../data/cityConfig'
 import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
 import {
-  GYM_TRAINER_NPC,
-  GYM_TRAINER_NPC_ID,
-  GYM_TIER_1_NPC_ID,
+  FIVE_GYM1_HEAD_NPC,
+  FIVE_GYM1_ID,
 } from '../data/gymNpcs'
 import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
+import {
+  setGym5ive1Cleared,
+} from '../store/gymStore'
 import {
   getQuest1Revision,
   hasTalkedToAllGatingNpcs,
@@ -42,7 +44,6 @@ import {
   markGatingNpcTalked,
   setCafeSceneSeen,
   setEpisode1TitleCardSeen,
-  setGymTier1Cleared,
   setE1CutscenePlayed,
   setMp3PlayerOwned,
   setJaclynConverted,
@@ -1245,8 +1246,8 @@ export function GameScreen() {
       return
     }
 
-    if (nearbyId === GYM_TRAINER_NPC_ID) {
-      beginNpcDialogue(GYM_TRAINER_NPC, {
+    if (nearbyId === FIVE_GYM1_ID) {
+      beginNpcDialogue(FIVE_GYM1_HEAD_NPC, {
         onComplete: () => setGymTrainerChoiceOpen(true),
       })
       return
@@ -1495,7 +1496,7 @@ export function GameScreen() {
 
     if (pendingGymLossLineRef.current) {
       pendingGymLossLineRef.current = false
-      showNotYetDialogue(GYM_TRAINER_NPC, "come back when you're ready.")
+      showNotYetDialogue(FIVE_GYM1_HEAD_NPC, "come back when you're ready.")
     }
 
     const startPhase2Tutorial = () => {
@@ -1550,8 +1551,8 @@ export function GameScreen() {
       track('npc_converted', { npcId: RESTOCKER_NPC_ID })
       track('episode_complete', { episode: 'e2' })
     }
-    if (npcId === GYM_TIER_1_NPC_ID) {
-      setGymTier1Cleared()
+    if (npcId === FIVE_GYM1_ID) {
+      setGym5ive1Cleared()
     }
   }, [])
 
@@ -1570,7 +1571,7 @@ export function GameScreen() {
           showNarration(["something's wrong in the field.", 'you started it.'])
         }
       }
-      if (result === 'lose' && battleNpcId === GYM_TIER_1_NPC_ID) {
+      if (result === 'lose' && battleNpcId === FIVE_GYM1_ID) {
         pendingGymLossLineRef.current = true
       }
       pendingBattleExitRef.current = { result, npcId: battleNpcId }
@@ -1996,7 +1997,7 @@ export function GameScreen() {
                 className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
                 onClick={() => {
                   setGymTrainerChoiceOpen(false)
-                  startNpcBattle(GYM_TIER_1_NPC_ID)
+                  startNpcBattle(FIVE_GYM1_ID)
                 }}
               >
                 fight

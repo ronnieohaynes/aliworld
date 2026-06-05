@@ -24,7 +24,6 @@ type Quest1State = {
   worldIntroSeen: boolean
   mp3PlayerOwned: boolean
   episode1TitleCardSeen: boolean
-  gymTier1Cleared: boolean
 }
 
 function emptyQuest1State(): Quest1State {
@@ -41,7 +40,6 @@ function emptyQuest1State(): Quest1State {
     worldIntroSeen: false,
     mp3PlayerOwned: false,
     episode1TitleCardSeen: false,
-    gymTier1Cleared: false,
   }
 }
 
@@ -81,7 +79,6 @@ function loadQuest1FromStorage(): Quest1State {
       worldIntroSeen: o.worldIntroSeen === true,
       mp3PlayerOwned: o.mp3PlayerOwned === true,
       episode1TitleCardSeen: o.episode1TitleCardSeen === true,
-      gymTier1Cleared: o.gymTier1Cleared === true,
     }
   } catch {
     return base
@@ -265,17 +262,6 @@ export function setEpisode1TitleCardSeen(): void {
   emit()
 }
 
-export function isGymTier1Cleared(): boolean {
-  return state.gymTier1Cleared
-}
-
-export function setGymTier1Cleared(): void {
-  if (state.gymTier1Cleared) return
-  state = { ...state, gymTier1Cleared: true }
-  saveQuest1ToStorage()
-  emit()
-}
-
 export type Quest1Serialized = {
   markDefeated: boolean
   talkedGatingNpcs: Record<GatingNpcId, boolean>
@@ -289,7 +275,6 @@ export type Quest1Serialized = {
   worldIntroSeen?: boolean
   mp3PlayerOwned?: boolean
   episode1TitleCardSeen?: boolean
-  gymTier1Cleared?: boolean
 }
 
 export function serialize(): Quest1Serialized {
@@ -306,7 +291,6 @@ export function serialize(): Quest1Serialized {
     worldIntroSeen: state.worldIntroSeen,
     mp3PlayerOwned: state.mp3PlayerOwned,
     episode1TitleCardSeen: state.episode1TitleCardSeen,
-    gymTier1Cleared: state.gymTier1Cleared,
   }
 }
 
@@ -330,7 +314,6 @@ export function applyState(data: Partial<Quest1Serialized>): void {
     worldIntroSeen: data.worldIntroSeen === true,
     mp3PlayerOwned: data.mp3PlayerOwned === true,
     episode1TitleCardSeen: data.episode1TitleCardSeen === true,
-    gymTier1Cleared: data.gymTier1Cleared === true,
   }
   emit()
 }

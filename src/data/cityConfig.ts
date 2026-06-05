@@ -32,7 +32,7 @@ import {
   FIVE_GYM_INTERIOR_WORLD_WIDTH,
   scaleFiveGymInteriorZone,
 } from './gymInteriorCollision'
-import { FIVE_GYM_INTERIOR_NPCS } from './gymNpcs'
+import { FIVE_GYM1_INTERIOR_NPCS } from './gymNpcs'
 import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
 /** Player-facing name for the starting district (internal id is `five`). */
@@ -223,7 +223,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     collisionZones: FIVE_GYM_INTERIOR_COLLISION_ZONES.map(scaleFiveGymInteriorZone),
     occlusionZones: getOcclusionZones('five-gym-interior'),
     triggerZones: FIVE_GYM_INTERIOR_TRIGGER_ZONES,
-    npcs: [...FIVE_GYM_INTERIOR_NPCS],
+    npcs: [...FIVE_GYM1_INTERIOR_NPCS],
   },
 }
 
