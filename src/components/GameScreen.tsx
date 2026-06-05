@@ -23,7 +23,10 @@ import {
 import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
+  getGymRevision,
+  isGym5ive1Cleared,
   setGym5ive1Cleared,
+  subscribeGymStore,
 } from '../store/gymStore'
 import {
   getQuest1Revision,
@@ -123,6 +126,7 @@ import { QuestHelper } from './QuestHelper'
 import {
   buildQuestObjectiveContext,
   resolveActiveQuestPulseDescriptor,
+  type QuestPulseTargetDescriptor,
 } from '../data/questObjectives'
 import {
   StartMenuScreen,
@@ -256,6 +260,7 @@ export function GameScreen() {
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
   const [loadoutTutorialStep, setLoadoutTutorialStep] = useState<number | null>(null)
   const [gymTrainerChoiceOpen, setGymTrainerChoiceOpen] = useState(false)
+  const [gymHeadPulseDismissed, setGymHeadPulseDismissed] = useState(false)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
@@ -336,6 +341,8 @@ export function GameScreen() {
     return inactive
   }, [quest1Revision])
 
+  const gymRevision = useSyncExternalStore(subscribeGymStore, getGymRevision, getGymRevision)
+
   const questPulseDescriptor = useMemo(() => {
     void artifactRevision
     void quest1Revision
@@ -343,6 +350,23 @@ export function GameScreen() {
     void worldRevision
     return resolveActiveQuestPulseDescriptor(buildQuestObjectiveContext())
   }, [artifactRevision, quest1Revision, quest2Revision, worldRevision])
+
+  const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
+    void gymRevision
+    if (currentCity !== 'five-gym-interior') return null
+    if (isGym5ive1Cleared() || gymHeadPulseDismissed) return null
+    return { kind: 'npc', id: FIVE_GYM1_ID }
+  }, [currentCity, gymHeadPulseDismissed, gymRevision])
+
+  const activePulseDescriptor = gymHeadPulseDescriptor ?? questPulseDescriptor
+
+  useEffect(() => {
+    if (currentCity === 'five-gym-interior') {
+      setGymHeadPulseDismissed(isGym5ive1Cleared())
+    } else {
+      setGymHeadPulseDismissed(false)
+    }
+  }, [currentCity, gymRevision])
 
   const reportCurrentLocation = useCallback(
     (city: CityId = currentCity) => {
@@ -1247,6 +1271,7 @@ export function GameScreen() {
     }
 
     if (nearbyId === FIVE_GYM1_ID) {
+      setGymHeadPulseDismissed(true)
       beginNpcDialogue(FIVE_GYM1_HEAD_NPC, {
         onComplete: () => setGymTrainerChoiceOpen(true),
       })
@@ -1705,6 +1730,7 @@ export function GameScreen() {
     !cutsceneQuestHelperHidden
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
+  const showActiveQuestPulse = showQuestPulse || gymHeadPulseDescriptor != null
 
   const isCoarsePointer = useCoarsePointer()
   const showInteractHint =
@@ -1831,8 +1857,8 @@ export function GameScreen() {
                 questTransitionActive
               }
               dialogueNpcId={dialogue?.npc.id ?? null}
-              questPulseDescriptor={questPulseDescriptor}
-              showQuestPulse={showQuestPulse}
+              questPulseDescriptor={activePulseDescriptor}
+              showQuestPulse={showActiveQuestPulse}
             />
             {!battleNpcId && <PlayerLevelOverhead />}
           </GameCanvas>
