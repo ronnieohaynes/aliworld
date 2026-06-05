@@ -26,6 +26,15 @@ export type NpcData = {
   spriteColumns?: number
   /** When set, overworld sprite always faces this direction (no idle rotation). */
   fixedFacing?: Direction
+  /** When false, the player can walk through this NPC (interact range unchanged). */
+  blocksMovement?: boolean
+  /** Optional tight movement hitbox (world pixels); defaults to 45×75. */
+  collisionWidth?: number
+  collisionHeight?: number
+  /** Shifts a custom hitbox up (world pixels; positive = north). */
+  collisionOffsetY?: number
+  /** Shifts a custom hitbox east (world pixels; positive = right). */
+  collisionOffsetX?: number
 }
 
 const NPC1_SPRITE = publicAsset('Assets/Characters/npcs/npc1-idle-sheet.png')

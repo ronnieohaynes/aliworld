@@ -16,7 +16,7 @@ export const FIVE_GYM1_HEAD_NPC: NpcData = {
   id: FIVE_GYM1_ID,
   name: 'Jerome',
   x: 920,
-  y: 580,
+  y: 730,
   lines: [],
   linesConverted: [],
   color: '#afa9ec',
@@ -62,6 +62,10 @@ const GYM_AMBIENT_RING: NpcData = {
   spriteSrc: JACLYN_SPRITE,
   spriteLayout: 'horizontal-bbox',
   fixedFacing: 'down',
+  collisionWidth: 40,
+  collisionHeight: 36,
+  collisionOffsetY: 15,
+  collisionOffsetX: 5,
 }
 
 export const FIVE_GYM_AMBIENT_NPCS: readonly NpcData[] = [

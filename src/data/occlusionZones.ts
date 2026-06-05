@@ -67,6 +67,8 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
     { x: 82,  y: 772, width: 52, height: 83  },
     // upper-right block — counter top overhang
     { x: 984, y: 395, width: 150, height: 59 },
+    // boxing ring north rail — partially covers ring-side NPC from the south
+    { x: 400, y: 385, width: 440, height: 55 },
   ],
 }
 
