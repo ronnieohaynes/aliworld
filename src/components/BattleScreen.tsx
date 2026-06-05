@@ -681,49 +681,53 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     >
       {!battleSettled ? <div className="battle-screen__settle-cover" aria-hidden /> : null}
       <div className="battle-screen__content">
-        <section className="battle-screen__enemy-hud">
-          <span className="battle-screen__enemy-name">
-            {state.npc.displayName.toUpperCase()}
-            {state.npc.level > 0 ? (
-              <>
-                {' '}
-                <span className="battle-screen__enemy-level">· LVL {state.npc.level}</span>
-              </>
-            ) : null}
-          </span>
-          <div className="battle-screen__hp-track">
-            <div
-              className="battle-screen__hp-fill battle-screen__hp-fill--enemy"
-              style={{ width: `${enemyHpPct}%` }}
-            />
-          </div>
-          <FighterStatusTags tags={enemyStatusTags} />
-        </section>
-
-        {!showWinNarration && (
-          <section className="battle-screen__telegraph-row" ref={telegraphRowRef} aria-live="polite">
-            <p
-              className={`battle-screen__telegraph${heavyTelegraph ? ' battle-screen__telegraph--heavy' : ''}`}
-            >
-              {telegraphDisplay ? (
+        <div className="battle-screen__playfield" ref={playfieldRef}>
+          <section className="battle-screen__enemy-hud">
+            <span className="battle-screen__enemy-name">
+              {state.npc.displayName.toUpperCase()}
+              {state.npc.level > 0 ? (
                 <>
-                  {telegraphDisplay.prefix}
-                  {telegraphDisplay.moveName ? (
-                    <span
-                      className="battle-screen__telegraph-move"
-                      style={{ color: telegraphAccent }}
-                    >
-                      {telegraphDisplay.moveName}
-                    </span>
-                  ) : null}
-                  {telegraphDisplay.suffix}
+                  {' '}
+                  <span className="battle-screen__enemy-level">· LVL {state.npc.level}</span>
                 </>
               ) : null}
-            </p>
+            </span>
+            <div className="battle-screen__hp-track">
+              <div
+                className="battle-screen__hp-fill battle-screen__hp-fill--enemy"
+                style={{ width: `${enemyHpPct}%` }}
+              />
+            </div>
+            <div className="battle-screen__enemy-status-slot">
+              <FighterStatusTags tags={enemyStatusTags} />
+            </div>
           </section>
-        )}
 
-        <div className="battle-screen__playfield" ref={playfieldRef}>
+          {!showWinNarration && (
+            <section className="battle-screen__telegraph-row" ref={telegraphRowRef} aria-live="polite">
+              <p
+                className={`battle-screen__telegraph${heavyTelegraph ? ' battle-screen__telegraph--heavy' : ''}`}
+              >
+                {telegraphDisplay ? (
+                  <>
+                    {telegraphDisplay.prefix}
+                    {telegraphDisplay.moveName ? (
+                      <span
+                        className="battle-screen__telegraph-move"
+                        style={{ color: telegraphAccent }}
+                      >
+                        {telegraphDisplay.moveName}
+                      </span>
+                    ) : null}
+                    {telegraphDisplay.suffix}
+                  </>
+                ) : (
+                  '\u00a0'
+                )}
+              </p>
+            </section>
+          )}
+
           {!showWinNarration && (
             <section className="battle-screen__log" aria-live="polite">
               {logLines.map((line, i) => (

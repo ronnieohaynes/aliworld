@@ -24,6 +24,10 @@
   image-rendering: crisp-edges;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   user-select: none;
+  --battle-enemy-hud-top: 10px;
+  --battle-enemy-hud-h: 91px;
+  --battle-telegraph-h: 36px;
+  --battle-stack-lift: 10px;
 }
 
 /* ── Stage background (behind fighters only) ─────────────────────── */
@@ -99,14 +103,37 @@
   flex-shrink: 0;
 }
 
-/* 1 — Enemy name + HP + status */
+/* 1 — Enemy name + HP + status (overlay; fixed height so tags never shift stage) */
 .battle-screen__enemy-hud {
-  flex: 0 0 auto;
+  position: absolute;
+  top: var(--battle-enemy-hud-top);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: var(--battle-enemy-hud-h);
+  box-sizing: border-box;
   padding: 10px 16px 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: hidden;
+  pointer-events: none;
   background: linear-gradient(180deg, rgba(10, 10, 18, 0.96) 0%, rgba(10, 10, 18, 0.7) 65%, rgba(10, 10, 18, 0) 100%);
+}
+
+.battle-screen__enemy-status-slot {
+  flex: 0 0 40px;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.battle-screen__enemy-hud .battle-screen__status-tags {
+  min-height: 40px;
+  max-height: 40px;
+  overflow: hidden;
+  align-content: flex-start;
 }
 
 .battle-screen__telegraph-move {
@@ -158,7 +185,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  min-height: 0;
+  min-height: 18px;
   align-items: center;
 }
 
@@ -175,11 +202,18 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* 2 — Telegraph */
+/* 2 — Telegraph (below enemy HUD; fixed slot so text never shifts the stage) */
 .battle-screen__telegraph-row {
-  flex: 0 0 auto;
-  min-height: 28px;
+  position: absolute;
+  top: calc(var(--battle-enemy-hud-h) - var(--battle-stack-lift));
+  left: 0;
+  right: 0;
+  z-index: 6;
+  height: var(--battle-telegraph-h);
   padding: 2px 16px 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  pointer-events: none;
   background: linear-gradient(180deg, rgba(10, 10, 18, 0.55) 0%, rgba(10, 10, 18, 0) 100%);
 }
 
@@ -187,16 +221,23 @@
   margin: 0;
   font-size: 11px;
   line-height: 16px;
+  max-height: 32px;
   color: #9696b0;
   text-align: center;
   text-transform: lowercase;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .battle-screen__telegraph--heavy {
   font-size: 13px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 16px;
+  max-height: 32px;
   color: #c084fc;
   letter-spacing: 0.02em;
   text-shadow: 0 0 12px rgba(192, 132, 252, 0.35);
@@ -267,7 +308,7 @@
 /* 4 — Battle log (top-center, under telegraph) */
 .battle-screen__log {
   position: absolute;
-  top: 8px;
+  top: calc(var(--battle-enemy-hud-h) + var(--battle-telegraph-h) + 4px - var(--battle-stack-lift) - 10px);
   left: 50%;
   z-index: 5;
   display: flex;

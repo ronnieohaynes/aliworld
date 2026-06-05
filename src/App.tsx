@@ -87,10 +87,11 @@ function GameApp() {
     return <AuthScreen />
   }
 
+  if (variant === null) {
+    return <MidnightVariantSelectScreen />
+  }
+
   if (!auth.profile) {
-    if (variant === null) {
-      return <MidnightVariantSelectScreen />
-    }
     return <HandlePickScreen />
   }
 
