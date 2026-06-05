@@ -3,7 +3,8 @@ import {
   isMarkDefeated,
   isWalkerConverted,
 } from '../store/quest1Store'
-import { FIVE_GYM1_ID, isGym5ive1Cleared } from '../store/gymStore'
+import { FIVE_GYM1_ID, getGymHeadWins, isGym5ive1Cleared } from '../store/gymStore'
+import { fiveGym1DialogueForWins } from './fiveGym1Gauntlet'
 import {
   CLERK_NPC_ID,
   isClerkConverted,
@@ -51,7 +52,10 @@ export function resolveNpcDialogueLines(
   options?: ResolveNpcDialogueOptions,
 ): ResolvedDialogueLine[] {
   let raw: NpcDialogueLine[]
-  if (options?.blocked && npc.linesBlocked?.length) {
+  if (npc.id === FIVE_GYM1_ID && !options?.blocked) {
+    const text = fiveGym1DialogueForWins(getGymHeadWins(FIVE_GYM1_ID), isGym5ive1Cleared())
+    raw = [text]
+  } else if (options?.blocked && npc.linesBlocked?.length) {
     raw = npc.linesBlocked
   } else if (isNpcConverted(npc.id) && npc.linesConverted?.length) {
     raw = npc.linesConverted

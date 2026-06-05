@@ -11,14 +11,14 @@ const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const JASON_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 
-/** Week 1 head — east of the ring (native gym coords). */
+/** Week 1 head — east of the ring (native 1224 gym map pixels; scaled in cityConfig). */
 export const FIVE_GYM1_HEAD_NPC: NpcData = {
   id: FIVE_GYM1_ID,
   name: 'trainer',
   x: 920,
   y: 580,
-  lines: ['week one. i run this floor. you want the work?'],
-  linesConverted: ["week one's yours. don't get comfortable."],
+  lines: [],
+  linesConverted: [],
   color: '#afa9ec',
   spriteSrc: FIVE_GYM1_SPRITE,
   spriteColumns: 4,

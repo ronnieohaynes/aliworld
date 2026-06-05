@@ -10,6 +10,11 @@ import {
   telegraphLineForEnemyMove,
   type UpcomingMove,
 } from './enemyMoves'
+import { FIVE_GYM1_ID, getGymHeadWins } from '../store/gymStore'
+import {
+  fiveGym1RoundIndexForWins,
+  FIVE_GYM1_ROUNDS,
+} from './fiveGym1Gauntlet'
 
 export type EnemyMove = EnemyMoveId
 export type { UpcomingMove }
@@ -142,24 +147,25 @@ const RESTOCKER: NpcCombatEntry = entry({
   battleSizeMult: 1.08,
 })
 
-/** Oceanview Gym week 1 head — fixed defense build. */
-const FIVE_GYM1: NpcCombatEntry = entry({
-  id: '5ive-gym1',
-  displayName: 'week one',
-  level: 4,
-  moves: ['STRIKE', 'HOLD', 'HAYMAKER'],
-  leanSkill: 'defense',
-  telegraphFlavor: {
-    STRIKE: 'sets a jab —',
-    HOLD: 'anchors in —',
-    HAYMAKER: 'winds up —',
-  },
-  losingLine: '',
-  spriteSrc: publicAsset('Assets/Characters/npcs/5ive-gym1.png'),
-  battleLocation: 'five',
-  battleBg: publicAsset('Assets/battle-bg/5ive-gym.png'),
-  battleSizeMult: 1.02,
-})
+/** Oceanview Gym week 1 head — gauntlet rounds built from fiveGym1Gauntlet.ts. */
+function buildFiveGym1CombatEntry(): NpcCombatEntry {
+  const wins = getGymHeadWins(FIVE_GYM1_ID)
+  const round = FIVE_GYM1_ROUNDS[fiveGym1RoundIndexForWins(wins)]!
+  return entry({
+    id: FIVE_GYM1_ID,
+    displayName: 'week one',
+    level: round.level,
+    hpScale: round.hpScale,
+    moves: [...round.moves],
+    leanSkill: round.leanSkill,
+    telegraphFlavor: round.telegraphFlavor,
+    losingLine: '',
+    spriteSrc: publicAsset('Assets/Characters/npcs/5ive-gym1.png'),
+    battleLocation: 'five',
+    battleBg: publicAsset('Assets/battle-bg/5ive-gym.png'),
+    battleSizeMult: 1.02,
+  })
+}
 
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
@@ -167,7 +173,6 @@ const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   mark: MARK,
   clerk: CLERK,
   restocker: RESTOCKER,
-  '5ive-gym1': FIVE_GYM1,
 }
 
 export function isAttackingMove(move: EnemyMove): boolean {
@@ -175,6 +180,7 @@ export function isAttackingMove(move: EnemyMove): boolean {
 }
 
 export function getNpcCombatEntry(npcId: string): NpcCombatEntry | undefined {
+  if (npcId === FIVE_GYM1_ID) return buildFiveGym1CombatEntry()
   return NPC_REGISTRY[npcId]
 }
 

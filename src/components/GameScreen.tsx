@@ -25,7 +25,7 @@ import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifa
 import {
   getGymRevision,
   isGym5ive1Cleared,
-  setGym5ive1Cleared,
+  recordGym5ive1Win,
   subscribeGymStore,
 } from '../store/gymStore'
 import {
@@ -1585,7 +1585,7 @@ export function GameScreen() {
       track('episode_complete', { episode: 'e2' })
     }
     if (npcId === FIVE_GYM1_ID) {
-      setGym5ive1Cleared()
+      recordGym5ive1Win()
     }
   }, [])
 
