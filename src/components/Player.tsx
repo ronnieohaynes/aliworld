@@ -29,7 +29,7 @@ import {
   ensureStoryIdleCached,
 } from '../game/npcSpriteCache'
 import type { TriggerAction, TriggerZone } from '../data/triggerZones'
-import { isArmAfterClearTrigger } from '../data/triggerZones'
+import { isMapTransitionTrigger } from '../data/triggerZones'
 import type { CityConfig } from '../data/cityConfig'
 import type { QuestPulseTargetDescriptor } from '../data/questObjectives'
 import {
@@ -77,6 +77,22 @@ function getNpcRosterKey(city: CityConfig): string {
   return `${city.id}|${city.npcs
     .map((n) => `${n.id}:${n.spriteSrc ?? ''}:${n.spriteLayout ?? 'strip-columns'}`)
     .join(';')}`
+}
+
+/** If the player spawns inside a map-transition zone, treat them as already inside. */
+function seedStandingMapTransitionTriggers(
+  worldX: number,
+  worldY: number,
+  triggerZones: TriggerZone[],
+  activeTriggerIds: Set<string>,
+): void {
+  const hitbox = getFeetHitbox(worldX, worldY)
+  for (const zone of triggerZones) {
+    if (!isMapTransitionTrigger(zone.action)) continue
+    if (rectsOverlap(hitbox, zone)) {
+      activeTriggerIds.add(zone.id)
+    }
+  }
 }
 
 type InteractPoint = { x: number; y: number; npcFacing: Direction }
@@ -591,8 +607,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const onTriggerRef = useRef(onTrigger)
   const onTriggerExitRef = useRef(onTriggerExit)
   const activeTriggerIds = useRef(new Set<string>())
-  /** Map-transition triggers armed only after the player has fully left them once. */
-  const armedTriggerIds = useRef(new Set<string>())
   const loopId = useRef(Symbol('player-loop'))
   const midnightSheetRef = useRef<SpriteSheet | null>(null)
   const selectedMidnightVariant = useSyncExternalStore(
@@ -660,8 +674,13 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     npcRosterKeyRef.current = rosterKey
 
     activeTriggerIds.current.clear()
-    armedTriggerIds.current.clear()
     triggerCooldown.current = 1
+    seedStandingMapTransitionTriggers(
+      worldPos.current.x,
+      worldPos.current.y,
+      cityConfig.triggerZones,
+      activeTriggerIds.current,
+    )
     npcFacingMap.current.clear()
     npcIdleTimers.current.clear()
     for (const npc of cityConfig.npcs) {
@@ -699,8 +718,13 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       worldPos.current = { x, y }
       moveRemainder.current = { x: 0, y: 0 }
       activeTriggerIds.current.clear()
-      armedTriggerIds.current.clear()
       triggerCooldown.current = 1
+      seedStandingMapTransitionTriggers(
+        x,
+        y,
+        cityConfigRef.current.triggerZones,
+        activeTriggerIds.current,
+      )
     },
     setFacing(facing: Direction) {
       direction.current = facing
@@ -1091,22 +1115,15 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         for (const zone of cfg.triggerZones) {
           const hitbox = getFeetHitbox(worldX, worldY)
           const inside = rectsOverlap(hitbox, zone)
-          const armAfterClear = isArmAfterClearTrigger(zone.action)
 
           if (inside) {
-            if (armAfterClear && !armedTriggerIds.current.has(zone.id)) {
-              activeTriggerIds.current.add(zone.id)
-              continue
-            }
-            if (!activeTriggerIds.current.has(zone.id)) {
-              activeTriggerIds.current.add(zone.id)
+            const justEntered = !activeTriggerIds.current.has(zone.id)
+            activeTriggerIds.current.add(zone.id)
+            if (justEntered) {
               onTriggerRef.current?.(zone.action)
             }
           } else if (activeTriggerIds.current.has(zone.id)) {
             activeTriggerIds.current.delete(zone.id)
-            if (armAfterClear) {
-              armedTriggerIds.current.add(zone.id)
-            }
             onTriggerExitRef.current?.(zone.action)
           }
         }
