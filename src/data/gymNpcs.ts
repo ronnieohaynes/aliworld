@@ -14,7 +14,7 @@ const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 /** Week 1 head — east of the ring (native 1224 gym map pixels; scaled in cityConfig). */
 export const FIVE_GYM1_HEAD_NPC: NpcData = {
   id: FIVE_GYM1_ID,
-  name: 'trainer',
+  name: 'Jerome',
   x: 920,
   y: 580,
   lines: [],

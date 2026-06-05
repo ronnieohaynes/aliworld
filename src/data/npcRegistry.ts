@@ -30,6 +30,12 @@ export type CombatStats = {
 /** Per-NPC flavor fragment before the move name in telegraph (commit 2). */
 export type NpcTelegraphFlavor = Partial<Record<EnemyMoveId, string>>
 
+export type NpcGuardCounter = {
+  /** Chance to riposte when player attacks into HOLD (0–1). */
+  chance: number
+  damageMult: number
+}
+
 export type NpcCombatEntry = {
   id: string
   displayName: string
@@ -40,6 +46,10 @@ export type NpcCombatEntry = {
   losingLine: string
   /** Optional per-move telegraph flavor (e.g. "winds up —"). */
   telegraphFlavor?: NpcTelegraphFlavor
+  /** Punishes attacking into HOLD — round-tuned on gym heads. */
+  guardCounter?: NpcGuardCounter
+  /** Fraction of mitigated damage that pierces player HOLD/SLIP (0–1). */
+  enemyGuardPierce?: number
   spriteSrc?: string
   /** Location key for city battle backdrop when `battleBg` is unset. */
   battleLocation: BattleLocationId
@@ -153,12 +163,14 @@ function buildFiveGym1CombatEntry(): NpcCombatEntry {
   const round = FIVE_GYM1_ROUNDS[fiveGym1RoundIndexForWins(wins)]!
   return entry({
     id: FIVE_GYM1_ID,
-    displayName: 'week one',
+    displayName: 'Jerome',
     level: round.level,
     hpScale: round.hpScale,
     moves: [...round.moves],
     leanSkill: round.leanSkill,
     telegraphFlavor: round.telegraphFlavor,
+    guardCounter: round.guardCounter,
+    enemyGuardPierce: round.enemyGuardPierce,
     losingLine: '',
     spriteSrc: publicAsset('Assets/Characters/npcs/5ive-gym1.png'),
     battleLocation: 'five',

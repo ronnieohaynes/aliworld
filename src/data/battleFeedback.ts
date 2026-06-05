@@ -39,6 +39,15 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
+  if (r.guardCountered) {
+    events.push({
+      kind: 'counter',
+      text: 'counter!',
+      target: 'player',
+      tone: 'attack',
+    })
+  }
+
   if (r.playerDmg > 0 && r.dodged) {
     events.push({
       kind: 'counter',

@@ -599,6 +599,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const selectedMidnightVariantRef = useRef(selectedMidnightVariant)
 
   const cityConfigRef = useRef(cityConfig)
+  cityConfigRef.current = cityConfig
 
   const worldPos = useRef<Vec>({ x: cityConfig.spawnX, y: cityConfig.spawnY })
   const moveRemainder = useRef<Vec>({ x: 0, y: 0 })
@@ -639,10 +640,6 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   const npcIdleTimers = useRef(new Map<string, { elapsed: number; interval: number }>())
   const triggerCooldown = useRef(0)
   const npcRosterKeyRef = useRef('')
-
-  useEffect(() => {
-    cityConfigRef.current = cityConfig
-  }, [cityConfig])
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))

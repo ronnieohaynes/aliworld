@@ -227,6 +227,8 @@ export type ResolveResult = {
   damageAvoided: number
   /** Next strike boosted after a successful brace (perfect guard). */
   perfectGuardBonus: boolean
+  /** Enemy riposte after player attacked into HOLD. */
+  guardCountered: boolean
   /** Healing applied this turn (second wind, lifesteal, phenomena). */
   healApplied: number
   eMove: UpcomingMove
@@ -260,6 +262,7 @@ function emptyResolveResult(
     damageBlocked: 0,
     damageAvoided: 0,
     perfectGuardBonus: false,
+    guardCountered: false,
     healApplied: 0,
     eMove,
     pMove,
@@ -274,6 +277,63 @@ function isDefensiveExposedMove(pMove: PlayerMove): boolean {
     kind === 'brick-wall' ||
     kind === 'counterweight'
   )
+}
+
+const PLAYER_DEFENSIVE_MOVE_KINDS = new Set([
+  'brace',
+  'dodge',
+  'brick-wall',
+  'counterweight',
+  'anchor',
+  'second-wind',
+  'invincible',
+  'refract',
+  'gravity-shift',
+])
+
+function isPlayerAggressiveMove(pMove: PlayerMove): boolean {
+  return !PLAYER_DEFENSIVE_MOVE_KINDS.has(getMoveDef(pMove).behavior.kind)
+}
+
+function applyNpcGuardCounter(
+  state: BattleState,
+  out: ResolveResult,
+  actualMove: EnemyMoveId,
+): void {
+  const counter = state.npc.guardCounter
+  if (!counter || actualMove !== 'HOLD') return
+  if (!out.playerActed || !isPlayerAggressiveMove(out.pMove)) return
+  if (Math.random() >= counter.chance) return
+
+  const riposte = Math.max(1, Math.floor(state.npc.stats.atk * counter.damageMult))
+  out.guardCountered = true
+  out.playerDmg = Math.max(0, Math.floor(out.playerDmg * 0.1))
+  out.incoming = Math.max(out.incoming, riposte)
+  out.enemyAttacks = true
+}
+
+function applyEnemyGuardPierce(
+  state: BattleState,
+  out: ResolveResult,
+  rawEDmg: number,
+): void {
+  const pierce = state.npc.enemyGuardPierce
+  if (!pierce || rawEDmg <= 0 || !out.enemyAttacks) return
+
+  if (out.dodged) {
+    const through = Math.max(1, Math.floor(rawEDmg * pierce))
+    out.incoming = Math.max(out.incoming, through)
+    out.dodged = false
+    out.playerDmg = Math.max(0, Math.floor(out.playerDmg * 0.5))
+    return
+  }
+
+  if (out.incoming >= rawEDmg) return
+  const mitigated = rawEDmg - out.incoming
+  const restored = Math.floor(mitigated * pierce)
+  if (restored > 0) {
+    out.incoming += restored
+  }
 }
 
 function applyPostResolveEffects(
@@ -442,6 +502,8 @@ function resolvePlayerMoveBody(
     ),
   )
 
+  applyNpcGuardCounter(state, out, actualMove)
+
   out.incoming = mitigateIncoming(
     out.incoming,
     state.combatStatus,
@@ -450,7 +512,9 @@ function resolvePlayerMoveBody(
     state.battleMove,
   )
 
-  finalizeIncomingXpMetrics(out, enemyAttacks ? eDmg : 0)
+  applyEnemyGuardPierce(state, out, enemyAttacks ? eDmg : 0)
+
+  finalizeIncomingXpMetrics(out, enemyAttacks ? eDmg : out.guardCountered ? out.incoming : 0)
 
   if (
     BLACKOUT_INTERRUPTIBLE &&
@@ -607,7 +671,9 @@ function applyEnemyResolutionPhase(
     }
     const split = splitIncomingWithReflect(incoming, state.combatStatus.playerReflect)
     nextHp = Math.max(0, nextHp - split.damageToPlayer)
-    if (r.playerActed && split.damageToPlayer > 0 && r.eMove !== 'STUNNED') {
+    if (r.guardCountered && split.damageToPlayer > 0) {
+      nextLog = appendLog(nextLog, `${lower} counters. ${split.damageToPlayer}.`)
+    } else if (r.playerActed && split.damageToPlayer > 0 && r.eMove !== 'STUNNED') {
       const moveName = getEnemyMoveDef(r.eMove as EnemyMoveId).displayName
       nextLog = appendLog(
         nextLog,

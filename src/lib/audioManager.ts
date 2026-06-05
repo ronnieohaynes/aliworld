@@ -190,12 +190,17 @@ class AudioManager {
     if (!this.canPlayAudio()) return
 
     const gen = ++this.fadeGeneration
-    try {
-      if (this.audio.paused) {
-        await this.audio.play()
+    if (!this.muted) {
+      try {
+        if (this.audio.paused) {
+          await this.audio.play()
+        }
+      } catch {
+        // missing file or autoplay
       }
-    } catch {
-      // missing file or autoplay
+    } else {
+      this.audio.pause()
+      this.audio.volume = 0
     }
     if (gen !== this.fadeGeneration) return
     await this.fadeToLevel(this.effectiveVolume(), FADE_IN_MS, 'in', gen)
@@ -206,7 +211,7 @@ class AudioManager {
     if (!this.canPlayAudio()) return
 
     const gen = ++this.fadeGeneration
-    if (this.audio.src && !this.audio.paused) {
+    if (this.audio.src && !this.audio.paused && !this.muted) {
       await this.fadeToLevel(0, FADE_OUT_MS, 'out', gen)
       if (gen !== this.fadeGeneration) return
     }
@@ -214,6 +219,13 @@ class AudioManager {
     this.audio.loop = track.loop !== false
     this.audio.src = track.file
     this.setCurrentMeta(track)
+
+    if (this.muted) {
+      this.audio.pause()
+      this.audio.volume = 0
+      this.emit()
+      return
+    }
 
     try {
       await this.audio.play()
@@ -323,6 +335,29 @@ class AudioManager {
       return
     }
     await this.unlockAudio()
+  }
+
+  /**
+   * Call synchronously from a user gesture (Adam MP3 handoff).
+   * Starts playback for `context` immediately — do not defer behind async boundaries.
+   */
+  grantFromUserGesture(context: string): void {
+    if (!isMusicPlayerOwned()) return
+    this.pendingContext = context
+    this.activeContext = context
+
+    if (!this.unlocked) {
+      this.unlocked = true
+      this.audio.volume = 0
+      try {
+        void this.audio.play().catch(() => {})
+      } catch {
+        // gesture may still carry through applyContext play()
+      }
+    }
+
+    void this.applyContext(context, true)
+    this.emit()
   }
 
   private async unlockAudio(): Promise<void> {
@@ -443,6 +478,10 @@ export function isAudioUnlocked(): boolean {
 
 export function grantMusicPlayer(): Promise<void> {
   return getManager().grantPlayer()
+}
+
+export function grantMusicPlayerFromGesture(context: string): void {
+  getManager().grantFromUserGesture(context)
 }
 
 export function resetMusicPlayerForNewGame(): void {

@@ -7,6 +7,7 @@ import type { MusicCurrent } from '../lib/audioManager'
 import {
   getMusicCurrent,
   grantMusicPlayer,
+  grantMusicPlayerFromGesture,
   isMusicMuted,
   resetMusicPlayerForNewGame,
   setMusicMuted,
@@ -93,8 +94,8 @@ export function isSoundtrackPlaying(): boolean {
   return hasMusicPlayer() && !isMusicMuted()
 }
 
-export async function grantMusicPlayerFromAdam(): Promise<void> {
-  await grantMusicPlayer()
+export function grantMusicPlayerFromAdam(cityContext: string): void {
+  grantMusicPlayerFromGesture(cityContext)
 }
 
 export function startSoundtrack(): void {

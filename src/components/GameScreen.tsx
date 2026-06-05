@@ -1152,9 +1152,7 @@ export function GameScreen() {
     if (hasArtifact(ADAM_MP3_ARTIFACT_ID)) return
     collectArtifact(ADAM_MP3_ARTIFACT_ID)
     setMp3PlayerOwned()
-    void grantMusicPlayerFromAdam().then(() => {
-      setMusicContext(`city:${currentCity}`)
-    })
+    grantMusicPlayerFromAdam(`city:${currentCity}`)
     showNarration(['adam handed you his old mp3 player.'])
   }, [currentCity, showNarration])
 

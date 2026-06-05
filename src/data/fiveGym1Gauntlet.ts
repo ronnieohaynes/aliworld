@@ -5,12 +5,20 @@ import type { NpcTelegraphFlavor } from './npcRegistry'
 /** Wins required to clear week-one head; losses never reset this count. */
 export const FIVE_GYM1_WINS_TO_CLEAR = 3
 
+/** Round-3 guard riposte — punishes blind aggression into HOLD. */
+export type FiveGym1GuardCounter = {
+  chance: number
+  damageMult: number
+}
+
 export type FiveGym1RoundConfig = {
   level: number
   hpScale: number
   moves: EnemyMoveId[]
   leanSkill: LeanSkill
   telegraphFlavor: NpcTelegraphFlavor
+  guardCounter?: FiveGym1GuardCounter
+  enemyGuardPierce?: number
 }
 
 /** Per-round tuning — one block for difficulty passes. Index = wins before fight (0–2). */
@@ -42,11 +50,13 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 10,
     hpScale: 2.4,
-    moves: ['STRIKE', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP', 'LOOP'],
+    moves: ['STRIKE', 'HOLD', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP', 'LOOP'],
     leanSkill: 'defense',
+    guardCounter: { chance: 0.7, damageMult: 2.85 },
+    enemyGuardPierce: 0.55,
     telegraphFlavor: {
-      STRIKE: 'cuts in —',
-      HOLD: "won't budge —",
+      STRIKE: 'cuts through —',
+      HOLD: 'waits to counter —',
       HAYMAKER: 'loads up —',
       LOOP: 'the loop is coming —',
     },

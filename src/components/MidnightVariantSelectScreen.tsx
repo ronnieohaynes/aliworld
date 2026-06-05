@@ -27,9 +27,9 @@ const PREVIEW_DISPLAY_W = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH * PREVIEW_PIXEL_
 const PREVIEW_DISPLAY_H = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT * PREVIEW_PIXEL_SCALE)
 const PREVIEW_ALPHA_MIN = 12
 
-function formatVariantDisplayName(id: MidnightVariantId): string {
-  if (id === 'default') return 'classic'
-  return id.replace(/-/g, ' ')
+function formatVariantDisplayName(index: number): string {
+  if (index === 0) return 'classic'
+  return `alt ${index}`
 }
 
 type PreloadedSheets = Partial<Record<MidnightVariantId, SpriteSheet>>
@@ -379,7 +379,7 @@ export function MidnightVariantSelectScreen() {
 
           <div className="midnight-select-screen__confirm-block">
             <p className="midnight-select-screen__variant-name">
-              {formatVariantDisplayName(focusedVariant.id)}
+              {formatVariantDisplayName(focusedIndex)}
             </p>
             <p className="midnight-select-screen__tagline">ALIWORLD awaits</p>
             <button
