@@ -1,5 +1,6 @@
 import { publicAsset } from '../utils/publicAsset'
 import { getCollisionZones, type CollisionZone } from './collisionZones'
+import { getOcclusionZones, type OcclusionZone } from './occlusionZones'
 import {
   SOUTHSIDE_COLLISION_ZONES,
   SOUTHSIDE_DARKLINE_ARRIVAL,
@@ -53,6 +54,7 @@ export type CityConfig = {
   characterScale?: number
   /** Optional full-map PNG drawn above Midnight (transparent outside foreground art). */
   foregroundMapSrc?: string
+  occlusionZones: OcclusionZone[]
 }
 
 const HILLCREST_MAP_SRC = publicAsset('Assets/tileset/hillcrest-map.png')
@@ -132,6 +134,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnY: DARKLINE_SPAWN_Y,
     collisionMapId: 'five',
     collisionZones: getCollisionZones('five'),
+    occlusionZones: getOcclusionZones('five'),
     triggerZones: TRIGGER_ZONES,
     npcs: [...FIVE_OVERWORLD_NPCS],
   },
@@ -146,6 +149,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnX: 570,
     darklineSpawnY: 300,
     collisionZones: HILLCREST_COLLISION_ZONES,
+    occlusionZones: getOcclusionZones('san-bruno'),
     triggerZones: SAN_BRUNO_TRIGGER_ZONES,
     npcs: [],
   },
@@ -162,6 +166,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnX: SOUTHSIDE_DARKLINE_ARRIVAL.x,
     darklineSpawnY: SOUTHSIDE_DARKLINE_ARRIVAL.y,
     collisionZones: SOUTHSIDE_COLLISION_ZONES,
+    occlusionZones: getOcclusionZones('southside'),
     triggerZones: SOUTHSIDE_TRIGGER_ZONES,
     npcs: [...SOUTHSIDE_OVERWORLD_NPCS],
   },
@@ -178,6 +183,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnX: BLUE_STORE_INTERIOR_ENTRY.x,
     darklineSpawnY: BLUE_STORE_INTERIOR_ENTRY.y,
     collisionZones: BLUE_STORE_INTERIOR_COLLISION_ZONES.map(scaleBlueStoreInteriorZone),
+    occlusionZones: getOcclusionZones('blue-store-interior'),
     triggerZones: BLUE_STORE_INTERIOR_TRIGGER_ZONES,
     npcs: [],
   },

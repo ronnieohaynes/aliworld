@@ -1231,18 +1231,36 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             const rect = midnightSheet.getFrameRect(facing, frame)
             sx = Math.floor(rect.sx)
             sy = Math.floor(SPRITE_SHEET_ROW[facing] * MIDNIGHT_WALK_FRAME_HEIGHT)
-            drawSheetFrame(
-              ctx,
-              midnightSheet,
-              facing,
-              frame,
-              worldDrawX,
-              worldDrawY,
-              drawDw,
-              drawDh,
-              1,
-              renderTuning,
-            )
+
+            // Clip the player draw to exclude any overlapping occlusion zones,
+            // so the map underneath shows through instead of a blank hole.
+            const playerFeetY = worldDrawY + drawDh
+            const occlusionOverlaps: { ix: number; iy: number; iw: number; ih: number }[] = []
+            for (const zone of cfg.occlusionZones) {
+              // Only occlude when player's feet are above the object's bottom edge (player is behind it)
+              if (playerFeetY >= zone.y + zone.height) continue
+              const ix = Math.max(worldDrawX, zone.x)
+              const iy = Math.max(worldDrawY, zone.y)
+              const iw = Math.min(worldDrawX + drawDw, zone.x + zone.width) - ix
+              const ih = Math.min(worldDrawY + drawDh, zone.y + zone.height) - iy
+              if (iw > 0 && ih > 0) occlusionOverlaps.push({ ix, iy, iw, ih })
+            }
+
+            if (occlusionOverlaps.length > 0) {
+              ctx.save()
+              ctx.beginPath()
+              // Large outer rect covers the whole world
+              ctx.rect(-10000, -10000, 30000, 30000)
+              // Cut out each occlusion overlap (evenodd makes these holes)
+              for (const { ix, iy, iw, ih } of occlusionOverlaps) {
+                ctx.rect(ix, iy, iw, ih)
+              }
+              ctx.clip('evenodd')
+              drawSheetFrame(ctx, midnightSheet, facing, frame, worldDrawX, worldDrawY, drawDw, drawDh, 1, renderTuning)
+              ctx.restore()
+            } else {
+              drawSheetFrame(ctx, midnightSheet, facing, frame, worldDrawX, worldDrawY, drawDw, drawDh, 1, renderTuning)
+            }
           }
         } else {
           const npc = entry.npc
