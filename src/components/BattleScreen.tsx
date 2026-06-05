@@ -372,8 +372,11 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
   const matchupLabel = counterMatchupLabel(counterRelation, state.npc.leanSkill)
   const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
-  const showWinNarration = state.phase === 'ended' && state.result === 'win'
   const payoffNpc = winPayoffNpc ?? state.npc
+  const showWinNarration =
+    state.phase === 'ended' &&
+    state.result === 'win' &&
+    payoffNpc.losingLine.trim().length > 0
   const battleSettled = battleRevealed && playerLayoutReady && enemyLayoutReady
 
   useEffect(() => {
@@ -475,6 +478,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       return () => window.clearTimeout(timer)
     }
   }, [state.phase, state.result, finishBattle])
+
+  useEffect(() => {
+    if (showWinNarration) return
+    if (state.phase !== 'ended' || state.result !== 'win') return
+    const timer = window.setTimeout(() => finishBattle('win'), BATTLE_END_LOSE_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [finishBattle, showWinNarration, state.phase, state.result])
 
   useEffect(() => {
     winMatchupCalloutRef.current = false

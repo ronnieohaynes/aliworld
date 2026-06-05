@@ -20,4 +20,8 @@ export const GYM_TRAINER_NPC: NpcData = {
   fixedFacing: 'left',
 }
 
+export function isGymTierCombatNpcId(npcId: string): boolean {
+  return npcId === GYM_TIER_1_NPC_ID
+}
+
 export const FIVE_GYM_INTERIOR_NPCS: readonly NpcData[] = [GYM_TRAINER_NPC]

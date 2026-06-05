@@ -139,12 +139,33 @@ const RESTOCKER: NpcCombatEntry = entry({
   battleSizeMult: 1.08,
 })
 
+/** Oceanview Gym tier 1 — fixed defense build for under-leveled challengers. */
+const GYM_TIER_1: NpcCombatEntry = entry({
+  id: 'gym-tier-1',
+  displayName: 'tier one',
+  level: 10,
+  hpScale: 1.22,
+  moves: ['STRIKE', 'HOLD', 'HAYMAKER', 'LOOP'],
+  leanSkill: 'defense',
+  telegraphFlavor: {
+    STRIKE: 'sets a jab —',
+    HOLD: 'anchors in —',
+    HAYMAKER: 'winds up —',
+    LOOP: 'draws back —',
+  },
+  losingLine: '',
+  spriteSrc: WALKER_SPRITE,
+  battleLocation: 'five_gym',
+  battleSizeMult: 1.02,
+})
+
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   jaclyn: JACLYN,
   mark: MARK,
   clerk: CLERK,
   restocker: RESTOCKER,
+  'gym-tier-1': GYM_TIER_1,
 }
 
 export function isAttackingMove(move: EnemyMove): boolean {

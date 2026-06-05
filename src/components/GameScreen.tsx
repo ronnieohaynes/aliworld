@@ -16,6 +16,11 @@ import {
   type CityId,
 } from '../data/cityConfig'
 import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
+import {
+  GYM_TRAINER_NPC,
+  GYM_TRAINER_NPC_ID,
+  GYM_TIER_1_NPC_ID,
+} from '../data/gymNpcs'
 import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
@@ -37,6 +42,7 @@ import {
   markGatingNpcTalked,
   setCafeSceneSeen,
   setEpisode1TitleCardSeen,
+  setGymTier1Cleared,
   setE1CutscenePlayed,
   setMp3PlayerOwned,
   setJaclynConverted,
@@ -229,6 +235,7 @@ export function GameScreen() {
   const pendingCafeVideoHandoffRef = useRef(false)
   const cafeVideoHandoffStartedRef = useRef(false)
   const pendingPostE1NarrationRef = useRef(false)
+  const pendingGymLossLineRef = useRef(false)
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -247,6 +254,7 @@ export function GameScreen() {
   const loadoutMenuBtnRef = useRef<HTMLButtonElement>(null)
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
   const [loadoutTutorialStep, setLoadoutTutorialStep] = useState<number | null>(null)
+  const [gymTrainerChoiceOpen, setGymTrainerChoiceOpen] = useState(false)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
@@ -1237,6 +1245,13 @@ export function GameScreen() {
       return
     }
 
+    if (nearbyId === GYM_TRAINER_NPC_ID) {
+      beginNpcDialogue(GYM_TRAINER_NPC, {
+        onComplete: () => setGymTrainerChoiceOpen(true),
+      })
+      return
+    }
+
     const npc = findNpcInCity(nearbyId, currentCity)
     if (npc) beginNpcDialogue(npc)
   }, [
@@ -1478,6 +1493,11 @@ export function GameScreen() {
     setBattleWipePhase(null)
     reportCurrentLocation()
 
+    if (pendingGymLossLineRef.current) {
+      pendingGymLossLineRef.current = false
+      showNotYetDialogue(GYM_TRAINER_NPC, "come back when you're ready.")
+    }
+
     const startPhase2Tutorial = () => {
       if (isBattleTutorialSeen() && !isTutorialPhase2Seen()) {
         setLoadoutTutorialStep(0)
@@ -1500,7 +1520,7 @@ export function GameScreen() {
       }
       startPhase2Tutorial()
     }
-  }, [reportCurrentLocation, showQuestTransition])
+  }, [reportCurrentLocation, showNotYetDialogue, showQuestTransition])
 
   const handleWinPayoff = useCallback((npcId: string) => {
     if (isDevSparNpcId(npcId)) return
@@ -1530,6 +1550,9 @@ export function GameScreen() {
       track('npc_converted', { npcId: RESTOCKER_NPC_ID })
       track('episode_complete', { episode: 'e2' })
     }
+    if (npcId === GYM_TIER_1_NPC_ID) {
+      setGymTier1Cleared()
+    }
   }, [])
 
   const handleBattleEnd = useCallback(
@@ -1546,6 +1569,9 @@ export function GameScreen() {
         if (battleNpcId === RESTOCKER_NPC_ID) {
           showNarration(["something's wrong in the field.", 'you started it.'])
         }
+      }
+      if (result === 'lose' && battleNpcId === GYM_TIER_1_NPC_ID) {
+        pendingGymLossLineRef.current = true
       }
       pendingBattleExitRef.current = { result, npcId: battleNpcId }
       setBattleWipePhase('exit')
@@ -1957,6 +1983,33 @@ export function GameScreen() {
             />
           ) : null}
           </div>
+          {gymTrainerChoiceOpen && !battleNpcId && !dialogue ? (
+            <div
+              className="game-screen-gym-choice"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Trainer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
+                onClick={() => {
+                  setGymTrainerChoiceOpen(false)
+                  startNpcBattle(GYM_TIER_1_NPC_ID)
+                }}
+              >
+                fight
+              </button>
+              <button
+                type="button"
+                className="game-screen-gym-choice__btn"
+                onClick={() => setGymTrainerChoiceOpen(false)}
+              >
+                not yet
+              </button>
+            </div>
+          ) : null}
           {dialogue && !battleNpcId && cafeFade !== 'scene' && (
             <DialogueBox
               name={dialogue.speakerLines[dialogue.lineIndex]?.speaker ?? dialogue.npc.name}
