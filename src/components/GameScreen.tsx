@@ -15,6 +15,7 @@ import {
   type CityConfig,
   type CityId,
 } from '../data/cityConfig'
+import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
 import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
@@ -1023,6 +1024,19 @@ export function GameScreen() {
           'southside',
           SOUTHSIDE_EXTERIOR_RETURN.x,
           SOUTHSIDE_EXTERIOR_RETURN.y,
+        )
+      } else if (action === 'OPEN_OCEANVIEW_GYM') {
+        if (currentCity !== 'five') return
+        if (mapTransitionRef.current) return
+        const interior = CITY_CONFIGS['five-gym-interior']
+        beginMapTransition('five-gym-interior', interior.spawnX, interior.spawnY)
+      } else if (action === 'OPEN_OCEANVIEW_GYM_EXIT') {
+        if (currentCity !== 'five-gym-interior') return
+        if (mapTransitionRef.current) return
+        beginMapTransition(
+          'five',
+          FIVE_GYM_EXTERIOR_RETURN.x,
+          FIVE_GYM_EXTERIOR_RETURN.y,
         )
       }
     },

@@ -94,6 +94,7 @@ const VALID_CITY_IDS: readonly CityId[] = [
   'san-bruno',
   'southside',
   'blue-store-interior',
+  'five-gym-interior',
 ]
 
 function normalizeLastCity(raw: unknown): CityId | undefined {

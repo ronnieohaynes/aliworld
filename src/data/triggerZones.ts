@@ -4,6 +4,8 @@ export type TriggerAction =
   | 'OPEN_ONE_LOVE_CAFE'
   | 'OPEN_BLUE_STORE'
   | 'OPEN_BLUE_STORE_EXIT'
+  | 'OPEN_OCEANVIEW_GYM'
+  | 'OPEN_OCEANVIEW_GYM_EXIT'
 
 export type TriggerZone = {
   id: string
