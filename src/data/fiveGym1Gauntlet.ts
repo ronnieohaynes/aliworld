@@ -16,8 +16,8 @@ export type FiveGym1RoundConfig = {
 /** Per-round tuning — one block for difficulty passes. Index = wins before fight (0–2). */
 export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
-    level: 8,
-    hpScale: 2.0,
+    level: 4,
+    hpScale: 1.6,
     moves: ['STRIKE', 'HOLD', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
@@ -28,8 +28,8 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
     },
   },
   {
-    level: 10,
-    hpScale: 2.4,
+    level: 7,
+    hpScale: 2.0,
     moves: ['STRIKE', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
@@ -40,8 +40,8 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
     },
   },
   {
-    level: 12,
-    hpScale: 2.8,
+    level: 10,
+    hpScale: 2.4,
     moves: ['STRIKE', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
