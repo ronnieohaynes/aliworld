@@ -101,6 +101,95 @@ function getNpcFeetY(npc: { y: number }): number {
   return npc.y + NPC_SIZE / 2
 }
 
+function getNpcSpriteBounds(npc: { x: number; y: number }): CollisionZone {
+  const half = NPC_SIZE / 2
+  return {
+    x: npc.x - NPC_DISPLAY_W / 2,
+    y: npc.y + half - NPC_DISPLAY_H,
+    width: NPC_DISPLAY_W,
+    height: NPC_DISPLAY_H,
+  }
+}
+
+function spritesOverlap(a: CollisionZone, b: CollisionZone): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  )
+}
+
+/** Player is close below an NPC and sprites overlap — draw Midnight on top. */
+function shouldPlayerDrawOverNpc(
+  playerDrawX: number,
+  playerDrawY: number,
+  playerDrawW: number,
+  playerDrawH: number,
+  playerFeetY: number,
+  npc: { x: number; y: number },
+): boolean {
+  const npcFeetY = getNpcFeetY(npc)
+  const closeBelowPx = 20
+  if (playerFeetY < npcFeetY - closeBelowPx) return false
+  const playerBounds: CollisionZone = {
+    x: playerDrawX,
+    y: playerDrawY,
+    width: playerDrawW,
+    height: playerDrawH,
+  }
+  return spritesOverlap(playerBounds, getNpcSpriteBounds(npc))
+}
+
+type OcclusionOverlap = { ix: number; iy: number; iw: number; ih: number }
+
+function getOcclusionOverlapsForSprite(
+  drawX: number,
+  drawY: number,
+  drawW: number,
+  drawH: number,
+  feetY: number,
+  zones: CollisionZone[],
+): OcclusionOverlap[] {
+  const overlaps: OcclusionOverlap[] = []
+  for (const zone of zones) {
+    // Only occlude when feet are above the object's bottom edge (sprite is behind it).
+    if (feetY >= zone.y + zone.height) continue
+    const ix = Math.max(drawX, zone.x)
+    const iy = Math.max(drawY, zone.y)
+    const iw = Math.min(drawX + drawW, zone.x + zone.width) - ix
+    const ih = Math.min(drawY + drawH, zone.y + zone.height) - iy
+    if (iw > 0 && ih > 0) overlaps.push({ ix, iy, iw, ih })
+  }
+  return overlaps
+}
+
+function drawWithOcclusionClip(
+  ctx: CanvasRenderingContext2D,
+  draw: () => void,
+  drawX: number,
+  drawY: number,
+  drawW: number,
+  drawH: number,
+  feetY: number,
+  zones: CollisionZone[],
+): void {
+  const overlaps = getOcclusionOverlapsForSprite(drawX, drawY, drawW, drawH, feetY, zones)
+  if (overlaps.length === 0) {
+    draw()
+    return
+  }
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(-10000, -10000, 30000, 30000)
+  for (const { ix, iy, iw, ih } of overlaps) {
+    ctx.rect(ix, iy, iw, ih)
+  }
+  ctx.clip('evenodd')
+  draw()
+  ctx.restore()
+}
+
 function getNpcInteractPoints(npc: { x: number; y: number }): InteractPoint[] {
   const half = NPC_SIZE / 2
   const drawX = npc.x - NPC_DISPLAY_W / 2
@@ -433,8 +522,34 @@ function getFeetHitbox(worldX: number, worldY: number): CollisionZone {
 
 const NPC_COLLISION_RADIUS = 30
 
-function getNpcCollisionRect(npc: { x: number; y: number }): CollisionZone {
-  return { x: npc.x - NPC_COLLISION_RADIUS + 15, y: npc.y - NPC_COLLISION_RADIUS - 20, width: 45, height: NPC_COLLISION_RADIUS * 2 + 15 }
+function getNpcCollisionRect(npc: {
+  x: number
+  y: number
+  collisionWidth?: number
+  collisionHeight?: number
+  collisionOffsetY?: number
+  collisionOffsetX?: number
+}): CollisionZone {
+  if (npc.collisionWidth == null && npc.collisionHeight == null) {
+    return {
+      x: npc.x - NPC_COLLISION_RADIUS + 15,
+      y: npc.y - NPC_COLLISION_RADIUS - 20,
+      width: 45,
+      height: NPC_COLLISION_RADIUS * 2 + 15,
+    }
+  }
+  const width = npc.collisionWidth ?? 45
+  const height = npc.collisionHeight ?? NPC_COLLISION_RADIUS * 2 + 15
+  const feetX = npc.x
+  const feetY = getNpcFeetY(npc)
+  const offsetY = npc.collisionOffsetY ?? 0
+  const offsetX = npc.collisionOffsetX ?? 0
+  return {
+    x: feetX - width / 2 + offsetX,
+    y: feetY - height - offsetY,
+    width,
+    height,
+  }
 }
 
 function drawDarklineEntranceZonesDebug(
@@ -450,6 +565,23 @@ function drawDarklineEntranceZonesDebug(
     ctx.fillStyle = 'rgba(140, 0, 220, 0.35)'
     ctx.fillRect(x, y, w, h)
     ctx.strokeStyle = 'rgba(180, 60, 255, 0.95)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(x, y, w, h)
+  }
+}
+
+function drawOcclusionZonesDebug(
+  ctx: CanvasRenderingContext2D,
+  occlusionZones: CollisionZone[],
+): void {
+  for (const zone of occlusionZones) {
+    const x = Math.floor(zone.x)
+    const y = Math.floor(zone.y)
+    const w = Math.floor(zone.width)
+    const h = Math.floor(zone.height)
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.35)'
+    ctx.fillRect(x, y, w, h)
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.95)'
     ctx.lineWidth = 2
     ctx.strokeRect(x, y, w, h)
   }
@@ -1039,7 +1171,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       const collidesAt = (wx: number, wy: number): boolean => {
         const hitbox = getFeetHitbox(wx, wy)
         if (mapCollisionZones.some((zone) => rectsOverlap(hitbox, zone))) return true
-        return cfg.npcs.some((npc) => rectsOverlap(hitbox, getNpcCollisionRect(npc)))
+        return cfg.npcs.some(
+          (npc) =>
+            npc.blocksMovement !== false &&
+            rectsOverlap(hitbox, getNpcCollisionRect(npc)),
+        )
       }
 
       const halfW = PLAYER_DISPLAY_WIDTH / 2
@@ -1204,6 +1340,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
       if (isDevModeEnabled() && showCollisionDebug.current) {
         drawCollisionZonesDebug(ctx, getMapCollisionZones(cfg), cfg.npcs)
+        drawOcclusionZonesDebug(ctx, cfg.occlusionZones)
         drawTransitionZonesDebug(ctx, cfg.triggerZones)
         drawDarklineEntranceZonesDebug(ctx, cfg.triggerZones)
       }
@@ -1249,15 +1386,46 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         | { sortY: number; kind: 'midnight' }
         | { sortY: number; kind: 'npc'; npc: typeof cfg.npcs[number] }
 
+      const playerFeetY = worldY + baseDh / 2
       const midnightBottomY = worldDrawY + drawDh
       const renderables: Renderable[] = [{ sortY: midnightBottomY, kind: 'midnight' }]
       for (const npc of cfg.npcs) {
-        const half = NPC_SIZE / 2
-        const npcDisplayH = 120
-        const npcBottomY = (npc.y + half - npcDisplayH) + npcDisplayH
-        renderables.push({ sortY: npcBottomY, kind: 'npc', npc })
+        renderables.push({ sortY: getNpcFeetY(npc), kind: 'npc', npc })
       }
-      renderables.sort((a, b) => a.sortY - b.sortY)
+      renderables.sort((a, b) => {
+        if (
+          a.kind === 'midnight' &&
+          b.kind === 'npc' &&
+          shouldPlayerDrawOverNpc(
+            worldDrawX,
+            worldDrawY,
+            drawDw,
+            drawDh,
+            playerFeetY,
+            b.npc,
+          )
+        ) {
+          return 1
+        }
+        if (
+          a.kind === 'npc' &&
+          b.kind === 'midnight' &&
+          shouldPlayerDrawOverNpc(
+            worldDrawX,
+            worldDrawY,
+            drawDw,
+            drawDh,
+            playerFeetY,
+            a.npc,
+          )
+        ) {
+          return -1
+        }
+        if (a.sortY !== b.sortY) return a.sortY - b.sortY
+        if (a.kind === 'midnight' && b.kind === 'npc') return 1
+        if (a.kind === 'npc' && b.kind === 'midnight') return -1
+        return 0
+      })
 
       for (const entry of renderables) {
         if (entry.kind === 'midnight') {
@@ -1266,35 +1434,28 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             sx = Math.floor(rect.sx)
             sy = Math.floor(SPRITE_SHEET_ROW[facing] * MIDNIGHT_WALK_FRAME_HEIGHT)
 
-            // Clip the player draw to exclude any overlapping occlusion zones,
-            // so the map underneath shows through instead of a blank hole.
-            const playerFeetY = worldDrawY + drawDh
-            const occlusionOverlaps: { ix: number; iy: number; iw: number; ih: number }[] = []
-            for (const zone of cfg.occlusionZones) {
-              // Only occlude when player's feet are above the object's bottom edge (player is behind it)
-              if (playerFeetY >= zone.y + zone.height) continue
-              const ix = Math.max(worldDrawX, zone.x)
-              const iy = Math.max(worldDrawY, zone.y)
-              const iw = Math.min(worldDrawX + drawDw, zone.x + zone.width) - ix
-              const ih = Math.min(worldDrawY + drawDh, zone.y + zone.height) - iy
-              if (iw > 0 && ih > 0) occlusionOverlaps.push({ ix, iy, iw, ih })
-            }
-
-            if (occlusionOverlaps.length > 0) {
-              ctx.save()
-              ctx.beginPath()
-              // Large outer rect covers the whole world
-              ctx.rect(-10000, -10000, 30000, 30000)
-              // Cut out each occlusion overlap (evenodd makes these holes)
-              for (const { ix, iy, iw, ih } of occlusionOverlaps) {
-                ctx.rect(ix, iy, iw, ih)
-              }
-              ctx.clip('evenodd')
-              drawSheetFrame(ctx, midnightSheet, facing, frame, worldDrawX, worldDrawY, drawDw, drawDh, 1, renderTuning)
-              ctx.restore()
-            } else {
-              drawSheetFrame(ctx, midnightSheet, facing, frame, worldDrawX, worldDrawY, drawDw, drawDh, 1, renderTuning)
-            }
+            drawWithOcclusionClip(
+              ctx,
+              () =>
+                drawSheetFrame(
+                  ctx,
+                  midnightSheet,
+                  facing,
+                  frame,
+                  worldDrawX,
+                  worldDrawY,
+                  drawDw,
+                  drawDh,
+                  1,
+                  renderTuning,
+                ),
+              worldDrawX,
+              worldDrawY,
+              drawDw,
+              drawDh,
+              playerFeetY,
+              cfg.occlusionZones,
+            )
           }
         } else {
           const npc = entry.npc
@@ -1304,20 +1465,24 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
           const displayH = 120
           const dx = Math.floor(npc.x - displayW / 2)
           const dy = Math.floor(npc.y + half - displayH)
+          const npcFeetY = getNpcFeetY(npc)
 
-          const storySheet = npcStoryIdleRef.current.get(npc.id)
-          if (storySheet) {
-            const pose = storySheet.poses[npcFacing]
-            drawStoryIdleNpcPose(
-              ctx,
-              storySheet.image,
-              pose,
-              dx,
-              dy,
-              displayW,
-              displayH,
-            )
-          } else {
+          const drawNpcSprite = () => {
+            const storySheet = npcStoryIdleRef.current.get(npc.id)
+            if (storySheet) {
+              const pose = storySheet.poses[npcFacing]
+              drawStoryIdleNpcPose(
+                ctx,
+                storySheet.image,
+                pose,
+                dx,
+                dy,
+                displayW,
+                displayH,
+              )
+              return
+            }
+
             const spriteImg = npcSpritesRef.current.get(npc.id)
 
             if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
@@ -1339,7 +1504,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
                 Math.floor(displayW),
                 Math.floor(displayH),
               )
-            } else {
+              return
+            }
+
+            {
               const nx = Math.floor(npc.x - half)
               const ny = Math.floor(npc.y - half)
               ctx.fillStyle = npc.color
@@ -1360,6 +1528,17 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
               }
             }
           }
+
+          drawWithOcclusionClip(
+            ctx,
+            drawNpcSprite,
+            dx,
+            dy,
+            displayW,
+            displayH,
+            npcFeetY,
+            cfg.occlusionZones,
+          )
 
           const combatLevel = getNpcCombatLevel(npc.id)
           if (combatLevel != null) {

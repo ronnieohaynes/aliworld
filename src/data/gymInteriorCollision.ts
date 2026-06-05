@@ -63,7 +63,7 @@ export const FIVE_GYM_INTERIOR_COLLISION_ZONES: CollisionZone[] = [
   { x: 82,   y: 669,  width: 56,   height: 24   }, // bag stand 2
   { x: 82,   y: 855,  width: 52,   height: 34   }, // bag stand 3
   // upper-right interior block (counter / room corner)
-  { x: 960,  y: 252,  width: 173,  height: 195  },
+  { x: 960,  y: 252,  width: 173,  height: 130  },
   { x: 1133, y: 252,  width: 91,   height: 876  }, // right wall
   { x: 96,   y: 1128, width: 461,  height: 96   }, // bottom wall left of door
   { x: 667,  y: 1128, width: 557,  height: 96   }, // bottom wall right of door
