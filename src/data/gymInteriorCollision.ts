@@ -43,15 +43,15 @@ export const FIVE_GYM_INTERIOR_WORLD_HEIGHT = Math.floor(
   FIVE_GYM_INTERIOR_MAP_SIZE.height * FIVE_GYM_INTERIOR_MAP_DRAW_SCALE,
 )
 
-/** Just inside the south door — north of the exit trigger with 40+ px clearance (scaled). */
-export const FIVE_GYM_INTERIOR_ENTRY = scaleFiveGymInteriorPoint({ x: 612, y: 968 })
+/** Just inside the south door — same threshold as exit (native y=1034 → scaled 517). */
+export const FIVE_GYM_INTERIOR_ENTRY = scaleFiveGymInteriorPoint({ x: 612, y: 1034 })
 
-/** Exit trigger at the south doorway (scaled world coords). */
+/** South doorway exit — the door you enter through (native wall gap at y=1128). */
 export const FIVE_GYM_EXIT_ZONE = {
   x: scaleInteriorCoord(552),
-  y: scaleInteriorCoord(1148),
+  y: scaleInteriorCoord(1128),
   width: scaleInteriorSize(120),
-  height: scaleInteriorSize(76),
+  height: scaleInteriorSize(96),
 }
 
 /** Outer shell + center boxing ring (native map pixels — scale via `scaleFiveGymInteriorZone`). */
