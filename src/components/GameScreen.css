@@ -277,3 +277,37 @@
 .game-screen-gym-choice__btn:hover {
   filter: brightness(1.08);
 }
+
+.game-screen-connection-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 360;
+  margin: 0;
+  padding: 10px 14px;
+  max-width: min(92vw, 360px);
+  transform: translateX(-50%);
+  border: 1px solid rgba(212, 184, 122, 0.35);
+  border-radius: 8px;
+  background: rgba(10, 10, 18, 0.94);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #f4e8c1;
+  text-align: center;
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: game-screen-connection-toast-in 180ms ease;
+}
+
+@keyframes game-screen-connection-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}

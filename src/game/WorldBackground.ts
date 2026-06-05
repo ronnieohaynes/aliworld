@@ -1,16 +1,25 @@
-import { loadImage } from './loadImage'
+import { loadImageWithRetry } from './loadImage'
 
 const imageCache = new Map<string, HTMLImageElement>()
 const loadingCache = new Map<string, Promise<HTMLImageElement>>()
 
 export function loadWorldBackgroundForSrc(src: string): Promise<HTMLImageElement> {
+  const cached = imageCache.get(src)
+  if (cached) return Promise.resolve(cached)
+
   const existing = loadingCache.get(src)
   if (existing) return existing
 
-  const promise = loadImage(src).then((img) => {
-    imageCache.set(src, img)
-    return img
-  })
+  const promise = loadImageWithRetry(src)
+    .then((img) => {
+      imageCache.set(src, img)
+      return img
+    })
+    .catch((err) => {
+      loadingCache.delete(src)
+      throw err
+    })
+
   loadingCache.set(src, promise)
   return promise
 }

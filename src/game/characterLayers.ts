@@ -65,10 +65,12 @@ export function getSheetDrawSource(sheet: SpriteSheet): CanvasImageSource | null
   return (sheet as unknown as { drawSource: CanvasImageSource | null }).drawSource
 }
 
+import { retryAsync } from '../utils/retryAsync'
+
 async function tryLoadSheet(src: string): Promise<SpriteSheet | null> {
   const sheet = createSheet(src)
   try {
-    await sheet.load()
+    await retryAsync(() => sheet.load())
     return sheet.loaded ? sheet : null
   } catch {
     return null

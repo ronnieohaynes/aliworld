@@ -286,6 +286,8 @@ export function GameScreen() {
   const [mapTransitionReady, setMapTransitionReady] = useState(false)
   const [mapTransitionPending, setMapTransitionPending] = useState(false)
   const mapTransitionRef = useRef<MapTransitionTarget | null>(null)
+  const [connectionToast, setConnectionToast] = useState<string | null>(null)
+  const connectionToastTimerRef = useRef<number | null>(null)
   /** True until account hydrate resolves whether intro should run. */
   const [introPending, setIntroPending] = useState(true)
   const [introActive, setIntroActive] = useState(false)
@@ -575,6 +577,24 @@ export function GameScreen() {
     setMenuTransition(target)
   }, [])
 
+  const cancelMapTransition = useCallback(() => {
+    mapTransitionRef.current = null
+    setMapTransition(null)
+    setMapTransitionReady(false)
+    setMapTransitionPending(false)
+  }, [])
+
+  const showConnectionToast = useCallback((message: string) => {
+    if (connectionToastTimerRef.current != null) {
+      window.clearTimeout(connectionToastTimerRef.current)
+    }
+    setConnectionToast(message)
+    connectionToastTimerRef.current = window.setTimeout(() => {
+      setConnectionToast(null)
+      connectionToastTimerRef.current = null
+    }, 3200)
+  }, [])
+
   const beginMapTransition = useCallback(
     (
       cityId: CityId,
@@ -589,15 +609,25 @@ export function GameScreen() {
       setMapTransitionReady(false)
       setMapTransition(target)
       void preloadWorldEntry(CITY_CONFIGS[cityId], selectedMidnightVariant)
+        .then(() => {
+          if (mapTransitionRef.current !== target) return
+          setMapTransitionReady(true)
+        })
         .catch((err) => {
           console.error(
             '[map transition preload]',
             err instanceof Error ? err.message : String(err),
           )
+          cancelMapTransition()
+          showConnectionToast('connection hiccup. try that door again.')
         })
-        .finally(() => setMapTransitionReady(true))
     },
-    [mapTransitionPending, selectedMidnightVariant],
+    [
+      cancelMapTransition,
+      mapTransitionPending,
+      selectedMidnightVariant,
+      showConnectionToast,
+    ],
   )
 
   const handleMapTransitionMidpoint = useCallback(() => {
@@ -2026,6 +2056,11 @@ export function GameScreen() {
             <WorldEntryWipe ready={worldEntryReady} onComplete={handleWorldEntryComplete} />
           )}
           <ArtifactAcquisitionToasts />
+          {connectionToast ? (
+            <p className="game-screen-connection-toast" role="status" aria-live="polite">
+              {connectionToast}
+            </p>
+          ) : null}
           {devModeUi}
           {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
           {showBugReport && (

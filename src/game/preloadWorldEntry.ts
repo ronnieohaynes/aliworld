@@ -2,8 +2,9 @@ import type { CityConfig } from '../data/cityConfig'
 import { getMidnightWalkSrc } from '../data/midnightVariants'
 import type { MidnightVariantId } from '../data/midnightVariants'
 import { loadSpriteSheetWithFallback } from './characterLayers'
-import { loadImage } from './loadImage'
+import { loadImageWithRetry } from './loadImage'
 import { loadWorldBackgroundForSrc } from './WorldBackground'
+import { retryAsync } from '../utils/retryAsync'
 
 /** Preload map, player walk sheet, and all NPC sprites before revealing the world. */
 export async function preloadWorldEntry(
@@ -22,7 +23,9 @@ export async function preloadWorldEntry(
     ...(city.foregroundMapSrc
       ? [loadWorldBackgroundForSrc(city.foregroundMapSrc)]
       : []),
-    loadSpriteSheetWithFallback(walkSrc),
-    ...npcSrcs.map((src) => loadImage(src)),
+    retryAsync(() => loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
+      if (!sheet) throw new Error(`Failed to load walk sheet: ${walkSrc}`)
+    })),
+    ...npcSrcs.map((src) => loadImageWithRetry(src)),
   ])
 }

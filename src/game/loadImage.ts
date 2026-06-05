@@ -1,3 +1,5 @@
+import { retryAsync } from '../utils/retryAsync'
+
 export async function loadImage(src: string): Promise<HTMLImageElement> {
   const img = new Image()
   img.decoding = 'async'
@@ -17,4 +19,11 @@ export async function loadImage(src: string): Promise<HTMLImageElement> {
   }
 
   return img
+}
+
+export function loadImageWithRetry(
+  src: string,
+  delaysMs: number[] = [300, 800],
+): Promise<HTMLImageElement> {
+  return retryAsync(() => loadImage(src), delaysMs)
 }
