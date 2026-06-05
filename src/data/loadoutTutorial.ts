@@ -66,3 +66,10 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
     target: 'none',
   },
 ]
+
+/** Step waiting for START / home menu must still open the pause menu. */
+export function allowsStartMenuDuringLoadoutTutorial(step: number | null): boolean {
+  if (step == null) return false
+  const def = LOADOUT_TUTORIAL_STEPS[step]
+  return def?.waitForAction === true && def.target === 'menu_button'
+}
