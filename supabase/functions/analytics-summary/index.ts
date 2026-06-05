@@ -53,6 +53,9 @@ const POST_ACTIONS = new Set([
   'events_clear',
   'clear_events',
   'orphans_sweep',
+  'grant_create',
+  'grants_list',
+  'grant_delete',
 ])
 
 const GET_ACTIONS = new Set([
@@ -549,6 +552,83 @@ async function handleOrphansSweepAction(supabase: SupabaseClient): Promise<Respo
   })
 }
 
+const GRANT_KINDS = new Set(['badge', 'skin', 'prints'])
+
+async function resolveUserIdFromBody(
+  supabase: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<string | null> {
+  const direct = requireUserId(body)
+  if (direct) return direct
+
+  const handle = validateHandle(body.handle)
+  if (!handle) return null
+
+  const { data, error } = await supabase
+    .from('aw_users')
+    .select('user_id')
+    .eq('handle', handle)
+    .maybeSingle()
+
+  if (error || !data?.user_id) return null
+  return data.user_id
+}
+
+async function handleGrantsListAction(
+  supabase: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const userId = requireUserId(body)
+  if (!userId) return badRequest('user_id required')
+
+  const { data, error } = await supabase
+    .from('aw_grants')
+    .select('id, user_id, kind, value, label, note, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+
+  if (error) return jsonResponse({ error: error.message }, 500)
+  return jsonResponse(data ?? [])
+}
+
+async function handleGrantCreateAction(
+  supabase: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const userId = await resolveUserIdFromBody(supabase, body)
+  if (!userId) return badRequest('user_id or valid handle required')
+
+  const kind = typeof body.kind === 'string' ? body.kind : ''
+  if (!GRANT_KINDS.has(kind)) return badRequest('kind must be badge, skin, or prints')
+
+  const value = typeof body.value === 'string' ? body.value.trim() : ''
+  if (!value) return badRequest('value required')
+
+  const label = typeof body.label === 'string' ? body.label.trim() || null : null
+  const note = typeof body.note === 'string' ? body.note.trim() || null : null
+
+  const { data, error } = await supabase
+    .from('aw_grants')
+    .insert({ user_id: userId, kind, value, label, note })
+    .select('id, user_id, kind, value, label, note, created_at')
+    .single()
+
+  if (error) return jsonResponse({ error: error.message }, 500)
+  return jsonResponse(data)
+}
+
+async function handleGrantDeleteAction(
+  supabase: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const id = body.id
+  if (typeof id !== 'string' || !id) return badRequest('id required')
+
+  const { error } = await supabase.from('aw_grants').delete().eq('id', id)
+  if (error) return jsonResponse({ error: error.message }, 500)
+  return jsonResponse({ deleted: true })
+}
+
 async function handleSummaryAction(supabase: SupabaseClient, days: number): Promise<Response> {
   const { data, error } = await supabase.rpc('analytics_summary', { p_days: days })
 
@@ -627,6 +707,12 @@ Deno.serve(async (req) => {
         return await handleClearEventsAction(supabase)
       case 'orphans_sweep':
         return await handleOrphansSweepAction(supabase)
+      case 'grants_list':
+        return await handleGrantsListAction(supabase, body)
+      case 'grant_create':
+        return await handleGrantCreateAction(supabase, body)
+      case 'grant_delete':
+        return await handleGrantDeleteAction(supabase, body)
       default: {
         const daysRaw = url.searchParams.get('days')
         const days = daysRaw ? Math.min(90, Math.max(7, Number(daysRaw) || 30)) : 30

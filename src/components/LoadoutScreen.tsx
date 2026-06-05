@@ -29,6 +29,11 @@ import {
   subscribeCharacterStore,
 } from '../store/characterStore'
 import {
+  getBadgeGrantLabels,
+  getGrantsRevision,
+  subscribeGrantsStore,
+} from '../store/grantsStore'
+import {
   getEquippedMoves,
   getPlayerLevel,
   getPlayerSkills,
@@ -181,6 +186,11 @@ export function LoadoutScreen({
 
   const playerLevel = useMemo(() => getPlayerLevel(), [skills])
   const build = useMemo(() => deriveBuildName(skills), [skills])
+  const grantsRevision = useSyncExternalStore(subscribeGrantsStore, getGrantsRevision, getGrantsRevision)
+  const badgeLabels = useMemo(() => {
+    void grantsRevision
+    return getBadgeGrantLabels()
+  }, [grantsRevision])
   const skillSections = useMemo(
     () => buildSkillSections(skills, equipped),
     [skills, equipped],
@@ -302,6 +312,15 @@ export function LoadoutScreen({
             >
               {build.name}
             </p>
+            {badgeLabels.length > 0 ? (
+              <p className="loadout-screen__badges" aria-label="Prize badges">
+                {badgeLabels.map((label) => (
+                  <span key={label} className="loadout-screen__badge">
+                    {label}
+                  </span>
+                ))}
+              </p>
+            ) : null}
             <p className="loadout-screen__level">
               {playerHandle ? `@${playerHandle} · ` : ''}lvl {playerLevel}
             </p>

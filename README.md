@@ -34,16 +34,18 @@ Player events land in `aw_events`. RLS blocks cross-user reads, so the dashboard
    - `ANALYTICS_ADMIN_SECRET` — shared with the admin UI
    - `SUPABASE_SERVICE_ROLE_KEY` — if not auto-provided
 
-### Local admin page (`/admin` build)
+### Production admin (`play.dannyali.com/admin`)
 
-Separate Vite app — **not** included in `npm run build` for the player site.
+Built into `dist/admin/` on every `npm run build`. Cloudflare Pages serves static files under `/admin/` before the game SPA fallback.
+
+1. Run `db/005_aw_grants.sql` for prize grants.
+2. Deploy edge function (see above).
+3. Danny sets `ANALYTICS_ADMIN_SECRET` in Supabase Dashboard — **not** in the repo or client bundle.
+4. Open `/admin`, enter the secret once per browser session (`sessionStorage` + `x-analytics-admin-secret` header).
 
 ```bash
-# .env.local
-VITE_ANALYTICS_ADMIN_SECRET=your-shared-secret
-
 npm run admin:dev    # http://localhost:5174
-npm run admin:build  # → dist-admin/
+npm run build        # game → dist/ + admin → dist/admin/
 ```
 
-The admin page calls `analytics-summary` with the anon key + `x-analytics-admin-secret` header. **No service role in the browser bundle.**
+The admin page calls `analytics-summary` with the anon key + `x-analytics-admin-secret` header. **No service role or admin password in the browser bundle.**

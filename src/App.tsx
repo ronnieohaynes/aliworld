@@ -6,6 +6,7 @@ import { HandlePickScreen } from './components/HandlePickScreen'
 import { MidnightVariantSelectScreen } from './components/MidnightVariantSelectScreen'
 import { PasswordResetScreen } from './components/PasswordResetScreen'
 import { PrivacyPolicy } from './components/PrivacyPolicy'
+import { TermsOfService } from './components/TermsOfService'
 import { TitleCard } from './components/TitleCard'
 import { isComingSoonMode } from './config/comingSoon'
 import { useAuthStore } from './store/authStore'
@@ -26,6 +27,11 @@ function LoadingSplash() {
 function isPrivacyPath(pathname: string): boolean {
   const path = pathname.replace(/\/+$/, '') || '/'
   return path === '/privacy' || path.endsWith('/privacy')
+}
+
+function isTermsPath(pathname: string): boolean {
+  const path = pathname.replace(/\/+$/, '') || '/'
+  return path === '/terms' || path.endsWith('/terms')
 }
 
 function usePathname(): string {
@@ -103,6 +109,10 @@ export default function App() {
 
   if (isPrivacyPath(pathname)) {
     return <PrivacyPolicy />
+  }
+
+  if (isTermsPath(pathname)) {
+    return <TermsOfService />
   }
 
   if (isComingSoonMode()) {

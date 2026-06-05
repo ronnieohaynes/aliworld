@@ -13,15 +13,18 @@ type GymState = {
   /** Wins recorded per head id (0 … winsToClear). */
   headWins: Record<string, number>
   clearedHeads: Record<string, boolean>
+  /** True after the player has entered the oceanview gym interior at least once. */
+  oceanviewGymVisited: boolean
 }
 
 export type GymSerialized = {
   headWins?: Record<string, number>
   clearedHeads?: Record<string, boolean>
+  oceanviewGymVisited?: boolean
 }
 
 function emptyGymState(): GymState {
-  return { headWins: {}, clearedHeads: {} }
+  return { headWins: {}, clearedHeads: {}, oceanviewGymVisited: false }
 }
 
 function clampHeadWins(wins: number, max = FIVE_GYM1_WINS_TO_CLEAR): number {
@@ -60,7 +63,11 @@ function reconcileClearedFromWins(state: GymState): GymState {
   if (clearedHeads[FIVE_GYM1_ID] && (headWins[FIVE_GYM1_ID] ?? 0) < FIVE_GYM1_WINS_TO_CLEAR) {
     headWins[FIVE_GYM1_ID] = FIVE_GYM1_WINS_TO_CLEAR
   }
-  return { headWins, clearedHeads }
+  return {
+    headWins,
+    clearedHeads,
+    oceanviewGymVisited: state.oceanviewGymVisited,
+  }
 }
 
 function loadGymFromStorage(): GymState {
@@ -74,6 +81,7 @@ function loadGymFromStorage(): GymState {
         return reconcileClearedFromWins({
           headWins: normalizeHeadWins(o.headWins as Record<string, unknown> | undefined),
           clearedHeads: normalizeClearedHeads(o.clearedHeads as Record<string, unknown> | undefined),
+          oceanviewGymVisited: o.oceanviewGymVisited === true,
         })
       }
     }
@@ -92,6 +100,7 @@ function loadGymFromStorage(): GymState {
           return reconcileClearedFromWins({
             headWins: { [FIVE_GYM1_ID]: FIVE_GYM1_WINS_TO_CLEAR },
             clearedHeads: { [FIVE_GYM1_ID]: true },
+            oceanviewGymVisited: true,
           })
         }
       }
@@ -144,6 +153,17 @@ export function isGym5ive1Cleared(): boolean {
   return isGymHeadCleared(FIVE_GYM1_ID)
 }
 
+export function isOceanviewGymVisited(): boolean {
+  return state.oceanviewGymVisited
+}
+
+export function setOceanviewGymVisited(): void {
+  if (state.oceanviewGymVisited) return
+  state = { ...state, oceanviewGymVisited: true }
+  saveGymToStorage()
+  emit()
+}
+
 /** Record a win; clears the head at exactly `FIVE_GYM1_WINS_TO_CLEAR`. Losses never reset wins. */
 export function recordGymHeadWin(headId: string): void {
   if (isGymHeadCleared(headId)) return
@@ -155,7 +175,7 @@ export function recordGymHeadWin(headId: string): void {
     next >= FIVE_GYM1_WINS_TO_CLEAR
       ? { ...state.clearedHeads, [headId]: true }
       : state.clearedHeads
-  state = { headWins, clearedHeads }
+  state = { ...state, headWins, clearedHeads }
   saveGymToStorage()
   emit()
 }
@@ -170,6 +190,7 @@ export function setGymHeadCleared(headId: string): void {
   state = reconcileClearedFromWins({
     headWins: { ...state.headWins, [headId]: FIVE_GYM1_WINS_TO_CLEAR },
     clearedHeads: { ...state.clearedHeads, [headId]: true },
+    oceanviewGymVisited: state.oceanviewGymVisited,
   })
   saveGymToStorage()
   emit()
@@ -183,6 +204,7 @@ export function serialize(): GymSerialized {
   return {
     headWins: { ...state.headWins },
     clearedHeads: { ...state.clearedHeads },
+    oceanviewGymVisited: state.oceanviewGymVisited,
   }
 }
 
@@ -193,7 +215,11 @@ export function applyState(data: Partial<GymSerialized>): void {
   if (legacy.gymTier1Cleared === true) {
     clearedHeads[FIVE_GYM1_ID] = true
   }
-  state = reconcileClearedFromWins({ headWins, clearedHeads })
+  state = reconcileClearedFromWins({
+    headWins,
+    clearedHeads,
+    oceanviewGymVisited: data.oceanviewGymVisited === true,
+  })
   saveGymToStorage()
   emit()
 }

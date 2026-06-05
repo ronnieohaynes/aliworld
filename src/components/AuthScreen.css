@@ -99,6 +99,16 @@
   accent-color: #534ab7;
 }
 
+.auth-screen__terms-link {
+  color: #c084fc;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-screen__terms-link:hover {
+  color: #d4b87a;
+}
+
 .auth-screen__error {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

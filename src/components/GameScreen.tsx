@@ -25,9 +25,17 @@ import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifa
 import {
   getGymRevision,
   isGym5ive1Cleared,
+  isOceanviewGymVisited,
   recordGym5ive1Win,
+  setOceanviewGymVisited,
   subscribeGymStore,
 } from '../store/gymStore'
+import {
+  buildQuestObjectiveContext,
+  isE1ArcComplete,
+  resolveActiveQuestPulseDescriptor,
+  type QuestPulseTargetDescriptor,
+} from '../data/questObjectives'
 import {
   getQuest1Revision,
   hasTalkedToAllGatingNpcs,
@@ -122,11 +130,6 @@ import {
 } from '../store/playerStore'
 import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
-import {
-  buildQuestObjectiveContext,
-  resolveActiveQuestPulseDescriptor,
-  type QuestPulseTargetDescriptor,
-} from '../data/questObjectives'
 import {
   StartMenuScreen,
   type StartMenuAction,
@@ -241,6 +244,7 @@ export function GameScreen() {
   const cafeVideoHandoffStartedRef = useRef(false)
   const pendingPostE1NarrationRef = useRef(false)
   const pendingGymLossLineRef = useRef(false)
+  const pendingGymWelcomeRef = useRef(false)
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -351,6 +355,17 @@ export function GameScreen() {
     return resolveActiveQuestPulseDescriptor(buildQuestObjectiveContext())
   }, [artifactRevision, quest1Revision, quest2Revision, worldRevision])
 
+  const gymDoorPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
+    void gymRevision
+    void quest1Revision
+    if (currentCity !== 'five') return null
+    if (!E2_ENABLED && isE1ArcComplete(buildQuestObjectiveContext())) {
+      if (isGym5ive1Cleared() || isOceanviewGymVisited()) return null
+      return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
+    }
+    return null
+  }, [currentCity, gymRevision, quest1Revision])
+
   const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
     if (currentCity !== 'five-gym-interior') return null
@@ -358,7 +373,8 @@ export function GameScreen() {
     return { kind: 'npc', id: FIVE_GYM1_ID }
   }, [currentCity, gymHeadPulseDismissed, gymRevision])
 
-  const activePulseDescriptor = gymHeadPulseDescriptor ?? questPulseDescriptor
+  const activePulseDescriptor =
+    gymHeadPulseDescriptor ?? gymDoorPulseDescriptor ?? questPulseDescriptor
 
   useEffect(() => {
     if (currentCity === 'five-gym-interior') {
@@ -584,6 +600,10 @@ export function GameScreen() {
   const handleMapTransitionMidpoint = useCallback(() => {
     const target = mapTransitionRef.current
     if (!target) return
+    if (target.cityId === 'five-gym-interior' && !isOceanviewGymVisited()) {
+      setOceanviewGymVisited()
+      pendingGymWelcomeRef.current = true
+    }
     setCurrentCity(target.cityId)
     playerRef.current?.setPosition(target.x, target.y)
     if (target.facing) {
@@ -592,13 +612,6 @@ export function GameScreen() {
     if (target.cityId !== 'blue-store-interior') {
       setLastLocation(target.cityId, target.x, target.y)
     }
-  }, [])
-
-  const handleMapTransitionComplete = useCallback(() => {
-    mapTransitionRef.current = null
-    setMapTransition(null)
-    setMapTransitionReady(false)
-    setMapTransitionPending(false)
   }, [])
 
   /** Leave pause flow and return to gameplay (same as choosing resume). */
@@ -841,6 +854,19 @@ export function GameScreen() {
       onComplete,
     })
   }, [])
+
+  const handleMapTransitionComplete = useCallback(() => {
+    mapTransitionRef.current = null
+    setMapTransition(null)
+    setMapTransitionReady(false)
+    setMapTransitionPending(false)
+    if (pendingGymWelcomeRef.current) {
+      pendingGymWelcomeRef.current = false
+      showNarration([
+        'welcome to the first gym. beat the leader in the gauntlet to win prizes.',
+      ])
+    }
+  }, [showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
     showNarration([
@@ -1736,7 +1762,8 @@ export function GameScreen() {
     !cutsceneQuestHelperHidden
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
-  const showActiveQuestPulse = showQuestPulse || gymHeadPulseDescriptor != null
+  const showActiveQuestPulse =
+    showQuestPulse || gymHeadPulseDescriptor != null || gymDoorPulseDescriptor != null
 
   const isCoarsePointer = useCoarsePointer()
   const showInteractHint =

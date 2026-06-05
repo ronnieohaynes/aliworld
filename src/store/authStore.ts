@@ -5,6 +5,7 @@ import { isNetworkAuthError, toFriendlyAuthError } from '../utils/authErrors'
 import { getPasswordResetRedirectUrl, isPasswordRecoveryUrl } from '../utils/authRoutes'
 import { track } from '../lib/analytics'
 import { resetCharacterForSignOut } from './characterStore'
+import { refreshPlayerGrants, resetGrantsStore } from './grantsStore'
 import { hydrateFromAccount, resetProgression } from './playerStore'
 
 export type AuthStatus = 'loading' | 'signed-out' | 'signed-in'
@@ -79,6 +80,7 @@ async function loadProfileInternal(): Promise<void> {
 
   setState({ profile: profileFromHandle(data?.handle) })
   void hydrateFromAccount()
+  void refreshPlayerGrants()
 }
 
 function handleSignedIn(session: Session | null, recoveryPending: boolean): void {
@@ -101,6 +103,7 @@ function handleSignedOut(): void {
   })
   resetProgression()
   resetCharacterForSignOut()
+  resetGrantsStore()
 }
 
 supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {

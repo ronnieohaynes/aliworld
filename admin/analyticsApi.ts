@@ -131,6 +131,40 @@ export async function sweepOrphans(
   return postAction(adminSecret, 'orphans_sweep', {})
 }
 
+export async function fetchUserGrants(
+  adminSecret: string,
+  userId: string,
+): Promise<import('./types').AdminGrantRow[]> {
+  return postAction(adminSecret, 'grants_list', { user_id: userId })
+}
+
+export async function createGrant(
+  adminSecret: string,
+  payload: {
+    user_id?: string
+    handle?: string
+    kind: 'badge' | 'skin' | 'prints'
+    value: string
+    label?: string
+    note?: string
+  },
+): Promise<import('./types').AdminGrantRow> {
+  return postAction(adminSecret, 'grant_create', payload)
+}
+
+export async function deleteGrant(adminSecret: string, id: string): Promise<{ deleted: boolean }> {
+  return postAction(adminSecret, 'grant_delete', { id })
+}
+
+export async function verifyAdminSecret(adminSecret: string): Promise<boolean> {
+  try {
+    await fetchAnalyticsSummary(adminSecret, 7)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function downloadCsv(filename: string, header: string, rows: string[][]): void {
   const escape = (value: string) => {
     if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`

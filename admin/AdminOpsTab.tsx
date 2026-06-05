@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { clearAnalyticsEvents, sweepOrphans } from './analyticsApi'
+import { clearAnalyticsEvents, createGrant, sweepOrphans } from './analyticsApi'
 
 type Props = {
   adminSecret: string
@@ -12,6 +12,12 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
   const [clearText, setClearText] = useState('')
   const [clearing, setClearing] = useState(false)
   const [sweeping, setSweeping] = useState(false)
+  const [grantHandle, setGrantHandle] = useState('')
+  const [grantKind, setGrantKind] = useState<'badge' | 'skin' | 'prints'>('badge')
+  const [grantValue, setGrantValue] = useState('')
+  const [grantLabel, setGrantLabel] = useState('')
+  const [grantNote, setGrantNote] = useState('')
+  const [granting, setGranting] = useState(false)
 
   const handleClear = useCallback(async () => {
     if (clearText !== 'CLEAR') return
@@ -43,6 +49,30 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
     }
   }, [adminSecret, showToast])
 
+  const handleGrantByHandle = useCallback(async () => {
+    const handle = grantHandle.trim()
+    if (!handle || !grantValue.trim()) return
+    setGranting(true)
+    try {
+      await createGrant(adminSecret, {
+        handle,
+        kind: grantKind,
+        value: grantValue.trim(),
+        label: grantLabel.trim() || undefined,
+        note: grantNote.trim() || undefined,
+      })
+      showToast(`granted ${grantKind} to @${handle}`)
+      setGrantHandle('')
+      setGrantValue('')
+      setGrantLabel('')
+      setGrantNote('')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Grant failed')
+    } finally {
+      setGranting(false)
+    }
+  }, [adminSecret, grantHandle, grantKind, grantLabel, grantNote, grantValue, showToast])
+
   return (
     <div className="admin-ops">
       <section className="admin-danger">
@@ -59,6 +89,69 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
             {sweeping ? 'sweeping…' : 'sweep orphans'}
           </button>
         </div>
+      </section>
+
+      <section className="admin-ops__grant">
+        <h2 className="admin-danger__title">Grant by handle</h2>
+        <p className="admin-danger__lede">shortcut prize grant without opening user detail</p>
+        <div className="admin-grants__fields">
+          <label>
+            handle
+            <input
+              className="admin-modal__input"
+              value={grantHandle}
+              onChange={(e) => setGrantHandle(e.target.value)}
+              placeholder="player handle"
+            />
+          </label>
+          <label>
+            kind
+            <select
+              className="admin-modal__input"
+              value={grantKind}
+              onChange={(e) => setGrantKind(e.target.value as 'badge' | 'skin' | 'prints')}
+            >
+              <option value="badge">badge</option>
+              <option value="skin">skin</option>
+              <option value="prints">prints</option>
+            </select>
+          </label>
+          <label>
+            value
+            <input
+              className="admin-modal__input"
+              value={grantValue}
+              onChange={(e) => setGrantValue(e.target.value)}
+              placeholder="week1-champion"
+            />
+          </label>
+          <label>
+            label
+            <input
+              className="admin-modal__input"
+              value={grantLabel}
+              onChange={(e) => setGrantLabel(e.target.value)}
+              placeholder="WEEK 1 CHAMPION"
+            />
+          </label>
+          <label>
+            note
+            <input
+              className="admin-modal__input"
+              value={grantNote}
+              onChange={(e) => setGrantNote(e.target.value)}
+              placeholder="optional"
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          className="admin-users__export"
+          disabled={granting || !grantHandle.trim() || !grantValue.trim()}
+          onClick={() => void handleGrantByHandle()}
+        >
+          {granting ? 'granting…' : 'grant prize'}
+        </button>
       </section>
 
       <p className="admin-ops__boundary">

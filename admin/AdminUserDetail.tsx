@@ -7,6 +7,7 @@ import {
   resetUserProgress,
   setUserHandle,
 } from './analyticsApi'
+import { AdminGrantsSection } from './AdminGrantsSection'
 import type { AdminUserDetail } from './types'
 
 type Props = {
@@ -169,6 +170,8 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
                 )}
               </pre>
             </section>
+
+            <AdminGrantsSection adminSecret={adminSecret} userId={userId} showToast={showToast} />
 
             <section className="admin-detail__actions">
               <div className="admin-detail__handle-row">

@@ -118,6 +118,25 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
 
+.loadout-screen__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.loadout-screen__badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d4b87a;
+  text-shadow: 0 0 8px rgba(212, 184, 122, 0.45), 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
 .loadout-screen__level {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

@@ -1,0 +1,75 @@
+
+.admin-grants__list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-grants__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 184, 122, 0.18);
+  border-radius: 8px;
+  background: rgba(10, 10, 18, 0.55);
+}
+
+.admin-grants__meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(244, 232, 193, 0.55);
+}
+
+.admin-grants__note {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(192, 132, 252, 0.75);
+}
+
+.admin-grants__delete {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.admin-grants__form {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(212, 184, 122, 0.12);
+}
+
+.admin-grants__form-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(212, 184, 122, 0.85);
+}
+
+.admin-grants__fields {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-grants__fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  text-transform: lowercase;
+  color: rgba(244, 232, 193, 0.7);
+}
+
+.admin-ops__grant {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(212, 184, 122, 0.12);
+}

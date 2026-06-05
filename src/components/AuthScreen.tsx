@@ -169,7 +169,16 @@ export function AuthScreen() {
                 onChange={(e) => setTermsAccepted(e.target.checked)}
                 disabled={submitting}
               />
-              <span>i accept the terms of service</span>
+              <span>
+                i agree to the{' '}
+                <a className="auth-screen__terms-link" href="/terms">
+                  terms of service
+                </a>{' '}
+                and{' '}
+                <a className="auth-screen__terms-link" href="/privacy">
+                  privacy policy
+                </a>
+              </span>
             </label>
           )}
 

@@ -69,6 +69,16 @@ export type RecentEventRow = {
   handle: string | null
 }
 
+export type AdminGrantRow = {
+  id: string
+  user_id: string
+  kind: 'badge' | 'skin' | 'prints'
+  value: string
+  label: string | null
+  note: string | null
+  created_at: string
+}
+
 export type AdminTabId = 'overview' | 'users' | 'emails' | 'events' | 'ops'
 
 export function isAnalyticsEmpty(summary: AnalyticsSummary): boolean {

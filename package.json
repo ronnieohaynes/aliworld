@@ -7,7 +7,7 @@
     "dev": "vite",
     "admin:dev": "vite --config vite.admin.config.ts",
     "admin:build": "tsc -p tsconfig.admin.json && vite build --config vite.admin.config.ts",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && vite build --config vite.admin.config.ts",
     "preview": "vite preview",
     "predeploy": "npm run build && cp dist/index.html dist/404.html",
     "deploy": "gh-pages -d dist",
