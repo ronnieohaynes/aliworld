@@ -1418,6 +1418,10 @@ export function GameScreen() {
       return
     }
     if (!locationReady || worldEntryActive) return
+    if (currentCity === 'five-gym-interior') {
+      setMusicContext('gym')
+      return
+    }
     setMusicContext(`city:${currentCity}`)
   }, [
     battleNpcId,

@@ -23,6 +23,16 @@ import {
 import type { TriggerZone } from './triggerZones'
 import { TRIGGER_ZONES, DARKLINE_SPAWN_X, DARKLINE_SPAWN_Y } from './triggerZones'
 import { OCEANVIEW_GYM_ENTRANCE_ZONE } from './gymEntrance'
+import {
+  FIVE_GYM_EXIT_ZONE,
+  FIVE_GYM_INTERIOR_COLLISION_ZONES,
+  FIVE_GYM_INTERIOR_ENTRY,
+  FIVE_GYM_INTERIOR_MAP_DRAW_SCALE,
+  FIVE_GYM_INTERIOR_WORLD_HEIGHT,
+  FIVE_GYM_INTERIOR_WORLD_WIDTH,
+  scaleFiveGymInteriorZone,
+} from './gymInteriorCollision'
+import { FIVE_GYM_INTERIOR_NPCS } from './gymNpcs'
 import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
 /** Player-facing name for the starting district (internal id is `five`). */
@@ -123,11 +133,15 @@ const BLUE_STORE_INTERIOR_WORLD_HEIGHT = Math.floor(
   BLUE_STORE_INTERIOR_MAP_SIZE.height * BLUE_STORE_INTERIOR_MAP_DRAW_SCALE,
 )
 
-const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')
+const FIVE_GYM_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
+  {
+    id: 'five-gym-interior-exit',
+    ...FIVE_GYM_EXIT_ZONE,
+    action: 'OPEN_OCEANVIEW_GYM_EXIT',
+  },
+]
 
-const FIVE_GYM_INTERIOR_WORLD_WIDTH = 673
-const FIVE_GYM_INTERIOR_WORLD_HEIGHT = 673
-const FIVE_GYM_INTERIOR_ENTRY = { x: 337, y: 594 }
+const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')
 
 export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   five: {
@@ -199,17 +213,17 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     id: 'five-gym-interior',
     label: 'oceanview gym',
     mapSrc: FIVE_GYM_INTERIOR_MAP_SRC,
-    mapDrawScale: 0.55,
+    mapDrawScale: FIVE_GYM_INTERIOR_MAP_DRAW_SCALE,
     worldWidth: FIVE_GYM_INTERIOR_WORLD_WIDTH,
     worldHeight: FIVE_GYM_INTERIOR_WORLD_HEIGHT,
     spawnX: FIVE_GYM_INTERIOR_ENTRY.x,
     spawnY: FIVE_GYM_INTERIOR_ENTRY.y,
     darklineSpawnX: FIVE_GYM_INTERIOR_ENTRY.x,
     darklineSpawnY: FIVE_GYM_INTERIOR_ENTRY.y,
-    collisionZones: [],
+    collisionZones: FIVE_GYM_INTERIOR_COLLISION_ZONES.map(scaleFiveGymInteriorZone),
     occlusionZones: getOcclusionZones('five-gym-interior'),
-    triggerZones: [],
-    npcs: [],
+    triggerZones: FIVE_GYM_INTERIOR_TRIGGER_ZONES,
+    npcs: [...FIVE_GYM_INTERIOR_NPCS],
   },
 }
 

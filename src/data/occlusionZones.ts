@@ -42,6 +42,7 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
   'san-bruno': [],
   southside: [],
   'blue-store-interior': [],
+  'five-gym-interior': [],
 }
 
 export function getOcclusionZones(mapId: string): OcclusionZone[] {
