@@ -372,18 +372,17 @@ export function MidnightVariantSelectScreen() {
             </button>
           </section>
 
-          <div className="midnight-select-screen__tagline-slot">
+          <div className="midnight-select-screen__confirm-block">
             <p className="midnight-select-screen__tagline">ALIWORLD awaits</p>
+            <button
+              type="button"
+              className="midnight-select-screen__confirm"
+              disabled={!isReady}
+              onClick={() => handlePick(focusedVariant.id)}
+            >
+              select
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="midnight-select-screen__confirm"
-            disabled={!isReady}
-            onClick={() => handlePick(focusedVariant.id)}
-          >
-            select
-          </button>
 
           <footer className="midnight-select-screen__footer">
             <button
