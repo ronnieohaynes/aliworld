@@ -2,30 +2,57 @@ export type TrackDef = {
   id: string
   title: string
   artist: string
-  /** Public URL path, e.g. `/Assets/audio/theme.mp3` */
+  /** Public URL path, e.g. `/Assets/audio/theme.m4a` */
   file: string
   loop?: boolean
 }
 
-/** Danny drops mp3s in `public/Assets/audio/` and lists them here. */
+/** Danny drops tracks in `public/Assets/audio/` and lists them here. */
 export const TRACKS: TrackDef[] = [
-  // PLACEHOLDER — example after adding files:
-  // { id: 'theme', title: 'better luck next time', artist: 'danny ali', file: '/Assets/audio/theme.mp3', loop: true },
+  {
+    id: 'no-guarantees',
+    title: 'NO GUARANTEES',
+    artist: 'Danny Ali',
+    file: '/Assets/audio/01-no-guarantees.m4a',
+    loop: true,
+  },
+  {
+    id: 'made4it',
+    title: 'MADE4IT',
+    artist: 'Danny Ali',
+    file: '/Assets/audio/03-made4it.m4a',
+    loop: true,
+  },
+  {
+    id: 'the-let-go',
+    title: 'THE LET GO',
+    artist: 'Danny Ali',
+    file: '/Assets/audio/05-the-let-go.m4a',
+    loop: true,
+  },
+  {
+    id: 'spill',
+    title: 'SPILL',
+    artist: 'Danny Ali',
+    file: '/Assets/audio/06-spill.m4a',
+    loop: true,
+  },
+  {
+    id: 'vain',
+    title: 'VAIN',
+    artist: 'Danny Ali',
+    file: '/Assets/audio/07-vain.m4a',
+    loop: true,
+  },
 ]
 
 export const CONTEXT_TRACKS: Record<string, string> = {
-  // context → track id. resolution: exact → base segment → silence
-  // map each city/interior (danny fills track ids after dropping mp3s):
-  // 'city:five': 'five-theme',
-  // 'city:san-bruno': 'san-bruno-theme',
-  // 'city:southside': 'southside-theme',
-  // 'city:blue-store-interior': 'blue-store-theme',
-  // 'battle': 'battle-theme',
-  // 'battle:walker': 'battle-theme',
-  // 'battle:jaclyn': 'battle-theme',
-  // 'battle:mark': 'mark-battle-theme',
-  // 'battle:clerk': 'battle-theme',
-  // 'battle:restocker': 'battle-theme',
+  'city:five': 'no-guarantees',
+  /** Hillcrest overworld (CityId is san-bruno in cityConfig). */
+  'city:san-bruno': 'the-let-go',
+  'city:southside': 'vain',
+  gym: 'spill',
+  battle: 'made4it',
 }
 
 const tracksById = new Map(TRACKS.map((track) => [track.id, track]))
