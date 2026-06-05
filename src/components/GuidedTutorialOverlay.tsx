@@ -179,7 +179,8 @@ export function GuidedTutorialOverlay<T extends string>({
     onNext()
   }
 
-  const passThroughHole = waitForAction && highlightRect != null
+  /** Always pass clicks to game UI on wait steps; dim panels only when the hole is measured. */
+  const passThroughHole = waitForAction
 
   return createPortal(
     <div
@@ -191,7 +192,7 @@ export function GuidedTutorialOverlay<T extends string>({
       aria-label={ariaLabel}
       onClick={passThroughHole ? undefined : handleBackdropClick}
     >
-      {passThroughHole ? (
+      {passThroughHole && highlightRect ? (
         <TutorialDimPanels rect={highlightRect} borderColor={highlightColor} />
       ) : highlightRect ? (
         <div

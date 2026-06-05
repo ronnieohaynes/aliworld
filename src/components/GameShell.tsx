@@ -283,7 +283,10 @@ export function GameShell({
             type="button"
             ref={startButtonRef}
             className="game-shell__pill-btn"
-            onClick={onStart}
+            onClick={() => {
+              console.log('[tutorial-start] GameShell START click')
+              onStart()
+            }}
           >
             START
           </button>

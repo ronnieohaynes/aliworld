@@ -125,6 +125,7 @@ import { AccountSaveIndicator } from './AccountSaveIndicator'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
 import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
 import {
+  allowsStartMenuDuringLoadoutTutorial,
   blocksWorldInteractDuringLoadoutTutorial,
   LOADOUT_TUTORIAL_STEPS,
   type LoadoutTutorialTarget,
@@ -468,7 +469,26 @@ export function GameScreen() {
   }, [baseCityConfig, currentCity, markDefeated, quest2Revision])
 
   const canOpenStartMenu = useCallback(() => {
-    return (
+    const tutorialMenuException = allowsStartMenuDuringLoadoutTutorial(loadoutTutorialStep)
+    const blockers = {
+      loadoutTutorialStep,
+      tutorialMenuException,
+      worldEntryActive,
+      battleNpcId: !!battleNpcId,
+      battleWipePhase: !!battleWipePhase,
+      menuTransition: !!menuTransition,
+      mapTransition: !!mapTransition,
+      mapTransitionPending,
+      cultDarklinePhase: !!cultDarklinePhase,
+      dialogue: !!dialogue,
+      cutsceneFlowActive,
+      questTransitionActive,
+    }
+    if (tutorialMenuException) {
+      console.log('[tutorial-start] canOpenStartMenu: true (tutorial menu exception)', blockers)
+      return true
+    }
+    const ok =
       !worldEntryActive &&
       !battleNpcId &&
       !battleWipePhase &&
@@ -479,8 +499,12 @@ export function GameScreen() {
       !dialogue &&
       !cutsceneFlowActive &&
       !questTransitionActive
-    )
+    if (!ok) {
+      console.log('[tutorial-start] canOpenStartMenu: false', blockers)
+    }
+    return ok
   }, [
+    loadoutTutorialStep,
     worldEntryActive,
     battleNpcId,
     battleWipePhase,
@@ -548,16 +572,33 @@ export function GameScreen() {
   }, [beginMenuTransition])
 
   const toggleStartMenu = useCallback(() => {
-    if (menuTransition) return
+    console.log('[tutorial-start] toggleStartMenu enter', {
+      loadoutTutorialStep,
+      showStartMenu,
+      menuTransition: !!menuTransition,
+      menuReturnPending,
+      showFannyPack,
+      showLoadout,
+    })
+    if (menuTransition) {
+      console.log('[tutorial-start] toggleStartMenu guard: menuTransition')
+      return
+    }
     if (showStartMenu) {
+      console.log('[tutorial-start] toggleStartMenu guard: already open → resume')
       resumeFromPauseMenu()
       return
     }
     if (menuReturnPending && (showFannyPack || showLoadout)) {
+      console.log('[tutorial-start] toggleStartMenu guard: menuReturnPending → resume transition')
       beginResumeTransition()
       return
     }
-    if (!canOpenStartMenu()) return
+    if (!canOpenStartMenu()) {
+      console.log('[tutorial-start] toggleStartMenu guard: canOpenStartMenu false')
+      return
+    }
+    console.log('[tutorial-start] toggleStartMenu opening start menu')
     setShowStartMenu(true)
     if (loadoutTutorialStep === 1) {
       setLoadoutTutorialStep(2)
@@ -622,13 +663,25 @@ export function GameScreen() {
         }
         return
       }
-      if (battleNpcId || battleWipePhase || menuTransition) return
+      if (battleNpcId || battleWipePhase || menuTransition) {
+        console.log('[tutorial-start] Escape guard: battle or menuTransition', {
+          battleNpcId: !!battleNpcId,
+          battleWipePhase: !!battleWipePhase,
+          menuTransition: !!menuTransition,
+        })
+        return
+      }
       e.preventDefault()
       if (showStartMenu) {
+        console.log('[tutorial-start] Escape guard: closing start menu')
         setShowStartMenu(false)
         return
       }
-      if (!canOpenStartMenu()) return
+      if (!canOpenStartMenu()) {
+        console.log('[tutorial-start] Escape guard: canOpenStartMenu false')
+        return
+      }
+      console.log('[tutorial-start] Escape opening start menu')
       setShowStartMenu(true)
       if (loadoutTutorialStep === 1) {
         setLoadoutTutorialStep(2)
