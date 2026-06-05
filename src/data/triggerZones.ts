@@ -16,6 +16,18 @@ export type TriggerZone = {
   action: TriggerAction
 }
 
+/** Door/exit triggers that swap maps — must clear once before they can fire (spawn-safe). */
+const ARM_AFTER_CLEAR_ACTIONS = new Set<TriggerAction>([
+  'OPEN_BLUE_STORE',
+  'OPEN_BLUE_STORE_EXIT',
+  'OPEN_OCEANVIEW_GYM',
+  'OPEN_OCEANVIEW_GYM_EXIT',
+])
+
+export function isArmAfterClearTrigger(action: TriggerAction): boolean {
+  return ARM_AFTER_CLEAR_ACTIONS.has(action)
+}
+
 /** 13 Gallons door — disabled until interior is ready; add back to TRIGGER_ZONES to re-enable. */
 export const GALLONS_ENTRANCE_ZONE: TriggerZone = {
   id: 'gallons-entrance',

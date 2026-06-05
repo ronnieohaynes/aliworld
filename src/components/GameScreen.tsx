@@ -1093,7 +1093,7 @@ export function GameScreen() {
         if (currentCity !== 'five') return
         if (mapTransitionRef.current) return
         const interior = CITY_CONFIGS['five-gym-interior']
-        beginMapTransition('five-gym-interior', interior.spawnX, interior.spawnY)
+        beginMapTransition('five-gym-interior', interior.spawnX, interior.spawnY, 'up')
       } else if (action === 'OPEN_OCEANVIEW_GYM_EXIT') {
         if (currentCity !== 'five-gym-interior') return
         if (mapTransitionRef.current) return

@@ -43,8 +43,8 @@ export const FIVE_GYM_INTERIOR_WORLD_HEIGHT = Math.floor(
   FIVE_GYM_INTERIOR_MAP_SIZE.height * FIVE_GYM_INTERIOR_MAP_DRAW_SCALE,
 )
 
-/** Just inside the south door (scaled world coords). */
-export const FIVE_GYM_INTERIOR_ENTRY = scaleFiveGymInteriorPoint({ x: 612, y: 1080 })
+/** Just inside the south door — north of the exit trigger with 40+ px clearance (scaled). */
+export const FIVE_GYM_INTERIOR_ENTRY = scaleFiveGymInteriorPoint({ x: 612, y: 968 })
 
 /** Exit trigger at the south doorway (scaled world coords). */
 export const FIVE_GYM_EXIT_ZONE = {
