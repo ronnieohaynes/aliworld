@@ -136,6 +136,7 @@ import {
   type StartMenuHandle,
 } from './StartMenuScreen'
 import { AccountSaveIndicator } from './AccountSaveIndicator'
+import { BugReportScreen } from './BugReportScreen'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
 import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
 import {
@@ -267,6 +268,8 @@ export function GameScreen() {
   const [gymHeadPulseDismissed, setGymHeadPulseDismissed] = useState(false)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
+  const [bugReportScreenshot, setBugReportScreenshot] = useState<string | null>(null)
+  const [showBugReport, setShowBugReport] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -1717,6 +1720,14 @@ export function GameScreen() {
           resumeFromPauseMenu()
           break
         }
+        case 'report-bug': {
+          // Capture the game canvas before the modal renders over it
+          const canvas = document.querySelector('canvas')
+          const shot = canvas ? canvas.toDataURL('image/jpeg', 0.6) : null
+          setBugReportScreenshot(shot)
+          setShowBugReport(true)
+          break
+        }
         case 'new-game':
           break
         case 'sign-out':
@@ -2017,6 +2028,12 @@ export function GameScreen() {
           <ArtifactAcquisitionToasts />
           {devModeUi}
           {showFannyPack && <FannyPackScreen onClose={handleFannyPackClose} />}
+          {showBugReport && (
+            <BugReportScreen
+              screenshot={bugReportScreenshot}
+              onClose={() => setShowBugReport(false)}
+            />
+          )}
           {showStartMenu && <div className="game-screen-pause-scrim" aria-hidden />}
           {showStartMenu && (
             <StartMenuScreen

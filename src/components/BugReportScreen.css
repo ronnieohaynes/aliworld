@@ -1,0 +1,155 @@
+.bug-report-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 16px;
+}
+
+.bug-report-screen__panel {
+  background: #0e0e1a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  font-family: monospace;
+}
+
+.bug-report-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bug-report-screen__title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ebe2d2;
+  margin: 0;
+  letter-spacing: 0.05em;
+}
+
+.bug-report-screen__close {
+  background: none;
+  border: none;
+  color: #555566;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-family: monospace;
+}
+.bug-report-screen__close:hover {
+  color: #ebe2d2;
+}
+
+.bug-report-screen__screenshot-wrap {
+  position: relative;
+  border: 1px solid #2a2a3a;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bug-report-screen__screenshot {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  object-fit: cover;
+  object-position: center;
+  image-rendering: pixelated;
+}
+
+.bug-report-screen__screenshot-label {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-size: 9px;
+  color: #444455;
+  font-family: monospace;
+}
+
+.bug-report-screen__label {
+  font-size: 11px;
+  color: #888899;
+  font-family: monospace;
+}
+
+.bug-report-screen__textarea {
+  background: #07070f;
+  border: 1px solid #2a2a3a;
+  border-radius: 2px;
+  color: #ebe2d2;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 8px;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+}
+.bug-report-screen__textarea:focus {
+  border-color: #444455;
+}
+.bug-report-screen__textarea::placeholder {
+  color: #333344;
+}
+
+.bug-report-screen__error {
+  font-size: 11px;
+  color: #b32a1f;
+  margin: 0;
+  font-family: monospace;
+}
+
+.bug-report-screen__success {
+  font-size: 11px;
+  color: #44cc88;
+  margin: 0;
+  font-family: monospace;
+}
+
+.bug-report-screen__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.bug-report-screen__cancel {
+  background: none;
+  border: 1px solid #2a2a3a;
+  color: #888899;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.bug-report-screen__cancel:hover:not(:disabled) {
+  color: #ebe2d2;
+  border-color: #444455;
+}
+
+.bug-report-screen__submit {
+  background: #b32a1f;
+  border: none;
+  color: #ebe2d2;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.bug-report-screen__submit:hover:not(:disabled) {
+  background: #8a1f15;
+}
+.bug-report-screen__submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
