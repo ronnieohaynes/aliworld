@@ -869,10 +869,7 @@ export function GameScreen() {
   }, [showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
-    showNarration([
-      '[red jacket equips]',
-      "the darkline's open now. take it south.",
-    ])
+    showNarration(["the darkline's open now. take it south."])
   }, [showNarration])
 
   const finishCafeScene = useCallback(() => {

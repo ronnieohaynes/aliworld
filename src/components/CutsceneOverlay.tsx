@@ -86,6 +86,21 @@ function findActiveCaption(captions: Caption[] | undefined, clipTime: number): C
   return null
 }
 
+/** Merge API playhead with wall clock; API often reports 0 until the first tick. */
+function resolveClipTime(
+  apiClipTime: number,
+  clockClipTime: number,
+  skipAnchor: number | null,
+): number {
+  if (skipAnchor != null) {
+    return Math.max(apiClipTime, clockClipTime, skipAnchor)
+  }
+  if (apiClipTime > 0.05) {
+    return Math.max(apiClipTime, clockClipTime)
+  }
+  return clockClipTime
+}
+
 type Props = PlayCutsceneOptions & {
   onEnded: () => void
 }
@@ -261,22 +276,8 @@ export function CutsceneOverlay({
         startedAt != null ? (Date.now() - startedAt) / 1000 : 0
 
       const skipAnchor = devSkipAnchorClipRef.current
-      let clipTime: number
-      if (skipAnchor != null) {
-        // After Shift+E, keep UI tied to playhead (not pre-skip wall clock).
-        clipTime = Math.max(apiClipTime, clockClipTime, skipAnchor)
-      } else {
-        // Prefer advancing API time; wall clock covers stuck/zero getCurrentTime().
-        clipTime = clockClipTime
-        if (apiClipTime > 0.05 || clockClipTime < 0.5) {
-          if (apiClipTime <= clockClipTime + 3) {
-            clipTime = Math.max(apiClipTime, clockClipTime)
-          } else if (apiClipTime >= spanSeconds - 0.35) {
-            clipTime = apiClipTime
-          }
-        }
-      }
-      clipTime = spanSeconds > 0 ? Math.min(spanSeconds, clipTime) : 0
+      let clipTime = resolveClipTime(apiClipTime, clockClipTime, skipAnchor)
+      clipTime = spanSeconds > 0 ? Math.min(spanSeconds, Math.max(0, clipTime)) : 0
 
       const playheadMoved = apiClipTime > lastApiClipTimeRef.current + 0.02
       if (
@@ -295,17 +296,18 @@ export function CutsceneOverlay({
             playerState === YT_UNSTARTED ||
             playerState === YT_CUED))
 
-      if (!canAdvance) {
-        setActiveCaption(null)
-        return
+      // Captions track clip time whenever playback isn't explicitly paused.
+      if (playerState !== YT_PAUSED) {
+        setActiveCaption(findActiveCaption(captions, clipTime))
       }
 
-      const hideCaption = playerState === YT_BUFFERING
+      if (!canAdvance) {
+        return
+      }
 
       const next =
         spanSeconds > 0 ? Math.min(1, Math.max(0, clipTime / spanSeconds)) : 0
       setProgress(next)
-      setActiveCaption(hideCaption ? null : findActiveCaption(captions, clipTime))
 
       if (spanSeconds <= 0) return
 
@@ -371,9 +373,6 @@ export function CutsceneOverlay({
                 }
                 setActiveCaption(null)
                 return
-              }
-              if (event.data === YT_BUFFERING) {
-                setActiveCaption(null)
               }
               if (event.data === YT_PLAYING && pausedAtMsRef.current != null) {
                 const pausedMs = Date.now() - pausedAtMsRef.current
