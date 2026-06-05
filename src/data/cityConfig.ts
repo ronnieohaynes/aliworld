@@ -1,6 +1,7 @@
 import { publicAsset } from '../utils/publicAsset'
 import { getCollisionZones, type CollisionZone } from './collisionZones'
 import { getOcclusionZones, type OcclusionZone } from './occlusionZones'
+import { FIVE_MAP_SRC, WORLD_HEIGHT, WORLD_WIDTH } from '../constants/worldAssets'
 import {
   SOUTHSIDE_COLLISION_ZONES,
   SOUTHSIDE_DARKLINE_ARRIVAL,
@@ -27,10 +28,8 @@ import {
   FIVE_GYM_EXIT_ZONE,
   FIVE_GYM_INTERIOR_COLLISION_ZONES,
   FIVE_GYM_INTERIOR_ENTRY,
-  FIVE_GYM_INTERIOR_MAP_DRAW_SCALE,
   FIVE_GYM_INTERIOR_WORLD_HEIGHT,
   FIVE_GYM_INTERIOR_WORLD_WIDTH,
-  scaleFiveGymInteriorZone,
 } from './gymInteriorCollision'
 import { FIVE_GYM1_INTERIOR_NPCS } from './gymNpcs'
 import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
@@ -147,9 +146,9 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   five: {
     id: 'five',
     label: FIVE_DISPLAY_NAME,
-    mapSrc: publicAsset('Assets/tileset/5ive-map.PNG'),
-    worldWidth: 1254,
-    worldHeight: 1254,
+    mapSrc: FIVE_MAP_SRC,
+    worldWidth: WORLD_WIDTH,
+    worldHeight: WORLD_HEIGHT,
     spawnX: 600,
     spawnY: 500,
     darklineSpawnX: DARKLINE_SPAWN_X,
@@ -213,14 +212,13 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     id: 'five-gym-interior',
     label: 'oceanview gym',
     mapSrc: FIVE_GYM_INTERIOR_MAP_SRC,
-    mapDrawScale: FIVE_GYM_INTERIOR_MAP_DRAW_SCALE,
     worldWidth: FIVE_GYM_INTERIOR_WORLD_WIDTH,
     worldHeight: FIVE_GYM_INTERIOR_WORLD_HEIGHT,
     spawnX: FIVE_GYM_INTERIOR_ENTRY.x,
     spawnY: FIVE_GYM_INTERIOR_ENTRY.y,
     darklineSpawnX: FIVE_GYM_INTERIOR_ENTRY.x,
     darklineSpawnY: FIVE_GYM_INTERIOR_ENTRY.y,
-    collisionZones: FIVE_GYM_INTERIOR_COLLISION_ZONES.map(scaleFiveGymInteriorZone),
+    collisionZones: FIVE_GYM_INTERIOR_COLLISION_ZONES,
     occlusionZones: getOcclusionZones('five-gym-interior'),
     triggerZones: FIVE_GYM_INTERIOR_TRIGGER_ZONES,
     npcs: [...FIVE_GYM1_INTERIOR_NPCS],

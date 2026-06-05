@@ -553,6 +553,7 @@ function drawQuestObjectivePulse(
 
 export type PlayerHandle = {
   setPosition: (x: number, y: number) => void
+  setFacing: (facing: Direction) => void
   getPosition: () => { x: number; y: number }
   getNearbyNpcId: () => string | null
   devToggleCollisionDebug: () => void
@@ -697,6 +698,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       moveRemainder.current = { x: 0, y: 0 }
       activeTriggerIds.current.clear()
       triggerCooldown.current = 1
+    },
+    setFacing(facing: Direction) {
+      direction.current = facing
+      lastFacing.current = facing
     },
     getPosition() {
       return { x: worldPos.current.x, y: worldPos.current.y }

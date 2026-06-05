@@ -180,6 +180,7 @@ type MapTransitionTarget = {
   cityId: CityId
   x: number
   y: number
+  facing?: 'down' | 'up' | 'left' | 'right'
 }
 
 /** How often to push live coords into the account save buffer while exploring. */
@@ -557,9 +558,14 @@ export function GameScreen() {
   }, [])
 
   const beginMapTransition = useCallback(
-    (cityId: CityId, x: number, y: number) => {
+    (
+      cityId: CityId,
+      x: number,
+      y: number,
+      facing?: MapTransitionTarget['facing'],
+    ) => {
       if (mapTransitionRef.current || mapTransitionPending) return
-      const target: MapTransitionTarget = { cityId, x, y }
+      const target: MapTransitionTarget = { cityId, x, y, facing }
       mapTransitionRef.current = target
       setMapTransitionPending(true)
       setMapTransitionReady(false)
@@ -581,6 +587,9 @@ export function GameScreen() {
     if (!target) return
     setCurrentCity(target.cityId)
     playerRef.current?.setPosition(target.x, target.y)
+    if (target.facing) {
+      playerRef.current?.setFacing(target.facing)
+    }
     if (target.cityId !== 'blue-store-interior') {
       setLastLocation(target.cityId, target.x, target.y)
     }
@@ -1070,6 +1079,7 @@ export function GameScreen() {
           'five',
           FIVE_GYM_EXTERIOR_RETURN.x,
           FIVE_GYM_EXTERIOR_RETURN.y,
+          'down',
         )
       }
     },
