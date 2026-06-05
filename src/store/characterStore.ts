@@ -100,6 +100,16 @@ export function setMidnightVariant(id: MidnightVariantId): void {
   state = { ...state, midnightVariant: id }
   saveMidnightVariantToStorage(id)
   emit()
+  void import('./playerStore').then(({ triggerAccountProgressionSave }) => {
+    triggerAccountProgressionSave()
+  })
+}
+
+/** Apply variant loaded from account save (hydrate) without triggering a write-back. */
+export function applyMidnightVariantFromAccount(id: MidnightVariantId): void {
+  state = { ...state, midnightVariant: id }
+  saveMidnightVariantToStorage(id)
+  emit()
 }
 
 /** Clear saved pick so App shows the select screen again (debug / re-test). */

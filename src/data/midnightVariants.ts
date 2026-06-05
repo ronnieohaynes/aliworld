@@ -8,6 +8,7 @@ export type MidnightVariantId =
   | 'latino-m'
   | 'white-f'
   | 'filipino-m'
+  | 'danny-ali'
 
 /** Manual per-variant sprite crop / feet tuning (no auto-detection). */
 export type MidnightVariantRenderTuning = {
@@ -60,6 +61,7 @@ export const MIDNIGHT_DEFAULT_VARIANT_ID: MidnightVariantId = 'default'
 
 const BASELINE_RENDER = MIDNIGHT_DEFAULT_RENDER_TUNING
 
+/** Shown on the creation carousel only — hidden admin-grant variants excluded. */
 export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   { id: 'default', render: BASELINE_RENDER },
   {
@@ -107,24 +109,50 @@ export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   },
 ] as const
 
+/** Registered for rendering + admin — not on the public select screen. */
+const HIDDEN_MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
+  { id: 'danny-ali', render: BASELINE_RENDER },
+] as const
+
+const ALL_MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
+  ...MIDNIGHT_VARIANTS,
+  ...HIDDEN_MIDNIGHT_VARIANTS,
+]
+
 const WALK_SRC: Record<MidnightVariantId, string> = {
   default: `${MIDNIGHT_DIR}/midnight-default.png`,
   'asian-f': `${MIDNIGHT_DIR}/midnight-asian-f.png`,
   'latino-m': `${MIDNIGHT_DIR}/midnight-latino-m.png`,
   'white-f': `${MIDNIGHT_DIR}/midnight-white-f.png`,
   'filipino-m': `${MIDNIGHT_DIR}/midnight-filipino-m.png`,
+  'danny-ali': `${MIDNIGHT_DIR}/danny-ali.png`,
 }
 
-const RENDER_BY_ID: Record<MidnightVariantId, MidnightVariantRenderTuning> = {
-  default: MIDNIGHT_VARIANTS[0]!.render,
-  'asian-f': MIDNIGHT_VARIANTS[1]!.render,
-  'latino-m': MIDNIGHT_VARIANTS[2]!.render,
-  'white-f': MIDNIGHT_VARIANTS[3]!.render,
-  'filipino-m': MIDNIGHT_VARIANTS[4]!.render,
-}
+const RENDER_BY_ID = Object.fromEntries(
+  ALL_MIDNIGHT_VARIANTS.map((v) => [v.id, v.render]),
+) as Record<MidnightVariantId, MidnightVariantRenderTuning>
+
+const SELECTABLE_IDS = new Set(MIDNIGHT_VARIANTS.map((v) => v.id))
 
 export function isMidnightVariantId(value: string): value is MidnightVariantId {
-  return MIDNIGHT_VARIANTS.some((v) => v.id === value)
+  return Object.prototype.hasOwnProperty.call(WALK_SRC, value)
+}
+
+export function isSelectableMidnightVariantId(value: string): boolean {
+  return isMidnightVariantId(value) && SELECTABLE_IDS.has(value as MidnightVariantId)
+}
+
+/** All variant ids for admin (selectable + hidden). */
+export function listAllMidnightVariantOptions(): {
+  id: MidnightVariantId
+  label: string
+  hidden: boolean
+}[] {
+  return ALL_MIDNIGHT_VARIANTS.map((v) => ({
+    id: v.id,
+    label: SELECTABLE_IDS.has(v.id) ? v.id : `${v.id} (hidden)`,
+    hidden: !SELECTABLE_IDS.has(v.id),
+  }))
 }
 
 /** Walk sheet URL for a variant; unknown ids fall back to midnight-default. */

@@ -49,6 +49,8 @@ import {
   subscribeWorldMemoryStore,
   type WorldMemoryState,
 } from './worldMemory'
+import { applyMidnightVariantFromAccount, getMidnightVariant } from './characterStore'
+import { isMidnightVariantId, type MidnightVariantId } from '../data/midnightVariants'
 import {
   awardMoveXp,
   computePlayerLevel,
@@ -72,6 +74,7 @@ type AccountProgression = {
   lastCity?: CityId
   lastX?: number
   lastY?: number
+  midnightVariant?: MidnightVariantId
 }
 
 type AccountAvatarConfig = {
@@ -85,6 +88,7 @@ type AccountAvatarConfig = {
   lastCity?: unknown
   lastX?: unknown
   lastY?: unknown
+  midnightVariant?: unknown
 }
 
 type LastLocation = {
@@ -188,6 +192,7 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<boo
         gym: gymSerialize(),
         worldMemory: worldMemorySerialize(),
         artifacts: artifactSerialize(),
+        midnightVariant: getMidnightVariant() ?? undefined,
         ...(lastLocation
           ? {
               lastCity: lastLocation.city,
@@ -226,6 +231,9 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
     const lastCity = normalizeLastCity(avatarConfig?.lastCity)
     const lastX = normalizeWorldCoord(avatarConfig?.lastX)
     const lastY = normalizeWorldCoord(avatarConfig?.lastY)
+    const rawVariant = avatarConfig?.midnightVariant
+    const midnightVariant =
+      typeof rawVariant === 'string' && isMidnightVariantId(rawVariant) ? rawVariant : undefined
 
     return {
       equippedMoves: normalizeEquippedMoves(data.moves_equipped),
@@ -239,6 +247,7 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
       ...(lastCity !== undefined && lastX !== undefined && lastY !== undefined
         ? { lastCity, lastX, lastY }
         : {}),
+      ...(midnightVariant ? { midnightVariant } : {}),
     }
   } catch {
     return null
@@ -406,6 +415,11 @@ export async function hydrateFromAccount(): Promise<void> {
 
         if (data.lastCity !== undefined && data.lastX !== undefined && data.lastY !== undefined) {
           lastLocation = { city: data.lastCity, x: data.lastX, y: data.lastY }
+        }
+
+        const rawVariant = data.midnightVariant
+        if (typeof rawVariant === 'string' && isMidnightVariantId(rawVariant)) {
+          applyMidnightVariantFromAccount(rawVariant)
         }
       }
     } catch (err) {

@@ -99,6 +99,14 @@ export async function setUserHandle(
   return postAction(adminSecret, 'user_set_handle', { user_id: userId, handle })
 }
 
+export async function setUserVariant(
+  adminSecret: string,
+  userId: string,
+  variantId: string,
+): Promise<{ midnight_variant: string }> {
+  return postAction(adminSecret, 'user_set_variant', { user_id: userId, variant_id: variantId })
+}
+
 export async function fetchEmailSignups(adminSecret: string): Promise<EmailSignupRow[]> {
   return analyticsRequest<EmailSignupRow[]>(adminSecret, 'action=signups')
 }

@@ -6,9 +6,11 @@ import {
   formatJoinedDate,
   resetUserProgress,
   setUserHandle,
+  setUserVariant,
 } from './analyticsApi'
 import { AdminGrantsSection } from './AdminGrantsSection'
 import type { AdminUserDetail } from './types'
+import { listAllMidnightVariantOptions } from '../src/data/midnightVariants'
 
 type Props = {
   adminSecret: string
@@ -24,6 +26,9 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
   const [error, setError] = useState<string | null>(null)
   const [handleDraft, setHandleDraft] = useState('')
   const [savingHandle, setSavingHandle] = useState(false)
+  const [variantDraft, setVariantDraft] = useState('')
+  const [savingVariant, setSavingVariant] = useState(false)
+  const variantOptions = listAllMidnightVariantOptions()
   const [resetOpen, setResetOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -37,6 +42,7 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
       const data = await fetchUserDetail(adminSecret, userId)
       setDetail(data)
       setHandleDraft(data.handle ?? '')
+      setVariantDraft(data.midnight_variant ?? 'default')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load user')
       setDetail(null)
@@ -61,6 +67,21 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
       showToast(err instanceof Error ? err.message : 'Handle update failed')
     } finally {
       setSavingHandle(false)
+    }
+  }
+
+  const handleSaveVariant = async () => {
+    if (!detail || !variantDraft) return
+    setSavingVariant(true)
+    try {
+      const { midnight_variant } = await setUserVariant(adminSecret, userId, variantDraft)
+      showToast(`sprite set → ${midnight_variant}`)
+      await load()
+      onChanged()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Variant update failed')
+    } finally {
+      setSavingVariant(false)
     }
   }
 
@@ -174,6 +195,30 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
             <AdminGrantsSection adminSecret={adminSecret} userId={userId} showToast={showToast} />
 
             <section className="admin-detail__actions">
+              <div className="admin-detail__handle-row">
+                <label htmlFor="admin-variant-edit">set sprite / variant</label>
+                <select
+                  id="admin-variant-edit"
+                  className="admin-modal__input"
+                  value={variantDraft}
+                  onChange={(e) => setVariantDraft(e.target.value)}
+                >
+                  {variantOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="admin-users__export"
+                  onClick={() => void handleSaveVariant()}
+                  disabled={savingVariant || !variantDraft}
+                >
+                  {savingVariant ? 'saving…' : 'save sprite'}
+                </button>
+              </div>
+
               <div className="admin-detail__handle-row">
                 <label htmlFor="admin-handle-edit">edit handle</label>
                 <input

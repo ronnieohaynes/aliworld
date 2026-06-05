@@ -40,6 +40,15 @@ const MAX_PLAYER_LEVEL = 100
 const DEFAULT_EQUIPPED_MOVES = ['STRIKE', 'SLIP', 'HOLD', 'WHISPER'] as const
 const DEFAULT_UNLOCKED_MOVES = ['strike', 'slip', 'whisper', 'hold'] as const
 
+const MIDNIGHT_VARIANT_IDS = new Set([
+  'default',
+  'asian-f',
+  'latino-m',
+  'white-f',
+  'filipino-m',
+  'danny-ali',
+])
+
 type SkillId = (typeof SKILL_IDS)[number]
 type SkillProgress = { level: number; xp: number }
 type SkillsState = Record<SkillId, SkillProgress>
@@ -49,6 +58,7 @@ const POST_ACTIONS = new Set([
   'user_delete',
   'user_reset',
   'user_set_handle',
+  'user_set_variant',
   'signup_delete',
   'events_clear',
   'clear_events',
@@ -282,6 +292,8 @@ async function handleUserDetailAction(
     quest2: avatarConfig.quest2 ?? emptyQuest2Serialized(),
     world_memory: avatarConfig.worldMemory ?? emptyWorldMemory(),
     artifacts: avatarConfig.artifacts ?? [],
+    midnight_variant:
+      typeof avatarConfig.midnightVariant === 'string' ? avatarConfig.midnightVariant : null,
     event_count: eventStats.count ?? 0,
     last_seen: eventStats.data?.[0]?.created_at ?? null,
   })
@@ -379,6 +391,45 @@ async function handleUserSetHandleAction(
   if (!data) return jsonResponse({ error: 'User row not found' }, 404)
 
   return jsonResponse({ user_id: userId, handle: data.handle })
+}
+
+async function handleUserSetVariantAction(
+  supabase: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const userId = requireUserId(body)
+  if (!userId) return badRequest('user_id required')
+
+  const variantId = typeof body.variant_id === 'string' ? body.variant_id.trim() : ''
+  if (!MIDNIGHT_VARIANT_IDS.has(variantId)) {
+    return badRequest('variant_id must be a registered midnight variant')
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('aw_profiles')
+    .select('avatar_config')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existingError) return jsonResponse({ error: existingError.message }, 500)
+  if (!existing) return jsonResponse({ error: 'Profile not found' }, 404)
+
+  const avatarConfig = {
+    ...((existing.avatar_config ?? {}) as Record<string, unknown>),
+    midnightVariant: variantId,
+  }
+
+  const { error } = await supabase
+    .from('aw_profiles')
+    .update({
+      avatar_config: avatarConfig,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+
+  if (error) return jsonResponse({ error: error.message }, 500)
+
+  return jsonResponse({ user_id: userId, midnight_variant: variantId })
 }
 
 async function handleSignupsAction(supabase: SupabaseClient): Promise<Response> {
@@ -694,6 +745,8 @@ Deno.serve(async (req) => {
         return await handleUserResetAction(supabase, body)
       case 'user_set_handle':
         return await handleUserSetHandleAction(supabase, body)
+      case 'user_set_variant':
+        return await handleUserSetVariantAction(supabase, body)
       case 'signups':
         return await handleSignupsAction(supabase)
       case 'signup_delete':

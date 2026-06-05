@@ -47,6 +47,7 @@ export type AdminUserDetail = {
   artifacts: unknown
   event_count: number
   last_seen: string | null
+  midnight_variant: string | null
 }
 
 export type EmailSignupRow = {
