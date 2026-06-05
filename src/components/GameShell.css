@@ -336,6 +336,43 @@
   }
 }
 
+.game-shell__music--muted .game-shell__track-title,
+.game-shell__music--muted .game-shell__track-artist {
+  opacity: 0.55;
+}
+
+.game-shell__mute-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 28px;
+  min-height: 28px;
+  margin: 0;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #534ab7;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.game-shell__mute-btn:hover:not(:disabled) {
+  color: #7f77dd;
+  background: rgba(83, 74, 183, 0.12);
+}
+
+.game-shell__mute-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.game-shell__transport-btn--status {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
 .game-shell__transport-btn--ghost {
   opacity: 0.25;
   pointer-events: none;
@@ -407,6 +444,12 @@
 
   .game-shell__music {
     flex-shrink: 0;
+  }
+
+  .game-shell__mute-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
   }
 
   .game-shell__joystick {

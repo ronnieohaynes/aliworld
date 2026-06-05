@@ -65,6 +65,11 @@ export function getMusicPlayerGrantedSnapshot(): boolean {
   return hasMusicPlayer()
 }
 
+export function getMusicMutedSnapshot(): boolean {
+  if (!hasMusicPlayer()) return false
+  return isMusicMuted()
+}
+
 export function getMusicPlayingSnapshot(): boolean {
   return hasMusicPlayer() && !isMusicMuted()
 }

@@ -9,6 +9,7 @@ import {
   type RefObject,
 } from 'react'
 import {
+  getMusicMutedSnapshot,
   getMusicPlayerGrantedSnapshot,
   getMusicPlayingSnapshot,
   getMusicTrackArtistSnapshot,
@@ -220,6 +221,37 @@ function GameShellJoystick() {
   )
 }
 
+function MusicSpeakerIcon({ muted }: { muted: boolean }) {
+  if (muted) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+        <path
+          d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z"
+          fill="currentColor"
+        />
+        <path
+          d="M9.5 4.5L11 6M11 4.5L9.5 6"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <path d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z" fill="currentColor" />
+      <path
+        d="M9 5.5c.8.8.8 2.2 0 3M10.5 4c1.6 1.6 1.6 4.4 0 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function GameShell({
   children,
   onInteract = () => {},
@@ -240,6 +272,11 @@ export function GameShell({
     getMusicPlayingSnapshot,
     getMusicPlayingSnapshot,
   )
+  const muted = useSyncExternalStore(
+    subscribeMusicStore,
+    getMusicMutedSnapshot,
+    getMusicMutedSnapshot,
+  )
   const trackTitle = useSyncExternalStore(
     subscribeMusicStore,
     getMusicTrackTitleSnapshot,
@@ -252,7 +289,7 @@ export function GameShell({
   )
   const hasTrackMeta = trackTitle.length > 0
 
-  const togglePlay = useCallback(() => {
+  const toggleMute = useCallback(() => {
     toggleSoundtrackPlaying()
   }, [])
 
@@ -349,7 +386,9 @@ export function GameShell({
       <div
         className={`game-shell__music${
           !playerGranted ? ' game-shell__music--locked' : ''
-        }${playing && hasTrackMeta ? ' game-shell__music--playing' : ''}`}
+        }${playing && hasTrackMeta ? ' game-shell__music--playing' : ''}${
+          muted && playerGranted ? ' game-shell__music--muted' : ''
+        }`}
         aria-live="polite"
       >
         <div className="game-shell__album-art" aria-hidden>
@@ -369,6 +408,17 @@ export function GameShell({
         <div className="game-shell__transport">
           <button
             type="button"
+            className="game-shell__mute-btn"
+            aria-label={muted ? 'Unmute music' : 'Mute music'}
+            aria-pressed={muted}
+            title={muted ? 'Unmute' : 'Mute'}
+            onClick={toggleMute}
+            disabled={!playerGranted}
+          >
+            <MusicSpeakerIcon muted={muted} />
+          </button>
+          <button
+            type="button"
             className="game-shell__transport-btn game-shell__transport-btn--ghost"
             aria-hidden
             tabIndex={-1}
@@ -376,15 +426,12 @@ export function GameShell({
           >
             ◀◀
           </button>
-          <button
-            type="button"
-            className="game-shell__transport-btn"
-            aria-label={playing ? 'Mute music' : 'Unmute music'}
-            onClick={togglePlay}
-            disabled={!playerGranted}
+          <span
+            className="game-shell__transport-btn game-shell__transport-btn--status"
+            aria-hidden
           >
-            {playing ? '❚❚' : '▶'}
-          </button>
+            {playing && hasTrackMeta ? '❚❚' : '▶'}
+          </span>
           <button
             type="button"
             className="game-shell__transport-btn game-shell__transport-btn--ghost"
