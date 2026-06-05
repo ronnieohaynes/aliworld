@@ -58,10 +58,10 @@ export const FIVE_GYM_EXIT_ZONE = {
 export const FIVE_GYM_INTERIOR_COLLISION_ZONES: CollisionZone[] = [
   { x: 0,    y: 0,    width: 1224, height: 252  }, // top wall
   { x: 0,    y: 252,  width: 96,   height: 876  }, // left wall
-  // punching bag stands — magenta base of each left-wall unit
-  { x: 82,   y: 430,  width: 63,   height: 80   }, // bag stand 1
-  { x: 82,   y: 628,  width: 56,   height: 80   }, // bag stand 2
-  { x: 82,   y: 822,  width: 56,   height: 80   }, // bag stand 3
+  // punching bag stands — magenta base of each left-wall unit (small footprint)
+  { x: 82,   y: 480,  width: 56,   height: 30   }, // bag stand 1
+  { x: 82,   y: 669,  width: 56,   height: 24   }, // bag stand 2
+  { x: 82,   y: 855,  width: 52,   height: 34   }, // bag stand 3
   // upper-right interior block (counter / room corner)
   { x: 960,  y: 252,  width: 173,  height: 195  },
   { x: 1133, y: 252,  width: 91,   height: 876  }, // right wall

@@ -62,9 +62,9 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
   // five-gym-interior zones stored at native 1224px coords — scaled ×0.5 in cityConfig
   'five-gym-interior': [
     // left wall equipment — punching bags / heavy bags (3 units)
-    { x: 82,  y: 360, width: 63, height: 135 },
-    { x: 83,  y: 562, width: 56, height: 135 },
-    { x: 83,  y: 757, width: 56, height: 132 },
+    { x: 82,  y: 361, width: 56, height: 119 },
+    { x: 82,  y: 570, width: 56, height: 100 },
+    { x: 82,  y: 772, width: 52, height: 83  },
   ],
 }
 
