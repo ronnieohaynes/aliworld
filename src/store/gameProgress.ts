@@ -4,7 +4,7 @@
 
 import { resetArtifactsForDebug } from './artifactStore'
 import { clearMidnightVariant } from './characterStore'
-import { stopSoundtrack } from './musicStore'
+import { resetMusicPlayerForNewGame } from '../lib/audioManager'
 import { resetPlayerProgressForNewGame } from './playerStore'
 import { resetQuest1ForDebug } from './quest1Store'
 import { resetQuest2ForDebug } from './quest2Store'
@@ -15,6 +15,6 @@ export function performNewGameReset(): void {
   resetQuest1ForDebug()
   resetQuest2ForDebug()
   resetPlayerProgressForNewGame()
-  stopSoundtrack()
+  resetMusicPlayerForNewGame()
   clearMidnightVariant()
 }

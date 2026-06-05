@@ -17,3 +17,12 @@ export const DEFAULT_BATTLE_LOCATION: BattleLocationId = 'five'
 export function getBattleBackgroundSrc(location: BattleLocationId): string {
   return BATTLE_BACKGROUND_SRC[location]
 }
+
+/** Per-NPC override when set; otherwise the city's battle backdrop. */
+export function resolveBattleBackgroundSrc(entry: {
+  battleBg?: string
+  battleLocation: BattleLocationId
+}): string {
+  if (entry.battleBg) return entry.battleBg
+  return getBattleBackgroundSrc(entry.battleLocation)
+}

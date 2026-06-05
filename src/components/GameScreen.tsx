@@ -80,7 +80,6 @@ import {
 import { setMusicContext } from '../lib/audioManager'
 import {
   grantMusicPlayerFromAdam,
-  hasMusicPlayer,
   resumeMusicPlayerIfOwned,
 } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
@@ -1459,7 +1458,6 @@ export function GameScreen() {
   ])
 
   useEffect(() => {
-    if (!hasMusicPlayer()) return
     if (cutscene != null) {
       setMusicContext('cutscene')
       return

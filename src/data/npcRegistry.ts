@@ -36,7 +36,10 @@ export type NpcCombatEntry = {
   /** Optional per-move telegraph flavor (e.g. "winds up —"). */
   telegraphFlavor?: NpcTelegraphFlavor
   spriteSrc?: string
+  /** Location key for city battle backdrop when `battleBg` is unset. */
   battleLocation: BattleLocationId
+  /** Optional per-NPC backdrop override (`public/Assets/battle-bg/...`). */
+  battleBg?: string
   /** Scales enemy visible body height in battle (default 1). */
   battleSizeMult?: number
 }
@@ -153,7 +156,8 @@ const FIVE_GYM1: NpcCombatEntry = entry({
   },
   losingLine: '',
   spriteSrc: publicAsset('Assets/Characters/npcs/5ive-gym1.png'),
-  battleLocation: 'five_gym',
+  battleLocation: 'five',
+  battleBg: publicAsset('Assets/battle-bg/5ive-gym.png'),
   battleSizeMult: 1.02,
 })
 

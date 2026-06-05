@@ -2,19 +2,19 @@
  * GameShell music bar — facade over the context-aware audio manager.
  */
 
-import { ADAM_MP3_ARTIFACT_ID } from '../data/adamMp3Handoff'
-import { hasArtifact, subscribeArtifactStore } from './artifactStore'
-import { hasMp3PlayerOwned, subscribeQuest1Store } from './quest1Store'
+import { isMusicPlayerOwned } from '../lib/musicPlayerGate'
 import type { MusicCurrent } from '../lib/audioManager'
 import {
   getMusicCurrent,
   grantMusicPlayer,
   isMusicMuted,
-  isMusicPlayerGranted,
+  resetMusicPlayerForNewGame,
   setMusicMuted,
   subscribeAudioManager,
   toggleMusicMuted,
 } from '../lib/audioManager'
+import { subscribeArtifactStore } from './artifactStore'
+import { subscribeQuest1Store } from './quest1Store'
 
 export type MusicStoreSnapshot = {
   playing: boolean
@@ -30,7 +30,7 @@ let musicStoreSnapshot: MusicStoreSnapshot = {
 }
 
 export function hasMusicPlayer(): boolean {
-  return hasMp3PlayerOwned() || hasArtifact(ADAM_MP3_ARTIFACT_ID)
+  return isMusicPlayerOwned()
 }
 
 export function subscribeMusicStore(listener: () => void): () => void {
@@ -108,9 +108,8 @@ export function toggleSoundtrackPlaying(): void {
 }
 
 export function resumeMusicPlayerIfOwned(): void {
-  if (!hasMusicPlayer()) return
-  if (isMusicPlayerGranted()) {
-    setMusicMuted(false)
+  if (!hasMusicPlayer()) {
+    resetMusicPlayerForNewGame()
     return
   }
   void grantMusicPlayer()

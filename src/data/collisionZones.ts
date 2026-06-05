@@ -11,7 +11,9 @@ export interface CollisionZone {
 
 export const COLLISION_ZONES: Record<string, CollisionZone[]> = {
   five: [
-    { x: 12, y: 265, width: 1242, height: 62 },
+    // North storefront band — doorway gap at Oceanview Gym left door (x727–775).
+    { x: 12, y: 265, width: 715, height: 62 },
+    { x: 775, y: 265, width: 479, height: 62 },
     { x: 22, y: 348, width: 57, height: 35 },
     { x: 243, y: 348, width: 36, height: 37 },
     { x: 296, y: 348, width: 40, height: 35 },

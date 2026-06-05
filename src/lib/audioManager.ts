@@ -3,6 +3,7 @@ import {
   resolveTrackIdForContext,
   type TrackDef,
 } from '../data/musicRegistry'
+import { isMusicPlayerOwned } from './musicPlayerGate'
 
 const CROSSFADE_MS = 800
 const FADE_OUT_MS = 400
@@ -21,8 +22,8 @@ type FadeKind = 'out' | 'in' | 'duck' | 'unduck'
 
 class AudioManager {
   private listeners = new Set<() => void>()
+  /** Browser autoplay unlock (user gesture). Separate from MP3 ownership. */
   private unlocked = false
-  private playerGranted = false
   private pendingContext: string | null = 'city:five'
   private activeContext: string | null = null
   private muted: boolean
@@ -42,8 +43,8 @@ class AudioManager {
     this.audio.volume = 0
   }
 
-  isPlayerGranted(): boolean {
-    return this.playerGranted
+  isUnlocked(): boolean {
+    return this.unlocked
   }
 
   subscribe(listener: () => void): () => void {
@@ -66,6 +67,7 @@ class AudioManager {
   }
 
   current(): MusicCurrent | null {
+    if (!isMusicPlayerOwned()) return null
     return this.currentMeta
   }
 
@@ -73,7 +75,15 @@ class AudioManager {
     if (this.muted === muted) return
     this.muted = muted
     writeMuted(muted)
+    if (!isMusicPlayerOwned()) {
+      this.ensureSilenced()
+      this.emit()
+      return
+    }
     this.applyOutputVolume()
+    if (!muted && this.unlocked && this.audio.src && this.audio.paused) {
+      void this.resumeSameTrack()
+    }
     this.emit()
   }
 
@@ -86,13 +96,17 @@ class AudioManager {
     if (this.volume === next) return
     this.volume = next
     writeVolume(next)
+    if (!isMusicPlayerOwned()) return
     this.applyOutputVolume()
     this.emit()
   }
 
   setContext(context: string): void {
     this.pendingContext = context
-    if (!this.playerGranted) return
+    if (!isMusicPlayerOwned()) {
+      this.ensureSilenced()
+      return
+    }
     if (!this.unlocked) return
 
     if (context === 'cutscene') {
@@ -109,6 +123,10 @@ class AudioManager {
   }
 
   private enterCutscene(): void {
+    if (!isMusicPlayerOwned()) {
+      this.ensureSilenced()
+      return
+    }
     this.activeContext = 'cutscene'
     this.pendingContext = 'cutscene'
     this.ducking = true
@@ -116,7 +134,17 @@ class AudioManager {
     this.emit()
   }
 
+  private canPlayAudio(): boolean {
+    return isMusicPlayerOwned() && this.unlocked
+  }
+
   private async applyContext(context: string, forceReload = false): Promise<void> {
+    if (!isMusicPlayerOwned()) {
+      this.ensureSilenced()
+      return
+    }
+    if (!this.unlocked) return
+
     this.pendingContext = context
     this.activeContext = context
 
@@ -159,9 +187,11 @@ class AudioManager {
   }
 
   private async resumeSameTrack(): Promise<void> {
+    if (!this.canPlayAudio()) return
+
     const gen = ++this.fadeGeneration
     try {
-      if (this.unlocked && this.audio.paused) {
+      if (this.audio.paused) {
         await this.audio.play()
       }
     } catch {
@@ -173,6 +203,8 @@ class AudioManager {
   }
 
   private async crossfadeToTrack(track: TrackDef): Promise<void> {
+    if (!this.canPlayAudio()) return
+
     const gen = ++this.fadeGeneration
     if (this.audio.src && !this.audio.paused) {
       await this.fadeToLevel(0, FADE_OUT_MS, 'out', gen)
@@ -184,9 +216,7 @@ class AudioManager {
     this.setCurrentMeta(track)
 
     try {
-      if (this.unlocked) {
-        await this.audio.play()
-      }
+      await this.audio.play()
     } catch {
       // autoplay or missing file — stay silent
     }
@@ -208,7 +238,7 @@ class AudioManager {
   }
 
   private effectiveVolume(): number {
-    if (this.muted || this.ducking) return 0
+    if (!isMusicPlayerOwned() || this.muted || this.ducking) return 0
     return this.volume
   }
 
@@ -258,28 +288,69 @@ class AudioManager {
     })
   }
 
-  /** Called when Adam hands off the MP3 player (must run inside a user gesture). */
+  /** Stop playback and drop unlock state (new game / pre-grant). */
+  resetForNewGame(): void {
+    this.fadeGeneration++
+    cancelAnimationFrame(this.fadeFrame)
+    this.unlocked = false
+    this.ensureSilenced()
+    this.pendingContext = 'city:five'
+  }
+
+  private ensureSilenced(): void {
+    this.fadeGeneration++
+    cancelAnimationFrame(this.fadeFrame)
+    this.audio.pause()
+    this.audio.volume = 0
+    if (this.audio.src) {
+      this.audio.removeAttribute('src')
+    }
+    this.currentTrackId = null
+    this.currentMeta = null
+    this.activeContext = null
+    this.ducking = false
+    this.emit()
+  }
+
+  /** Unlock autoplay and fade in the current pending context (requires MP3 ownership). */
   async grantPlayer(): Promise<void> {
-    if (this.playerGranted && this.unlocked) {
-      const ctx = this.pendingContext ?? 'city:five'
-      await this.applyContext(ctx)
+    if (!isMusicPlayerOwned()) return
+
+    if (this.unlocked) {
+      const ctx = this.pendingContext ?? this.activeContext ?? 'city:five'
+      await this.applyContext(ctx, true)
       this.emit()
       return
     }
-    this.playerGranted = true
     await this.unlockAudio()
   }
 
   private async unlockAudio(): Promise<void> {
-    if (this.unlocked) return
-    this.unlocked = true
+    if (!isMusicPlayerOwned()) {
+      this.ensureSilenced()
+      return
+    }
 
+    if (this.unlocked) {
+      const ctx = this.pendingContext ?? this.activeContext ?? 'city:five'
+      await this.applyContext(ctx, true)
+      this.emit()
+      return
+    }
+
+    this.unlocked = true
     this.audio.volume = 0
     try {
       await this.audio.play()
       this.audio.pause()
     } catch {
-      // still mark unlocked — later play() may succeed
+      // still mark unlocked — later play() may succeed after Adam's gesture
+    }
+
+    if (!isMusicPlayerOwned()) {
+      this.ensureSilenced()
+      this.unlocked = false
+      return
     }
 
     const ctx = this.pendingContext ?? this.activeContext ?? 'city:five'
@@ -363,9 +434,17 @@ export function isMusicMuted(): boolean {
 }
 
 export function isMusicPlayerGranted(): boolean {
-  return getManager().isPlayerGranted()
+  return isMusicPlayerOwned()
+}
+
+export function isAudioUnlocked(): boolean {
+  return getManager().isUnlocked()
 }
 
 export function grantMusicPlayer(): Promise<void> {
   return getManager().grantPlayer()
+}
+
+export function resetMusicPlayerForNewGame(): void {
+  getManager().resetForNewGame()
 }

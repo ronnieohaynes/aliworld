@@ -10,9 +10,7 @@ import {
 import type { NpcCombatEntry } from '../data/npcRegistry'
 import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
 import {
-  DEFAULT_BATTLE_LOCATION,
-  getBattleBackgroundSrc,
-  type BattleLocationId,
+  resolveBattleBackgroundSrc,
 } from '../data/battleBackgrounds'
 import { publicAsset } from '../utils/publicAsset'
 import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '../game/characterLayers'
@@ -184,9 +182,7 @@ type Props = {
   battleRevealed?: boolean
 }
 
-function StageBackground({ location }: { location: BattleLocationId }) {
-  const src = getBattleBackgroundSrc(location)
-
+function StageBackground({ src }: { src: string }) {
   useEffect(() => {
     console.log('[BattleScreen] stage background src:', src)
   }, [src])
@@ -371,7 +367,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const build = getBuildName()
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
   const matchupLabel = counterMatchupLabel(counterRelation, state.npc.leanSkill)
-  const battleLocation = state.npc.battleLocation ?? DEFAULT_BATTLE_LOCATION
+  const battleBackgroundSrc = resolveBattleBackgroundSrc(state.npc)
   const payoffNpc = winPayoffNpc ?? state.npc
   const showWinNarration =
     state.phase === 'ended' &&
@@ -749,7 +745,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           )}
 
           <section className="battle-screen__stage" ref={stageRef} aria-hidden>
-            <StageBackground location={battleLocation} />
+            <StageBackground src={battleBackgroundSrc} />
             <div className="battle-screen__arena">
               <div
                 className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
