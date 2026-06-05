@@ -39,7 +39,24 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
     // lower sidewalk — fire hydrant
     { x: 779,  y: 661, width: 25,  height: 24 },
   ],
-  'san-bruno': [],
+  'san-bruno': [
+    // light posts / parking meters (thin vertical)
+    { x: 711, y: 198,  width: 10,  height: 21  },
+    { x: 706, y: 358,  width: 19,  height: 28  },
+    { x: 708, y: 442,  width: 17,  height: 71  },
+    { x: 708, y: 764,  width: 18,  height: 80  }, // was 707 — minor fix
+    { x: 708, y: 1052, width: 16,  height: 90  },
+    { x: 759, y: 1181, width: 22,  height: 74  },
+    // cafe patio area (pergola / overhang)
+    { x: 815, y: 905,  width: 220, height: 189 },
+    // small objects
+    { x: 907, y: 1033, width: 67,  height: 25  },
+    { x: 879, y: 1079, width: 21,  height: 17  },
+    { x: 925, y: 1112, width: 22,  height: 15  },
+    { x: 991, y: 1190, width: 18,  height: 17  },
+    { x: 844, y: 1218, width: 25,  height: 16  },
+    { x: 1020, y: 996, width: 15,  height: 43  },
+  ],
   southside: [],
   'blue-store-interior': [],
   // five-gym-interior zones stored at native 1224px coords — scaled ×0.5 in cityConfig
