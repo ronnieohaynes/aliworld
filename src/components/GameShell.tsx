@@ -11,7 +11,7 @@ import {
 import {
   getMusicMutedSnapshot,
   getMusicPlayerGrantedSnapshot,
-  getMusicPlayingSnapshot,
+  getMusicProgressSnapshot,
   getMusicTrackArtistSnapshot,
   getMusicTrackTitleSnapshot,
   subscribeMusicStore,
@@ -84,7 +84,6 @@ type Props = {
   onInteract?: () => void
   onScript?: () => void
   onFannyPack?: () => void
-  onSelect?: () => void
   onStart?: () => void
   startButtonRef?: RefObject<HTMLButtonElement | null>
 }
@@ -257,7 +256,6 @@ export function GameShell({
   onInteract = () => {},
   onScript = () => {},
   onFannyPack = () => {},
-  onSelect = () => {},
   onStart = () => {},
   startButtonRef,
 }: Props) {
@@ -266,11 +264,6 @@ export function GameShell({
     subscribeMusicStore,
     getMusicPlayerGrantedSnapshot,
     getMusicPlayerGrantedSnapshot,
-  )
-  const playing = useSyncExternalStore(
-    subscribeMusicStore,
-    getMusicPlayingSnapshot,
-    getMusicPlayingSnapshot,
   )
   const muted = useSyncExternalStore(
     subscribeMusicStore,
@@ -287,7 +280,13 @@ export function GameShell({
     getMusicTrackArtistSnapshot,
     getMusicTrackArtistSnapshot,
   )
+  const trackProgress = useSyncExternalStore(
+    subscribeMusicStore,
+    getMusicProgressSnapshot,
+    getMusicProgressSnapshot,
+  )
   const hasTrackMeta = trackTitle.length > 0
+  const progressPct = Math.round(trackProgress * 10_000) / 100
 
   const toggleMute = useCallback(() => {
     toggleSoundtrackPlaying()
@@ -313,9 +312,6 @@ export function GameShell({
         <GameShellJoystick />
 
         <div className="game-shell__center-btns">
-          <button type="button" className="game-shell__pill-btn" onClick={onSelect}>
-            SELECT
-          </button>
           <button
             type="button"
             ref={startButtonRef}
@@ -386,9 +382,7 @@ export function GameShell({
       <div
         className={`game-shell__music${
           !playerGranted ? ' game-shell__music--locked' : ''
-        }${playing && hasTrackMeta ? ' game-shell__music--playing' : ''}${
-          muted && playerGranted ? ' game-shell__music--muted' : ''
-        }`}
+        }${muted && playerGranted ? ' game-shell__music--muted' : ''}`}
         aria-live="polite"
       >
         <div className="game-shell__album-art" aria-hidden>
@@ -401,8 +395,18 @@ export function GameShell({
           <div className="game-shell__track-artist">
             {!playerGranted ? '—' : hasTrackMeta ? trackArtist : '—'}
           </div>
-          <div className="game-shell__progress">
-            <div className="game-shell__progress-fill" />
+          <div
+            className="game-shell__progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={hasTrackMeta ? progressPct : 0}
+            aria-label={hasTrackMeta ? 'Track progress' : undefined}
+          >
+            <div
+              className="game-shell__progress-fill"
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
         </div>
         <div className="game-shell__transport">
@@ -416,30 +420,6 @@ export function GameShell({
             disabled={!playerGranted}
           >
             <MusicSpeakerIcon muted={muted} />
-          </button>
-          <button
-            type="button"
-            className="game-shell__transport-btn game-shell__transport-btn--ghost"
-            aria-hidden
-            tabIndex={-1}
-            disabled
-          >
-            ◀◀
-          </button>
-          <span
-            className="game-shell__transport-btn game-shell__transport-btn--status"
-            aria-hidden
-          >
-            {playing && hasTrackMeta ? '❚❚' : '▶'}
-          </span>
-          <button
-            type="button"
-            className="game-shell__transport-btn game-shell__transport-btn--ghost"
-            aria-hidden
-            tabIndex={-1}
-            disabled
-          >
-            ▶▶
           </button>
         </div>
       </div>

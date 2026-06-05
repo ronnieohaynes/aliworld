@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { clearMidnightVariant } from '../store/characterStore'
-import { toggleShowDebug } from '../store/playerStore'
+import { clearShowDebug, toggleShowDebug } from '../store/playerStore'
 import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
 import type { PlayCutsceneOptions } from '../lib/playCutscene'
 import type { PlayerHandle } from '../components/Player'
@@ -100,6 +100,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
     (enabled: boolean) => {
       writeDevModeSession(enabled)
       setDevModeEnabled(enabled)
+      if (!enabled) clearShowDebug()
       showToast(enabled ? 'dev mode on.' : 'dev mode off.')
     },
     [showToast],

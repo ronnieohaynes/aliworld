@@ -6,6 +6,7 @@ import { isMusicPlayerOwned } from '../lib/musicPlayerGate'
 import type { MusicCurrent } from '../lib/audioManager'
 import {
   getMusicCurrent,
+  getMusicPlaybackProgress,
   grantMusicPlayer,
   grantMusicPlayerFromGesture,
   isMusicMuted,
@@ -88,6 +89,11 @@ export function getMusicTrackTitleSnapshot(): string {
 export function getMusicTrackArtistSnapshot(): string {
   if (!hasMusicPlayer()) return ''
   return getMusicCurrent()?.artist ?? ''
+}
+
+export function getMusicProgressSnapshot(): number {
+  if (!hasMusicPlayer()) return 0
+  return getMusicPlaybackProgress()
 }
 
 export function isSoundtrackPlaying(): boolean {

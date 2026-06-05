@@ -38,6 +38,7 @@ import {
 import { drawWorldForegroundOverlay, drawWorldMap } from '../game/drawWorldBackground'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { playerScreenAnchor } from '../game/playerScreenAnchor'
+import { isDevModeEnabled } from '../lib/devMode'
 import { getShowDebug } from '../store/playerStore'
 import { SpriteSheet, type Direction } from '../game/SpriteSheet'
 import { loadWorldBackgroundForSrc } from '../game/WorldBackground'
@@ -1184,7 +1185,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         cfg.mapDrawScale ?? 1,
       )
 
-      if (showCollisionDebug.current) {
+      if (isDevModeEnabled() && showCollisionDebug.current) {
         drawCollisionZonesDebug(ctx, getMapCollisionZones(cfg), cfg.npcs)
         drawTransitionZonesDebug(ctx, cfg.triggerZones)
         drawDarklineEntranceZonesDebug(ctx, cfg.triggerZones)
@@ -1381,7 +1382,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         )
       }
 
-      if (showCoordinateOverlay.current) {
+      const devMode = isDevModeEnabled()
+      if (devMode && showCoordinateOverlay.current) {
         drawCoordinateGrid(ctx, zoom, focus.x, focus.y, width, height, cfg.worldWidth, cfg.worldHeight)
         drawMidnightCrosshair(ctx, worldX, worldY, zoom)
       }
@@ -1389,7 +1391,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       ctx.restore()
 
       const debugInfo: DebugInfo = { direction: facing, frame, sx, sy, state }
-      const coordReadout = showCoordinateOverlay.current
+      const coordReadout =
+        devMode && showCoordinateOverlay.current
         ? {
             worldX,
             worldY,
@@ -1397,7 +1400,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             pointer: pointerWorldPos.current,
           }
         : null
-      if (getShowDebug()) {
+      if (devMode && getShowDebug()) {
         const tuningLines = formatMidnightVariantTuningDebug(variantId, renderTuning)
         drawDebugOverlay(ctx, debugInfo, coordReadout, cfg.id)
         setDebugHud(formatDebugText(debugInfo, coordReadout, tuningLines, cfg.id))

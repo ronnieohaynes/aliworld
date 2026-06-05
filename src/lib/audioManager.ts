@@ -41,6 +41,9 @@ class AudioManager {
     this.volume = clampVolume(readVolume())
     this.audio.preload = 'auto'
     this.audio.volume = 0
+    this.audio.addEventListener('timeupdate', () => this.emit())
+    this.audio.addEventListener('loadedmetadata', () => this.emit())
+    this.audio.addEventListener('durationchange', () => this.emit())
   }
 
   isUnlocked(): boolean {
@@ -69,6 +72,16 @@ class AudioManager {
   current(): MusicCurrent | null {
     if (!isMusicPlayerOwned()) return null
     return this.currentMeta
+  }
+
+  /** 0–1 playhead within the current track; 0 when idle or duration unknown. */
+  playbackProgress(): number {
+    if (!isMusicPlayerOwned() || !this.currentMeta || !this.audio.src) return 0
+    const duration = this.audio.duration
+    if (!Number.isFinite(duration) || duration <= 0) return 0
+    const current = this.audio.currentTime
+    if (!Number.isFinite(current) || current < 0) return 0
+    return Math.min(1, current / duration)
   }
 
   setMuted(muted: boolean): void {
@@ -462,6 +475,10 @@ export function setMusicVolume(level: number): void {
 
 export function getMusicCurrent(): MusicCurrent | null {
   return getManager().current()
+}
+
+export function getMusicPlaybackProgress(): number {
+  return getManager().playbackProgress()
 }
 
 export function isMusicMuted(): boolean {
