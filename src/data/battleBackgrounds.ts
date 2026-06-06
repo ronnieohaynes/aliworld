@@ -26,3 +26,11 @@ export function resolveBattleBackgroundSrc(entry: {
   if (entry.battleBg) return entry.battleBg
   return getBattleBackgroundSrc(entry.battleLocation)
 }
+
+/**
+ * Return the battle background src for a given location, used for the
+ * split-stage hometown system (top = enemy bg, bottom = player bg).
+ */
+export function getBattleBgForLocation(locationId: BattleLocationId): string {
+  return BATTLE_BACKGROUND_SRC[locationId] ?? BATTLE_BACKGROUND_SRC[DEFAULT_BATTLE_LOCATION]
+}

@@ -30,8 +30,11 @@ export const BATTLE_ENEMY_X = 36
 /** @deprecated Feet X is derived from BATTLE_PLAYER_FEET — left edge varies per sprite. */
 export const BATTLE_PLAYER_X = 213
 
-/** Target visible body height for enemies (one dial for all NPCs). */
-export const BATTLE_TARGET_VISIBLE_H = 150
+/** Enemy visible height in battle. */
+export const BATTLE_TARGET_VISIBLE_H = 125
+
+/** Player visible height — slightly smaller so the perspective reads correctly. */
+export const BATTLE_PLAYER_TARGET_VISIBLE_H = 80
 
 /** @deprecated Alias for enemy target height — use with battleSizeMult. */
 export const BATTLE_ENEMY_DISPLAY_H = BATTLE_TARGET_VISIBLE_H
@@ -49,6 +52,8 @@ export const BATTLE_PLAYER_SOURCE_H = WORLD_PLAYER_DISPLAY_HEIGHT
 export type BattleSpritePlacement = {
   x: number
   drawY: number
+  /** Y of the topmost visible pixel — use this for plate anchoring. */
+  visibleDrawY: number
   displayWidth: number
   displayHeight: number
   sourceWidth: number
@@ -89,10 +94,12 @@ export function layoutSpriteAtFeet(
   const foot = footAnchorInSource(bounds)
   const x = Math.floor(feetX - foot.x * uniformScale)
   const drawY = Math.floor(feetY - foot.y * uniformScale)
+  const visibleDrawY = drawY + Math.floor(bounds.top * uniformScale)
 
   return {
     x,
     drawY,
+    visibleDrawY,
     displayWidth: displayW,
     displayHeight: displayH,
     sourceWidth: sourceW,

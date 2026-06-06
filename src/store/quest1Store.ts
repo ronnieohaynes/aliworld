@@ -207,6 +207,12 @@ export function setBattleTutorialSeen(): void {
   emit()
 }
 
+export function resetBattleTutorialSeen(): void {
+  state = { ...state, battleTutorialSeen: false }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export function isWalkerHeavyTutorialBeatSeen(): boolean {
   return state.walkerHeavyTutorialBeatSeen
 }

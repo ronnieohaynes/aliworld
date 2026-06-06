@@ -60,6 +60,7 @@ export type UseDevControlsOptions = {
   canToggleDevMode: () => boolean
   spawnDevSpar: () => void
   canSpawnDevSpar: () => boolean
+  startTutorialBattle: () => void
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -134,6 +135,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         canToggleDevMode,
         spawnDevSpar,
         canSpawnDevSpar,
+        startTutorialBattle,
       } = optionsRef.current
 
       if (isShiftDigit2(e)) {
@@ -176,6 +178,13 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         if (!canSpawnDevSpar()) return
         e.preventDefault()
         spawnDevSpar()
+        return
+      }
+
+      if (e.shiftKey && (e.code === 'KeyT' || e.key === 'T')) {
+        if (!canSpawnDevSpar()) return
+        e.preventDefault()
+        startTutorialBattle()
         return
       }
 

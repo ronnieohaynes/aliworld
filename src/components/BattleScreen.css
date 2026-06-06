@@ -24,13 +24,9 @@
   image-rendering: crisp-edges;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   user-select: none;
-  --battle-enemy-hud-top: 10px;
-  --battle-enemy-hud-h: 91px;
-  --battle-telegraph-h: 36px;
-  --battle-stack-lift: 10px;
 }
 
-/* ── Stage background (behind fighters only) ─────────────────────── */
+/* ── Stage background ─────────────────────── */
 
 .battle-screen__stage-bg {
   position: absolute;
@@ -46,19 +42,45 @@
   background: #0a0a12;
 }
 
+/* Base style shared by both halves */
 .battle-screen__stage-bg-img {
   position: absolute;
-  inset: 0;
   z-index: 1;
   display: block;
   width: 100%;
-  height: 100%;
   object-fit: cover;
-  object-position: center center;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   opacity: 0.78;
   filter: brightness(0.72) saturate(0.82);
+}
+
+/* Enemy hometown — same crop as player */
+.battle-screen__stage-bg-img--top {
+  top: 0;
+  left: 0;
+  height: 50%;
+  object-position: center bottom;
+}
+
+/* Player hometown — bottom crop (street level) */
+.battle-screen__stage-bg-img--bottom {
+  bottom: 0;
+  left: 0;
+  height: 50%;
+  object-position: center bottom;
+}
+
+/* Thin seam between the two halves */
+.battle-screen__stage-bg-seam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
 }
 
 .battle-screen__stage::after {
@@ -72,7 +94,7 @@
     linear-gradient(180deg, rgba(10, 10, 18, 0.28) 0%, transparent 28%, transparent 88%, rgba(10, 10, 18, 0.12) 100%);
 }
 
-/* ── Layout: stage fills playfield; HUD/moves overlay bottom ─────── */
+/* ── Layout ─────────────────── */
 
 .battle-screen__content {
   position: relative;
@@ -97,68 +119,138 @@
 .battle-screen__bottom-stack {
   position: relative;
   z-index: 10;
-  margin-top: auto;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  background: #0a0a12;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* 1 — Enemy name + HP + status (overlay; fixed height so tags never shift stage) */
-.battle-screen__enemy-hud {
+/* ── Stage: flex item that fills space above the bottom stack ── */
+.battle-screen__stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  z-index: 1;
+  overflow: hidden;
+  overflow-anchor: none;
+}
+
+/* ── Arena: fills the stage (stage no longer overlaps move grid) ── */
+.battle-screen__arena {
   position: absolute;
-  top: var(--battle-enemy-hud-top);
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+}
+
+/* ── Fighter containers: sprite is the anchor; plate floats above via absolute ── */
+.battle-screen__fighter {
+  position: absolute;
   left: 0;
   right: 0;
-  z-index: 5;
-  height: var(--battle-enemy-hud-h);
-  box-sizing: border-box;
-  padding: 10px 16px 6px;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+/* ── Plate anchor: zero-height absolutely positioned point at sprite drawY ── */
+.battle-screen__plate-anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin: 0 auto;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* ── Sprite plate: floats above the anchor point (= above sprite top) ── */
+.battle-screen__sprite-plate {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+  width: 180px;
+  padding: 6px 12px 7px;
+  border-radius: 5px;
+  background: rgba(8, 8, 16, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  overflow: hidden;
+  align-items: center;
+  gap: 5px;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(10, 10, 18, 0.96) 0%, rgba(10, 10, 18, 0.7) 65%, rgba(10, 10, 18, 0) 100%);
+  box-sizing: border-box;
 }
 
-.battle-screen__enemy-status-slot {
-  flex: 0 0 40px;
-  height: 40px;
-  min-height: 40px;
-  max-height: 40px;
-  overflow: hidden;
-}
 
-.battle-screen__enemy-hud .battle-screen__status-tags {
-  min-height: 40px;
-  max-height: 40px;
-  overflow: hidden;
-  align-content: flex-start;
-}
-
-.battle-screen__telegraph-move {
+.battle-screen__plate-name {
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  color: #f4e8c1;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
 }
 
-.battle-screen__enemy-level {
-  opacity: 0.85;
-  font-size: 0.92em;
+.battle-screen__plate-level {
+  font-weight: 400;
+  opacity: 0.82;
   letter-spacing: 0.04em;
 }
 
-.battle-screen__enemy-name {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: #f4e8c1;
+.battle-screen__plate-archetype {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1;
+}
+
+.battle-screen__plate-status-slot {
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Level flash on player level-up */
+.battle-screen__plate-level--flash {
+  color: #f5c842;
+  animation: battle-level-flash 0.6s ease;
+}
+
+@keyframes battle-level-flash {
+  0% { color: #f5c842; }
+  60% { color: #fffbe8; }
+  100% { color: inherit; }
+}
+
+/* ── HP bar ── */
+/* ── XP progress bar (player plate only) ── */
+.battle-screen__xp-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(14, 14, 24, 0.96);
+  border: 1px solid #2a2a3e;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.battle-screen__xp-fill {
+  height: 100%;
+  background: #f5c842;
+  border-radius: 1px;
+  opacity: 0.7;
+  transition: width 600ms ease-out;
 }
 
 .battle-screen__hp-track {
   width: 100%;
-  height: 9px;
+  height: 7px;
   background: rgba(14, 14, 24, 0.96);
   border: 1px solid #2a2a3e;
   border-radius: 2px;
@@ -179,14 +271,17 @@
 
 .battle-screen__hp-fill--player {
   background: #3a9e58;
+  opacity: 1;
 }
 
+/* ── Status tags ── */
 .battle-screen__status-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   min-height: 18px;
   align-items: center;
+  justify-content: center;
 }
 
 .battle-screen__status-tag {
@@ -194,7 +289,7 @@
   padding: 2px 7px;
   border: 1px solid #2a2a3e;
   border-radius: 999px;
-  background: rgba(14, 14, 24, 0.82);
+  background: rgba(14, 14, 24, 0.45);
   font-size: 9px;
   letter-spacing: 0.04em;
   color: #9696b0;
@@ -202,19 +297,10 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* 2 — Telegraph (below enemy HUD; fixed slot so text never shifts the stage) */
-.battle-screen__telegraph-row {
-  position: absolute;
-  top: calc(var(--battle-enemy-hud-h) - var(--battle-stack-lift));
-  left: 0;
-  right: 0;
-  z-index: 6;
-  height: var(--battle-telegraph-h);
-  padding: 2px 16px 4px;
-  box-sizing: border-box;
-  overflow: hidden;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(10, 10, 18, 0.55) 0%, rgba(10, 10, 18, 0) 100%);
+
+.battle-screen__telegraph-move {
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .battle-screen__telegraph {
@@ -243,91 +329,34 @@
   text-shadow: 0 0 12px rgba(192, 132, 252, 0.35);
 }
 
-.battle-screen__status-legend {
-  margin: 0;
-  padding: 0 4px;
-  font-size: 8px;
-  line-height: 1.35;
-  color: #6a6a82;
-  text-align: center;
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-}
-
-/* 3 — Character stage (background + fighters, fills playfield) */
-.battle-screen__stage {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 24px 12px;
-  overflow: hidden;
-  overflow-anchor: none;
-}
-
-.battle-screen__arena {
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* Floor aligns with player HP band (above move grid) */
-  bottom: 130px;
-  height: 270px;
-  z-index: 2;
-  overflow: hidden;
-}
-
-.battle-screen__fighter {
-  position: absolute;
-  margin: 0;
-}
-
-.battle-screen__player-sprite-canvas {
-  display: block;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  filter:
-    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.75))
-    drop-shadow(0 0 10px rgba(244, 232, 193, 0.08));
-}
-
-.battle-screen__enemy-sprite-wrap {
-  display: block;
-  filter:
-    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.75))
-    drop-shadow(0 0 10px rgba(244, 232, 193, 0.08));
-}
-
-.battle-screen__enemy-sprite-canvas {
-  display: block;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
-
-/* 4 — Battle log (top-center, under telegraph) */
+/* ── Action log — fixed 2-line box, 60px above the map seam ── */
 .battle-screen__log {
   position: absolute;
-  top: calc(var(--battle-enemy-hud-h) + var(--battle-telegraph-h) + 4px - var(--battle-stack-lift) - 10px);
+  top: calc(50% - 28px);
   left: 50%;
+  transform: translateX(-50%);
   z-index: 5;
+  width: min(92%, 320px);
+  padding: 6px 14px;
+  box-sizing: border-box;
+  background: rgba(8, 8, 16, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  max-width: min(92%, 320px);
-  padding: 4px 12px;
-  overflow: hidden;
-  transform: translateX(-50%);
+  justify-content: center;
+  gap: 0;
   pointer-events: none;
-  background: rgba(10, 10, 18, 0.35);
-  border-radius: 4px;
+  height: 56px;
+  overflow: hidden;
 }
 
 .battle-screen__log-line {
   width: 100%;
   font-size: 10px;
-  line-height: 14px;
+  line-height: 22px;
+  height: 22px;
   color: #d4b87a;
   text-align: center;
   text-transform: lowercase;
@@ -335,61 +364,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0.92;
+  flex-shrink: 0;
 }
 
-/* 5 — Player HUD (translucent overlay on stage) */
-.battle-screen__player-hud {
-  flex: 0 0 auto;
-  padding: 4px 16px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: linear-gradient(
-    180deg,
-    rgba(12, 12, 18, 0.04) 0%,
-    rgba(12, 12, 18, 0.22) 42%,
-    rgba(12, 12, 18, 0.48) 100%
-  );
-  backdrop-filter: blur(0.5px);
-  -webkit-backdrop-filter: blur(0.5px);
-}
-
-.battle-screen__player-hud .battle-screen__hp-track {
-  background: rgba(14, 14, 24, 0.45);
-}
-
-.battle-screen__player-hud .battle-screen__hp-fill--player {
+/* Telegraph line — slightly brighter, normal case */
+.battle-screen__log-line--telegraph {
+  color: #e8d8a8;
+  text-transform: none;
   opacity: 1;
 }
 
-.battle-screen__player-hud .battle-screen__status-tag {
-  background: rgba(14, 14, 24, 0.45);
+/* Heavy move telegraph — yellow-orange emphasis */
+.battle-screen__log-line--heavy {
+  color: #f5c842;
 }
 
-.battle-screen__player-hud .battle-screen__status-tags {
-  justify-content: center;
-}
-
-.battle-screen__player-status-anchor {
-  min-height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.battle-screen__player-build-row {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  margin-bottom: 2px;
+/* ── Player info in plate ── */
+.battle-screen__player-hud {
+  /* kept for legacy ref but no longer rendered — info lives in sprite plate */
+  display: none;
 }
 
 .battle-screen__player-build {
   margin-bottom: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: lowercase;
@@ -401,7 +400,7 @@
 
 .battle-screen__matchup {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: lowercase;
@@ -418,8 +417,8 @@
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.5px;
   color: #b8b8d0;
@@ -427,19 +426,37 @@
 }
 
 .battle-screen__player-level {
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 1px;
   color: #f4e8c1;
 }
 
 .battle-screen__hp-numbers {
   align-self: center;
-  font-size: 10px;
+  font-size: 9px;
   color: #9696b0;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* 6 — Action slot: move grid OR win narration (overlays stage) */
+.battle-screen__player-status-anchor {
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.battle-screen__status-legend {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 8px;
+  line-height: 1.35;
+  color: #6a6a82;
+  text-align: center;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+/* ── Action slot: move grid or win narration ── */
 .battle-screen__action {
   flex: 0 0 auto;
   padding: 0 12px 4px;
@@ -497,6 +514,16 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
 
+.battle-screen__move-skill-tag {
+  display: block;
+  font-size: 7px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 1px;
+}
+
 .battle-screen__move-desc {
   max-width: 100%;
   font-size: 7.5px;
@@ -536,6 +563,7 @@
   cursor: default;
 }
 
+/* ── Win narration ── */
 .battle-screen__narration {
   display: flex;
   flex-direction: column;
@@ -559,10 +587,15 @@
 }
 
 .battle-screen__narration--payoff {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
   border-color: rgba(192, 132, 252, 0.45);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
     0 0 18px rgba(192, 132, 252, 0.12);
+  animation: battle-levelup-fade-in 0.3s ease-out;
+  z-index: 5;
 }
 
 .battle-screen__narration-label {
@@ -595,9 +628,32 @@
   50% { opacity: 0.3; }
 }
 
-/* --- battle juice --- */
+/* ── Sprite canvas styles ── */
+.battle-screen__player-sprite-canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter:
+    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.75))
+    drop-shadow(0 0 10px rgba(244, 232, 193, 0.08));
+}
+
+.battle-screen__enemy-sprite-wrap {
+  display: block;
+  filter:
+    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.75))
+    drop-shadow(0 0 10px rgba(244, 232, 193, 0.08));
+}
+
+.battle-screen__enemy-sprite-canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ── Battle juice ── */
 .battle-screen__fighter--hit {
-  animation: battle-hit-shake 0.32s ease;
+  animation: battle-hit-shake 0.84s ease;
 }
 .battle-screen__fighter--hit::after {
   content: '';
@@ -608,29 +664,72 @@
   pointer-events: none;
   animation: battle-flash-fade 0.32s ease forwards;
 }
-.battle-screen__fighter--attack {
-  animation: battle-attack-lunge 0.24s ease;
+/* ── Player attack animation variants ── */
+
+/* Attack: medium lunge forward (up) */
+.battle-screen__fighter--atk-attack {
+  animation: battle-lunge-attack 0.76s ease;
 }
-.battle-screen__fighter--attack::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.7);
-  mix-blend-mode: screen;
-  pointer-events: none;
-  animation: battle-flash-fade 0.24s ease forwards;
+/* Speed: fast dash forward (up) */
+.battle-screen__fighter--atk-speed {
+  animation: battle-lunge-speed 0.48s cubic-bezier(0.15, 0.8, 0.4, 1);
+}
+/* Defense: step back (down) — brace/guard stance */
+.battle-screen__fighter--atk-defense {
+  animation: battle-lunge-defense 0.6s ease;
+}
+/* Luck: no movement */
+.battle-screen__fighter--atk-luck {
+  animation: battle-lunge-luck 0.76s ease;
 }
 
-@keyframes battle-hit-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(5px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(3px); }
+/* Enemy lunges DOWN toward player when attacking */
+.battle-screen__fighter--enemy-attack {
+  animation: battle-enemy-lunge 0.76s ease;
 }
-@keyframes battle-attack-lunge {
-  0% { transform: translateX(0); }
-  50% { transform: translateX(-10px); }
+
+/* Takes damage — recoils left */
+@keyframes battle-hit-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-14px); }
+  40%  { transform: translateX(-8px); }
+  65%  { transform: translateX(-4px); }
+  85%  { transform: translateX(-1px); }
+  100% { transform: translateX(0); }
+}
+
+/* Player: medium lunge right */
+@keyframes battle-lunge-attack {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(18px); }
+  100% { transform: translateX(0); }
+}
+
+/* Player: fast dash right */
+@keyframes battle-lunge-speed {
+  0%   { transform: translateX(0); }
+  35%  { transform: translateX(28px); }
+  100% { transform: translateX(0); }
+}
+
+/* Player: step back left (guard) */
+@keyframes battle-lunge-defense {
+  0%   { transform: translateX(0); }
+  45%  { transform: translateX(-14px); }
+  100% { transform: translateX(0); }
+}
+
+/* Player: subtle pulse — no movement */
+@keyframes battle-lunge-luck {
+  0%   { transform: scale(1); filter: brightness(1); }
+  40%  { transform: scale(1.06); filter: brightness(1.3) drop-shadow(0 0 6px #f5c842); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Enemy: lunge right to attack */
+@keyframes battle-enemy-lunge {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(18px); }
   100% { transform: translateX(0); }
 }
 @keyframes battle-flash-fade {
@@ -638,9 +737,9 @@
   to { opacity: 0; }
 }
 
+/* ── Floaters: enemy near top, player near mid-screen ── */
 .battle-screen__floater {
   position: absolute;
-  top: 30%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 22px;
   font-weight: 700;
@@ -652,8 +751,18 @@
   animation: battle-floater-rise 0.9s ease-out forwards;
   z-index: 20;
 }
-.battle-screen__floater--enemy { left: 28%; }
-.battle-screen__floater--player { left: 64%; }
+/* Enemy damage: appears to the right of center */
+.battle-screen__floater--enemy {
+  top: 16%;
+  left: auto;
+  right: 8%;
+}
+
+/* Player damage: appears to the left of center */
+.battle-screen__floater--player {
+  top: 58%;
+  left: 8%;
+}
 .battle-screen__floater--attack { color: #ff4d4d; }
 .battle-screen__floater--defense { color: #4488cc; }
 .battle-screen__floater--speed { color: #44cc66; }
@@ -693,4 +802,177 @@
   0% { filter: brightness(1); }
   25% { filter: brightness(1.6) drop-shadow(0 0 12px #c084fc); }
   100% { filter: brightness(1); }
+}
+
+/* ── Level-Up Overlay ── */
+.battle-levelup-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+  animation: battle-levelup-fade-in 0.25s ease-out;
+}
+@keyframes battle-levelup-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.battle-levelup-card {
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 20px 24px;
+  width: min(300px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  animation: battle-levelup-slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes battle-levelup-slide-in {
+  from { transform: translateY(18px) scale(0.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.battle-levelup-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.battle-levelup-title {
+  font-family: var(--font-pixel, monospace);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #f5c842;
+  text-transform: uppercase;
+}
+.battle-levelup-level {
+  font-family: var(--font-pixel, monospace);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.06em;
+}
+.battle-levelup-arrow {
+  color: #f5c842;
+  font-style: normal;
+}
+.battle-levelup-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.battle-levelup-skill-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+}
+.battle-levelup-skill-name {
+  font-family: var(--font-pixel, monospace);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+}
+.battle-levelup-skill-change {
+  font-family: var(--font-pixel, monospace);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: #e2e8f0;
+}
+.battle-levelup-moves {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.battle-levelup-moves-label {
+  font-family: var(--font-pixel, monospace);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: #a855f7;
+  text-transform: uppercase;
+}
+.battle-levelup-move-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 8px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 4px;
+}
+.battle-levelup-move-name {
+  font-family: var(--font-pixel, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: #c084fc;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.battle-levelup-move-desc {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.4;
+}
+.battle-levelup-dismiss {
+  all: unset;
+  cursor: pointer;
+  text-align: center;
+  font-family: var(--font-pixel, monospace);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.35);
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+
+/* ── Knockout popup ── */
+.battle-knockout-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(3px);
+  animation: battle-levelup-fade-in 0.3s ease-out;
+}
+.battle-knockout-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: battle-levelup-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.battle-knockout-name {
+  font-family: var(--font-pixel, monospace);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #f5f5f5;
+  margin: 0;
+  text-align: center;
+}
+.battle-knockout-label {
+  font-family: var(--font-pixel, monospace);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: lowercase;
+  margin: 0 0 12px;
+}
+.battle-knockout-continue {
+  font-family: var(--font-pixel, monospace);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
 }

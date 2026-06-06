@@ -46,6 +46,7 @@ import {
   isMarkDefeated,
   subscribeQuest1Store,
   isBattleTutorialSeen,
+  resetBattleTutorialSeen,
   isEpisode1TitleCardSeen,
   isTutorialPhase2Seen,
   isWalkerConverted,
@@ -101,7 +102,6 @@ import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
 import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
-import { PlayerLevelOverhead } from './PlayerLevelOverhead'
 import { CultTransition, type CultTransitionMode } from './CultTransition'
 import { DarklineScreen } from './DarklineScreen'
 import { DialogueBox } from './DialogueBox'
@@ -845,6 +845,17 @@ export function GameScreen() {
     console.log('dev spar — remove before launch')
   }, [battleNpcId, battleWipePhase])
 
+  // ── DEV ONLY: Shift+T replays the tutorial battle (walker + tutorial overlay) ──
+  const startTutorialBattle = useCallback(() => {
+    if (battleNpcId || battleWipePhase) return
+    resetBattleTutorialSeen()
+    setDialogue(null)
+    setBattleReady(false)
+    setBattleNpcId(WALKER_NPC_ID)
+    setBattleWipePhase('enter')
+    console.log('dev tutorial battle — walker fight with tutorial overlay')
+  }, [battleNpcId, battleWipePhase])
+
   const canSpawnDevSpar = useCallback(() => {
     return (
       !worldEntryActive &&
@@ -1024,6 +1035,7 @@ export function GameScreen() {
     canToggleDevMode: canSpawnDevSpar,
     spawnDevSpar: startDevSparBattle,
     canSpawnDevSpar,
+    startTutorialBattle,
   })
 
   useEffect(() => {
@@ -1968,7 +1980,6 @@ export function GameScreen() {
               questPulseDescriptor={activePulseDescriptor}
               showQuestPulse={showActiveQuestPulse}
             />
-            {!battleNpcId && <PlayerLevelOverhead />}
           </GameCanvas>
           {showInterior && (
             <div className="game-screen-interior" onClick={handleInteriorClick}>

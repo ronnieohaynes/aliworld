@@ -22,7 +22,7 @@ import {
 import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
 import { getCollisionZones, type CollisionZone } from '../data/collisionZones'
 import { NPC_INTERACT_RANGE, NPC_SIZE } from '../data/npcs'
-import { getNpcCombatLevel } from '../data/npcRegistry'
+import { getNpcCombatEntry } from '../data/npcRegistry'
 import { drawStoryIdleNpcPose, type StoryIdlePoses } from '../game/npcIdleSprites'
 import {
   assignStripSpriteToNpc,
@@ -39,7 +39,8 @@ import { drawWorldForegroundOverlay, drawWorldMap } from '../game/drawWorldBackg
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { playerScreenAnchor } from '../game/playerScreenAnchor'
 import { isDevModeEnabled } from '../lib/devMode'
-import { getShowDebug } from '../store/playerStore'
+import { getPlayerLevel, getPlayerSkills, getShowDebug, subscribePlayerStore } from '../store/playerStore'
+import { getAuthState, subscribeAuthStore } from '../store/authStore'
 import { SpriteSheet, type Direction } from '../game/SpriteSheet'
 import { loadWorldBackgroundForSrc } from '../game/WorldBackground'
 import './Player.css'
@@ -94,6 +95,91 @@ function seedStandingMapTransitionTriggers(
     }
   }
 }
+
+// ─── Overworld status plate helpers ──────────────────────────────────────────
+
+function deriveArchetypeLabel(stats: { atk: number; def: number; spd: number }, leanSkill: string): string {
+  const PURE: Record<string, string> = {
+    attack: 'heavy hands',
+    defense: 'immovable wall',
+    speed: 'speed demon',
+    luck: 'wildcard',
+    none: 'blank slate',
+  }
+  const ranked = [
+    { skill: 'attack', value: stats.atk },
+    { skill: 'defense', value: stats.def },
+    { skill: 'speed', value: stats.spd },
+  ].sort((a, b) => b.value - a.value)
+  const top = ranked[0]!
+  const second = ranked[1]!
+  if (top.value - second.value >= 2) return PURE[top.skill] ?? 'blank slate'
+  return PURE[leanSkill] ?? 'blank slate'
+}
+
+/**
+ * Draw a compact status plate (name · lv X · archetype) centered at `cx`
+ * and with its bottom at `plateBottom` (world-space).
+ */
+function drawOverworldStatusPlate(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  level: number,
+  archetype: string,
+  cx: number,
+  plateBottom: number,
+) {
+  const nameText = name.toLowerCase()
+  const levelText = `lv ${level}`
+  const archetypeText = archetype.toLowerCase()
+
+  ctx.save()
+  ctx.font = 'bold 7px monospace'
+  const nameW = ctx.measureText(nameText).width
+  ctx.font = '6px monospace'
+  const levelW = ctx.measureText(levelText).width
+  const archetypeW = ctx.measureText(archetypeText).width
+
+  const PAD_X = 5
+  const PAD_Y = 3
+  const LINE_H = 8
+  const GAP = 2
+
+  const totalW = Math.max(nameW, levelW + GAP + archetypeW) + PAD_X * 2
+  const totalH = LINE_H + LINE_H + PAD_Y * 2
+
+  const bx = Math.floor(cx - totalW / 2)
+  const by = Math.floor(plateBottom - totalH)
+
+  // Background
+  ctx.fillStyle = 'rgba(10, 10, 18, 0.82)'
+  ctx.fillRect(bx, by, Math.ceil(totalW), Math.ceil(totalH))
+
+  // Name row
+  ctx.font = 'bold 7px monospace'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = 'rgba(245, 232, 190, 0.95)'
+  ctx.fillText(nameText, Math.floor(cx), by + PAD_Y)
+
+  // Level + archetype row
+  const rowY = by + PAD_Y + LINE_H
+  ctx.font = '6px monospace'
+  ctx.fillStyle = 'rgba(180, 180, 180, 0.85)'
+
+  // left-align level, right-align archetype within the plate
+  const innerLeft = bx + PAD_X
+  const innerRight = bx + Math.ceil(totalW) - PAD_X
+  ctx.textAlign = 'left'
+  ctx.fillText(levelText, innerLeft, rowY)
+  ctx.textAlign = 'right'
+  ctx.fillStyle = 'rgba(140, 200, 255, 0.8)'
+  ctx.fillText(archetypeText, innerRight, rowY)
+
+  ctx.restore()
+}
+
+// ─── End status plate helpers ─────────────────────────────────────────────────
 
 type InteractPoint = { x: number; y: number; npcFacing: Direction }
 
@@ -747,6 +833,18 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     getSelectedMidnightVariant,
   )
   const selectedMidnightVariantRef = useRef(selectedMidnightVariant)
+
+  const playerLevel = useSyncExternalStore(subscribePlayerStore, getPlayerLevel, getPlayerLevel)
+  const playerLevelRef = useRef(playerLevel)
+  playerLevelRef.current = playerLevel
+
+  const playerSkills = useSyncExternalStore(subscribePlayerStore, getPlayerSkills, getPlayerSkills)
+  const playerSkillsRef = useRef(playerSkills)
+  playerSkillsRef.current = playerSkills
+
+  const authState = useSyncExternalStore(subscribeAuthStore, getAuthState, getAuthState)
+  const playerHandleRef = useRef(authState.profile?.handle ?? null)
+  playerHandleRef.current = authState.profile?.handle ?? null
 
   const cityConfigRef = useRef(cityConfig)
   cityConfigRef.current = cityConfig
@@ -1457,6 +1555,23 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
               cfg.occlusionZones,
             )
           }
+          // Draw player status plate above sprite
+          {
+            const handle = playerHandleRef.current
+            const pLevel = playerLevelRef.current
+            const skills = playerSkillsRef.current
+            if (handle) {
+              const pStats = { atk: skills.attack.level, def: skills.defense.level, spd: skills.speed.level }
+              const leanSkill = (['attack', 'defense', 'speed', 'luck'] as const).reduce(
+                (best, id) => (skills[id].level > skills[best].level ? id : best),
+                'attack' as 'attack' | 'defense' | 'speed' | 'luck',
+              )
+              const archetype = deriveArchetypeLabel(pStats, leanSkill)
+              const plateCenterX = worldDrawX + drawDw / 2
+              const plateBottomY = worldDrawY - 4
+              drawOverworldStatusPlate(ctx, handle, pLevel, archetype, plateCenterX, plateBottomY)
+            }
+          }
         } else {
           const npc = entry.npc
           const half = NPC_SIZE / 2
@@ -1540,18 +1655,19 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             cfg.occlusionZones,
           )
 
-          const combatLevel = getNpcCombatLevel(npc.id)
-          if (combatLevel != null) {
-            ctx.save()
-            ctx.font = '9px monospace'
-            ctx.textAlign = 'center'
-            ctx.fillStyle = 'rgba(244, 232, 193, 0.95)'
-            ctx.fillText(
-              `LVL ${combatLevel}`,
-              Math.floor(dx + displayW / 2),
-              Math.floor(dy - 6),
+          const combatEntry = getNpcCombatEntry(npc.id)
+          if (combatEntry != null) {
+            const archetype = deriveArchetypeLabel(combatEntry.stats, combatEntry.leanSkill)
+            const plateCenterX = dx + displayW / 2
+            const plateBottomY = dy - 4
+            drawOverworldStatusPlate(
+              ctx,
+              combatEntry.displayName,
+              combatEntry.level,
+              archetype,
+              plateCenterX,
+              plateBottomY,
             )
-            ctx.restore()
           }
         }
       }

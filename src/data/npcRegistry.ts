@@ -44,6 +44,8 @@ export type NpcCombatEntry = {
   moves: EnemyMove[]
   leanSkill: LeanSkill
   losingLine: string
+  /** Line shown when the NPC wins (player loses). Empty = no narration. */
+  winningLine?: string
   /** Optional per-move telegraph flavor (e.g. "winds up —"). */
   telegraphFlavor?: NpcTelegraphFlavor
   /** Punishes attacking into HOLD — round-tuned on gym heads. */
@@ -87,6 +89,7 @@ const WALKER: NpcCombatEntry = entry({
     HOLD: 'plants his feet —',
   },
   losingLine: 'i get it now. tell me where to go.',
+  winningLine: "not yet. keep going.",
   spriteSrc: WALKER_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 1.02,
@@ -106,6 +109,7 @@ const JACLYN: NpcCombatEntry = entry({
     WHISPER: 'murmurs —',
   },
   losingLine: "...oh. you're right. of course you're right.",
+  winningLine: "you weren't ready. come back.",
   spriteSrc: JACLYN_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 0.92,
@@ -126,6 +130,7 @@ const MARK: NpcCombatEntry = entry({
     WHISPER: 'murmurs —',
   },
   losingLine: 'huh. ...where do you want me.',
+  winningLine: "i told you. the wall doesn't move.",
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 1.04,
@@ -139,6 +144,7 @@ const CLERK: NpcCombatEntry = entry({
   moves: ['STRIKE', 'STRIKE', 'WHISPER', 'HAYMAKER'],
   leanSkill: 'attack',
   losingLine: "the gift... it's priceless.",
+  winningLine: "you're not taking this from me.",
   spriteSrc: ADAM_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 1,
@@ -152,6 +158,7 @@ const RESTOCKER: NpcCombatEntry = entry({
   moves: ['HOLD', 'HOLD', 'HAYMAKER', 'STRIKE'],
   leanSkill: 'defense',
   losingLine: "it CAN stop...",
+  winningLine: "this floor belongs to me.",
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 1.08,

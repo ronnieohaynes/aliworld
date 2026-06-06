@@ -60,6 +60,7 @@ import {
   getEquippedMoves,
   getPlayerSkills,
   getPlayerStoreState,
+  type SkillLevelUp,
 } from './playerStore'
 import { computePlayerLevel, getSkillStatBonuses, type SkillsState } from './skillStore'
 
@@ -68,12 +69,20 @@ export type ArchetypeId = 'lck' | 'atk' | 'def' | 'spd'
 export type BattlePhase = 'player' | 'busy' | 'ended'
 export type BattleResult = 'win' | 'lose'
 export type { UpcomingMove } from '../data/enemyMoves'
+export type { SkillLevelUp }
+
+export type LevelUpNotification = {
+  skillLevelUps: SkillLevelUp[]
+  newlyUnlockedMoves: PlayerMoveId[]
+  playerLevelBefore: number
+  playerLevelAfter: number
+}
 
 /** Pause between first and second actor resolution each round. */
-export const BATTLE_MOVE_GAP_MS = 1000
+export const BATTLE_MOVE_GAP_MS = 2800
 
 /** Pause after both actors resolve before the next turn telegraph. */
-export const BATTLE_ROUND_END_GAP_MS = 1000
+export const BATTLE_ROUND_END_GAP_MS = 2300
 
 export type BattleResolveStep = 'idle' | 'pause_after_first' | 'pause_after_second'
 
@@ -141,6 +150,8 @@ export type BattleState = {
   /** Pop-up combat callouts for the battle UI (blocked, dodged, status, etc.). */
   feedbackEvents: BattleFeedbackEvent[]
   feedbackSeq: number
+  /** Non-null when a skill or combat level-up just occurred — shown as an overlay. */
+  pendingLevelUpNotification: LevelUpNotification | null
 }
 
 export type BattleAction =
@@ -155,6 +166,7 @@ export type BattleAction =
   | { type: 'RESOLVE_SECOND' }
   | { type: 'RESOLVE_FINISH' }
   | { type: 'END_BATTLE'; result: BattleResult }
+  | { type: 'DISMISS_LEVEL_UP' }
 
 /** Port of CombatScene._computeStats (archetype + accessories only). */
 function computeBaseStats(
@@ -900,21 +912,27 @@ function applySkillXpToState(
     playerHp = Math.min(playerStats.maxHp, playerHp + maxHpGain)
   }
 
-  let nextLog = log
-  for (const line of xpResult.skillLines) {
-    nextLog = appendLog(nextLog, line)
-  }
-  if (xpResult.playerLevelLine) {
-    nextLog = appendLog(nextLog, xpResult.playerLevelLine)
-  }
+  const nextLog = log
+  // XP skill lines and level-up lines are intentionally not shown in the battle log
 
-  const bonusFeedback = xpResult.bonusCallouts
+  // Filter out xp-bonus floaters (outleveled bonus) — not shown in battle
+  const bonusFeedback = xpResult.bonusCallouts.filter((e) => e.kind !== 'xp-bonus')
   const feedbackEvents =
     bonusFeedback.length > 0
       ? [...state.feedbackEvents, ...bonusFeedback]
       : state.feedbackEvents
   const feedbackSeq =
     bonusFeedback.length > 0 ? state.feedbackSeq + 1 : state.feedbackSeq
+
+  const hasLevelUp = xpResult.skillLevelUps.length > 0 || xpResult.playerLevelLine != null
+  const pendingLevelUpNotification: LevelUpNotification | null = hasLevelUp
+    ? {
+        skillLevelUps: xpResult.skillLevelUps,
+        newlyUnlockedMoves: xpResult.newlyUnlockedMoves,
+        playerLevelBefore: xpResult.playerLevelBefore,
+        playerLevelAfter: xpResult.playerLevel,
+      }
+    : null
 
   return {
     state: {
@@ -924,6 +942,7 @@ function applySkillXpToState(
       playerLevelFlash: xpResult.playerLevelLine != null,
       feedbackEvents,
       feedbackSeq,
+      pendingLevelUpNotification,
     },
     log: nextLog,
   }
@@ -1173,6 +1192,7 @@ export function createInitialBattleState(
     playerLevelFlash: false,
     feedbackEvents: [],
     feedbackSeq: 0,
+    pendingLevelUpNotification: null,
   }
 }
 
@@ -1197,6 +1217,9 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
 
     case 'END_BATTLE':
       return { ...state, phase: 'ended', result: action.result }
+
+    case 'DISMISS_LEVEL_UP':
+      return { ...state, pendingLevelUpNotification: null }
 
     default:
       return state

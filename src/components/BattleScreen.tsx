@@ -10,8 +10,16 @@ import {
 import type { NpcCombatEntry } from '../data/npcRegistry'
 import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
 import {
-  resolveBattleBackgroundSrc,
+  getBattleBgForLocation,
 } from '../data/battleBackgrounds'
+import {
+  battleLocationToHometownId,
+  getHometownDef,
+} from '../data/hometowns'
+import {
+  getPlayerHometown,
+  subscribeHometownStore,
+} from '../store/hometownStore'
 import { publicAsset } from '../utils/publicAsset'
 import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
@@ -37,12 +45,12 @@ import {
 } from '../game/spriteBounds'
 import {
   applyBattleEndHealing,
-  BATTLE_END_LOSE_DELAY_MS,
   BATTLE_MOVE_GAP_MS,
   BATTLE_ROUND_END_GAP_MS,
   battleReducer,
   createInitialBattleState,
   getTelegraphDisplay,
+  type LevelUpNotification,
   type PlayerMove,
 } from '../store/battleStore'
 import {
@@ -50,24 +58,29 @@ import {
   subscribeCharacterStore,
 } from '../store/characterStore'
 import {
+  getAuthState,
+  subscribeAuthStore,
+} from '../store/authStore'
+import {
   getPlayerLevel,
   setOverworldPlayerHp,
   subscribePlayerStore,
   getEquippedMoves,
   getShowDebug,
+  getPlayerSkills,
 } from '../store/playerStore'
+import { deriveBuildName } from '../data/buildName'
+import { totalXpForLevel, MAX_PLAYER_LEVEL } from '../store/skillStore'
 import {
   isBattleTutorialSeen,
   setBattleTutorialSeen,
   setWalkerHeavyTutorialBeatSeen,
   WALKER_NPC_ID,
 } from '../store/quest1Store'
-import { getMoveUiMeta } from '../data/moves'
+import { getMoveUiMeta, getMoveDef } from '../data/moves'
 import { track } from '../lib/analytics'
 import type { BattleFeedbackTone } from '../data/battleFeedback'
-import { getBuildName } from '../data/buildName'
 import {
-  counterMatchupLabel,
   getPlayerCounterRelation,
   leanSkillAccentColor,
 } from '../data/skillCounter'
@@ -90,21 +103,56 @@ const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
 const WALKER_HEAVY_TEACH_STEPS = [
   {
-    text: 'that wind-up is a HEAVY. big damage if it lands.',
+    text: 'that wind-up means a HAYMAKER is coming. it hits hard.',
     target: 'telegraph' as const,
   },
   {
-    text: 'read the telegraph. HOLD braces it. SLIP dodges it. pick your answer.',
-    target: 'telegraph' as const,
+    text: 'HOLD braces the hit. SLIP sidesteps it. read the telegraph — then pick.',
+    target: 'moves' as const,
   },
 ]
 
 const WALKER_HEAVY_CONFIRM_STEPS = [
   {
-    text: "that's reading. it pays.",
+    text: "that's reading. keep doing it.",
     target: 'telegraph' as const,
   },
 ]
+
+/**
+ * Derive a build-name-style label from NPC stats + leanSkill.
+ * Uses stats to find the dominant stat; falls back to leanSkill.
+ * Mirrors PURE_NAMES in buildName.ts so enemy labels match player labels.
+ */
+function deriveNpcArchetypeLabel(
+  stats: { atk: number; def: number; spd: number },
+  leanSkill: string,
+): string {
+  const PURE: Record<string, string> = {
+    attack: 'heavy hands',
+    defense: 'immovable wall',
+    speed: 'speed demon',
+    luck: 'wildcard',
+    none: 'blank slate',
+  }
+
+  // Rank the stats we have
+  const ranked = [
+    { skill: 'attack', value: stats.atk },
+    { skill: 'defense', value: stats.def },
+    { skill: 'speed', value: stats.spd },
+  ].sort((a, b) => b.value - a.value)
+
+  const top = ranked[0]!
+  const second = ranked[1]!
+
+  // If a clear leader exists in stats, use it; otherwise trust leanSkill
+  if (top.value - second.value >= 2) {
+    return PURE[top.skill] ?? 'blank slate'
+  }
+
+  return PURE[leanSkill] ?? 'blank slate'
+}
 
 type BattleFloater = {
   id: number
@@ -170,6 +218,79 @@ function FighterStatusTags({ tags }: { tags: StatusTag[] }) {
   )
 }
 
+const SKILL_DISPLAY: Record<string, string> = {
+  attack: 'ATK',
+  defense: 'DEF',
+  speed: 'SPD',
+  luck: 'LCK',
+  hp: 'HP',
+}
+
+function LevelUpOverlay({
+  notification,
+  onDismiss,
+}: {
+  notification: LevelUpNotification
+  onDismiss: () => void
+}) {
+  const combatLevelChanged = notification.playerLevelAfter !== notification.playerLevelBefore
+
+  return (
+    <div className="battle-levelup-overlay" onClick={onDismiss}>
+      <div className="battle-levelup-card" onClick={(e) => e.stopPropagation()}>
+        <div className="battle-levelup-header">
+          {combatLevelChanged ? (
+            <>
+              <span className="battle-levelup-title">LEVEL UP</span>
+              <span className="battle-levelup-level">
+                {notification.playerLevelBefore} <span className="battle-levelup-arrow">→</span> {notification.playerLevelAfter}
+              </span>
+            </>
+          ) : (
+            <span className="battle-levelup-title">SKILL UP</span>
+          )}
+        </div>
+
+        {notification.skillLevelUps.length > 0 && (
+          <div className="battle-levelup-skills">
+            {notification.skillLevelUps.map(({ skill, from, to }) => (
+              <div key={skill} className="battle-levelup-skill-row">
+                <span className="battle-levelup-skill-name">{SKILL_DISPLAY[skill] ?? skill.toUpperCase()}</span>
+                <span className="battle-levelup-skill-change">
+                  {from} <span className="battle-levelup-arrow">→</span> {to}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {notification.newlyUnlockedMoves.length > 0 && (
+          <div className="battle-levelup-moves">
+            <div className="battle-levelup-moves-label">NEW MOVE UNLOCKED</div>
+            {notification.newlyUnlockedMoves.map((moveId) => {
+              const meta = getMoveUiMeta(moveId)
+              return (
+                <div key={moveId} className="battle-levelup-move-row">
+                  <span className="battle-levelup-move-name">{meta.label}</span>
+                  <span className="battle-levelup-move-desc">{meta.description}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="battle-levelup-dismiss"
+          onClick={onDismiss}
+        >
+          tap to continue ▸
+        </button>
+      </div>
+    </div>
+  )
+}
+
 type Props = {
   npcId: string
   onBattleEnd: (result: 'win' | 'lose', turns: number) => void
@@ -179,30 +300,37 @@ type Props = {
   battleRevealed?: boolean
 }
 
-function StageBackground({ src }: { src: string }) {
+/**
+ * Split stage background.
+ * Top half = enemy's hometown background.
+ * Bottom half = player's hometown background.
+ */
+function StageBackground({ enemySrc, playerSrc }: { enemySrc: string; playerSrc: string }) {
   useEffect(() => {
-    console.log('[BattleScreen] stage background src:', src)
-  }, [src])
-
-  const handleLoad = useCallback(() => {
-    console.log('[BattleScreen] stage background loaded:', src)
-  }, [src])
-
-  const handleError = useCallback(() => {
-    console.error('[BattleScreen] Failed to load battle background:', src)
-  }, [src])
+    console.log('[BattleScreen] stage bg — enemy:', enemySrc, 'player:', playerSrc)
+  }, [enemySrc, playerSrc])
 
   return (
     <div className="battle-screen__stage-bg" aria-hidden>
       <div className="battle-screen__stage-bg-fallback" />
+      {/* Enemy hometown — top half */}
       <img
-        className="battle-screen__stage-bg-img"
-        src={src}
+        className="battle-screen__stage-bg-img battle-screen__stage-bg-img--top"
+        src={enemySrc}
         alt=""
         draggable={false}
-        onLoad={handleLoad}
-        onError={handleError}
+        onError={() => console.error('[BattleScreen] Failed to load enemy bg:', enemySrc)}
       />
+      {/* Player hometown — bottom half */}
+      <img
+        className="battle-screen__stage-bg-img battle-screen__stage-bg-img--bottom"
+        src={playerSrc}
+        alt=""
+        draggable={false}
+        onError={() => console.error('[BattleScreen] Failed to load player bg:', playerSrc)}
+      />
+      {/* Center divider seam */}
+      <div className="battle-screen__stage-bg-seam" />
     </div>
   )
 }
@@ -220,7 +348,8 @@ function drawPlayerBattleSprite(
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
-  drawSheetFrame(ctx, sheet, 'left', getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
+  // Player faces up (toward enemy at top) in battle
+  drawSheetFrame(ctx, sheet, 'up', getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
 }
 
 function drawEnemyBattleSprite(
@@ -240,7 +369,7 @@ function drawEnemyBattleSprite(
   const cols = spriteColumns
   const frameW = Math.floor(spriteImg.naturalWidth / cols)
   const frameH = Math.floor(spriteImg.naturalHeight)
-  const col = 2 // left frame, flipped to face right via CSS
+  const col = 0 // left-facing frame (enemy faces left, toward player at bottom)
   const nsx = Math.floor(col * frameW)
 
   ctx.imageSmoothingEnabled = false
@@ -263,6 +392,9 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const telegraphRowRef = useRef<HTMLElement>(null)
   const movesRef = useRef<HTMLDivElement>(null)
   const playerStatusRef = useRef<HTMLDivElement>(null)
+  const playerPlateRef = useRef<HTMLDivElement>(null)
+  const xpBarRef = useRef<HTMLDivElement>(null)
+  const statusLegendRef = useRef<HTMLParagraphElement>(null)
   const playerCanvasRef = useRef<HTMLCanvasElement>(null)
   const enemyWrapRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLElement>(null)
@@ -275,6 +407,14 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const winPayoffCommittedRef = useRef(false)
   const [winPayoffNpc, setWinPayoffNpc] = useState<NpcCombatEntry | null>(null)
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
+  const playerSkills = useSyncExternalStore(subscribePlayerStore, getPlayerSkills, getPlayerSkills)
+  const playerBuildLabel = useSyncExternalStore(
+    subscribePlayerStore,
+    () => deriveBuildName(getPlayerSkills()).name,
+    () => deriveBuildName(getPlayerSkills()).name,
+  )
+  const authState = useSyncExternalStore(subscribeAuthStore, getAuthState, getAuthState)
+  const playerHandle = authState.profile?.handle ?? 'YOU'
   const selectedMidnightVariant = useSyncExternalStore(
     subscribeCharacterStore,
     getSelectedMidnightVariant,
@@ -336,12 +476,22 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const prevPlayerHpRef = useRef(state.playerHp)
   const prevFeedbackSeqRef = useRef(state.feedbackSeq)
   const winMatchupCalloutRef = useRef(false)
+  /** Skill of the last player move — used to pick the attack animation variant. */
+  const lastPlayerMoveSkillRef = useRef<'attack' | 'speed' | 'defense' | 'luck'>('attack')
+  // Displayed HP lags real HP — only updates after the lunge animation finishes
+  const [displayedEnemyHp, setDisplayedEnemyHp] = useState(state.enemyHp)
+  const [displayedPlayerHp, setDisplayedPlayerHp] = useState(state.playerHp)
   const [enemyHitFx, setEnemyHitFx] = useState(false)
+  const [enemyAtkFx, setEnemyAtkFx] = useState(false)
   const [playerHitFx, setPlayerHitFx] = useState(false)
-  const [playerAtkFx, setPlayerAtkFx] = useState(false)
+  /** Null = no animation. Otherwise the skill type that determines animation style. */
+  const [playerAtkFx, setPlayerAtkFx] = useState<'attack' | 'speed' | 'defense' | 'luck' | null>(null)
   const [playerDodgeFx, setPlayerDodgeFx] = useState(false)
   const [enemyCritFx, setEnemyCritFx] = useState(false)
   const [floaters, setFloaters] = useState<BattleFloater[]>([])
+  const [knockoutPopup, setKnockoutPopup] = useState<'win' | 'lose' | null>(null)
+  const [narrationVisible, setNarrationVisible] = useState(false)
+  const [loseNarrationVisible, setLoseNarrationVisible] = useState(false)
 
   const clampBattleScrollDrift = useCallback(() => {
     for (const el of [
@@ -356,20 +506,45 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   }, [])
 
   const busy = state.phase !== 'player'
-  const playerHpPct = Math.max(0, (state.playerHp / state.playerStats.maxHp) * 100)
-  const enemyHpPct = Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)
+  const playerHpPct = Math.max(0, (displayedPlayerHp / state.playerStats.maxHp) * 100)
+  const enemyHpPct = Math.max(0, (displayedEnemyHp / state.enemyMaxHp) * 100)
   const enemyStatusTags = getFighterStatusTags('enemy', state.combatStatus)
   const playerStatusTags = getFighterStatusTags('player', state.combatStatus)
   const playerLevel = getPlayerLevel()
-  const build = getBuildName()
+  // Smooth progress toward next combat level — includes fractional XP within each skill level
+  const playerLevelPct = (() => {
+    if (playerLevel >= MAX_PLAYER_LEVEL) return 100
+    const SKILL_IDS = ['attack', 'speed', 'defense', 'luck', 'hp'] as const
+    const effectiveTotal = SKILL_IDS.reduce((sum, id) => {
+      const s = playerSkills[id]
+      const xpAtLevel = totalXpForLevel(s.level)
+      const xpAtNext = totalXpForLevel(s.level + 1)
+      const span = xpAtNext - xpAtLevel
+      const frac = span > 0 ? (s.xp - xpAtLevel) / span : 0
+      return sum + s.level + Math.min(1, Math.max(0, frac))
+    }, 0)
+    const raw = Math.max(0, (effectiveTotal - 5) * 99 / 320)
+    return Math.min(100, (raw % 1) * 100)
+  })()
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
-  const matchupLabel = counterMatchupLabel(counterRelation, state.npc.leanSkill)
-  const battleBackgroundSrc = resolveBattleBackgroundSrc(state.npc)
+  // Split stage backgrounds — enemy uses their battleLocation, player uses chosen hometown
+  const playerHometownId = useSyncExternalStore(
+    subscribeHometownStore,
+    getPlayerHometown,
+    getPlayerHometown,
+  )
+  const playerHometownDef = getHometownDef(playerHometownId)
+  const playerBattleBgSrc = getBattleBgForLocation(playerHometownDef.battleLocationId)
+
+  const enemyHometownId = battleLocationToHometownId(state.npc.battleLocation)
+  const enemyHometownDef = getHometownDef(enemyHometownId)
+  const enemyBattleBgSrc = getBattleBgForLocation(enemyHometownDef.battleLocationId)
   const payoffNpc = winPayoffNpc ?? state.npc
   const showWinNarration =
     state.phase === 'ended' &&
     state.result === 'win' &&
-    payoffNpc.losingLine.trim().length > 0
+    payoffNpc.losingLine.trim().length > 0 &&
+    narrationVisible
   const battleSettled = battleRevealed && playerLayoutReady && enemyLayoutReady
 
   useEffect(() => {
@@ -378,6 +553,9 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     endHandledRef.current = false
     setPlayerLayoutReady(false)
     setEnemyLayoutReady(false)
+    setKnockoutPopup(null)
+    setNarrationVisible(false)
+    setLoseNarrationVisible(false)
   }, [npcId])
 
   useLayoutEffect(() => {
@@ -455,6 +633,11 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     (move: PlayerMove, slot: number) => {
       if (inputBlocked && walkerHeavyBeat !== 'acting') return
       if (state.phase !== 'player') return
+      const moveDef = getMoveDef(move)
+      const skill = moveDef?.skill
+      if (skill === 'attack' || skill === 'speed' || skill === 'defense' || skill === 'luck') {
+        lastPlayerMoveSkillRef.current = skill
+      }
       dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
     [inputBlocked, walkerHeavyBeat, state.phase],
@@ -465,19 +648,42 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     finishBattle('win')
   }, [finishBattle, showWinNarration])
 
+  const handleLoseNarrationContinue = useCallback(() => {
+    setLoseNarrationVisible(false)
+    finishBattle('lose')
+  }, [finishBattle])
+
+  const handleKnockoutContinue = useCallback(() => {
+    if (!knockoutPopup) return
+    const result = knockoutPopup
+    setKnockoutPopup(null)
+    finishBattle(result)
+  }, [finishBattle, knockoutPopup])
+
+  // After the final blow animation completes, show the appropriate end screen.
+  const KNOCKOUT_POPUP_DELAY_MS = 2400  // animation (1300ms) + 1s pause before popup
   useEffect(() => {
-    if (state.phase === 'ended' && state.result === 'lose') {
-      const timer = window.setTimeout(() => finishBattle('lose'), BATTLE_END_LOSE_DELAY_MS)
+    if (state.phase !== 'ended') return
+    const hasNarration = payoffNpc.losingLine.trim().length > 0
+    if (state.result === 'lose') {
+      const hasWinNarration = (payoffNpc.winningLine ?? '').trim().length > 0
+      if (hasWinNarration) {
+        const timer = window.setTimeout(() => setLoseNarrationVisible(true), KNOCKOUT_POPUP_DELAY_MS)
+        return () => window.clearTimeout(timer)
+      }
+      const timer = window.setTimeout(() => setKnockoutPopup('lose'), KNOCKOUT_POPUP_DELAY_MS)
       return () => window.clearTimeout(timer)
     }
-  }, [state.phase, state.result, finishBattle])
-
-  useEffect(() => {
-    if (showWinNarration) return
-    if (state.phase !== 'ended' || state.result !== 'win') return
-    const timer = window.setTimeout(() => finishBattle('win'), BATTLE_END_LOSE_DELAY_MS)
-    return () => window.clearTimeout(timer)
-  }, [finishBattle, showWinNarration, state.phase, state.result])
+    if (state.result === 'win' && hasNarration) {
+      const timer = window.setTimeout(() => setNarrationVisible(true), KNOCKOUT_POPUP_DELAY_MS)
+      return () => window.clearTimeout(timer)
+    }
+    if (state.result === 'win' && !hasNarration) {
+      const timer = window.setTimeout(() => setKnockoutPopup('win'), KNOCKOUT_POPUP_DELAY_MS)
+      return () => window.clearTimeout(timer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase, state.result])
 
   useEffect(() => {
     winMatchupCalloutRef.current = false
@@ -487,42 +693,65 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     if (state.phase !== 'ended' || state.result !== 'win') return
     if (counterRelation !== 'advantage' || winMatchupCalloutRef.current) return
     winMatchupCalloutRef.current = true
-    const id = Date.now() + Math.random()
-    setFloaters((f) => [
-      ...f,
-      { id, text: 'type win.', target: 'player', tone: 'attack', kind: 'counter' },
-    ])
-    window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 1400)
+    // Matchup "type win." callout hidden per design
   }, [state.phase, state.result, counterRelation])
 
   useEffect(() => {
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp
     const playerDelta = prevPlayerHpRef.current - state.playerHp
+    // When both sides take damage simultaneously (reflect, bleed, etc.),
+    // stagger the second floater by 500ms so they never overlap.
+    const STAGGER_MS = enemyDelta > 0 && playerDelta > 0 ? 500 : 0
 
     if (enemyDelta > 0) {
-      setEnemyHitFx(true)
-      setPlayerAtkFx(true)
+      const skill = lastPlayerMoveSkillRef.current
+      const LUNGE_MS = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+      const HIT_FLASH_MS = 40
+      const DAMAGE_DELAY_MS = 540
+      const HIT_MS = 840
       const id = Date.now() + Math.random()
-      setFloaters((f) => [
-        ...f,
-        { id, text: `-${enemyDelta}`, target: 'enemy', tone: 'attack' },
-      ])
-      window.setTimeout(() => setEnemyHitFx(false), 320)
-      window.setTimeout(() => setPlayerAtkFx(false), 240)
-      window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      setPlayerAtkFx(skill)
+      window.setTimeout(() => setPlayerAtkFx(null), LUNGE_MS)
+      window.setTimeout(() => {
+        setEnemyHitFx(true)
+        window.setTimeout(() => setEnemyHitFx(false), HIT_MS)
+      }, LUNGE_MS + HIT_FLASH_MS)
+      window.setTimeout(() => {
+        setDisplayedEnemyHp(state.enemyHp)
+        setFloaters((f) => [
+          ...f,
+          { id, text: `-${enemyDelta}`, target: 'enemy', tone: 'attack' },
+        ])
+        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      }, LUNGE_MS + DAMAGE_DELAY_MS)
       clampBattleScrollDrift()
     }
     if (playerDelta > 0) {
-      setPlayerHitFx(true)
+      const LUNGE_MS = 760
+      const HIT_FLASH_MS = 40
+      const DAMAGE_DELAY_MS = 540 + STAGGER_MS
+      const HIT_MS = 840
       const id = Date.now() + Math.random()
-      setFloaters((f) => [
-        ...f,
-        { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
-      ])
-      window.setTimeout(() => setPlayerHitFx(false), 320)
-      window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      setEnemyAtkFx(true)
+      window.setTimeout(() => setEnemyAtkFx(false), LUNGE_MS)
+      window.setTimeout(() => {
+        setPlayerHitFx(true)
+        window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
+      }, LUNGE_MS + HIT_FLASH_MS + STAGGER_MS)
+      window.setTimeout(() => {
+        setDisplayedPlayerHp(state.playerHp)
+        setFloaters((f) => [
+          ...f,
+          { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+        ])
+        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      }, LUNGE_MS + DAMAGE_DELAY_MS)
       clampBattleScrollDrift()
     }
+
+    // Healing or no-damage change: sync displayed HP immediately
+    if (enemyDelta <= 0) setDisplayedEnemyHp(state.enemyHp)
+    if (playerDelta <= 0) setDisplayedPlayerHp(state.playerHp)
 
     prevEnemyHpRef.current = state.enemyHp
     prevPlayerHpRef.current = state.playerHp
@@ -535,25 +764,35 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     const events = state.feedbackEvents
     if (events.length === 0) return
 
+    const skill = lastPlayerMoveSkillRef.current
+    const lunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+    const impactDelay = lunge + 540  // match damage floater timing
+
     if (events.some((e) => e.kind === 'dodged')) {
-      setPlayerDodgeFx(true)
-      window.setTimeout(() => setPlayerDodgeFx(false), 420)
+      window.setTimeout(() => {
+        setPlayerDodgeFx(true)
+        window.setTimeout(() => setPlayerDodgeFx(false), 420)
+      }, impactDelay)
     }
+    const CRIT_EXTRA_MS = 500
     if (events.some((e) => e.kind === 'crit')) {
-      setEnemyCritFx(true)
-      window.setTimeout(() => setEnemyCritFx(false), 480)
+      window.setTimeout(() => {
+        setEnemyCritFx(true)
+        window.setTimeout(() => setEnemyCritFx(false), 480)
+      }, impactDelay + CRIT_EXTRA_MS)
     }
 
     events.forEach((event, index) => {
       const id = Date.now() + Math.random() + index
       const durationMs = event.kind === 'crit' ? 1200 : 900
+      const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
       window.setTimeout(() => {
         setFloaters((f) => [
           ...f,
           { id, text: event.text, target: event.target, tone: event.tone, kind: event.kind },
         ])
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), durationMs)
-      }, index * 80)
+      }, impactDelay + index * 500 + critOffset)
     })
     clampBattleScrollDrift()
   }, [state.feedbackSeq, state.feedbackEvents, clampBattleScrollDrift])
@@ -562,6 +801,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     clampBattleScrollDrift()
   }, [
     enemyHitFx,
+    enemyAtkFx,
     playerHitFx,
     playerAtkFx,
     playerDodgeFx,
@@ -571,6 +811,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
   useEffect(() => {
     if (state.phase !== 'busy') return
+    // Hold resolution while the level-up notification is open
+    if (state.pendingLevelUpNotification) return
 
     if (state.resolveStep === 'pause_after_first') {
       const timer = window.setTimeout(() => {
@@ -585,7 +827,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       }, BATTLE_ROUND_END_GAP_MS)
       return () => window.clearTimeout(timer)
     }
-  }, [state.phase, state.resolveStep])
+  }, [state.phase, state.resolveStep, state.pendingLevelUpNotification])
 
   useEffect(() => {
     let cancelled = false
@@ -683,68 +925,43 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       {!battleSettled ? <div className="battle-screen__settle-cover" aria-hidden /> : null}
       <div className="battle-screen__content">
         <div className="battle-screen__playfield" ref={playfieldRef}>
-          <section className="battle-screen__enemy-hud">
-            <span className="battle-screen__enemy-name">
-              {state.npc.displayName.toUpperCase()}
-              {state.npc.level > 0 ? (
-                <>
-                  {' '}
-                  <span className="battle-screen__enemy-level">· LVL {state.npc.level}</span>
-                </>
-              ) : null}
-            </span>
-            <div className="battle-screen__hp-track">
-              <div
-                className="battle-screen__hp-fill battle-screen__hp-fill--enemy"
-                style={{ width: `${enemyHpPct}%` }}
-              />
-            </div>
-            <div className="battle-screen__enemy-status-slot">
-              <FighterStatusTags tags={enemyStatusTags} />
-            </div>
-          </section>
 
-          {!showWinNarration && (
-            <section className="battle-screen__telegraph-row" ref={telegraphRowRef} aria-live="polite">
-              <p
-                className={`battle-screen__telegraph${heavyTelegraph ? ' battle-screen__telegraph--heavy' : ''}`}
-              >
-                {telegraphDisplay ? (
-                  <>
-                    {telegraphDisplay.prefix}
-                    {telegraphDisplay.moveName ? (
-                      <span
-                        className="battle-screen__telegraph-move"
-                        style={{ color: telegraphAccent }}
-                      >
-                        {telegraphDisplay.moveName}
-                      </span>
-                    ) : null}
-                    {telegraphDisplay.suffix}
-                  </>
-                ) : (
-                  '\u00a0'
-                )}
-              </p>
-            </section>
-          )}
-
-          {!showWinNarration && (
-            <section className="battle-screen__log" aria-live="polite">
-              {logLines.map((line, i) => (
-                <div key={`${i}-${line}`} className="battle-screen__log-line">
-                  {line}
-                </div>
-              ))}
-            </section>
-          )}
-
+          {/* Stage fills the screen — fighters, plates, log all live inside */}
           <section className="battle-screen__stage" ref={stageRef} aria-hidden>
-            <StageBackground src={battleBackgroundSrc} />
+            <StageBackground enemySrc={enemyBattleBgSrc} playerSrc={playerBattleBgSrc} />
             <div className="battle-screen__arena">
+
+              {/* ── Enemy at top of arena ── */}
+              {/* Enemy plate — fixed anchor, never animates */}
+              <div className="battle-screen__plate-anchor battle-screen__plate-anchor--enemy" style={{ top: enemyPlacement.visibleDrawY }}>
+                <div className="battle-screen__sprite-plate">
+                  <span className="battle-screen__plate-name">
+                    {state.npc.displayName.toUpperCase()}
+                    {state.npc.level > 0 ? (
+                      <span className="battle-screen__plate-level"> · LVL {state.npc.level}</span>
+                    ) : null}
+                  </span>
+                  <span className="battle-screen__plate-archetype">
+                    {deriveNpcArchetypeLabel(state.npc.stats, state.npc.leanSkill)}
+                  </span>
+                  <div className="battle-screen__hp-track">
+                    <div
+                      className="battle-screen__hp-fill battle-screen__hp-fill--enemy"
+                      style={{ width: `${enemyHpPct}%` }}
+                    />
+                  </div>
+                  {enemyStatusTags.length > 0 && (
+                    <div className="battle-screen__plate-status-slot">
+                      <FighterStatusTags tags={enemyStatusTags} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Enemy sprite — animates independently */}
               <div
-                className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
-                style={{ left: enemyPlacement.x, top: enemyPlacement.drawY }}
+                className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
+                style={{ top: enemyPlacement.drawY }}
               >
                 <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
                   <canvas
@@ -758,9 +975,80 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                   />
                 </div>
               </div>
+
+              {/* ── Telegraph between fighters ── */}
+              {!showWinNarration && (
+                <section className="battle-screen__log" ref={telegraphRowRef} aria-live="polite">
+                  {/* Line 1: telegraph */}
+                  <div
+                    className={`battle-screen__log-line battle-screen__log-line--telegraph${heavyTelegraph ? ' battle-screen__log-line--heavy' : ''}`}
+                  >
+                    {telegraphDisplay ? (
+                      <>
+                        {telegraphDisplay.prefix}
+                        {telegraphDisplay.moveName ? (
+                          <span
+                            className="battle-screen__telegraph-move"
+                            style={{ color: telegraphAccent }}
+                          >
+                            {telegraphDisplay.moveName}
+                          </span>
+                        ) : null}
+                        {telegraphDisplay.suffix}
+                      </>
+                    ) : (
+                      <>&nbsp;</>
+                    )}
+                  </div>
+                  {/* Line 2: last action */}
+                  <div className="battle-screen__log-line">
+                    {logLines[logLines.length - 1] ?? <>&nbsp;</>}
+                  </div>
+                </section>
+              )}
+
+
+
+              {/* Player plate — fixed anchor, never animates */}
+              <div className="battle-screen__plate-anchor battle-screen__plate-anchor--player" style={{ top: playerPlacement.visibleDrawY }}>
+                <div ref={playerPlateRef} className="battle-screen__sprite-plate">
+                  {/* XP progress toward next combat level */}
+                  <div ref={xpBarRef} className="battle-screen__xp-track" title={`Level progress: ${Math.round(playerLevelPct)}%`}>
+                    <div
+                      className="battle-screen__xp-fill"
+                      style={{ width: `${playerLevelPct}%` }}
+                    />
+                  </div>
+                  <span className="battle-screen__plate-name">
+                    {playerHandle.toUpperCase()}
+                    <span className={`battle-screen__plate-level${state.playerLevelFlash ? ' battle-screen__plate-level--flash' : ''}`}>
+                      {' · LVL '}{playerLevel}
+                    </span>
+                  </span>
+                  <span className="battle-screen__plate-archetype">
+                    {playerBuildLabel}
+                  </span>
+                  <div className="battle-screen__hp-track">
+                    <div
+                      className="battle-screen__hp-fill battle-screen__hp-fill--player"
+                      style={{ width: `${playerHpPct}%` }}
+                    />
+                  </div>
+                  {playerStatusTags.length > 0 && (
+                    <div ref={playerStatusRef} className="battle-screen__plate-status-slot">
+                      <FighterStatusTags tags={playerStatusTags} />
+                    </div>
+                  )}
+                  {battleTutorialBlocking && (
+                    <p ref={statusLegendRef} className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Player sprite — animates independently */}
               <div
-                className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ' battle-screen__fighter--attack' : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
-                style={{ left: playerPlacement.x, top: playerPlacement.drawY }}
+                className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ` battle-screen__fighter--atk-${playerAtkFx}` : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
+                style={{ top: playerPlacement.drawY }}
               >
                 <canvas
                   ref={playerCanvasRef}
@@ -773,6 +1061,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                   }}
                 />
               </div>
+
+              {/* ── Damage / feedback floaters ── */}
               {floaters.map((f) => (
                 <span
                   key={f.id}
@@ -793,76 +1083,23 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
             )}
           </section>
 
+          {/* ── Bottom: move grid only (player HUD lives in sprite plate) ── */}
           <div className="battle-screen__bottom-stack">
-            <section className="battle-screen__player-hud">
-              <div className="battle-screen__player-build-row">
-                <div
-                  className="battle-screen__player-build"
-                  style={{ color: build.color }}
-                >
-                  {build.name}
-                </div>
-                {matchupLabel ? (
-                  <span
-                    className={`battle-screen__matchup${
-                      counterRelation === 'disadvantage'
-                        ? ' battle-screen__matchup--outmatched'
-                        : ''
-                    }`}
-                    style={{ color: build.color }}
-                  >
-                    {matchupLabel}
-                  </span>
-                ) : null}
-              </div>
-              <div className="battle-screen__player-label">
-                <span>YOU</span>
-                <span
-                  className={`player-level-badge battle-screen__player-level${state.playerLevelFlash ? ' player-level-badge--flash' : ''}`}
-                >
-                  LVL {playerLevel}
-                </span>
-              </div>
-              <div className="battle-screen__hp-track">
-                <div
-                  className="battle-screen__hp-fill battle-screen__hp-fill--player"
-                  style={{ width: `${playerHpPct}%` }}
-                />
-              </div>
-              <div className="battle-screen__hp-numbers">
-                {state.playerHp} / {state.playerStats.maxHp}
-              </div>
-              <div ref={playerStatusRef} className="battle-screen__player-status-anchor">
-                <FighterStatusTags tags={playerStatusTags} />
-              </div>
-              {battleTutorialBlocking && (
-                <p className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
-              )}
-            </section>
-
             <section className="battle-screen__action">
-              {showWinNarration ? (
-                <button
-                  type="button"
-                  className="battle-screen__narration battle-screen__narration--payoff"
-                  onClick={handleNarrationContinue}
-                >
-                  <span className="battle-screen__narration-label">{payoffNpc.displayName}</span>
-                  <p className="battle-screen__narration-text">{payoffNpc.losingLine}</p>
-                  <span className="battle-screen__narration-continue">tap to continue ▸</span>
-                </button>
-              ) : (
-                <div
-                  ref={movesRef}
-                  className="battle-screen__moves"
-                  role="group"
-                  aria-label="Battle moves"
-                >
+              <div
+                ref={movesRef}
+                className="battle-screen__moves"
+                role="group"
+                aria-label="Battle moves"
+              >
                   {battleMoveButtons.map(({ move, label, description, className }, slot) => {
                     const stolen = state.battleMove.snagStolen[slot]
                     const displayLabel = stolen
                       ? stolen.replace('_', ' ')
                       : label
+                    const moveDef = getMoveDef(move)
+                    const skillLevel = moveDef ? (playerSkills[moveDef.skill as keyof typeof playerSkills]?.level ?? null) : null
+                    const skillTag = moveDef && skillLevel != null ? `${moveDef.skill} · lv ${skillLevel}` : null
                     return (
                       <button
                         key={`${slot}-${move}-${stolen ?? ''}`}
@@ -883,14 +1120,42 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                         }}
                         onClick={() => handleMove(move, slot)}
                       >
-                        <span className="battle-screen__move-name">{displayLabel}</span>
+                        <span className="battle-screen__move-name">
+                          {displayLabel}
+                          {skillTag && !stolen && (
+                            <span className="battle-screen__move-skill-tag">({skillTag})</span>
+                          )}
+                        </span>
                         <span className="battle-screen__move-desc">{description}</span>
                       </button>
                     )
                   })}
                 </div>
-              )}
             </section>
+            {/* NPC losing line — overlays moveset after player wins */}
+            {showWinNarration && knockoutPopup === null && (
+              <button
+                type="button"
+                className="battle-screen__narration battle-screen__narration--payoff"
+                onClick={handleNarrationContinue}
+              >
+                <span className="battle-screen__narration-label">{payoffNpc.displayName}</span>
+                <p className="battle-screen__narration-text">{payoffNpc.losingLine}</p>
+                <span className="battle-screen__narration-continue">tap to continue ▸</span>
+              </button>
+            )}
+            {/* NPC winning line — overlays moveset after player loses */}
+            {loseNarrationVisible && (
+              <button
+                type="button"
+                className="battle-screen__narration battle-screen__narration--payoff"
+                onClick={handleLoseNarrationContinue}
+              >
+                <span className="battle-screen__narration-label">{state.npc.displayName}</span>
+                <p className="battle-screen__narration-text">{state.npc.winningLine}</p>
+                <span className="battle-screen__narration-continue">tap to continue ▸</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -899,9 +1164,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           stepIndex={battleTutorialStep}
           targetRefs={{
             battle: battleScreenRef,
+            stage: stageRef,
             telegraph: telegraphRowRef,
             moves: movesRef,
             status: playerStatusRef,
+            plate: playerPlateRef,
+            statuslegend: statusLegendRef,
+            xpbar: xpBarRef,
           }}
           onNext={advanceBattleTutorial}
           onSkip={closeBattleTutorial}
@@ -912,9 +1181,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           stepIndex={walkerHeavyTeachStep}
           targetRefs={{
             battle: battleScreenRef,
+            stage: stageRef,
             telegraph: telegraphRowRef,
             moves: movesRef,
             status: playerStatusRef,
+            plate: playerPlateRef,
+            statuslegend: statusLegendRef,
+            xpbar: xpBarRef,
           }}
           onNext={() => {
             if (walkerHeavyTeachStep < 1) {
@@ -932,14 +1205,35 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           stepIndex={0}
           targetRefs={{
             battle: battleScreenRef,
+            stage: stageRef,
             telegraph: telegraphRowRef,
             moves: movesRef,
             status: playerStatusRef,
+            plate: playerPlateRef,
+            statuslegend: statusLegendRef,
+            xpbar: xpBarRef,
           }}
           onNext={() => setWalkerHeavyBeat(null)}
           onSkip={() => setWalkerHeavyBeat(null)}
           stepsOverride={WALKER_HEAVY_CONFIRM_STEPS}
         />
+      )}
+      {state.pendingLevelUpNotification && (
+        <LevelUpOverlay
+          notification={state.pendingLevelUpNotification}
+          onDismiss={() => dispatch({ type: 'DISMISS_LEVEL_UP' })}
+        />
+      )}
+      {knockoutPopup && (
+        <div className="battle-knockout-overlay" onClick={handleKnockoutContinue}>
+          <div className="battle-knockout-card">
+            <p className="battle-knockout-name">
+              {knockoutPopup === 'win' ? state.npc.displayName.toUpperCase() : playerHandle.toUpperCase()}
+            </p>
+            <p className="battle-knockout-label">has fallen.</p>
+            <span className="battle-knockout-continue">tap to continue ▸</span>
+          </div>
+        </div>
       )}
     </div>
   )

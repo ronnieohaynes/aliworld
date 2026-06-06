@@ -544,12 +544,21 @@ export function setPlayerArchetype(archetype: ArchetypeId): void {
   emit()
 }
 
+export type SkillLevelUp = {
+  skill: SkillId
+  from: number
+  to: number
+}
+
 export type CombatXpResult = {
   skillLines: string[]
   playerLevelLine: string | null
   playerLevel: number
+  playerLevelBefore: number
   bonusCallouts: BattleFeedbackEvent[]
   levelXpMult: number
+  skillLevelUps: SkillLevelUp[]
+  newlyUnlockedMoves: PlayerMoveId[]
 }
 
 /** Apply combat XP to persistent skills; returns skill + combat level-up log lines. */
@@ -575,6 +584,16 @@ export function applyCombatSkillXp(
     levelUpLinesAll = [...levelUpLinesAll, ...result.lines]
   }
 
+  // Compute which skills actually leveled up and newly unlocked moves
+  const skillIds: SkillId[] = ['attack', 'speed', 'defense', 'luck', 'hp']
+  const skillLevelUps: SkillLevelUp[] = skillIds
+    .filter((id) => skills[id].level > before[id].level)
+    .map((id) => ({ skill: id, from: before[id].level, to: skills[id].level }))
+
+  const movesBefore = new Set(getUnlockedMoves(before))
+  const movesAfter = getUnlockedMoves(skills)
+  const newlyUnlockedMoves: PlayerMoveId[] = movesAfter.filter((m) => !movesBefore.has(m))
+
   trackSkillLevelUps(before, skills)
   state = { ...state, skills }
   trackBuildNameIfChanged(skills)
@@ -595,8 +614,11 @@ export function applyCombatSkillXp(
     skillLines: levelUpLinesAll,
     playerLevelLine,
     playerLevel,
+    playerLevelBefore: prevPlayerLevel,
     bonusCallouts,
     levelXpMult,
+    skillLevelUps,
+    newlyUnlockedMoves,
   }
 }
 
