@@ -13,11 +13,31 @@ const FADE_IN_MS = 200
 const FADE_OUT_MS = 200
 const HOLD_MS = 1000
 
+/** "Midnight's Story" quest_start card — 2× default duration. */
+const QUEST_START_FADE_IN_MS = 400
+const QUEST_START_FADE_OUT_MS = 400
+const QUEST_START_HOLD_MS = 2000
+
 export type QuestTransitionType =
   | 'quest_start'
   | 'episode_start'
   | 'episode_complete'
   | 'quest_complete'
+
+function getTransitionTiming(type: QuestTransitionType): {
+  fadeInMs: number
+  fadeOutMs: number
+  holdMs: number
+} {
+  if (type === 'quest_start') {
+    return {
+      fadeInMs: QUEST_START_FADE_IN_MS,
+      fadeOutMs: QUEST_START_FADE_OUT_MS,
+      holdMs: QUEST_START_HOLD_MS,
+    }
+  }
+  return { fadeInMs: FADE_IN_MS, fadeOutMs: FADE_OUT_MS, holdMs: HOLD_MS }
+}
 
 export type ShowQuestTransitionParams = {
   questName: string
@@ -82,8 +102,9 @@ export const QuestTransition = forwardRef<QuestTransitionHandle>(function QuestT
   useEffect(() => {
     if (!active || !runningRef.current) return
 
-    const fadeOutAt = FADE_IN_MS + HOLD_MS
-    const doneAt = fadeOutAt + FADE_OUT_MS
+    const { fadeInMs, fadeOutMs, holdMs } = getTransitionTiming(active.type)
+    const fadeOutAt = fadeInMs + holdMs
+    const doneAt = fadeOutAt + fadeOutMs
 
     const fadeOutId = window.setTimeout(() => {
       onExitFadeStartRef.current?.()
@@ -112,12 +133,14 @@ export const QuestTransition = forwardRef<QuestTransitionHandle>(function QuestT
   const displayTitle =
     showEpisode && active.episodeName ? active.episodeName : active.questName
 
+  const { fadeInMs, fadeOutMs } = getTransitionTiming(active.type)
+
   return (
     <div
       className={`quest-transition${active.solidBlackBackdrop ? ' quest-transition--solid-black' : ''}${visible ? ' quest-transition--visible' : ''}`}
       style={{
-        ['--quest-transition-fade-in-ms' as string]: `${FADE_IN_MS}ms`,
-        ['--quest-transition-fade-out-ms' as string]: `${FADE_OUT_MS}ms`,
+        ['--quest-transition-fade-in-ms' as string]: `${fadeInMs}ms`,
+        ['--quest-transition-fade-out-ms' as string]: `${fadeOutMs}ms`,
       }}
       role="dialog"
       aria-modal="true"
