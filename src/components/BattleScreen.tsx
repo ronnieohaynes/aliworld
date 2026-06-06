@@ -398,6 +398,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const playerCanvasRef = useRef<HTMLCanvasElement>(null)
   const enemyWrapRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLElement>(null)
+  const [stageHeight, setStageHeight] = useState(0)
   const [enemyPlacement, setEnemyPlacement] = useState<BattleSpritePlacement>(DEFAULT_ENEMY_PLACEMENT)
   const [playerPlacement, setPlayerPlacement] = useState<BattleSpritePlacement>(DEFAULT_PLAYER_PLACEMENT)
   const [playerLayoutReady, setPlayerLayoutReady] = useState(false)
@@ -426,6 +427,20 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     npcId,
     (id) => createInitialBattleState(id),
   )
+
+  // Measure stage height so sprite feet Y positions stay in the right half
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height ?? el.clientHeight
+      if (h > 0) setStageHeight(h)
+    })
+    ro.observe(el)
+    const h = el.clientHeight
+    if (h > 0) setStageHeight(h)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!isDevSparNpcId(npcId)) {
@@ -846,12 +861,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         'player',
       )
       const playerTarget = Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT)
+      const playerFeetY = stageHeight > 0 ? Math.floor(stageHeight * 0.95) : BATTLE_PLAYER_FEET.y
       const placement = layoutSpriteAtFeet(
         bounds,
         BATTLE_PLAYER_SOURCE_W,
         BATTLE_PLAYER_SOURCE_H,
         BATTLE_PLAYER_FEET.x,
-        BATTLE_PLAYER_FEET.y,
+        playerFeetY,
         playerTarget,
       )
       setPlayerPlacement(placement)
@@ -862,7 +878,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       cancelled = true
       midnightSheetRef.current = null
     }
-  }, [selectedMidnightVariant])
+  }, [selectedMidnightVariant, stageHeight])
 
   useEffect(() => {
     let cancelled = false
@@ -897,12 +913,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       const enemyTarget = Math.floor(
         BATTLE_TARGET_VISIBLE_H * (state.npc.battleSizeMult ?? 1),
       )
+      const enemyFeetY = stageHeight > 0 ? Math.floor(stageHeight * 0.37) : BATTLE_ENEMY_FEET.y
       const placement = layoutSpriteAtFeet(
         bounds,
         frameW,
         frameH,
         BATTLE_ENEMY_FEET.x,
-        BATTLE_ENEMY_FEET.y,
+        enemyFeetY,
         enemyTarget,
       )
       if (!cancelled) {
@@ -914,7 +931,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     return () => {
       cancelled = true
     }
-  }, [state.npc.spriteSrc, state.npc.displayName, state.npc.battleSizeMult])
+  }, [state.npc.spriteSrc, state.npc.displayName, state.npc.battleSizeMult, stageHeight])
 
   return (
     <div
