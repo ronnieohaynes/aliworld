@@ -10,7 +10,6 @@ import {
   grantMusicPlayer,
   grantMusicPlayerFromGesture,
   isMusicMuted,
-  resetMusicPlayerForNewGame,
   setMusicMuted,
   subscribeAudioManager,
   toggleMusicMuted,
@@ -115,10 +114,7 @@ export function toggleSoundtrackPlaying(): void {
 }
 
 export function resumeMusicPlayerIfOwned(): void {
-  if (!hasMusicPlayer()) {
-    resetMusicPlayerForNewGame()
-    return
-  }
+  if (!hasMusicPlayer()) return
   void grantMusicPlayer()
 }
 

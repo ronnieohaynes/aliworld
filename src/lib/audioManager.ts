@@ -35,13 +35,14 @@ class AudioManager {
   private fadeGeneration = 0
   private fadeFrame = 0
   private loggedMissingContexts = new Set<string>()
+  private lastProgressEmitMs = 0
 
   constructor() {
     this.muted = readMuted()
     this.volume = clampVolume(readVolume())
     this.audio.preload = 'auto'
     this.audio.volume = 0
-    this.audio.addEventListener('timeupdate', () => this.emit())
+    this.audio.addEventListener('timeupdate', () => this.emitProgress())
     this.audio.addEventListener('loadedmetadata', () => this.emit())
     this.audio.addEventListener('durationchange', () => this.emit())
   }
@@ -59,6 +60,14 @@ class AudioManager {
     for (const listener of this.listeners) {
       listener()
     }
+  }
+
+  /** Throttle playhead updates so the music bar does not re-render the whole game shell every frame. */
+  private emitProgress(): void {
+    const now = performance.now()
+    if (now - this.lastProgressEmitMs < 250) return
+    this.lastProgressEmitMs = now
+    this.emit()
   }
 
   isMuted(): boolean {
