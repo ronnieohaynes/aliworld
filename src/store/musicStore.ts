@@ -10,6 +10,7 @@ import {
   grantMusicPlayer,
   grantMusicPlayerFromGesture,
   isMusicMuted,
+  setMusicContext,
   setMusicMuted,
   subscribeAudioManager,
   toggleMusicMuted,
@@ -115,6 +116,13 @@ export function toggleSoundtrackPlaying(): void {
 
 export function resumeMusicPlayerIfOwned(): void {
   if (!hasMusicPlayer()) return
+  void grantMusicPlayer()
+}
+
+/** Set the active music context and unlock/resume playback when the player is owned. */
+export function syncMusicForContext(context: string): void {
+  if (!hasMusicPlayer()) return
+  setMusicContext(context)
   void grantMusicPlayer()
 }
 

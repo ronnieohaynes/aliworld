@@ -85,10 +85,11 @@ import {
   markCityVisited,
   subscribeWorldMemoryStore,
 } from '../store/worldMemory'
-import { setMusicContext } from '../lib/audioManager'
 import {
   grantMusicPlayerFromAdam,
-  resumeMusicPlayerIfOwned,
+  getMusicPlayerGrantedSnapshot,
+  subscribeMusicStore,
+  syncMusicForContext,
 } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
@@ -325,6 +326,11 @@ export function GameScreen() {
     isMarkDefeated,
   )
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
+  const mp3PlayerOwned = useSyncExternalStore(
+    subscribeMusicStore,
+    getMusicPlayerGrantedSnapshot,
+    getMusicPlayerGrantedSnapshot,
+  )
 
   const darklineDestinations = useMemo((): CityId[] => {
     void quest1Revision
@@ -1249,7 +1255,7 @@ export function GameScreen() {
       }
       return { ...prev, lineIndex: next }
     })
-    if (adamHandoff) queueMicrotask(() => completeAdamMp3Handoff())
+    if (adamHandoff) completeAdamMp3Handoff()
   }, [completeAdamMp3Handoff])
 
   const openNearbyNpcDialogue = useCallback(() => {
@@ -1530,38 +1536,38 @@ export function GameScreen() {
   ])
 
   useEffect(() => {
-    if (cutscene != null) {
-      setMusicContext('cutscene')
-      return
+    let cancelled = false
+
+    void (async () => {
+      await whenAccountHydrated()
+      if (cancelled) return
+
+      if (cutscene != null) {
+        syncMusicForContext('cutscene')
+        return
+      }
+      if (battleNpcId) {
+        syncMusicForContext(`battle:${battleNpcId}`)
+        return
+      }
+      if (!locationReady || worldEntryActive) return
+
+      const context =
+        currentCity === 'five-gym-interior' ? 'gym' : `city:${currentCity}`
+      syncMusicForContext(context)
+    })()
+
+    return () => {
+      cancelled = true
     }
-    if (battleNpcId) {
-      setMusicContext(`battle:${battleNpcId}`)
-      return
-    }
-    if (!locationReady || worldEntryActive) return
-    if (currentCity === 'five-gym-interior') {
-      setMusicContext('gym')
-      return
-    }
-    setMusicContext(`city:${currentCity}`)
   }, [
     battleNpcId,
     currentCity,
     cutscene,
     locationReady,
+    mp3PlayerOwned,
     worldEntryActive,
   ])
-
-  useEffect(() => {
-    if (!locationReady || worldEntryActive) return
-    let cancelled = false
-    void whenAccountHydrated().then(() => {
-      if (!cancelled) resumeMusicPlayerIfOwned()
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [locationReady, worldEntryActive])
 
   useEffect(() => {
     if (hasArtifact('subway-pass') && !isMarkDefeated()) {
