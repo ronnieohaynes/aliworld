@@ -85,6 +85,7 @@ import {
   markCityVisited,
   subscribeWorldMemoryStore,
 } from '../store/worldMemory'
+import { isMusicEnabled } from '../config/musicEnabled'
 import {
   grantMusicPlayerFromAdam,
   getMusicPlayerGrantedSnapshot,
@@ -1536,6 +1537,8 @@ export function GameScreen() {
   ])
 
   useEffect(() => {
+    if (!isMusicEnabled()) return
+
     let cancelled = false
 
     void (async () => {

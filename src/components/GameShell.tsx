@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
+import { isMusicEnabled } from '../config/musicEnabled'
 import {
   getMusicMutedSnapshot,
   getMusicPlayerGrantedSnapshot,
@@ -341,9 +342,10 @@ export function GameShell({
   startButtonRef,
 }: Props) {
   const clock = useLiveClock()
+  const musicEnabled = isMusicEnabled()
 
   return (
-    <div className="game-shell">
+    <div className={`game-shell${musicEnabled ? '' : ' game-shell--no-music'}`}>
       <header className="game-shell__topbar">
         <CultSigil />
         <span className="game-shell__brand">ALIWORLD</span>
@@ -429,7 +431,7 @@ export function GameShell({
         </div>
       </div>
 
-      <GameShellMusicBar />
+      {musicEnabled ? <GameShellMusicBar /> : null}
     </div>
   )
 }

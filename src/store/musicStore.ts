@@ -2,6 +2,7 @@
  * GameShell music bar — facade over the context-aware audio manager.
  */
 
+import { isMusicEnabled } from '../config/musicEnabled'
 import { isMusicPlayerOwned } from '../lib/musicPlayerGate'
 import type { MusicCurrent } from '../lib/audioManager'
 import {
@@ -101,6 +102,7 @@ export function isSoundtrackPlaying(): boolean {
 }
 
 export function grantMusicPlayerFromAdam(cityContext: string): void {
+  if (!isMusicEnabled()) return
   grantMusicPlayerFromGesture(cityContext)
 }
 
@@ -115,13 +117,13 @@ export function toggleSoundtrackPlaying(): void {
 }
 
 export function resumeMusicPlayerIfOwned(): void {
-  if (!hasMusicPlayer()) return
+  if (!isMusicEnabled() || !hasMusicPlayer()) return
   void grantMusicPlayer()
 }
 
 /** Set the active music context and unlock/resume playback when the player is owned. */
 export function syncMusicForContext(context: string): void {
-  if (!hasMusicPlayer()) return
+  if (!isMusicEnabled() || !hasMusicPlayer()) return
   setMusicContext(context)
   void grantMusicPlayer()
 }
