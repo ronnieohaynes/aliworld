@@ -50,6 +50,26 @@
   box-shadow: 0 0 4px rgba(125, 255, 184, 0.5);
 }
 
+.battle-placement-grid__feet-marker {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.battle-placement-grid__feet-marker--enemy {
+  background: rgba(255, 220, 80, 0.95);
+  box-shadow: 0 0 4px rgba(255, 220, 80, 0.8);
+}
+
+.battle-placement-grid__feet-marker--player {
+  background: rgba(125, 255, 184, 0.95);
+  box-shadow: 0 0 4px rgba(125, 255, 184, 0.8);
+}
+
 .battle-placement-grid__center-v {
   top: 0;
   bottom: 0;

@@ -1,8 +1,8 @@
 import { useCallback, useLayoutEffect, useState, type RefObject } from 'react'
 import type { BattleSpritePlacement } from '../game/battlePlacement'
 import {
-  BATTLE_ENEMY_GROUND_Y,
-  BATTLE_PLAYER_GROUND_Y,
+  BATTLE_ENEMY_FEET,
+  BATTLE_PLAYER_FEET,
 } from '../game/battlePlacement'
 import './BattlePlacementGrid.css'
 
@@ -12,7 +12,8 @@ export type SpritePlacementMetrics = {
   x: number
   drawY: number
   displayHeight: number
-  groundY: number
+  feetX: number
+  feetY: number
   width: number
   bottom: number
   facing: string
@@ -40,7 +41,8 @@ function measureSprite(
     x,
     drawY,
     displayHeight,
-    groundY: placement.groundY,
+    feetX: placement.feetX,
+    feetY: placement.feetY,
     width,
     bottom: Math.floor(drawY + displayHeight),
     facing: placement.facing,
@@ -129,11 +131,25 @@ export function BattlePlacementGrid({
     <div className="battle-placement-grid" aria-hidden>
       <div
         className="battle-placement-grid__ground-line battle-placement-grid__ground-line--enemy"
-        style={{ top: Math.floor(BATTLE_ENEMY_GROUND_Y) }}
+        style={{ top: Math.floor(BATTLE_ENEMY_FEET.y) }}
       />
       <div
         className="battle-placement-grid__ground-line battle-placement-grid__ground-line--player"
-        style={{ top: Math.floor(BATTLE_PLAYER_GROUND_Y) }}
+        style={{ top: Math.floor(BATTLE_PLAYER_FEET.y) }}
+      />
+      <div
+        className="battle-placement-grid__feet-marker battle-placement-grid__feet-marker--enemy"
+        style={{
+          left: Math.floor(BATTLE_ENEMY_FEET.x),
+          top: Math.floor(BATTLE_ENEMY_FEET.y),
+        }}
+      />
+      <div
+        className="battle-placement-grid__feet-marker battle-placement-grid__feet-marker--player"
+        style={{
+          left: Math.floor(BATTLE_PLAYER_FEET.x),
+          top: Math.floor(BATTLE_PLAYER_FEET.y),
+        }}
       />
 
       <div
@@ -187,8 +203,7 @@ function SpriteLabel({
   name: string
   metrics: SpritePlacementMetrics
 }) {
-  const { x, drawY, displayHeight, groundY, width, bottom, facing } = metrics
-  const aligned = bottom === groundY
+  const { x, drawY, displayHeight, feetX, feetY, width, bottom, facing } = metrics
 
   return (
     <div
@@ -201,13 +216,12 @@ function SpriteLabel({
       <span>
         {name} x:{x}
       </span>
-      <span>GROUND_Y:{groundY}</span>
+      <span>
+        feet:{feetX},{feetY}
+      </span>
       <span>drawY:{drawY}</span>
       <span>h:{displayHeight}</span>
-      <span>
-        bottom:{bottom}
-        {aligned ? ' ok' : ' off ground'}
-      </span>
+      <span>bottom:{bottom}</span>
       <span>
         {width}×{displayHeight}
       </span>

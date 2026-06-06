@@ -9,27 +9,32 @@ import type { VisibleBounds } from './spriteBounds'
 /** Battle enemy source canvas scale vs overworld NPC display. */
 export const BATTLE_SPRITE_SCALE = 1.2
 
-/** Shared feet baseline — visible feet align here via auto-fit. */
-export const BATTLE_GROUND_Y = 258
+/** Screen point where every enemy's feet land (bottom-center of visible sprite). */
+export const BATTLE_ENEMY_FEET = { x: 68, y: 221 } as const
 
-/** @deprecated Use BATTLE_GROUND_Y */
-export const BATTLE_ENEMY_GROUND_Y = BATTLE_GROUND_Y
+/** Screen point where the player's feet land (bottom-center of visible sprite). */
+export const BATTLE_PLAYER_FEET = { x: 288, y: 224 } as const
 
-/** @deprecated Use BATTLE_GROUND_Y */
-export const BATTLE_PLAYER_GROUND_Y = BATTLE_GROUND_Y
+/** @deprecated Use BATTLE_ENEMY_FEET.y */
+export const BATTLE_GROUND_Y = BATTLE_ENEMY_FEET.y
 
+/** @deprecated Use BATTLE_ENEMY_FEET.y */
+export const BATTLE_ENEMY_GROUND_Y = BATTLE_ENEMY_FEET.y
+
+/** @deprecated Use BATTLE_PLAYER_FEET.y */
+export const BATTLE_PLAYER_GROUND_Y = BATTLE_PLAYER_FEET.y
+
+/** @deprecated Feet X is derived from BATTLE_ENEMY_FEET — left edge varies per sprite. */
 export const BATTLE_ENEMY_X = 36
-export const BATTLE_PLAYER_X = 203
+
+/** @deprecated Feet X is derived from BATTLE_PLAYER_FEET — left edge varies per sprite. */
+export const BATTLE_PLAYER_X = 213
 
 /** Target visible body height for enemies (one dial for all NPCs). */
 export const BATTLE_TARGET_VISIBLE_H = 150
 
 /** @deprecated Alias for enemy target height — use with battleSizeMult. */
 export const BATTLE_ENEMY_DISPLAY_H = BATTLE_TARGET_VISIBLE_H
-
-/** Per-fighter vertical offset from the ground line (negative = up). */
-export const BATTLE_ENEMY_FEET_NUDGE = -37
-export const BATTLE_PLAYER_FEET_NUDGE = -27
 
 /** Player visible height matches enemy target (no protagonist bump). */
 export const BATTLE_PLAYER_VISIBLE_MULT = 0.65
@@ -48,14 +53,58 @@ export type BattleSpritePlacement = {
   displayHeight: number
   sourceWidth: number
   sourceHeight: number
-  groundY: number
+  /** Target feet Y on the battle stage (same for all fighters in a slot). */
+  feetY: number
+  /** Target feet X on the battle stage (same for all fighters in a slot). */
+  feetX: number
   facing: 'left' | 'right'
+  /** @deprecated Use feetY */
+  groundY: number
+}
+
+function footAnchorInSource(bounds: VisibleBounds): { x: number; y: number } {
+  return {
+    x: (bounds.left + bounds.right) / 2,
+    y: bounds.bottom,
+  }
 }
 
 /**
- * Map source pixels → display using one uniform scale derived from visible height.
- * displayH ≈ targetVisibleH (body), not sourceH * scale (which inflates padded frames).
+ * Scale sprite to targetVisibleH, then position so visible bottom-center
+ * sits exactly on the shared feet anchor for that slot.
  */
+export function layoutSpriteAtFeet(
+  bounds: VisibleBounds,
+  sourceW: number,
+  sourceH: number,
+  feetX: number,
+  feetY: number,
+  targetVisibleH: number,
+): BattleSpritePlacement {
+  const visH = Math.max(1, bounds.visH)
+  const bodyScale = targetVisibleH / visH
+  const displayH = Math.floor(visH * bodyScale)
+  const uniformScale = displayH / sourceH
+  const displayW = Math.floor(sourceW * uniformScale)
+  const foot = footAnchorInSource(bounds)
+  const x = Math.floor(feetX - foot.x * uniformScale)
+  const drawY = Math.floor(feetY - foot.y * uniformScale)
+
+  return {
+    x,
+    drawY,
+    displayWidth: displayW,
+    displayHeight: displayH,
+    sourceWidth: sourceW,
+    sourceHeight: sourceH,
+    feetX,
+    feetY,
+    groundY: feetY,
+    facing: 'left',
+  }
+}
+
+/** @deprecated Use layoutSpriteAtFeet */
 export function layoutSpriteFromVisibleBounds(
   bounds: VisibleBounds,
   sourceW: number,
@@ -69,37 +118,40 @@ export function layoutSpriteFromVisibleBounds(
   const bodyScale = targetVisibleH / visH
   const displayH = Math.floor(visH * bodyScale)
   const uniformScale = displayH / sourceH
-  const displayW = Math.floor(sourceW * uniformScale)
-  const drawY = Math.floor(groundY - bounds.bottom * uniformScale + feetNudge)
-
-  return {
-    x,
-    drawY,
-    displayWidth: displayW,
-    displayHeight: displayH,
-    sourceWidth: sourceW,
-    sourceHeight: sourceH,
-    groundY,
-    facing: 'left',
-  }
+  const foot = footAnchorInSource(bounds)
+  const feetY = groundY + feetNudge
+  const feetX = x + foot.x * uniformScale
+  return layoutSpriteAtFeet(bounds, sourceW, sourceH, feetX, feetY, targetVisibleH)
 }
 
-export const DEFAULT_ENEMY_PLACEMENT: BattleSpritePlacement = layoutSpriteFromVisibleBounds(
-  { top: 0, bottom: BATTLE_ENEMY_SOURCE_H - 1, left: 0, right: BATTLE_ENEMY_SOURCE_W - 1, visH: BATTLE_ENEMY_SOURCE_H, visW: BATTLE_ENEMY_SOURCE_W },
+export const DEFAULT_ENEMY_PLACEMENT: BattleSpritePlacement = layoutSpriteAtFeet(
+  {
+    top: 0,
+    bottom: BATTLE_ENEMY_SOURCE_H - 1,
+    left: 0,
+    right: BATTLE_ENEMY_SOURCE_W - 1,
+    visH: BATTLE_ENEMY_SOURCE_H,
+    visW: BATTLE_ENEMY_SOURCE_W,
+  },
   BATTLE_ENEMY_SOURCE_W,
   BATTLE_ENEMY_SOURCE_H,
-  BATTLE_GROUND_Y,
-  BATTLE_ENEMY_X,
+  BATTLE_ENEMY_FEET.x,
+  BATTLE_ENEMY_FEET.y,
   BATTLE_TARGET_VISIBLE_H,
-  BATTLE_ENEMY_FEET_NUDGE,
 )
 
-export const DEFAULT_PLAYER_PLACEMENT: BattleSpritePlacement = layoutSpriteFromVisibleBounds(
-  { top: 0, bottom: BATTLE_PLAYER_SOURCE_H - 1, left: 0, right: BATTLE_PLAYER_SOURCE_W - 1, visH: BATTLE_PLAYER_SOURCE_H, visW: BATTLE_PLAYER_SOURCE_W },
+export const DEFAULT_PLAYER_PLACEMENT: BattleSpritePlacement = layoutSpriteAtFeet(
+  {
+    top: 0,
+    bottom: BATTLE_PLAYER_SOURCE_H - 1,
+    left: 0,
+    right: BATTLE_PLAYER_SOURCE_W - 1,
+    visH: BATTLE_PLAYER_SOURCE_H,
+    visW: BATTLE_PLAYER_SOURCE_W,
+  },
   BATTLE_PLAYER_SOURCE_W,
   BATTLE_PLAYER_SOURCE_H,
-  BATTLE_GROUND_Y,
-  BATTLE_PLAYER_X,
+  BATTLE_PLAYER_FEET.x,
+  BATTLE_PLAYER_FEET.y,
   Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT),
-  BATTLE_PLAYER_FEET_NUDGE,
 )

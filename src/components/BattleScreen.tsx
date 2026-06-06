@@ -17,20 +17,17 @@ import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '
 import type { SpriteSheet } from '../game/SpriteSheet'
 import { isDevSparNpcId } from '../data/devSpar'
 import {
-  BATTLE_ENEMY_FEET_NUDGE,
+  BATTLE_ENEMY_FEET,
   BATTLE_ENEMY_SOURCE_H,
   BATTLE_ENEMY_SOURCE_W,
-  BATTLE_ENEMY_X,
-  BATTLE_GROUND_Y,
-  BATTLE_PLAYER_FEET_NUDGE,
+  BATTLE_PLAYER_FEET,
   BATTLE_PLAYER_SOURCE_H,
   BATTLE_PLAYER_SOURCE_W,
   BATTLE_PLAYER_VISIBLE_MULT,
-  BATTLE_PLAYER_X,
   BATTLE_TARGET_VISIBLE_H,
   DEFAULT_ENEMY_PLACEMENT,
   DEFAULT_PLAYER_PLACEMENT,
-  layoutSpriteFromVisibleBounds,
+  layoutSpriteAtFeet,
   type BattleSpritePlacement,
 } from '../game/battlePlacement'
 import {
@@ -607,14 +604,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         'player',
       )
       const playerTarget = Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT)
-      const placement = layoutSpriteFromVisibleBounds(
+      const placement = layoutSpriteAtFeet(
         bounds,
         BATTLE_PLAYER_SOURCE_W,
         BATTLE_PLAYER_SOURCE_H,
-        BATTLE_GROUND_Y,
-        BATTLE_PLAYER_X,
+        BATTLE_PLAYER_FEET.x,
+        BATTLE_PLAYER_FEET.y,
         playerTarget,
-        BATTLE_PLAYER_FEET_NUDGE,
       )
       setPlayerPlacement(placement)
       setPlayerLayoutReady(true)
@@ -659,14 +655,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       const enemyTarget = Math.floor(
         BATTLE_TARGET_VISIBLE_H * (state.npc.battleSizeMult ?? 1),
       )
-      const placement = layoutSpriteFromVisibleBounds(
+      const placement = layoutSpriteAtFeet(
         bounds,
         frameW,
         frameH,
-        BATTLE_GROUND_Y,
-        BATTLE_ENEMY_X,
+        BATTLE_ENEMY_FEET.x,
+        BATTLE_ENEMY_FEET.y,
         enemyTarget,
-        BATTLE_ENEMY_FEET_NUDGE,
       )
       if (!cancelled) {
         setEnemyPlacement(placement)
