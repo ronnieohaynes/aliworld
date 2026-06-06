@@ -251,15 +251,7 @@ function MusicSpeakerIcon({ muted }: { muted: boolean }) {
   )
 }
 
-export function GameShell({
-  children,
-  onInteract = () => {},
-  onScript = () => {},
-  onFannyPack = () => {},
-  onStart = () => {},
-  startButtonRef,
-}: Props) {
-  const clock = useLiveClock()
+function GameShellMusicBar() {
   const playerGranted = useSyncExternalStore(
     subscribeMusicStore,
     getMusicPlayerGrantedSnapshot,
@@ -291,6 +283,64 @@ export function GameShell({
   const toggleMute = useCallback(() => {
     toggleSoundtrackPlaying()
   }, [])
+
+  return (
+    <div
+      className={`game-shell__music${
+        !playerGranted ? ' game-shell__music--locked' : ''
+      }${muted && playerGranted ? ' game-shell__music--muted' : ''}`}
+      aria-live="polite"
+    >
+      <div className="game-shell__album-art" aria-hidden>
+        <span className="game-shell__album-hole" />
+      </div>
+      <div className="game-shell__track">
+        <div className="game-shell__track-title">
+          {!playerGranted ? 'no player yet' : hasTrackMeta ? trackTitle : 'no track'}
+        </div>
+        <div className="game-shell__track-artist">
+          {!playerGranted ? '—' : hasTrackMeta ? trackArtist : '—'}
+        </div>
+        <div
+          className="game-shell__progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={hasTrackMeta ? progressPct : 0}
+          aria-label={hasTrackMeta ? 'Track progress' : undefined}
+        >
+          <div
+            className="game-shell__progress-fill"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
+      <div className="game-shell__transport">
+        <button
+          type="button"
+          className="game-shell__mute-btn"
+          aria-label={muted ? 'Unmute music' : 'Mute music'}
+          aria-pressed={muted}
+          title={muted ? 'Unmute' : 'Mute'}
+          onClick={toggleMute}
+          disabled={!playerGranted}
+        >
+          <MusicSpeakerIcon muted={muted} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function GameShell({
+  children,
+  onInteract = () => {},
+  onScript = () => {},
+  onFannyPack = () => {},
+  onStart = () => {},
+  startButtonRef,
+}: Props) {
+  const clock = useLiveClock()
 
   return (
     <div className="game-shell">
@@ -379,50 +429,7 @@ export function GameShell({
         </div>
       </div>
 
-      <div
-        className={`game-shell__music${
-          !playerGranted ? ' game-shell__music--locked' : ''
-        }${muted && playerGranted ? ' game-shell__music--muted' : ''}`}
-        aria-live="polite"
-      >
-        <div className="game-shell__album-art" aria-hidden>
-          <span className="game-shell__album-hole" />
-        </div>
-        <div className="game-shell__track">
-          <div className="game-shell__track-title">
-            {!playerGranted ? 'no player yet' : hasTrackMeta ? trackTitle : 'no track'}
-          </div>
-          <div className="game-shell__track-artist">
-            {!playerGranted ? '—' : hasTrackMeta ? trackArtist : '—'}
-          </div>
-          <div
-            className="game-shell__progress"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={hasTrackMeta ? progressPct : 0}
-            aria-label={hasTrackMeta ? 'Track progress' : undefined}
-          >
-            <div
-              className="game-shell__progress-fill"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        </div>
-        <div className="game-shell__transport">
-          <button
-            type="button"
-            className="game-shell__mute-btn"
-            aria-label={muted ? 'Unmute music' : 'Mute music'}
-            aria-pressed={muted}
-            title={muted ? 'Unmute' : 'Mute'}
-            onClick={toggleMute}
-            disabled={!playerGranted}
-          >
-            <MusicSpeakerIcon muted={muted} />
-          </button>
-        </div>
-      </div>
+      <GameShellMusicBar />
     </div>
   )
 }

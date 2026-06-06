@@ -464,9 +464,13 @@ export function GameScreen() {
         questTransitionRef.current.showTransition(wrapped)
         return
       }
-      if (attempt < 12) {
+      if (attempt < 30) {
         window.requestAnimationFrame(() => run(attempt + 1))
+        return
       }
+      console.warn('[quest transition] ref unavailable — skipping overlay')
+      setQuestTransitionActive(false)
+      wrapped.onComplete?.()
     }
     run()
   }, [])
@@ -1195,13 +1199,14 @@ export function GameScreen() {
   }, [currentCity, showNarration])
 
   const advanceDialogue = useCallback(() => {
+    let adamHandoff = false
     setDialogue((prev) => {
       if (!prev) return null
       const next = prev.lineIndex + 1
       if (next >= prev.speakerLines.length) {
         const onComplete = prev.onComplete
         if (isAdamNpcId(prev.npc.id)) {
-          completeAdamMp3Handoff()
+          adamHandoff = true
         } else if (isGatingNpcId(prev.npc.id)) {
           markGatingNpcTalked(prev.npc.id)
         }
@@ -1214,6 +1219,7 @@ export function GameScreen() {
       }
       return { ...prev, lineIndex: next }
     })
+    if (adamHandoff) queueMicrotask(() => completeAdamMp3Handoff())
   }, [completeAdamMp3Handoff])
 
   const openNearbyNpcDialogue = useCallback(() => {
@@ -1517,7 +1523,17 @@ export function GameScreen() {
   ])
 
   useEffect(() => {
-    resumeMusicPlayerIfOwned()
+    if (!locationReady || worldEntryActive) return
+    let cancelled = false
+    void whenAccountHydrated().then(() => {
+      if (!cancelled) resumeMusicPlayerIfOwned()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [locationReady, worldEntryActive])
+
+  useEffect(() => {
     if (hasArtifact('subway-pass') && !isMarkDefeated()) {
       setMarkDefeated()
     }
