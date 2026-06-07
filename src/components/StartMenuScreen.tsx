@@ -20,8 +20,6 @@ export type StartMenuAction =
 const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'resume', label: 'resume' },
   { id: 'refresh', label: 'refresh' },
-  { id: 'fanny-pack', label: 'fanny pack' },
-  { id: 'loadout', label: 'loadout' },
   { id: 'report-bug', label: 'report bug' },
   { id: 'new-game', label: 'new game', danger: true },
   { id: 'sign-out', label: 'sign out' },
