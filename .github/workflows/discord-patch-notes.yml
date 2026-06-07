@@ -1,0 +1,69 @@
+name: Discord Patch Notes
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  post-patch-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - name: Generate and post patch notes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          # Collect commit messages since last push (up to 10)
+          COMMITS=$(git log ${{ github.event.before }}..${{ github.sha }} --pretty=format:"- %s" 2>/dev/null || git log -10 --pretty=format:"- %s")
+
+          if [ -z "$COMMITS" ]; then
+            echo "No commits found, skipping."
+            exit 0
+          fi
+
+          echo "Commits: $COMMITS"
+
+          # Ask Claude to write patch notes
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg commits "$COMMITS" \
+              '{
+                model: "claude-opus-4-5",
+                max_tokens: 500,
+                messages: [{
+                  role: "user",
+                  content: ("You write patch notes for ALIWORLD, a pixel art RPG game. Based on these git commits, write short patch notes split into exactly 3 sections. Use these exact headers: **REMOVED**, **FIXED**, **NEW**. Under each header, write 1-3 bullet points using plain language — casual, lowercase, no jargon. Skip a section entirely if nothing applies. Keep each bullet to one short sentence. Do not include a title or intro. Commits:\n" + $commits)
+                }]
+              }')")
+
+          NOTES=$(echo "$RESPONSE" | jq -r '.content[0].text // "no notes generated"')
+          echo "Notes: $NOTES"
+
+          # Build Discord message
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          BRANCH="${{ github.ref_name }}"
+          DISCORD_BODY=$(jq -n \
+            --arg notes "$NOTES" \
+            --arg sha "$SHORT_SHA" \
+            --arg branch "$BRANCH" \
+            '{
+              username: "aliworld",
+              embeds: [{
+                title: "patch notes",
+                description: $notes,
+                color: 7864319,
+                footer: { text: ("main · " + $sha) }
+              }]
+            }')
+
+          curl -s -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$DISCORD_BODY"
