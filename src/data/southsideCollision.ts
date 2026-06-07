@@ -15,8 +15,16 @@ export const SOUTHSIDE_MAP_SIZE = { width: 1254, height: 1254 };
 // Darkline entrance stairwell on this map.
 export const SOUTHSIDE_DARKLINE_ZONE = { x: 150, y: 960, width: 112, height: 96 };
 
-// Store entrance door — transition zone into the interior map.
-export const SOUTHSIDE_ENTRANCE_ZONE = { x: 650, y: 750, width: 88, height: 64 };
+/** Center x of the blue store corner entrance (brick door + awning). */
+export const SOUTHSIDE_STORE_DOOR_X = 669;
+
+// Street-level corner door — not the upper facade / side cult entrance.
+export const SOUTHSIDE_ENTRANCE_ZONE = {
+  x: 632,
+  y: 812,
+  width: 72,
+  height: 56,
+};
 
 // Player spawns here when arriving via Darkline.
 export const SOUTHSIDE_DARKLINE_ARRIVAL = { x: 197, y: 1035 };

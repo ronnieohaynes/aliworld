@@ -258,12 +258,12 @@ export const TOWN_CRIER_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2 — blue store clerk (southside). */
+/** Quest 2 — blue store clerk (southside, corner brick door). */
 export const CLERK_NPC: NpcData = {
   id: 'clerk',
   name: 'clerk',
-  x: 720,
-  y: 480,
+  x: 669,
+  y: 880,
   lines: [
     'the crier came through here an hour ago.',
     'i run this store.',

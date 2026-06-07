@@ -8,6 +8,7 @@ import {
   SOUTHSIDE_DARKLINE_ZONE,
   SOUTHSIDE_ENTRANCE_ZONE,
   SOUTHSIDE_MAP_SIZE,
+  SOUTHSIDE_STORE_DOOR_X,
 } from './southsideCollision'
 import {
   BLUE_STORE_EXIT_ZONE,
@@ -79,10 +80,10 @@ export const SOUTHSIDE_PLACEHOLDER_MAP_SRC = HILLCREST_MAP_SRC
 const SOUTHSIDE_FOREGROUND_MAP_SRC = publicAsset('Assets/tileset/southside-map-fg.png')
 const BLUE_STORE_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/blue-store-interior-map.png')
 
-/** Spawn on Southside when exiting the store interior (just outside the door). */
+/** Spawn on Southside when exiting the store interior (sidewalk south of the side door). */
 export const SOUTHSIDE_EXTERIOR_RETURN = {
-  x: Math.floor(SOUTHSIDE_ENTRANCE_ZONE.x + SOUTHSIDE_ENTRANCE_ZONE.width / 2),
-  y: Math.floor(SOUTHSIDE_ENTRANCE_ZONE.y + SOUTHSIDE_ENTRANCE_ZONE.height + 12),
+  x: SOUTHSIDE_STORE_DOOR_X,
+  y: SOUTHSIDE_ENTRANCE_ZONE.y + SOUTHSIDE_ENTRANCE_ZONE.height + 12,
 }
 
 const SAN_BRUNO_TRIGGER_ZONES: TriggerZone[] = [

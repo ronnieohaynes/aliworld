@@ -30,7 +30,6 @@ import {
   RESTOCKER_NPC_ID,
   TOWN_CRIER_NPC_ID,
   CROWD_2_NPC_ID,
-  CLERK_NPC_ID,
 } from '../store/quest2Store'
 import type { TriggerAction } from './triggerZones'
 
@@ -259,7 +258,7 @@ export function getQuestPulseTargetDescriptor(
         : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-clerk':
       return ctx.inSouthside
-        ? { kind: 'npc', id: CLERK_NPC_ID }
+        ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
         : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-restocker':
       return { kind: 'npc', id: RESTOCKER_NPC_ID }
@@ -318,7 +317,12 @@ function resolveDescriptorInCity(
     case 'zone': {
       const zone = findTriggerInCity(city, descriptor.action)
       if (!zone) return null
-      return { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 }
+      const cx = zone.x + zone.width / 2
+      // Store entrance: pulse on the doorstep (south edge), not zone centroid.
+      if (descriptor.action === 'OPEN_BLUE_STORE') {
+        return { x: cx, y: zone.y + zone.height - 6 }
+      }
+      return { x: cx, y: zone.y + zone.height / 2 }
     }
     case 'nearest-untalked-gating':
       return findNearestUntalkedGatingNpc(city, playerX, playerY)
