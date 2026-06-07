@@ -262,11 +262,11 @@
 
 .game-shell__music {
   display: grid;
-  grid-template-columns: 22px 1fr auto;
+  grid-template-columns: 16px 1fr auto;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 8px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px;
   background: #0f0d1a;
   border: 1px solid #2e2840;
   border-radius: 6px;
@@ -274,8 +274,8 @@
 
 .game-shell__album-art {
   position: relative;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   background: #534ab7;
   border-radius: 2px;
   flex-shrink: 0;
@@ -285,9 +285,9 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
   border-radius: 50%;
   background: #0f0d1a;
 }
@@ -341,10 +341,10 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 22px;
+  min-height: 22px;
   margin: 0;
-  padding: 4px;
+  padding: 3px;
   border: none;
   border-radius: 4px;
   background: transparent;
@@ -419,9 +419,9 @@
   }
 
   .game-shell__mute-btn {
-    min-width: 40px;
-    min-height: 40px;
-    padding: 8px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 6px;
   }
 
   .game-shell__joystick {
