@@ -266,6 +266,9 @@ export function GameScreen() {
   } | null>(null)
   const loadoutMenuBtnRef = useRef<HTMLButtonElement>(null)
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
+  const interactBtnRef = useRef<HTMLButtonElement>(null)
+  const scriptBtnRef = useRef<HTMLButtonElement>(null)
+  const fannyPackBtnRef = useRef<HTMLButtonElement>(null)
   const [loadoutTutorialStep, setLoadoutTutorialStep] = useState<number | null>(null)
   const [gymTrainerChoiceOpen, setGymTrainerChoiceOpen] = useState(false)
   const [gymHeadPulseDismissed, setGymHeadPulseDismissed] = useState(false)
@@ -1912,6 +1915,9 @@ export function GameScreen() {
         onInteract={handleInteract}
         onStart={toggleStartMenu}
         startButtonRef={startMenuBtnRef}
+        interactButtonRef={interactBtnRef}
+        scriptButtonRef={scriptBtnRef}
+        fannyPackButtonRef={fannyPackBtnRef}
       >
         <div
           className={`game-screen-play${
@@ -2126,7 +2132,12 @@ export function GameScreen() {
               ariaLabel="Loadout tutorial"
               steps={LOADOUT_TUTORIAL_STEPS}
               stepIndex={loadoutTutorialStep}
-              targetRefs={{ menu_button: startMenuBtnRef }}
+              targetRefs={{
+                menu_button: startMenuBtnRef,
+                script_button: scriptBtnRef,
+                interact_button: interactBtnRef,
+                fanny_pack_button: fannyPackBtnRef,
+              }}
               elevated
               onNext={advanceLoadoutTutorial}
               onSkip={skipLoadoutTutorial}

@@ -87,6 +87,9 @@ type Props = {
   onFannyPack?: () => void
   onStart?: () => void
   startButtonRef?: RefObject<HTMLButtonElement | null>
+  interactButtonRef?: RefObject<HTMLButtonElement | null>
+  scriptButtonRef?: RefObject<HTMLButtonElement | null>
+  fannyPackButtonRef?: RefObject<HTMLButtonElement | null>
 }
 
 function CultSigil({ size = 22 }: { size?: number }) {
@@ -340,6 +343,9 @@ export function GameShell({
   onFannyPack = () => {},
   onStart = () => {},
   startButtonRef,
+  interactButtonRef,
+  scriptButtonRef,
+  fannyPackButtonRef,
 }: Props) {
   const clock = useLiveClock()
   const musicEnabled = isMusicEnabled()
@@ -380,6 +386,7 @@ export function GameShell({
         <div className="game-shell__actions">
           <button
             type="button"
+            ref={interactButtonRef}
             className="game-shell__action game-shell__action--interact"
             aria-label="INTERACT"
             title="INTERACT"
@@ -391,6 +398,7 @@ export function GameShell({
           </button>
           <button
             type="button"
+            ref={scriptButtonRef}
             className="game-shell__action game-shell__action--script"
             aria-label="SCRIPT"
             title="SCRIPT"
@@ -409,6 +417,7 @@ export function GameShell({
           </button>
           <button
             type="button"
+            ref={fannyPackButtonRef}
             className="game-shell__action game-shell__action--pack"
             aria-label="FANNY PACK"
             title="FANNY PACK"

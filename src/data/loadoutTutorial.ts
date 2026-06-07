@@ -2,6 +2,9 @@ import type { GuidedTutorialStep } from '../components/GuidedTutorialOverlay'
 
 export type LoadoutTutorialTarget =
   | 'menu_button'
+  | 'script_button'
+  | 'interact_button'
+  | 'fanny_pack_button'
   | 'menu_loadout'
   | 'stat_attack'
   | 'stat_speed'
@@ -10,9 +13,9 @@ export type LoadoutTutorialTarget =
   | 'build'
   | 'share_card'
 
-/** Steps 0–1: block overworld talk; UI targets (START, loadout) stay clickable. */
+/** Steps 0–3: block overworld talk; UI targets stay clickable. */
 export function blocksWorldInteractDuringLoadoutTutorial(step: number | null): boolean {
-  return step != null && step <= 1
+  return step != null && step <= 3
 }
 
 export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
@@ -23,8 +26,16 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
     target: 'none',
   },
   {
-    text: 'open your home screen.',
-    target: 'menu_button',
+    text: 'tap interact to talk to people.',
+    target: 'interact_button',
+  },
+  {
+    text: 'open your fanny pack to check your items.',
+    target: 'fanny_pack_button',
+  },
+  {
+    text: 'open your loadout here.',
+    target: 'script_button',
     waitForAction: true,
   },
   {
@@ -67,9 +78,9 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
   },
 ]
 
-/** Step waiting for START / home menu must still open the pause menu. */
+/** Step waiting for the script button must still open the loadout. */
 export function allowsStartMenuDuringLoadoutTutorial(step: number | null): boolean {
   if (step == null) return false
   const def = LOADOUT_TUTORIAL_STEPS[step]
-  return def?.waitForAction === true && def.target === 'menu_button'
+  return def?.waitForAction === true && (def.target === 'menu_button' || def.target === 'script_button')
 }

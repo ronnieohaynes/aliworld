@@ -860,7 +860,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         `player:${walkSrc}`,
         'player',
       )
-      const playerTarget = Math.floor(BATTLE_TARGET_VISIBLE_H * BATTLE_PLAYER_VISIBLE_MULT)
+      const scaledTargetH = stageHeight > 0 ? Math.floor(stageHeight * 0.33) : BATTLE_TARGET_VISIBLE_H
+      const playerTarget = Math.floor(scaledTargetH * BATTLE_PLAYER_VISIBLE_MULT)
       const playerFeetY = stageHeight > 0 ? Math.floor(stageHeight * 0.95) : BATTLE_PLAYER_FEET.y
       const placement = layoutSpriteAtFeet(
         bounds,
@@ -910,9 +911,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         label,
       )
       drawEnemyBattleSprite(canvas, img, spriteColumns)
-      const enemyTarget = Math.floor(
-        BATTLE_TARGET_VISIBLE_H * (state.npc.battleSizeMult ?? 1),
-      )
+      const scaledEnemyH = stageHeight > 0 ? Math.floor(stageHeight * 0.33) : BATTLE_TARGET_VISIBLE_H
+      const enemyTarget = Math.floor(scaledEnemyH * (state.npc.battleSizeMult ?? 1))
       const enemyFeetY = stageHeight > 0 ? Math.floor(stageHeight * 0.37) : BATTLE_ENEMY_FEET.y
       const placement = layoutSpriteAtFeet(
         bounds,

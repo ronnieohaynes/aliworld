@@ -53,7 +53,7 @@ function TutorialDimPanels({ rect, borderColor }: { rect: DOMRect; borderColor: 
       <div style={{ ...panel, top, left: right, right: 0, height }} aria-hidden />
       <div style={{ ...panel, top: bottom, left: 0, right: 0, bottom: 0 }} aria-hidden />
       <div
-        className="battle-tutorial__spotlight battle-tutorial__spotlight--ring"
+        className="battle-tutorial__spotlight-ring"
         style={{
           top,
           left,
