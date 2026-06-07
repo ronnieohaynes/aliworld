@@ -183,7 +183,11 @@ export const ADAM_NPC: NpcData = {
   name: 'adam',
   x: 560,
   y: 480,
-  lines: ["you'll need this."],
+  lines: [
+    "tap interact to say what's up. like you just did.",
+    "when someone gives you an artifact it shows up in your fanny pack.",
+    "you'll need this.",
+  ],
   color: '#afa9ec',
   spriteSrc: ADAM_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',

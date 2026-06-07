@@ -3,8 +3,6 @@ import type { GuidedTutorialStep } from '../components/GuidedTutorialOverlay'
 export type LoadoutTutorialTarget =
   | 'menu_button'
   | 'script_button'
-  | 'interact_button'
-  | 'fanny_pack_button'
   | 'menu_loadout'
   | 'stat_attack'
   | 'stat_speed'
@@ -13,9 +11,9 @@ export type LoadoutTutorialTarget =
   | 'build'
   | 'share_card'
 
-/** Steps 0–3: block overworld talk; UI targets stay clickable. */
+/** Steps 0–1: block overworld talk; UI targets stay clickable. */
 export function blocksWorldInteractDuringLoadoutTutorial(step: number | null): boolean {
-  return step != null && step <= 3
+  return step != null && step <= 1
 }
 
 export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
@@ -24,14 +22,6 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
   {
     text: "wow. you defeated your first opponent. let's show you what else.",
     target: 'none',
-  },
-  {
-    text: 'tap interact to talk to people.',
-    target: 'interact_button',
-  },
-  {
-    text: 'open your fanny pack to check your items.',
-    target: 'fanny_pack_button',
   },
   {
     text: 'open your loadout here.',

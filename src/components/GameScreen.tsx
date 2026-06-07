@@ -147,6 +147,10 @@ import {
   LOADOUT_TUTORIAL_STEPS,
   type LoadoutTutorialTarget,
 } from '../data/loadoutTutorial'
+import {
+  ADAM_TUTORIAL_STEPS,
+  type AdamTutorialTarget,
+} from '../data/adamTutorial'
 import './GameScreen.css'
 
 export const GAME_DEBUG_HUD_ID = 'aliworld-game-debug-hud'
@@ -269,6 +273,7 @@ export function GameScreen() {
   const scriptBtnRef = useRef<HTMLButtonElement>(null)
   const fannyPackBtnRef = useRef<HTMLButtonElement>(null)
   const [loadoutTutorialStep, setLoadoutTutorialStep] = useState<number | null>(null)
+  const [adamTutorialStep, setAdamTutorialStep] = useState<number | null>(null)
   const [gymTrainerChoiceOpen, setGymTrainerChoiceOpen] = useState(false)
   const [gymHeadPulseDismissed, setGymHeadPulseDismissed] = useState(false)
   const [showFannyPack, setShowFannyPack] = useState(false)
@@ -830,6 +835,13 @@ export function GameScreen() {
     setBattleWipePhase('enter')
   }, [battleNpcId, battleWipePhase])
 
+  // Advance adam tutorial from "open fanny pack" step once the pack is open.
+  useEffect(() => {
+    if (adamTutorialStep === 0 && showFannyPack) {
+      setAdamTutorialStep(1)
+    }
+  }, [adamTutorialStep, showFannyPack])
+
   const startNpcBattle = useCallback((npcId: string) => {
     if (battleNpcId || battleWipePhase) return
     setDialogue(null)
@@ -1250,8 +1262,8 @@ export function GameScreen() {
     collectArtifact(ADAM_MP3_ARTIFACT_ID)
     setMp3PlayerOwned()
     grantMusicPlayerFromAdam(`city:${currentCity}`)
-    showNarration(['adam handed you his old mp3 player.'])
-  }, [currentCity, showNarration])
+    setAdamTutorialStep(0)
+  }, [currentCity])
 
   const advanceDialogue = useCallback(() => {
     let adamHandoff = false
@@ -1399,6 +1411,7 @@ export function GameScreen() {
 
   const handleInteract = useCallback(() => {
     if (worldEntryActive) return
+    if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
     if (cutsceneFlowActive || questTransitionActive) return
     if (cafeFade === 'scene') {
@@ -1436,6 +1449,7 @@ export function GameScreen() {
 
   const handlePlayAreaClick = useCallback(() => {
     if (cutsceneFlowActive || questTransitionActive) return
+    if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
     if (worldEntryActive || showStartMenu) return
     if (cafeFade === 'scene') {
@@ -1607,6 +1621,22 @@ export function GameScreen() {
   const handleBattleExitMidpoint = useCallback(() => {
     setBattleReady(false)
   }, [])
+
+  const finishAdamTutorial = useCallback(() => {
+    setAdamTutorialStep(null)
+    setShowFannyPack(false)
+  }, [])
+
+  const advanceAdamTutorial = useCallback(() => {
+    setAdamTutorialStep((step) => {
+      if (step == null) return step
+      if (step >= ADAM_TUTORIAL_STEPS.length - 1) {
+        finishAdamTutorial()
+        return null
+      }
+      return step + 1
+    })
+  }, [finishAdamTutorial])
 
   const finishLoadoutTutorial = useCallback(() => {
     setLoadoutTutorialStep(null)
@@ -2123,6 +2153,17 @@ export function GameScreen() {
               onConfirmNewGame={handleConfirmNewGame}
             />
           )}
+          {adamTutorialStep != null ? (
+            <GuidedTutorialOverlay<AdamTutorialTarget>
+              ariaLabel="Adam tutorial"
+              steps={ADAM_TUTORIAL_STEPS}
+              stepIndex={adamTutorialStep}
+              targetRefs={{ fanny_pack_button: fannyPackBtnRef }}
+              elevated
+              onNext={advanceAdamTutorial}
+              onSkip={finishAdamTutorial}
+            />
+          ) : null}
           {loadoutTutorialStep != null &&
           loadoutTutorialStep <= 1 &&
           !showStartMenu &&
@@ -2134,8 +2175,6 @@ export function GameScreen() {
               targetRefs={{
                 menu_button: startMenuBtnRef,
                 script_button: scriptBtnRef,
-                interact_button: interactBtnRef,
-                fanny_pack_button: fannyPackBtnRef,
               }}
               elevated
               onNext={advanceLoadoutTutorial}
