@@ -265,7 +265,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
         const counter = r.playerDmg > 0 ? `${r.playerDmg} back.` : 'no counter.'
         return `slip too slow. ${taken}${counter}`
       }
-      return `nothing incoming. ${r.playerDmg}.`
+      return `nothing to slip. ${r.playerDmg}.`
     },
   }),
 

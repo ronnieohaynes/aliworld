@@ -168,9 +168,9 @@ function applyFurySweep(
   out.incoming = profile.takeEnemyHit !== false && eDmg > 0 ? eDmg : 0
 }
 
-/** Enemy strike landing this turn — dodge/brace key off raw eDmg, not enemyAttacks alone. */
-function hasIncomingEnemyHit(eDmg: number): boolean {
-  return eDmg > 0
+/** Enemy strike landing this turn — dodge/brace always key off ctx.eDmg. */
+function incomingEnemyHit(ctx: ResolveMoveContext): boolean {
+  return ctx.eDmg > 0
 }
 
 export function applyStolenEnemyMove(
@@ -187,7 +187,7 @@ export function applyStolenEnemyMove(
   let dmg = Math.floor(ctx.atk * def.damageMult)
   dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
-  out.incoming = hasIncomingEnemyHit(ctx.eDmg) ? ctx.eDmg : 0
+  out.incoming = incomingEnemyHit(ctx) ? ctx.eDmg : 0
 }
 
 function rollPhenomena(ctx: ResolveMoveContext, out: PlayerMoveResolveOut): string {
@@ -219,7 +219,7 @@ function rollPhenomena(ctx: ResolveMoveContext, out: PlayerMoveResolveOut): stri
         PHENOMENA_DAMAGE_MULT_MIN +
         Math.random() * (PHENOMENA_DAMAGE_MULT_MAX - PHENOMENA_DAMAGE_MULT_MIN)
       out.playerDmg = jitter(Math.floor(ctx.atk * mult))
-      out.incoming = hasIncomingEnemyHit(ctx.eDmg) ? ctx.eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? ctx.eDmg : 0
       return `phenomena: ${out.playerDmg} chaos damage.`
     }
     default: {
@@ -262,7 +262,7 @@ export function applyMoveBehavior(
 
     case 'dodge': {
       const d = behavior.profile
-      if (hasIncomingEnemyHit(eDmg)) {
+      if (incomingEnemyHit(ctx)) {
         if (Math.random() < speedDodgeSuccessChance(ctx.spd)) {
           out.dodged = true
           out.incoming = 0
@@ -276,7 +276,7 @@ export function applyMoveBehavior(
           }
         } else {
           out.dodged = false
-          out.incoming = eDmg
+          out.incoming = ctx.eDmg
           out.playerDmg = jitter(Math.floor(atk * d.weakMult))
         }
       } else {
@@ -290,10 +290,10 @@ export function applyMoveBehavior(
       const b = behavior.profile
       out.braced = true
       out.playerDmg = 0
-      out.incoming = hasIncomingEnemyHit(eDmg)
-        ? Math.floor(eDmg * braceIncomingMultiplier(b.incomingMult, ctx.def))
+      out.incoming = incomingEnemyHit(ctx)
+        ? Math.floor(ctx.eDmg * braceIncomingMultiplier(b.incomingMult, ctx.def))
         : 0
-      if (hasIncomingEnemyHit(eDmg)) {
+      if (incomingEnemyHit(ctx)) {
         battle.playerPerfectGuard = true
       }
       if (b.blockStatus) battle.anchorBlocksStatus = true
@@ -322,10 +322,10 @@ export function applyMoveBehavior(
       if (battle.blackoutPhase === 'idle') {
         battle.blackoutPhase = 'loading'
         out.playerDmg = 0
-        out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+        out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       } else if (battle.blackoutPhase === 'armed') {
         out.playerDmg = jitter(Math.floor(atk * BLACKOUT_ARMED_DAMAGE_MULT))
-        if (hasIncomingEnemyHit(eDmg)) {
+        if (incomingEnemyHit(ctx)) {
           if (Math.random() < speedDodgeSuccessChance(ctx.spd) * BLACKOUT_RELEASE_DODGE_MULT) {
             out.dodged = true
             out.incoming = 0
@@ -345,20 +345,20 @@ export function applyMoveBehavior(
 
     case 'gravity-shift': {
       out.playerDmg = jitter(Math.floor(atk * 0.35))
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       out.slowApplied = true
       break
     }
 
     case 'refract': {
       out.playerDmg = Math.max(0, Math.floor(battle.lastEnemyDamage * REFRACT_DAMAGE_MULT))
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       break
     }
 
     case 'hyperdrive': {
       out.playerDmg = jitter(Math.floor(atk * 0.25))
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       battle.hyperdriveArmed = true
       break
     }
@@ -373,7 +373,7 @@ export function applyMoveBehavior(
           COUNTERWEIGHT_REFLECT_PCT_MIN +
           Math.random() * (COUNTERWEIGHT_REFLECT_PCT_MAX - COUNTERWEIGHT_REFLECT_PCT_MIN)
       }
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       break
     }
 
@@ -386,7 +386,7 @@ export function applyMoveBehavior(
 
     case 'invincible': {
       out.playerDmg = 0
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       post.selfDamage = Math.floor(ctx.playerHp * INVINCIBLE_SACRIFICE_PCT)
       battle.playerInvincibleBlocks = INVINCIBLE_BLOCK_COUNT
       battle.oncePerBattleUsed.INVINCIBLE = true
@@ -412,7 +412,7 @@ export function applyMoveBehavior(
         applyStolenEnemyMove(stolen, ctx, out)
       } else {
         out.playerDmg = jitter(Math.floor(atk * 0.3))
-        out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+        out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       }
       break
     }
@@ -432,7 +432,7 @@ export function applyMoveBehavior(
         missSelfDamagePct: SEALED_FATE_MISS_SELF_DAMAGE_PCT,
       })
       out.playerDmg = 0
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       break
     }
 
@@ -443,14 +443,14 @@ export function applyMoveBehavior(
       )
       post.healPlayer = Math.floor(ctx.playerMaxHp * pct)
       out.playerDmg = 0
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       battle.oncePerBattleUsed.SECOND_WIND = true
       break
     }
 
     case 'devils-cut': {
       out.playerDmg = jitter(Math.floor(atk * DEVILS_CUT_DAMAGE_MULT))
-      out.incoming = hasIncomingEnemyHit(eDmg) ? eDmg : 0
+      out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       battle.devilsCutTurns = randomInt(DEVILS_CUT_TURNS_MIN, DEVILS_CUT_TURNS_MAX)
       battle.devilsCutPct = Math.min(
         DEVILS_CUT_LIFESTEAL_CAP,

@@ -3,6 +3,7 @@ import {
   enemyOutgoingDamageMult,
   type CombatStatusState,
 } from './combatStatus'
+import type { BattleMoveState } from './battleMoveState'
 import type { DeathClock } from './combatTypes'
 import {
   computeEnemyStrikeDamage,
@@ -10,6 +11,53 @@ import {
   type EnemyMoveId,
   type UpcomingMove,
 } from './enemyMoves'
+
+export type EnemyStrikeResolution = {
+  actualMove: EnemyMoveId
+  enemyStunned: boolean
+  /** True whenever the enemy lands a strike with eDmg > 0 this turn. */
+  enemyAttacks: boolean
+  eDmg: number
+}
+
+/** Single source of truth for incoming enemy damage — dodge/brace read eDmg from here. */
+export function resolveEnemyStrike(
+  eMove: UpcomingMove,
+  ctx: {
+    eAtk: number
+    combatStatus: CombatStatusState
+    battleMove: Pick<BattleMoveState, 'enemyAccuracyTurns' | 'enemyAccuracyMult'>
+  },
+): EnemyStrikeResolution {
+  const stunned = enemyLosesTurn(ctx.combatStatus) || eMove === 'STUNNED'
+  if (stunned) {
+    return { actualMove: 'STRIKE', enemyStunned: true, enemyAttacks: false, eDmg: 0 }
+  }
+
+  const actualMove = eMove as EnemyMoveId
+  const def = getEnemyMoveDef(actualMove)
+  if (!def.isAttacking) {
+    return { actualMove, enemyStunned: false, enemyAttacks: false, eDmg: 0 }
+  }
+
+  if (
+    ctx.battleMove.enemyAccuracyTurns > 0 &&
+    Math.random() > ctx.battleMove.enemyAccuracyMult
+  ) {
+    return { actualMove, enemyStunned: false, enemyAttacks: false, eDmg: 0 }
+  }
+
+  const eDmg = computeEnemyIncomingDamage(actualMove, {
+    eAtk: ctx.eAtk,
+    status: ctx.combatStatus,
+  })
+  return {
+    actualMove,
+    enemyStunned: false,
+    enemyAttacks: eDmg > 0,
+    eDmg,
+  }
+}
 
 export type DeathClockHit = {
   clock: DeathClock

@@ -16,9 +16,9 @@ import {
 } from '../data/combatStatus'
 import {
   applyDoubleHit,
-  computeEnemyIncomingDamage,
   deathClockHitLogLine,
   resolveDeathClocksAtTurnStart,
+  resolveEnemyStrike,
   splitIncomingWithReflect,
   tickDeathClocks,
 } from '../data/combatSystems'
@@ -412,44 +412,28 @@ function mitigateIncoming(
 function resolveEnemyIncoming(
   state: BattleState,
   eMove: UpcomingMove,
-): { enemyStunned: boolean; enemyAttacks: boolean; eDmg: number; actualMove: EnemyMoveId } {
-  const status = state.combatStatus
-  const battle = state.battleMove
-  const stunned = enemyLosesTurn(status) || eMove === 'STUNNED'
-  if (stunned) {
-    return { enemyStunned: true, enemyAttacks: false, eDmg: 0, actualMove: 'STRIKE' }
-  }
-  const actualMove = eMove as EnemyMoveId
-
-  const def = getEnemyMoveDef(actualMove)
-  const threatens = def.isAttacking
-
-  if (battle.enemyAccuracyTurns > 0 && threatens && Math.random() > battle.enemyAccuracyMult) {
-    return { enemyStunned: false, enemyAttacks: false, eDmg: 0, actualMove }
-  }
-
-  const eDmg = threatens
-    ? computeEnemyIncomingDamage(actualMove, {
-        eAtk: state.npc.stats.atk,
-        status,
-      })
-    : 0
-  return { enemyStunned: false, enemyAttacks: eDmg > 0, eDmg, actualMove }
+): import('../data/combatSystems').EnemyStrikeResolution {
+  return resolveEnemyStrike(eMove, {
+    eAtk: state.npc.stats.atk,
+    combatStatus: state.combatStatus,
+    battleMove: state.battleMove,
+  })
 }
 
 /** Player does not act; enemy gets a free swing (exposed / skip turn). */
 function buildResolveContext(
   state: BattleState,
+  strike: { eDmg: number; enemyAttacks: boolean },
   slot?: number,
 ): import('../data/moveResolver').ResolveMoveContext {
   const skills = getPlayerSkills()
   return {
     atk: state.playerStats.atk,
     attackSkillLevel: skills.attack.level,
-    eDmg: 0,
+    eDmg: strike.eDmg,
     def: skills.defense.level,
     spd: skills.speed.level,
-    enemyAttacks: false,
+    enemyAttacks: strike.enemyAttacks,
     lck: state.playerStats.lck,
     playerHp: state.playerHp,
     playerMaxHp: state.playerStats.maxHp,
@@ -481,11 +465,11 @@ function resolvePlayerMoveBody(
   eMove: UpcomingMove,
   slot?: number,
 ): { out: ResolveResult; post: import('../data/moves').PostResolveEffects } {
-  const { enemyStunned, enemyAttacks, eDmg, actualMove } = resolveEnemyIncoming(state, eMove)
+  const strike = resolveEnemyIncoming(state, eMove)
+  const { enemyStunned, enemyAttacks, eDmg, actualMove } = strike
   const out = emptyResolveResult(eMove, pMove, enemyStunned, enemyAttacks)
-  const ctx = buildResolveContext(state, slot)
-  ctx.eDmg = eDmg
-  ctx.enemyAttacks = enemyAttacks
+  out.enemyAttacks = enemyAttacks
+  const ctx = buildResolveContext(state, { eDmg, enemyAttacks }, slot)
 
   const stolen = slot != null ? state.battleMove.snagStolen[slot] : undefined
   let post: import('../data/moves').PostResolveEffects = {
@@ -533,7 +517,7 @@ function resolvePlayerMoveBody(
 
   applyEnemyGuardPierce(state, out, eDmg)
 
-  if (eDmg > 0) out.enemyAttacks = true
+  out.enemyAttacks = eDmg > 0 || out.enemyAttacks
 
   finalizeIncomingXpMetrics(out, eDmg > 0 ? eDmg : out.guardCountered ? out.incoming : 0)
 
@@ -563,8 +547,10 @@ export function resolveExposedTurn(
     return { out, post }
   }
 
-  const { enemyStunned, enemyAttacks, eDmg } = resolveEnemyIncoming(state, eMove)
+  const strike = resolveEnemyIncoming(state, eMove)
+  const { enemyStunned, enemyAttacks, eDmg } = strike
   const out = emptyResolveResult(eMove, pMove, enemyStunned, enemyAttacks)
+  out.enemyAttacks = enemyAttacks
   out.playerActed = false
   applySkillCounterModifiers(
     out,
@@ -580,7 +566,7 @@ export function resolveExposedTurn(
     getPlayerSkills().defense.level,
     state.battleMove,
   )
-  finalizeIncomingXpMetrics(out, enemyAttacks ? eDmg : 0)
+  finalizeIncomingXpMetrics(out, eDmg > 0 ? eDmg : 0)
 
   if (
     state.battleMove.blackoutPhase === 'loading' &&

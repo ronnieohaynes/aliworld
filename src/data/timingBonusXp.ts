@@ -79,8 +79,8 @@ export function computeTimingBonusGrants(
   }
 
   if (
-    r.enemyAttacks &&
     isHeavyTelegraphedMove(r.eMove) &&
+    r.rawIncoming > 0 &&
     (r.dodged || r.braced || r.damageBlocked > 0)
   ) {
     const skill: 'speed' | 'defense' = r.dodged ? 'speed' : 'defense'
