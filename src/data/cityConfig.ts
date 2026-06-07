@@ -72,7 +72,10 @@ export type CityConfig = {
 }
 
 const HILLCREST_MAP_SRC = publicAsset('Assets/tileset/hillcrest-map.png')
+/** Primary southside art — swap to hillside-market tileset when art lands. */
 const SOUTHSIDE_MAP_SRC = publicAsset('Assets/tileset/southside-map.png')
+/** Walkable fallback if southside-map fails to load (reuse hillcrest until art ships). */
+export const SOUTHSIDE_PLACEHOLDER_MAP_SRC = HILLCREST_MAP_SRC
 const SOUTHSIDE_FOREGROUND_MAP_SRC = publicAsset('Assets/tileset/southside-map-fg.png')
 const BLUE_STORE_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/blue-store-interior-map.png')
 
