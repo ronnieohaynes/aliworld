@@ -38,6 +38,7 @@ import {
 } from '../data/questObjectives'
 import {
   getQuest1Revision,
+  getQuest1Snapshot,
   hasTalkedToAllGatingNpcs,
   isGatingNpcId,
   isCafeSceneSeen,
@@ -89,8 +90,6 @@ import {
 import { isMusicEnabled } from '../config/musicEnabled'
 import {
   grantMusicPlayerFromAdam,
-  getMusicPlayerGrantedSnapshot,
-  subscribeMusicStore,
   syncMusicForContext,
 } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
@@ -332,9 +331,9 @@ export function GameScreen() {
   )
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
   const mp3PlayerOwned = useSyncExternalStore(
-    subscribeMusicStore,
-    getMusicPlayerGrantedSnapshot,
-    getMusicPlayerGrantedSnapshot,
+    subscribeQuest1Store,
+    () => getQuest1Snapshot().mp3PlayerOwned,
+    () => getQuest1Snapshot().mp3PlayerOwned,
   )
 
   const darklineDestinations = useMemo((): CityId[] => {
