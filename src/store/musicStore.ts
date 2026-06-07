@@ -36,17 +36,6 @@ export function hasMusicPlayer(): boolean {
   return isMusicPlayerOwned()
 }
 
-export function subscribeMusicStore(listener: () => void): () => void {
-  const unsubAudio = subscribeAudioManager(listener)
-  const unsubQuest = subscribeQuest1Store(listener)
-  const unsubArtifacts = subscribeArtifactStore(listener)
-  return () => {
-    unsubAudio()
-    unsubQuest()
-    unsubArtifacts()
-  }
-}
-
 export function getMusicStoreSnapshot(): MusicStoreSnapshot {
   const playerGranted = hasMusicPlayer()
   const playing = playerGranted && !isMusicMuted()
@@ -63,38 +52,65 @@ export function getMusicStoreSnapshot(): MusicStoreSnapshot {
   return musicStoreSnapshot
 }
 
+// ── Cached primitive snapshots — values are frozen at emit time so
+//    useSyncExternalStore never sees a mid-render change (fixes #185).
+let _playerGranted = hasMusicPlayer()
+let _muted = hasMusicPlayer() ? isMusicMuted() : false
+let _trackTitle = hasMusicPlayer() ? (getMusicCurrent()?.title ?? '') : ''
+let _trackArtist = hasMusicPlayer() ? (getMusicCurrent()?.artist ?? '') : ''
+let _progress = hasMusicPlayer() ? getMusicPlaybackProgress() : 0
+
+function refreshPrimitiveSnapshots(): void {
+  _playerGranted = hasMusicPlayer()
+  _muted = _playerGranted ? isMusicMuted() : false
+  const current = _playerGranted ? getMusicCurrent() : null
+  _trackTitle = current?.title ?? ''
+  _trackArtist = current?.artist ?? ''
+  _progress = _playerGranted ? getMusicPlaybackProgress() : 0
+}
+
+export function subscribeMusicStore(listener: () => void): () => void {
+  const wrapped = () => {
+    refreshPrimitiveSnapshots()
+    listener()
+  }
+  const unsubAudio = subscribeAudioManager(wrapped)
+  const unsubQuest = subscribeQuest1Store(wrapped)
+  const unsubArtifacts = subscribeArtifactStore(wrapped)
+  return () => {
+    unsubAudio()
+    unsubQuest()
+    unsubArtifacts()
+  }
+}
+
 /** Primitive selectors — safe for useSyncExternalStore without object snapshots. */
 export function getMusicPlayerGrantedSnapshot(): boolean {
-  return hasMusicPlayer()
+  return _playerGranted
 }
 
 export function getMusicMutedSnapshot(): boolean {
-  if (!hasMusicPlayer()) return false
-  return isMusicMuted()
+  return _muted
 }
 
 export function getMusicPlayingSnapshot(): boolean {
-  return hasMusicPlayer() && !isMusicMuted()
+  return _playerGranted && !_muted
 }
 
 export function getMusicTrackIdSnapshot(): string | null {
-  if (!hasMusicPlayer()) return null
-  return getMusicCurrent()?.trackId ?? null
+  return _playerGranted ? (getMusicCurrent()?.trackId ?? null) : null
 }
 
 export function getMusicTrackTitleSnapshot(): string {
-  if (!hasMusicPlayer()) return ''
-  return getMusicCurrent()?.title ?? ''
+  return _trackTitle
 }
 
 export function getMusicTrackArtistSnapshot(): string {
-  if (!hasMusicPlayer()) return ''
-  return getMusicCurrent()?.artist ?? ''
+  return _trackArtist
 }
 
 export function getMusicProgressSnapshot(): number {
-  if (!hasMusicPlayer()) return 0
-  return getMusicPlaybackProgress()
+  return _progress
 }
 
 export function isSoundtrackPlaying(): boolean {
