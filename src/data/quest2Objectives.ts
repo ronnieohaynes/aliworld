@@ -8,6 +8,7 @@ import {
   E2_ENABLED,
   isClerkConverted,
   isCrierConverted,
+  isCrierSentAhead,
   isCrowdAddressed,
   isE2Seen,
   isRestockerDefeated,
@@ -18,6 +19,7 @@ export type Quest2ObjectiveContext = {
   e2Active: boolean
   crowdAddressed: boolean
   crierConverted: boolean
+  crierSentAhead: boolean
   inSouthside: boolean
   clerkConverted: boolean
   restockerDefeated: boolean
@@ -34,6 +36,7 @@ export function buildQuest2ObjectiveContext(): Quest2ObjectiveContext {
     e2Active: isE2QuestUnlocked(),
     crowdAddressed: isCrowdAddressed(),
     crierConverted: isCrierConverted(),
+    crierSentAhead: isCrierSentAhead(),
     inSouthside: world.citiesVisited.includes('southside'),
     clerkConverted: isClerkConverted(),
     restockerDefeated: isRestockerDefeated(),
@@ -51,6 +54,11 @@ export const QUEST_2_STEPS: readonly QuestObjectiveStep[] = [
     id: 'e2-crier',
     isComplete: (ctx) => !ctx.e2Active || ctx.crierConverted,
     getText: () => 'find the town crier. convince him.',
+  },
+  {
+    id: 'e2-herald',
+    isComplete: (ctx) => !ctx.e2Active || ctx.crierSentAhead,
+    getText: () => 'send the crier ahead to the blue store.',
   },
   {
     id: 'e2-travel',

@@ -72,12 +72,16 @@ import {
   getQuest2Revision,
   isClerkConverted,
   isCrierConverted,
+  isCrierSentAhead,
   isCrowdAddressed,
+  isE2SecretMoveGranted,
   isRestockerDefeated,
   RESTOCKER_NPC_ID,
   setClerkConverted,
   setCrierConverted,
+  setCrierSentAhead,
   setCrowdAddressed,
+  setE2SecretMoveGranted,
   setRestockerDefeated,
   subscribeQuest2Store,
   TOWN_CRIER_NPC_ID,
@@ -125,11 +129,14 @@ import {
 import { useCoarsePointer } from '../hooks/useCoarsePointer'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
+  getPlayerSkills,
   getShowDebug,
+  grantPlayerSkillXp,
   setLastLocation,
   subscribePlayerStore,
   whenAccountHydrated,
 } from '../store/playerStore'
+import { totalXpForLevel } from '../store/skillStore'
 import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
@@ -252,6 +259,7 @@ export function GameScreen() {
   const pendingPostE1NarrationRef = useRef(false)
   const pendingGymLossLineRef = useRef(false)
   const pendingGymWelcomeRef = useRef(false)
+  const crierHeraldStartedRef = useRef(false)
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -349,7 +357,7 @@ export function GameScreen() {
     if (isE2QuestUnlocked() && POST_E2_DARKLINE_DESTINATION !== POST_E1_DARKLINE_DESTINATION) {
       dest.push(POST_E2_DARKLINE_DESTINATION)
     }
-    if (!isCrierConverted()) {
+    if (!isCrierSentAhead()) {
       return dest.filter((id) => id !== 'southside')
     }
     return dest
@@ -536,9 +544,15 @@ export function GameScreen() {
       return { ...baseCityConfig, npcs }
     }
     if (currentCity === 'southside') {
+      return { ...baseCityConfig, npcs: [...baseCityConfig.npcs] }
+    }
+    if (currentCity === 'blue-store-interior') {
       let npcs = [...baseCityConfig.npcs]
       if (!isClerkConverted()) {
         npcs = npcs.filter((npc) => npc.id !== RESTOCKER_NPC_ID)
+      }
+      if (isClerkConverted()) {
+        npcs = npcs.filter((npc) => npc.id !== CLERK_NPC_ID)
       }
       return { ...baseCityConfig, npcs }
     }
@@ -929,6 +943,28 @@ export function GameScreen() {
     })
   }, [])
 
+  const playCrierHeraldDialogue = useCallback(() => {
+    if (crierHeraldStartedRef.current || isCrierSentAhead()) return
+    crierHeraldStartedRef.current = true
+    beginNpcDialogue(TOWN_CRIER_NPC, {
+      onComplete: () => {
+        setCrierSentAhead()
+      },
+    })
+  }, [beginNpcDialogue])
+
+  const applyPostE2Unlock = useCallback(() => {
+    if (isE2SecretMoveGranted()) return
+    setE2SecretMoveGranted()
+    const luck = getPlayerSkills().luck
+    const targetLevel = luck.level < 10 ? 10 : luck.level < 22 ? 22 : 22
+    const xpBump = Math.max(0, totalXpForLevel(targetLevel) - luck.xp)
+    if (xpBump > 0) {
+      grantPlayerSkillXp('luck', xpBump)
+    }
+    showNarration(['the gift... something opens.'])
+  }, [showNarration])
+
   const handleMapTransitionComplete = useCallback(() => {
     mapTransitionRef.current = null
     setMapTransition(null)
@@ -1147,7 +1183,7 @@ export function GameScreen() {
       } else if (action === 'OPEN_BLUE_STORE') {
         if (currentCity !== 'southside') return
         if (mapTransitionRef.current) return
-        if (!isCrierConverted()) {
+        if (!isCrierSentAhead()) {
           showNotYetDialogue(CLERK_NPC, 'nobody gets in until the crier moves.')
           return
         }
@@ -1347,7 +1383,9 @@ export function GameScreen() {
 
     if (nearbyId === TOWN_CRIER_NPC_ID) {
       if (isCrierConverted()) {
-        beginNpcDialogue(TOWN_CRIER_NPC)
+        if (!isCrierSentAhead()) {
+          playCrierHeraldDialogue()
+        }
         return
       }
       if (!isCrowdAddressed()) {
@@ -1359,12 +1397,8 @@ export function GameScreen() {
     }
 
     if (nearbyId === CLERK_NPC_ID) {
-      if (currentCity !== 'southside') return
-      if (!buildQuestObjectiveContext().inSouthside) {
-        showNotYetDialogue(CLERK_NPC, 'take the darkline to southside first.')
-        return
-      }
-      if (!isCrierConverted()) {
+      if (currentCity !== 'blue-store-interior') return
+      if (!isCrierSentAhead()) {
         showNotYetDialogue(CLERK_NPC, 'the crier has to go first.')
         return
       }
@@ -1377,6 +1411,7 @@ export function GameScreen() {
     }
 
     if (nearbyId === RESTOCKER_NPC_ID) {
+      if (currentCity !== 'blue-store-interior') return
       if (!isClerkConverted()) {
         showNotYetDialogue(RESTOCKER_NPC, 'get through the clerk first.')
         return
@@ -1408,6 +1443,7 @@ export function GameScreen() {
     showNotYetDialogue,
     startMarkBattle,
     startNpcBattle,
+    playCrierHeraldDialogue,
   ])
 
   const handleInteract = useCallback(() => {
@@ -1611,6 +1647,23 @@ export function GameScreen() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isE2QuestUnlocked()) return
+    if (!isCrierConverted() || isCrierSentAhead()) return
+    if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
+      return
+    }
+    playCrierHeraldDialogue()
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    cutsceneFlowActive,
+    dialogue,
+    playCrierHeraldDialogue,
+    quest2Revision,
+    questTransitionActive,
+  ])
+
   const handleBattleEntryMidpoint = useCallback(() => {
     setBattleReady(true)
   }, [])
@@ -1677,6 +1730,10 @@ export function GameScreen() {
       }
     }
 
+    if (exit?.result === 'win' && exit.npcId === TOWN_CRIER_NPC_ID && !isCrierSentAhead()) {
+      playCrierHeraldDialogue()
+    }
+
     if (exit?.result === 'win' && exit.npcId === WALKER_NPC_ID) {
       if (!isEpisode1TitleCardSeen()) {
         showQuestTransition({
@@ -1693,7 +1750,7 @@ export function GameScreen() {
       }
       startPhase2Tutorial()
     }
-  }, [reportCurrentLocation, showNotYetDialogue, showQuestTransition])
+  }, [playCrierHeraldDialogue, reportCurrentLocation, showNotYetDialogue, showQuestTransition])
 
   const handleWinPayoff = useCallback((npcId: string) => {
     if (isDevSparNpcId(npcId)) return
@@ -1740,7 +1797,7 @@ export function GameScreen() {
           showMarkVictoryNarration()
         }
         if (battleNpcId === RESTOCKER_NPC_ID) {
-          showNarration(["something's wrong in the field.", 'you started it.'])
+          showNarration(["something's wrong in the field.", 'you started it.'], applyPostE2Unlock)
         }
       }
       if (result === 'lose' && battleNpcId === FIVE_GYM1_ID) {
@@ -1749,7 +1806,7 @@ export function GameScreen() {
       pendingBattleExitRef.current = { result, npcId: battleNpcId }
       setBattleWipePhase('exit')
     },
-    [battleNpcId, showMarkVictoryNarration, showNarration],
+    [applyPostE2Unlock, battleNpcId, showMarkVictoryNarration, showNarration],
   )
 
   const handleFannyPackClose = useCallback(() => {

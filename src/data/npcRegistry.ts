@@ -149,7 +149,7 @@ const TOWN_CRIER: NpcCombatEntry = entry({
     STRIKE: 'points —',
     SLIP: 'sidesteps —',
   },
-  losingLine: "...i was wrong. i'll tell them. i'll tell everyone.",
+  losingLine: "...no. no — you're right. you were always right.",
   winningLine: "the crowd's not buying it.",
   spriteSrc: JASON_SPRITE,
   battleLocation: 'five',

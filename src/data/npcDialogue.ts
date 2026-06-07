@@ -9,6 +9,7 @@ import {
   CLERK_NPC_ID,
   CROWD_1_NPC_ID,
   isClerkConverted,
+  isCrierSentAhead,
   isCrowdAddressed,
   isCrierConverted,
   isRestockerDefeated,
@@ -63,7 +64,10 @@ export function resolveNpcDialogueLines(
   } else if (isNpcConverted(npc.id) && npc.linesConverted?.length) {
     raw = npc.linesConverted
   } else {
-    raw = npc.lines
+    raw = [...npc.lines]
+    if (npc.id === CLERK_NPC_ID && isCrierSentAhead() && npc.linesHerald?.length) {
+      raw = [...npc.linesHerald, ...raw]
+    }
   }
   return raw.map((line) => normalizeDialogueLine(line, npc.name))
 }

@@ -16,6 +16,7 @@ import {
   BLUE_STORE_INTERIOR_ENTRY,
   BLUE_STORE_INTERIOR_MAP_DRAW_SCALE,
   BLUE_STORE_INTERIOR_MAP_SIZE,
+  scaleBlueStoreInteriorPoint,
   scaleBlueStoreInteriorZone,
 } from './blueStoreInteriorCollision'
 import {
@@ -36,6 +37,7 @@ import {
   scaleFiveGymInteriorZone,
 } from './gymInteriorCollision'
 import { FIVE_GYM1_INTERIOR_NPCS } from './gymNpcs'
+import { BLUE_STORE_INTERIOR_NPCS as BLUE_STORE_INTERIOR_NPCS_NATIVE } from './blueStoreNpcs'
 import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
 /** Player-facing name for the starting district (internal id is `five`). */
@@ -154,6 +156,11 @@ const FIVE_GYM_INTERIOR_NPCS = FIVE_GYM1_INTERIOR_NPCS.map((npc) => ({
   ...scaleFiveGymInteriorPoint(npc),
 }))
 
+const BLUE_STORE_INTERIOR_NPCS = BLUE_STORE_INTERIOR_NPCS_NATIVE.map((npc) => ({
+  ...npc,
+  ...scaleBlueStoreInteriorPoint(npc),
+}))
+
 export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   five: {
     id: 'five',
@@ -218,7 +225,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     collisionZones: BLUE_STORE_INTERIOR_COLLISION_ZONES.map(scaleBlueStoreInteriorZone),
     occlusionZones: getOcclusionZones('blue-store-interior'),
     triggerZones: BLUE_STORE_INTERIOR_TRIGGER_ZONES,
-    npcs: [],
+    npcs: [...BLUE_STORE_INTERIOR_NPCS],
   },
   'five-gym-interior': {
     id: 'five-gym-interior',

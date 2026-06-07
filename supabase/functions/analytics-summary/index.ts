@@ -105,9 +105,11 @@ function emptyQuest2Serialized() {
   return {
     crowdAddressed: false,
     crierConverted: false,
+    crierSentAhead: false,
     clerkConverted: false,
     restockerDefeated: false,
     e2Seen: false,
+    e2SecretMoveGranted: false,
   }
 }
 

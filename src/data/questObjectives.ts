@@ -252,6 +252,8 @@ export function getQuestPulseTargetDescriptor(
       return ctx.crowdAddressed ? null : { kind: 'npc', id: CROWD_2_NPC_ID }
     case 'e2-crier':
       return { kind: 'npc', id: TOWN_CRIER_NPC_ID }
+    case 'e2-herald':
+      return { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-travel':
       return ctx.inSouthside
         ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
@@ -261,7 +263,9 @@ export function getQuestPulseTargetDescriptor(
         ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
         : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-restocker':
-      return { kind: 'npc', id: RESTOCKER_NPC_ID }
+      return ctx.clerkConverted
+        ? { kind: 'npc', id: RESTOCKER_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_BLUE_STORE' }
     case 'e2-field':
       return null
     default:
