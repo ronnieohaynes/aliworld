@@ -226,6 +226,18 @@ export const CROWD_2_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
+/** Quest 2 — returning walker in the e2 crowd (converted). */
+export const WALKER_E2_CROWD_NPC: NpcData = {
+  id: 'walker-crowd',
+  name: 'walker',
+  x: 760,
+  y: 400,
+  lines: ["i told you. i told all of you. exactly like he said."],
+  color: '#7a7a96',
+  spriteSrc: WALKER_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+}
+
 /** Quest 2 — town crier at the 5ive. */
 export const TOWN_CRIER_NPC: NpcData = {
   id: 'town-crier',

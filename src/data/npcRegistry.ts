@@ -65,6 +65,7 @@ const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 const ADAM_SPRITE = publicAsset('Assets/Characters/npcs/Adam-idle.PNG')
+const JASON_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 
 function entry(
   base: Omit<NpcCombatEntry, 'stats'> & { hpScale?: number },
@@ -136,6 +137,25 @@ const MARK: NpcCombatEntry = entry({
   battleSizeMult: 1.04,
 })
 
+/** E2 — town crier at the 5ive; luck-lean rhetorical fight. */
+const TOWN_CRIER: NpcCombatEntry = entry({
+  id: 'town-crier',
+  displayName: 'town crier',
+  level: 3,
+  moves: ['WHISPER', 'STRIKE', 'SLIP', 'WHISPER'],
+  leanSkill: 'luck',
+  telegraphFlavor: {
+    WHISPER: 'spreads the word —',
+    STRIKE: 'points —',
+    SLIP: 'sidesteps —',
+  },
+  losingLine: "...i was wrong. i'll tell them. i'll tell everyone.",
+  winningLine: "the crowd's not buying it.",
+  spriteSrc: JASON_SPRITE,
+  battleLocation: 'five',
+  battleSizeMult: 0.98,
+})
+
 /** E2 gate — blue store clerk; attack-lean scrapper. */
 const CLERK: NpcCombatEntry = entry({
   id: 'clerk',
@@ -143,6 +163,11 @@ const CLERK: NpcCombatEntry = entry({
   level: 4,
   moves: ['STRIKE', 'STRIKE', 'WHISPER', 'HAYMAKER'],
   leanSkill: 'attack',
+  telegraphFlavor: {
+    STRIKE: 'swings —',
+    WHISPER: 'lowers his voice —',
+    HAYMAKER: 'commits —',
+  },
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
   spriteSrc: ADAM_SPRITE,
@@ -155,10 +180,16 @@ const RESTOCKER: NpcCombatEntry = entry({
   id: 'restocker',
   displayName: 'restocker',
   level: 6,
+  hpScale: 1.28,
   moves: ['HOLD', 'HOLD', 'HAYMAKER', 'STRIKE'],
   leanSkill: 'defense',
-  losingLine: "it CAN stop...",
-  winningLine: "this floor belongs to me.",
+  telegraphFlavor: {
+    HOLD: 'roots in —',
+    HAYMAKER: 'heaves —',
+    STRIKE: 'swings —',
+  },
+  losingLine: 'it CAN stop...',
+  winningLine: 'this floor belongs to me.',
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 1.08,
@@ -190,6 +221,7 @@ const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   jaclyn: JACLYN,
   mark: MARK,
+  'town-crier': TOWN_CRIER,
   clerk: CLERK,
   restocker: RESTOCKER,
 }
