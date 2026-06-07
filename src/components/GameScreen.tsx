@@ -140,7 +140,7 @@ import {
 import { AccountSaveIndicator } from './AccountSaveIndicator'
 import { BugReportScreen } from './BugReportScreen'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
-import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
+import { ButtonSpotlightRing, GuidedTutorialOverlay } from './GuidedTutorialOverlay'
 import {
   allowsStartMenuDuringLoadoutTutorial,
   blocksWorldInteractDuringLoadoutTutorial,
@@ -1624,7 +1624,6 @@ export function GameScreen() {
 
   const finishAdamTutorial = useCallback(() => {
     setAdamTutorialStep(null)
-    setShowFannyPack(false)
   }, [])
 
   const advanceAdamTutorial = useCallback(() => {
@@ -2153,6 +2152,9 @@ export function GameScreen() {
               onConfirmNewGame={handleConfirmNewGame}
             />
           )}
+          {isAdamNpcId(dialogue?.npc.id) && dialogue?.lineIndex === 0 ? (
+            <ButtonSpotlightRing targetRef={interactBtnRef} />
+          ) : null}
           {adamTutorialStep != null ? (
             <GuidedTutorialOverlay<AdamTutorialTarget>
               ariaLabel="Adam tutorial"

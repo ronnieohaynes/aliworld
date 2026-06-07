@@ -32,6 +32,49 @@ function padRect(rect: DOMRect, px: number): DOMRect {
 
 const DIM_RGBA = 'rgba(8, 8, 14, 0.78)'
 
+/**
+ * Renders only the purple spotlight ring around a button — no dim, no panel.
+ * Use during NPC dialogue to highlight a button without blocking interaction.
+ */
+export function ButtonSpotlightRing({
+  targetRef,
+}: {
+  targetRef: RefObject<HTMLElement | null>
+}) {
+  const [rect, setRect] = useState<DOMRect | null>(null)
+
+  useEffect(() => {
+    const el = targetRef.current
+    if (!el) return
+    const measure = () => setRect(el.getBoundingClientRect())
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [targetRef])
+
+  if (!rect) return null
+  const pad = 6
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        top: rect.top - pad,
+        left: rect.left - pad,
+        width: rect.width + pad * 2,
+        height: rect.height + pad * 2,
+        border: `2px solid ${HIGHLIGHT_COLORS.default}`,
+        borderRadius: 6,
+        boxShadow: `0 0 12px ${HIGHLIGHT_COLORS.default}66`,
+        pointerEvents: 'none',
+        zIndex: 10003,
+      }}
+      aria-hidden
+    />,
+    document.body,
+  )
+}
+
 /** Four fixed panels around the hole so the highlighted UI stays clickable. */
 function TutorialDimPanels({ rect, borderColor }: { rect: DOMRect; borderColor: string }) {
   const top = rect.top
