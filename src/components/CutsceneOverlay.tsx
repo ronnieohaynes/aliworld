@@ -188,9 +188,9 @@ export function CutsceneOverlay({
     const tryStartPlayback = (player: YTPlayer) => {
       player.mute?.()
       setSoundMuted(true)
-      if (playbackStartedAtMsRef.current == null) {
-        playbackStartedAtMsRef.current = Date.now()
-      }
+      // Do NOT set playbackStartedAtMsRef here — we don't know yet when the
+      // video will actually start playing (buffering may take hundreds of ms).
+      // onStateChange(YT_PLAYING) is the authoritative clock start point.
       player.playVideo()
       scheduleAutoplayCheck(player)
     }
@@ -201,6 +201,15 @@ export function CutsceneOverlay({
       setAutoplayBlocked(false)
       player.unMute?.()
       setSoundMuted(false)
+      // Sync clock from the API's actual current time so captions stay aligned
+      // whether the video was already playing muted or starting fresh.
+      if (typeof player.getCurrentTime === 'function') {
+        const current = player.getCurrentTime()
+        if (typeof current === 'number' && Number.isFinite(current)) {
+          const apiClip = Math.max(0, current - startSeconds)
+          playbackStartedAtMsRef.current = Date.now() - apiClip * 1000
+        }
+      }
       if (playbackStartedAtMsRef.current == null) {
         playbackStartedAtMsRef.current = Date.now()
       }
