@@ -5,6 +5,8 @@ import {
   BLACKOUT_INTERRUPTIBLE,
   BLEED_DAMAGE_MAX_HP_PCT,
   braceStatusIncomingMultiplier,
+  CROSS_SCALE,
+  crossSecondaryMultiplier,
 } from '../data/moveBalance'
 import {
   createEmptyCombatStatus,
@@ -243,6 +245,8 @@ export type ResolveResult = {
   guardCountered: boolean
   /** Healing applied this turn (second wind, lifesteal, phenomena). */
   healApplied: number
+  /** HOLD brace chip — small atk-scaled side damage on successful brace. */
+  braceChipDmg?: number
   eMove: UpcomingMove
   pMove: PlayerMove
 }
@@ -382,6 +386,12 @@ function mitigateIncoming(
 
   if (dmg > 0 && battle.playerNextAttackImmune) {
     battle.playerNextAttackImmune = false
+    const skills = getPlayerSkills()
+    battle.nextHitAtkBonusMult = crossSecondaryMultiplier(
+      skills.attack.level,
+      CROSS_SCALE.BRICK_WALL_FOLLOWUP_ATK_PER_ATK_LVL,
+      CROSS_SCALE.BRICK_WALL_FOLLOWUP_ATK_CAP,
+    )
     return 0
   }
   if (dmg > 0 && battle.playerInvincibleBlocks > 0) {
@@ -435,6 +445,7 @@ function buildResolveContext(
     spd: skills.speed.level,
     enemyAttacks: strike.enemyAttacks,
     lck: state.playerStats.lck,
+    luckSkillLevel: skills.luck.level,
     playerHp: state.playerHp,
     playerMaxHp: state.playerStats.maxHp,
     enemyDef: state.npc.stats.def,
@@ -786,9 +797,19 @@ function applyPlayerResolutionPhase(
   }
 
   if (working.combatStatus.enemyBleed > 0 && nextEnemyHp > 0) {
-    const b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT))
+    const potency = working.combatStatus.enemyBleedPotencyMult ?? 1
+    const b = Math.max(
+      1,
+      Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT * potency),
+    )
     nextEnemyHp = Math.max(0, nextEnemyHp - b)
     nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
+  }
+
+  const braceChip = r.braceChipDmg ?? 0
+  if (r.playerActed && braceChip > 0 && nextEnemyHp > 0) {
+    nextEnemyHp = Math.max(0, nextEnemyHp - braceChip)
+    nextLog = appendLog(nextLog, `brace chip. ${braceChip}.`)
   }
 
   if (nextEnemyHp <= 0) {

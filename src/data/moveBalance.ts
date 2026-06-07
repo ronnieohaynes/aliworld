@@ -2,6 +2,8 @@
  *  Leveling depth: display level is cosmetic; fights use skill bonuses below + counter loop.
  *  Build matchup + timing should beat a modest (~3–5 skill step) raw-stat gap. */
 
+import type { PlayerMoveId } from './moveIds'
+
 /** Sub-linear stat steps: full linear growth through this raw skill level, then tail factor. */
 export const SKILL_STAT_BONUS_LINEAR_CAP = 18
 export const SKILL_STAT_BONUS_TAIL_FACTOR = 0.72
@@ -204,3 +206,188 @@ export const COUNTER_ADVANTAGE_DMG_MULT = 1.22
 export const COUNTER_DISADVANTAGE_DMG_MULT = 0.82
 export const COUNTER_ADVANTAGE_INCOMING_MULT = 0.82
 export const COUNTER_DISADVANTAGE_INCOMING_MULT = 1.22
+
+// ---------------------------------------------------------------------------
+// CROSS_SCALE — secondary stat hooks (~25% swing). Primary ladder stays ~75%.
+// Tune per-move weights here; resolver reads these only (no hardcoded hooks).
+// ---------------------------------------------------------------------------
+
+export type CrossScaleSkill = 'attack' | 'speed' | 'defense' | 'luck'
+
+/** Fraction of an effect's swing contributed by the secondary stat at cap investment. */
+export const CROSS_SCALE_SECONDARY_SHARE = 0.25
+
+export const CROSS_SCALE = {
+  SECONDARY_SHARE: CROSS_SCALE_SECONDARY_SHARE,
+
+  // ATTACK ladder — secondary hooks
+  /** STRIKE: +crit chance % per luck skill level (small). */
+  STRIKE_CRIT_CHANCE_PER_LCK_LVL: 0.4,
+  /** FURY_SWEEP: extra bleed turns on crit (luck). */
+  FURY_BLEED_TURNS_PER_LCK_LVL: 0.1,
+  FURY_BLEED_TURNS_CAP: 2,
+  /** FURY_SWEEP: bleed chip multiplier bonus (luck). */
+  FURY_BLEED_POTENCY_PER_LCK_LVL: 0.015,
+  FURY_BLEED_POTENCY_CAP: 0.35,
+  /** DARK_BREAK: extra accuracy-down turns (speed). */
+  DARK_BREAK_EXTRA_TURNS_PER_SPD_LVL: 0.06,
+  DARK_BREAK_EXTRA_TURNS_CAP: 1,
+  /** CANNON: crit damage multiplier bonus (luck). */
+  CANNON_CRIT_DMG_PER_LCK_LVL: 0.022,
+  CANNON_CRIT_DMG_CAP: 0.35,
+  /** BLACKOUT: armed-hit damage momentum (speed). */
+  BLACKOUT_MOMENTUM_PER_SPD_LVL: 0.014,
+  BLACKOUT_MOMENTUM_CAP: 0.28,
+
+  // SPEED ladder — secondary hooks
+  /** SLIP: counter damage from attack skill investment. */
+  SLIP_COUNTER_ATK_PER_ATK_LVL: 0.016,
+  SLIP_COUNTER_ATK_CAP: 0.32,
+  /** PARRY: reflect fraction + sting from defense skill. */
+  PARRY_REFLECT_DEF_PER_DEF_LVL: 0.012,
+  PARRY_REFLECT_DEF_CAP: 0.28,
+  /** GRAVITY_SHIFT: slow duration (luck). */
+  GRAVITY_SLOW_TURNS_PER_LCK_LVL: 0.08,
+  GRAVITY_SLOW_TURNS_CAP: 1.5,
+  /** REFRACT: mirrored damage (attack skill). */
+  REFRACT_ATK_PER_ATK_LVL: 0.018,
+  REFRACT_ATK_CAP: 0.32,
+  /** HYPERDRIVE: setup-hit multiplier relief (attack skill). */
+  HYPERDRIVE_SETUP_ATK_PER_ATK_LVL: 0.014,
+  HYPERDRIVE_SETUP_ATK_CAP: 0.3,
+
+  // DEFENSE ladder — secondary hooks
+  /** HOLD: chip damage on successful brace (attack skill), 1–3 hp scale. */
+  HOLD_BRACE_CHIP_PER_ATK_LVL: 0.22,
+  HOLD_BRACE_CHIP_CAP: 3,
+  /** ANCHOR: heal-on-brace (luck), small anti-stall. */
+  ANCHOR_BRACE_HEAL_PER_LCK_LVL: 0.18,
+  ANCHOR_BRACE_HEAL_CAP: 3,
+  /** SECOND_WIND: heal pct bonus from luck skill. */
+  SECOND_WIND_LCK_HEAL_PER_LVL: 0.004,
+  SECOND_WIND_LCK_HEAL_CAP: 0.08,
+  /** COUNTERWEIGHT: reflect pct bonus (attack skill). */
+  COUNTERWEIGHT_REFLECT_ATK_PER_ATK_LVL: 0.012,
+  COUNTERWEIGHT_REFLECT_ATK_CAP: 0.05,
+  /** BRICK_WALL: next-hit damage mult after nullify (attack skill). */
+  BRICK_WALL_FOLLOWUP_ATK_PER_ATK_LVL: 0.012,
+  BRICK_WALL_FOLLOWUP_ATK_CAP: 0.22,
+  /** INVINCIBLE: sacrifice hp pct relief (luck). */
+  INVINCIBLE_SACRIFICE_RELIEF_PER_LCK_LVL: 0.009,
+  INVINCIBLE_SACRIFICE_RELIEF_CAP: 0.14,
+
+  // LUCK ladder — secondary hooks
+  /** WHISPER: extra shake weaken — lower outgoing mult (speed). */
+  WHISPER_SHAKE_WEAKEN_PER_SPD_LVL: 0.012,
+  WHISPER_SHAKE_WEAKEN_CAP: 0.12,
+  /** LOOP: repeat-window strike bonus (attack skill). */
+  LOOP_REPEAT_ATK_PER_ATK_LVL: 0.016,
+  LOOP_REPEAT_ATK_CAP: 0.3,
+  /** SNAG: stolen move power per level of that move's native skill. */
+  SNAG_STOLEN_PER_NATIVE_LVL: 0.014,
+  SNAG_STOLEN_CAP: 0.28,
+  /** PHENOMENA: roll floor bias (luck) + chaos dmg floor (defense). */
+  PHENOMENA_ROLL_BIAS_PER_LCK_LVL: 0.12,
+  PHENOMENA_DEF_FLOOR_PER_DEF_LVL: 0.01,
+  PHENOMENA_DEF_FLOOR_CAP: 0.12,
+  /** DEVIL'S CUT: lifesteal pct bonus (attack skill). */
+  DEVILS_CUT_LIFESTEAL_ATK_PER_ATK_LVL: 0.0022,
+  DEVILS_CUT_LIFESTEAL_ATK_CAP: 0.06,
+} as const
+
+/** Primary + secondary stat for UI tags and audits. SEALED_FATE has no secondary. */
+export const CROSS_SCALE_MAP: Record<
+  PlayerMoveId,
+  { primary: CrossScaleSkill; secondary: CrossScaleSkill | null }
+> = {
+  STRIKE: { primary: 'attack', secondary: 'luck' },
+  FURY_SWEEP: { primary: 'attack', secondary: 'luck' },
+  DARK_BREAK: { primary: 'attack', secondary: 'speed' },
+  CANNON: { primary: 'attack', secondary: 'luck' },
+  BLACKOUT: { primary: 'attack', secondary: 'speed' },
+  SLIP: { primary: 'speed', secondary: 'attack' },
+  PARRY: { primary: 'speed', secondary: 'defense' },
+  GRAVITY_SHIFT: { primary: 'speed', secondary: 'luck' },
+  REFRACT: { primary: 'speed', secondary: 'attack' },
+  HYPERDRIVE: { primary: 'speed', secondary: 'attack' },
+  HOLD: { primary: 'defense', secondary: 'attack' },
+  ANCHOR: { primary: 'defense', secondary: 'luck' },
+  SECOND_WIND: { primary: 'defense', secondary: 'luck' },
+  COUNTERWEIGHT: { primary: 'defense', secondary: 'attack' },
+  BRICK_WALL: { primary: 'defense', secondary: 'attack' },
+  INVINCIBLE: { primary: 'defense', secondary: 'luck' },
+  WHISPER: { primary: 'luck', secondary: 'speed' },
+  LOOP: { primary: 'luck', secondary: 'attack' },
+  DEVILS_CUT: { primary: 'luck', secondary: 'attack' },
+  SNAG: { primary: 'luck', secondary: null },
+  PHENOMENA: { primary: 'luck', secondary: 'defense' },
+  SEALED_FATE: { primary: 'luck', secondary: null },
+}
+
+const CROSS_SCALE_SKILL_LABEL: Record<CrossScaleSkill, string> = {
+  attack: 'atk',
+  speed: 'spd',
+  defense: 'def',
+  luck: 'lck',
+}
+
+/** UI line e.g. "scales: atk · lck" */
+export function crossScaleUiLabel(moveId: PlayerMoveId): string | null {
+  if (moveId === 'SNAG') return 'scales: lck · native'
+  if (moveId === 'SEALED_FATE') return null
+  const entry = CROSS_SCALE_MAP[moveId]
+  const parts = [CROSS_SCALE_SKILL_LABEL[entry.primary]]
+  if (entry.secondary) parts.push(CROSS_SCALE_SKILL_LABEL[entry.secondary])
+  return `scales: ${parts.join(' · ')}`
+}
+
+/** Structured scale tags for stat-colored UI (primary first, then secondary). */
+export function crossScaleUiParts(
+  moveId: PlayerMoveId,
+): { skill: CrossScaleSkill | 'native'; label: string }[] | null {
+  if (moveId === 'SEALED_FATE') return null
+  if (moveId === 'SNAG') {
+    return [
+      { skill: 'luck', label: 'lck' },
+      { skill: 'native', label: 'native' },
+    ]
+  }
+  const entry = CROSS_SCALE_MAP[moveId]
+  const parts: { skill: CrossScaleSkill | 'native'; label: string }[] = [
+    { skill: entry.primary, label: CROSS_SCALE_SKILL_LABEL[entry.primary] },
+  ]
+  if (entry.secondary) {
+    parts.push({
+      skill: entry.secondary,
+      label: CROSS_SCALE_SKILL_LABEL[entry.secondary],
+    })
+  }
+  return parts
+}
+
+/** Additive bonus capped — for crit %, heal pct, reflect pct slices. */
+export function crossSecondaryBonus(
+  secondaryLevel: number,
+  perLevel: number,
+  cap: number,
+): number {
+  return Math.min(cap, secondaryLevel * perLevel) * CROSS_SCALE.SECONDARY_SHARE
+}
+
+/** Multiplier 1 + bonus — for damage/counter/hit mult hooks. */
+export function crossSecondaryMultiplier(
+  secondaryLevel: number,
+  perLevel: number,
+  cap: number,
+): number {
+  return 1 + crossSecondaryBonus(secondaryLevel, perLevel, cap)
+}
+
+/** Small flat integer bonus — brace chip, extra turns, heal hp. */
+export function crossSecondaryFlat(
+  secondaryLevel: number,
+  perLevel: number,
+  cap: number,
+): number {
+  return Math.min(cap, Math.floor(secondaryLevel * perLevel * CROSS_SCALE.SECONDARY_SHARE))
+}
