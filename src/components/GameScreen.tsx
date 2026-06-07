@@ -114,6 +114,7 @@ import {
 import { performNewGameReset } from '../store/gameProgress'
 import { track } from '../lib/analytics'
 import type { PlayCutsceneOptions } from '../lib/playCutscene'
+import { preloadYouTubeIframeApi } from '../lib/youtubeIframeApi'
 import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
 import { useDevControls } from '../hooks/useDevControls'
 import { CutsceneOverlay } from './CutsceneOverlay'
@@ -1041,6 +1042,7 @@ export function GameScreen() {
   useEffect(() => {
     if (cafeFade === 'none') return
     if (cafeFade === 'in') {
+      preloadYouTubeIframeApi()
       const t = window.setTimeout(() => {
         setCafeSceneLine(0)
         setCafeFade('scene')
@@ -1062,6 +1064,7 @@ export function GameScreen() {
   const advanceCafeScene = useCallback(() => {
     if (cutsceneFlowActive || questTransitionActive) return
     if (cafeFade !== 'scene') return
+    preloadYouTubeIframeApi()
     const next = cafeSceneLine + 1
     if (next >= CAFE_SCENE_LINES.length) {
       if (!isE1CutscenePlayed()) {
@@ -1133,6 +1136,7 @@ export function GameScreen() {
       } else if (action === 'OPEN_ONE_LOVE_CAFE') {
         if (isCafeSceneSeen() || cafeFade !== 'none') return
         setDialogue(null)
+        preloadYouTubeIframeApi()
         setCafeFade('in')
       } else if (action === 'OPEN_BLUE_STORE') {
         if (currentCity !== 'southside') return

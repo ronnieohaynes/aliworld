@@ -107,3 +107,31 @@
   z-index: 4;
   pointer-events: auto;
 }
+
+.cutscene-overlay__play-prompt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid rgba(127, 119, 221, 0.65);
+  border-radius: 4px;
+  background: rgba(10, 10, 18, 0.88);
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.cutscene-overlay__play-prompt--muted {
+  top: auto;
+  bottom: 48px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  opacity: 0.85;
+}
