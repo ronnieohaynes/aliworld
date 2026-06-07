@@ -60,13 +60,20 @@ function saveQuest2ToStorage(): void {
 }
 
 let state: Quest2State = loadQuest2FromStorage()
+let storeRevision = 0
 
 const listeners = new Set<() => void>()
 
 function emit(): void {
+  storeRevision++
   for (const listener of listeners) {
     listener()
   }
+}
+
+/** Monotonic counter for useSyncExternalStore — never return mutable state as snapshot. */
+export function getQuest2Revision(): number {
+  return storeRevision
 }
 
 export function subscribeQuest2Store(listener: () => void): () => void {
@@ -159,6 +166,7 @@ export function applyState(data: Partial<Quest2Serialized>): void {
     restockerDefeated: data.restockerDefeated === true,
     e2Seen: data.e2Seen === true,
   }
+  saveQuest2ToStorage()
   emit()
 }
 
@@ -167,6 +175,7 @@ export function resetState(): void {
   emit()
 }
 
+/** Clear Quest 2 progress (debug / re-test). */
 export function resetQuest2ForDebug(): void {
   state = emptyQuest2State()
   try {
