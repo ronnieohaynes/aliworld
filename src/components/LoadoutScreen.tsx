@@ -174,7 +174,7 @@ export function LoadoutScreen({
   const scrollRootRef = useRef<HTMLDivElement>(null)
 
   const showLoadoutTutorial =
-    loadoutTutorialStep != null && loadoutTutorialStep >= 3 && loadoutTutorialStep <= 9
+    loadoutTutorialStep != null && loadoutTutorialStep >= 2 && loadoutTutorialStep <= 8
 
   const skills = usePlayerStore(getPlayerSkills)
   const equipped = usePlayerStore(getEquippedMoves)
@@ -207,9 +207,9 @@ export function LoadoutScreen({
   }, [closing, onClose])
 
   useEffect(() => {
-    if (loadoutTutorialStep == null || loadoutTutorialStep < 3 || loadoutTutorialStep > 6) return
+    if (loadoutTutorialStep == null || loadoutTutorialStep < 2 || loadoutTutorialStep > 5) return
     const refs = [statAttackRef, statSpeedRef, statDefenseRef, statLuckRef]
-    const index = loadoutTutorialStep - 3
+    const index = loadoutTutorialStep - 2
     refs[index]?.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [loadoutTutorialStep])
 

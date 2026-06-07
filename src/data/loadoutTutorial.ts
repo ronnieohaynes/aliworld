@@ -3,7 +3,6 @@ import type { GuidedTutorialStep } from '../components/GuidedTutorialOverlay'
 export type LoadoutTutorialTarget =
   | 'menu_button'
   | 'script_button'
-  | 'menu_loadout'
   | 'stat_attack'
   | 'stat_speed'
   | 'stat_defense'
@@ -11,7 +10,7 @@ export type LoadoutTutorialTarget =
   | 'build'
   | 'share_card'
 
-/** Steps 0–1: block overworld talk; UI targets stay clickable. */
+/** Steps 0–1: block overworld talk while the script-button prompt is active. */
 export function blocksWorldInteractDuringLoadoutTutorial(step: number | null): boolean {
   return step != null && step <= 1
 }
@@ -26,11 +25,6 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
   {
     text: 'open your loadout here.',
     target: 'script_button',
-    waitForAction: true,
-  },
-  {
-    text: 'this is your loadout.',
-    target: 'menu_loadout',
     waitForAction: true,
   },
   {
@@ -68,9 +62,7 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
   },
 ]
 
-/** Step waiting for the script button must still open the loadout. */
-export function allowsStartMenuDuringLoadoutTutorial(step: number | null): boolean {
-  if (step == null) return false
-  const def = LOADOUT_TUTORIAL_STEPS[step]
-  return def?.waitForAction === true && (def.target === 'menu_button' || def.target === 'script_button')
+/** No start-menu exception needed — loadout opens directly via the script button. */
+export function allowsStartMenuDuringLoadoutTutorial(_step: number | null): boolean {
+  return false
 }

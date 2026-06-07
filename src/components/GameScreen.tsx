@@ -267,7 +267,6 @@ export function GameScreen() {
     result: 'win' | 'lose'
     npcId: string | null
   } | null>(null)
-  const loadoutMenuBtnRef = useRef<HTMLButtonElement>(null)
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
   const interactBtnRef = useRef<HTMLButtonElement>(null)
   const scriptBtnRef = useRef<HTMLButtonElement>(null)
@@ -707,9 +706,6 @@ export function GameScreen() {
     }
     console.log('[tutorial-start] toggleStartMenu opening start menu')
     setShowStartMenu(true)
-    if (loadoutTutorialStep === 1) {
-      setLoadoutTutorialStep(2)
-    }
   }, [
     loadoutTutorialStep,
     beginResumeTransition,
@@ -802,9 +798,6 @@ export function GameScreen() {
       }
       console.log('[tutorial-start] Escape opening start menu')
       setShowStartMenu(true)
-      if (loadoutTutorialStep === 1) {
-        setLoadoutTutorialStep(2)
-      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -821,11 +814,6 @@ export function GameScreen() {
     menuTransition,
   ])
 
-  useEffect(() => {
-    if (loadoutTutorialStep === 1 && showStartMenu) {
-      setLoadoutTutorialStep(2)
-    }
-  }, [loadoutTutorialStep, showStartMenu])
 
   const startMarkBattle = useCallback(() => {
     if (battleNpcId || battleWipePhase) return
@@ -1770,7 +1758,11 @@ export function GameScreen() {
   const handleOpenLoadout = useCallback(() => {
     if (worldEntryActive || showStartMenu) return
     setShowLoadout(true)
-  }, [showStartMenu, worldEntryActive])
+    // Script button tap completes the waitForAction step.
+    if (loadoutTutorialStep === 1) {
+      setLoadoutTutorialStep(2)
+    }
+  }, [loadoutTutorialStep, showStartMenu, worldEntryActive])
 
   const beginMenuEntryTransition = useCallback(
     (screen: 'fanny-pack' | 'loadout') => {
@@ -1810,9 +1802,6 @@ export function GameScreen() {
           beginMenuEntryTransition('fanny-pack')
           break
         case 'loadout':
-          if (loadoutTutorialStep === 2) {
-            setLoadoutTutorialStep(3)
-          }
           beginMenuEntryTransition('loadout')
           break
         case 'refresh': {
@@ -2147,7 +2136,6 @@ export function GameScreen() {
           {showStartMenu && (
             <StartMenuScreen
               ref={startMenuRef}
-              loadoutButtonRef={loadoutMenuBtnRef}
               onAction={handleStartMenuAction}
               onConfirmNewGame={handleConfirmNewGame}
             />
@@ -2178,17 +2166,6 @@ export function GameScreen() {
                 menu_button: startMenuBtnRef,
                 script_button: scriptBtnRef,
               }}
-              elevated
-              onNext={advanceLoadoutTutorial}
-              onSkip={skipLoadoutTutorial}
-            />
-          ) : null}
-          {loadoutTutorialStep === 2 && showStartMenu ? (
-            <GuidedTutorialOverlay<LoadoutTutorialTarget | 'none'>
-              ariaLabel="Loadout tutorial"
-              steps={LOADOUT_TUTORIAL_STEPS}
-              stepIndex={2}
-              targetRefs={{ menu_loadout: loadoutMenuBtnRef }}
               elevated
               onNext={advanceLoadoutTutorial}
               onSkip={skipLoadoutTutorial}
