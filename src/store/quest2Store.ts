@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aliworld:quest2:v1'
 
 /** Flip true when episode 2 is ready to ship — gates quest 2, crowd/crier, southside travel. */
-export const E2_ENABLED = false
+export const E2_ENABLED = true
 
 export const TOWN_CRIER_NPC_ID = 'town-crier'
 export const CLERK_NPC_ID = 'clerk'

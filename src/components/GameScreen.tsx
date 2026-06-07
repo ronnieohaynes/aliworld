@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
-import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, type NpcData } from '../data/npcs'
+import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, WALKER_E2_CROWD_NPC, type NpcData } from '../data/npcs'
 import { isE2QuestUnlocked } from '../data/quest2Objectives'
 import { E2_ENABLED } from '../store/quest2Store'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
@@ -69,7 +69,7 @@ import {
 import {
   CLERK_NPC_ID,
   CROWD_2_NPC_ID,
-  getQuest2Snapshot,
+  getQuest2Revision,
   isClerkConverted,
   isCrierConverted,
   isCrowdAddressed,
@@ -315,8 +315,8 @@ export function GameScreen() {
   )
   const quest2Revision = useSyncExternalStore(
     subscribeQuest2Store,
-    getQuest2Snapshot,
-    getQuest2Snapshot,
+    getQuest2Revision,
+    getQuest2Revision,
   )
   const artifactRevision = useSyncExternalStore(
     subscribeArtifactStore,
@@ -523,7 +523,11 @@ export function GameScreen() {
       }
       if (isE2QuestUnlocked()) {
         if (!isCrowdAddressed()) {
+          npcs = npcs.filter((npc) => npc.id !== WALKER_NPC_ID)
           npcs = [...npcs, CROWD_1_NPC, CROWD_2_NPC]
+          if (isWalkerConverted()) {
+            npcs = [...npcs, WALKER_E2_CROWD_NPC]
+          }
         }
         if (!isCrierConverted()) {
           npcs = [...npcs, TOWN_CRIER_NPC]
@@ -1326,6 +1330,11 @@ export function GameScreen() {
       return
     }
 
+    if (nearbyId === 'walker-crowd') {
+      beginNpcDialogue(WALKER_E2_CROWD_NPC)
+      return
+    }
+
     if (nearbyId === CROWD_2_NPC_ID) {
       beginNpcDialogue(CROWD_2_NPC)
       return
@@ -1351,6 +1360,10 @@ export function GameScreen() {
 
     if (nearbyId === CLERK_NPC_ID) {
       if (currentCity !== 'southside') return
+      if (!buildQuestObjectiveContext().inSouthside) {
+        showNotYetDialogue(CLERK_NPC, 'take the darkline to southside first.')
+        return
+      }
       if (!isCrierConverted()) {
         showNotYetDialogue(CLERK_NPC, 'the crier has to go first.')
         return

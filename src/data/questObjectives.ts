@@ -30,6 +30,7 @@ import {
   RESTOCKER_NPC_ID,
   TOWN_CRIER_NPC_ID,
   CROWD_2_NPC_ID,
+  CLERK_NPC_ID,
 } from '../store/quest2Store'
 import type { TriggerAction } from './triggerZones'
 
@@ -253,9 +254,13 @@ export function getQuestPulseTargetDescriptor(
     case 'e2-crier':
       return { kind: 'npc', id: TOWN_CRIER_NPC_ID }
     case 'e2-travel':
-      return { kind: 'zone', action: 'OPEN_DARKLINE' }
+      return ctx.inSouthside
+        ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-clerk':
-      return { kind: 'zone', action: 'OPEN_BLUE_STORE' }
+      return ctx.inSouthside
+        ? { kind: 'npc', id: CLERK_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-restocker':
       return { kind: 'npc', id: RESTOCKER_NPC_ID }
     case 'e2-field':
