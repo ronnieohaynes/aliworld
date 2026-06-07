@@ -97,6 +97,8 @@ class AudioManager {
     if (this.muted === muted) return
     this.muted = muted
     writeMuted(muted)
+    // Cancel any in-flight fade so it can't override the new volume.
+    this.fadeGeneration++
     if (!isMusicPlayerOwned()) {
       this.ensureSilenced()
       this.emit()
