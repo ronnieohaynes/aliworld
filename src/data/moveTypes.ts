@@ -91,6 +91,8 @@ export type PlayerLogContext = {
   pMove: PlayerMoveId
   playerDmg: number
   incoming: number
+  /** Raw enemy strike before player mitigation — for honest dodge/brace lines. */
+  rawIncoming: number
   crit: boolean
   dodged: boolean
   braced: boolean

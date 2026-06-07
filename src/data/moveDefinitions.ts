@@ -260,7 +260,12 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       if (r.dodged) {
         return `you slipped it. counter for ${r.playerDmg}.${r.stunApplied ? ` ${name} reels.` : ''}`
       }
-      return `you slipped nothing. ${r.playerDmg}.`
+      if (r.rawIncoming > 0) {
+        const taken = r.incoming > 0 ? `${r.incoming} taken. ` : ''
+        const counter = r.playerDmg > 0 ? `${r.playerDmg} back.` : 'no counter.'
+        return `slip too slow. ${taken}${counter}`
+      }
+      return `nothing incoming. ${r.playerDmg}.`
     },
   }),
 
@@ -363,7 +368,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     uiDescription: 'brace. take a fraction of the next hit.',
     uiClassName: 'battle-screen__move--hold',
     playerLogLine: (r) => {
-      if (r.enemyAttacks) return `you braced. ${r.incoming} chip.`
+      if (r.rawIncoming > 0) return `you braced. ${r.incoming} chip.`
       return `you set your feet. nothing comes.`
     },
   }),
@@ -386,7 +391,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     uiDescription: 'brace and shrug off status this turn.',
     uiClassName: 'battle-screen__move--anchor',
     playerLogLine: (r) =>
-      r.enemyAttacks
+      r.rawIncoming > 0
         ? `anchored. ${r.incoming} chip. status blocked.`
         : 'anchored. nothing lands.',
   }),

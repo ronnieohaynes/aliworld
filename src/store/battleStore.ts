@@ -330,13 +330,14 @@ function applyEnemyGuardPierce(
   rawEDmg: number,
 ): void {
   const pierce = state.npc.enemyGuardPierce
-  if (!pierce || rawEDmg <= 0 || !out.enemyAttacks) return
+  if (!pierce || rawEDmg <= 0) return
 
   if (out.dodged) {
     const through = Math.max(1, Math.floor(rawEDmg * pierce))
     out.incoming = Math.max(out.incoming, through)
     out.dodged = false
     out.playerDmg = Math.max(0, Math.floor(out.playerDmg * 0.5))
+    out.enemyAttacks = true
     return
   }
 
@@ -345,6 +346,7 @@ function applyEnemyGuardPierce(
   const restored = Math.floor(mitigated * pierce)
   if (restored > 0) {
     out.incoming += restored
+    out.enemyAttacks = true
   }
 }
 
@@ -419,14 +421,19 @@ function resolveEnemyIncoming(
   }
   const actualMove = eMove as EnemyMoveId
 
-  if (battle.enemyAccuracyTurns > 0 && Math.random() > battle.enemyAccuracyMult) {
+  const def = getEnemyMoveDef(actualMove)
+  const threatens = def.isAttacking
+
+  if (battle.enemyAccuracyTurns > 0 && threatens && Math.random() > battle.enemyAccuracyMult) {
     return { enemyStunned: false, enemyAttacks: false, eDmg: 0, actualMove }
   }
 
-  const eDmg = computeEnemyIncomingDamage(actualMove, {
-    eAtk: state.npc.stats.atk,
-    status,
-  })
+  const eDmg = threatens
+    ? computeEnemyIncomingDamage(actualMove, {
+        eAtk: state.npc.stats.atk,
+        status,
+      })
+    : 0
   return { enemyStunned: false, enemyAttacks: eDmg > 0, eDmg, actualMove }
 }
 
@@ -524,9 +531,11 @@ function resolvePlayerMoveBody(
     state.battleMove,
   )
 
-  applyEnemyGuardPierce(state, out, enemyAttacks ? eDmg : 0)
+  applyEnemyGuardPierce(state, out, eDmg)
 
-  finalizeIncomingXpMetrics(out, enemyAttacks ? eDmg : out.guardCountered ? out.incoming : 0)
+  if (eDmg > 0) out.enemyAttacks = true
+
+  finalizeIncomingXpMetrics(out, eDmg > 0 ? eDmg : out.guardCountered ? out.incoming : 0)
 
   if (
     BLACKOUT_INTERRUPTIBLE &&
@@ -672,7 +681,7 @@ function applyEnemyResolutionPhase(
 
   if (r.enemyStunned) {
     nextLog = appendLog(nextLog, `${lower} can't move.`)
-  } else if (r.enemyAttacks && r.incoming > 0) {
+  } else if (r.incoming > 0) {
     let incoming = r.incoming
     const battle = state.battleMove
     if (battle.counterweightReflectPct != null) {

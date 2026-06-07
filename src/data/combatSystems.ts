@@ -162,7 +162,8 @@ export function buildExposedResolveInput(input: ExposedResolveInput) {
   const stunned = enemyLosesTurn(input.status)
   const actualMove: EnemyMoveId =
     input.eMove === 'STUNNED' ? 'STRIKE' : (input.eMove as EnemyMoveId)
-  const enemyAttacks = !stunned && getEnemyMoveDef(actualMove).isAttacking
+  const def = getEnemyMoveDef(actualMove)
+  const enemyAttacks = !stunned && def.isAttacking
   const incoming = enemyAttacks
     ? computeEnemyIncomingDamage(actualMove, {
         eAtk: input.eAtk,
@@ -172,7 +173,7 @@ export function buildExposedResolveInput(input: ExposedResolveInput) {
 
   return {
     actualMove,
-    enemyAttacks,
+    enemyAttacks: incoming > 0,
     enemyStunned: stunned,
     incoming,
     logLine: stunned
