@@ -1112,11 +1112,13 @@ function finishTurnResolve(state: BattleState): BattleState {
   if (!pending || state.phase !== 'busy') return state
 
   const finalized = finalizeTurn(state, pending.r)
+  // If a level-up notification was produced, stay busy until the player dismisses it.
+  const phase = finalized.pendingLevelUpNotification ? 'busy' : 'player'
   return {
     ...finalized,
     pendingResolve: null,
     resolveStep: 'idle',
-    phase: 'player',
+    phase,
   }
 }
 
@@ -1219,7 +1221,7 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
       return { ...state, phase: 'ended', result: action.result }
 
     case 'DISMISS_LEVEL_UP':
-      return { ...state, pendingLevelUpNotification: null }
+      return { ...state, pendingLevelUpNotification: null, phase: 'player' }
 
     default:
       return state
