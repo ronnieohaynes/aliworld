@@ -2234,15 +2234,15 @@ export function GameScreen() {
           )}
           <QuestTransition ref={questTransitionRef} />
         </div>
+          {showLoadout && (
+            <LoadoutScreen
+              onClose={handleLoadoutClose}
+              loadoutTutorialStep={loadoutTutorialStep}
+              onLoadoutTutorialNext={advanceLoadoutTutorial}
+              onLoadoutTutorialSkip={skipLoadoutTutorial}
+            />
+          )}
       </GameShell>
-      {showLoadout && (
-        <LoadoutScreen
-          onClose={handleLoadoutClose}
-          loadoutTutorialStep={loadoutTutorialStep}
-          onLoadoutTutorialNext={advanceLoadoutTutorial}
-          onLoadoutTutorialSkip={skipLoadoutTutorial}
-        />
-      )}
     </div>
   )
 }
