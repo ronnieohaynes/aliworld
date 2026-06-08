@@ -71,7 +71,7 @@ function defenseMoveXp(r: MoveXpContext): number {
   if (r.damageBlocked > 0) {
     return r.damageBlocked * XP_DAMAGE_BLOCKED_MULT + XP_DEFENSE_SPEED_ACTION_BONUS
   }
-  return r.braced ? XP_DEFENSE_SPEED_ACTION_BONUS : XP_FALLBACK_SMALL
+  return 0
 }
 
 function speedDodgeMoveXp(r: MoveXpContext): number {
