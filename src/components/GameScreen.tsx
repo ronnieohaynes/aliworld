@@ -1757,12 +1757,16 @@ export function GameScreen() {
 
   const handleOpenLoadout = useCallback(() => {
     if (worldEntryActive || showStartMenu) return
+    if (showLoadout) {
+      handleLoadoutClose()
+      return
+    }
     setShowLoadout(true)
     // Script button tap completes the waitForAction step.
     if (loadoutTutorialStep === 1) {
       setLoadoutTutorialStep(2)
     }
-  }, [loadoutTutorialStep, showStartMenu, worldEntryActive])
+  }, [handleLoadoutClose, loadoutTutorialStep, showLoadout, showStartMenu, worldEntryActive])
 
   const beginMenuEntryTransition = useCallback(
     (screen: 'fanny-pack' | 'loadout') => {

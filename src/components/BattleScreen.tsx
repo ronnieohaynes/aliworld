@@ -967,6 +967,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                       style={{ width: `${enemyHpPct}%` }}
                     />
                   </div>
+                  <span className="battle-screen__hp-label">{displayedEnemyHp} / {state.enemyMaxHp}</span>
                   {enemyStatusTags.length > 0 && (
                     <div className="battle-screen__plate-status-slot">
                       <FighterStatusTags tags={enemyStatusTags} />
@@ -1051,6 +1052,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                       style={{ width: `${playerHpPct}%` }}
                     />
                   </div>
+                  <span className="battle-screen__hp-label">{displayedPlayerHp} / {state.playerStats.maxHp}</span>
                   {playerStatusTags.length > 0 && (
                     <div ref={playerStatusRef} className="battle-screen__plate-status-slot">
                       <FighterStatusTags tags={playerStatusTags} />
