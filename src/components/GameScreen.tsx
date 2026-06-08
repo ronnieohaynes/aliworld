@@ -2075,6 +2075,9 @@ export function GameScreen() {
             </div>
           )}
           <div className="game-screen-battle-layer">
+            {battleWipePhase === 'enter' && (
+              <div className="game-screen-battle-world-fade" aria-hidden />
+            )}
             {battleNpcId && battleReady && (
               <BattleScreen
                 key={battleNpcId}

@@ -548,6 +548,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     payoffNpc.losingLine.trim().length > 0 &&
     narrationVisible
   const battleSettled = battleRevealed && playerLayoutReady && enemyLayoutReady
+  const [settleCoverGone, setSettleCoverGone] = useState(false)
+  useEffect(() => {
+    if (!battleSettled || settleCoverGone) return
+    const timer = window.setTimeout(() => setSettleCoverGone(true), 500)
+    return () => window.clearTimeout(timer)
+  }, [battleSettled, settleCoverGone])
 
   useEffect(() => {
     setWinPayoffNpc(null)
@@ -940,7 +946,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       className={`battle-screen${battleSettled ? '' : ' battle-screen--settling'}`}
       aria-label={`Battle vs ${state.npc.displayName}`}
     >
-      {!battleSettled ? <div className="battle-screen__settle-cover" aria-hidden /> : null}
+      {!settleCoverGone && (
+        <div
+          className={`battle-screen__settle-cover${battleSettled ? ' battle-screen__settle-cover--fade-out' : ''}`}
+          aria-hidden
+        />
+      )}
       <div className="battle-screen__content">
         <div className="battle-screen__playfield" ref={playfieldRef}>
 
