@@ -67,13 +67,15 @@ const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 const ADAM_SPRITE = publicAsset('Assets/Characters/npcs/Adam-idle.PNG')
 
 function entry(
-  base: Omit<NpcCombatEntry, 'stats'> & { hpScale?: number },
+  base: Omit<NpcCombatEntry, 'stats'> & { hpScale?: number; fixedHp?: number },
 ): NpcCombatEntry {
-  const { hpScale = 1, ...rest } = base
-  return {
-    ...rest,
-    stats: computeNpcCombatStats(rest.level, rest.leanSkill, hpScale),
+  const { hpScale = 1, fixedHp, ...rest } = base
+  const stats = computeNpcCombatStats(rest.level, rest.leanSkill, hpScale)
+  if (fixedHp != null) {
+    stats.hp = fixedHp
+    stats.maxHp = fixedHp
   }
+  return { ...rest, stats }
 }
 
 /** Tutorial — level 2, teaches brace/dodge vs HAYMAKER. */
@@ -172,7 +174,7 @@ function buildFiveGym1CombatEntry(): NpcCombatEntry {
     id: FIVE_GYM1_ID,
     displayName: 'Jerome',
     level: round.level,
-    hpScale: round.hpScale,
+    fixedHp: round.fixedHp,
     moves: [...round.moves],
     leanSkill: round.leanSkill,
     telegraphFlavor: round.telegraphFlavor,

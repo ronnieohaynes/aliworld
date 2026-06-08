@@ -13,7 +13,7 @@ export type FiveGym1GuardCounter = {
 
 export type FiveGym1RoundConfig = {
   level: number
-  hpScale: number
+  fixedHp: number
   moves: EnemyMoveId[]
   leanSkill: LeanSkill
   telegraphFlavor: NpcTelegraphFlavor
@@ -25,7 +25,7 @@ export type FiveGym1RoundConfig = {
 export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 4,
-    hpScale: 1.6,
+    fixedHp: 60,
     moves: ['STRIKE', 'HOLD', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
@@ -37,7 +37,7 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   },
   {
     level: 7,
-    hpScale: 2.0,
+    fixedHp: 90,
     moves: ['STRIKE', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
@@ -49,7 +49,7 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   },
   {
     level: 10,
-    hpScale: 2.4,
+    fixedHp: 120,
     moves: ['STRIKE', 'HOLD', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP', 'LOOP'],
     leanSkill: 'defense',
     guardCounter: { chance: 0.7, damageMult: 2.85 },
