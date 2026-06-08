@@ -722,6 +722,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       const DAMAGE_DELAY_MS = 540
       const HIT_MS = 840
       const id = Date.now() + Math.random()
+      // Bleed damage has its own feedback floater — only show the direct attack portion here.
+      const attackDelta = Math.max(0, enemyDelta - state.feedbackBleedDamage)
       setPlayerAtkFx(skill)
       window.setTimeout(() => setPlayerAtkFx(null), LUNGE_MS)
       window.setTimeout(() => {
@@ -730,11 +732,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       }, LUNGE_MS + HIT_FLASH_MS)
       window.setTimeout(() => {
         setDisplayedEnemyHp(state.enemyHp)
-        setFloaters((f) => [
-          ...f,
-          { id, text: `-${enemyDelta}`, target: 'enemy', tone: 'attack' },
-        ])
-        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+        if (attackDelta > 0) {
+          setFloaters((f) => [
+            ...f,
+            { id, text: `-${attackDelta}`, target: 'enemy', tone: 'attack' },
+          ])
+          window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+        }
       }, LUNGE_MS + DAMAGE_DELAY_MS)
       clampBattleScrollDrift()
     }
@@ -767,7 +771,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
     prevEnemyHpRef.current = state.enemyHp
     prevPlayerHpRef.current = state.playerHp
-  }, [state.enemyHp, state.playerHp, clampBattleScrollDrift])
+  }, [state.enemyHp, state.playerHp, state.feedbackBleedDamage, clampBattleScrollDrift])
 
   useEffect(() => {
     if (state.feedbackSeq === prevFeedbackSeqRef.current) return

@@ -152,6 +152,9 @@ export type BattleState = {
   feedbackSeq: number
   /** Which side resolved first this round — used to offset floater timing. */
   feedbackEnemyActedFirst: boolean
+  /** Bleed damage dealt this turn — subtracted from the HP-delta floater so the
+   *  attack number and bleed number are shown separately. */
+  feedbackBleedDamage: number
   /** Non-null when a skill or combat level-up just occurred — shown as an overlay. */
   pendingLevelUpNotification: LevelUpNotification | null
 }
@@ -1077,6 +1080,7 @@ function applySecondResolve(state: BattleState): BattleState {
             { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
           ],
           feedbackSeq: playerPhase.working.feedbackSeq + 1,
+          feedbackBleedDamage: playerPhase.bleedDamage,
         }
       : playerPhase.working
     if (playerPhase.ended) {
@@ -1220,6 +1224,7 @@ export function createInitialBattleState(
     feedbackEvents: [],
     feedbackSeq: 0,
     feedbackEnemyActedFirst: false,
+    feedbackBleedDamage: 0,
     pendingLevelUpNotification: null,
   }
 }
