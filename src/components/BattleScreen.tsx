@@ -69,7 +69,7 @@ import {
   getShowDebug,
   getPlayerSkills,
 } from '../store/playerStore'
-import { deriveBuildName } from '../data/buildName'
+import { deriveBuildLoopType, deriveBuildName } from '../data/buildName'
 import { totalXpForLevel, MAX_PLAYER_LEVEL } from '../store/skillStore'
 import {
   isBattleTutorialSeen,
@@ -413,6 +413,9 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     subscribePlayerStore,
     () => deriveBuildName(getPlayerSkills()).name,
     () => deriveBuildName(getPlayerSkills()).name,
+  )
+  const playerLeanAccent = leanSkillAccentColor(
+    deriveBuildLoopType(playerSkills) ?? 'none',
   )
   const authState = useSyncExternalStore(subscribeAuthStore, getAuthState, getAuthState)
   const playerHandle = authState.profile?.handle ?? 'YOU'
@@ -1047,7 +1050,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                       {' · LVL '}{playerLevel}
                     </span>
                   </span>
-                  <span className="battle-screen__plate-archetype">
+                  <span className="battle-screen__plate-archetype" style={{ color: playerLeanAccent }}>
                     {playerBuildLabel}
                   </span>
                   <div className="battle-screen__hp-track">
