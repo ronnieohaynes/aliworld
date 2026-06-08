@@ -724,7 +724,7 @@ function applyPlayerResolutionPhase(
   working: BattleState
   ended: boolean
   result?: BattleResult
-  bleedTicked: boolean
+  bleedDamage: number
 } {
   const lower = state.npc.displayName.toLowerCase()
   let nextEnemyHp = enemyHp
@@ -788,12 +788,12 @@ function applyPlayerResolutionPhase(
     nextPlayerHp = working.playerHp
   }
 
-  let bleedTicked = false
+  let bleedDamage = 0
   if (working.combatStatus.enemyBleed > 0 && nextEnemyHp > 0) {
     const b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT))
     nextEnemyHp = Math.max(0, nextEnemyHp - b)
     nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
-    bleedTicked = true
+    bleedDamage = b
   }
 
   if (nextEnemyHp <= 0) {
@@ -805,7 +805,7 @@ function applyPlayerResolutionPhase(
       working,
       ended: true,
       result: 'win',
-      bleedTicked,
+      bleedDamage,
     }
   }
 
@@ -815,7 +815,7 @@ function applyPlayerResolutionPhase(
     log: nextLog,
     working,
     ended: false,
-    bleedTicked,
+    bleedDamage,
   }
 }
 
@@ -1018,8 +1018,16 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
     working.log,
   )
 
-  const playerPhaseWorking = playerPhase.bleedTicked
-    ? { ...playerPhase.working, feedbackEvents: [...playerPhase.working.feedbackEvents, { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const }], feedbackSeq: playerPhase.working.feedbackSeq + 1 }
+  const playerPhaseWorking = playerPhase.bleedDamage > 0
+    ? {
+        ...playerPhase.working,
+        feedbackEvents: [
+          ...playerPhase.working.feedbackEvents,
+          { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const },
+          { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
+        ],
+        feedbackSeq: playerPhase.working.feedbackSeq + 1,
+      }
     : playerPhase.working
 
   if (playerPhase.ended) {
@@ -1060,8 +1068,16 @@ function applySecondResolve(state: BattleState): BattleState {
       state.playerHp,
       state.log,
     )
-    const playerPhaseWorking = playerPhase.bleedTicked
-      ? { ...playerPhase.working, feedbackEvents: [...playerPhase.working.feedbackEvents, { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const }], feedbackSeq: playerPhase.working.feedbackSeq + 1 }
+    const playerPhaseWorking = playerPhase.bleedDamage > 0
+      ? {
+          ...playerPhase.working,
+          feedbackEvents: [
+            ...playerPhase.working.feedbackEvents,
+            { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const },
+            { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
+          ],
+          feedbackSeq: playerPhase.working.feedbackSeq + 1,
+        }
       : playerPhase.working
     if (playerPhase.ended) {
       return {
