@@ -277,20 +277,36 @@
   overflow: hidden;
 }
 
-.loadout-screen__skill-block--expanded.loadout-screen__skill-block--attack {
+.loadout-screen__skill-block--attack {
   border-color: rgba(204, 68, 68, 0.55);
 }
 
-.loadout-screen__skill-block--expanded.loadout-screen__skill-block--speed {
+.loadout-screen__skill-block--speed {
   border-color: rgba(68, 204, 102, 0.55);
 }
 
-.loadout-screen__skill-block--expanded.loadout-screen__skill-block--defense {
+.loadout-screen__skill-block--defense {
   border-color: rgba(68, 136, 204, 0.55);
 }
 
-.loadout-screen__skill-block--expanded.loadout-screen__skill-block--luck {
+.loadout-screen__skill-block--luck {
   border-color: rgba(204, 68, 204, 0.55);
+}
+
+.loadout-screen__skill-block--expanded.loadout-screen__skill-block--attack {
+  border-color: #cc4444;
+}
+
+.loadout-screen__skill-block--expanded.loadout-screen__skill-block--speed {
+  border-color: #44cc66;
+}
+
+.loadout-screen__skill-block--expanded.loadout-screen__skill-block--defense {
+  border-color: #4488cc;
+}
+
+.loadout-screen__skill-block--expanded.loadout-screen__skill-block--luck {
+  border-color: #cc44cc;
 }
 
 .loadout-screen__skill-row {
@@ -358,10 +374,24 @@
 }
 
 .loadout-screen__skill-block--hp {
-  border: 2px solid #2a2a3e;
+  border: 2px solid rgba(224, 96, 160, 0.55);
   border-radius: 4px;
   background: rgba(26, 26, 46, 0.92);
   overflow: hidden;
+}
+
+.loadout-screen__hp-label-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.loadout-screen__hp-fraction {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: #e060a0;
+  opacity: 0.8;
 }
 
 .loadout-screen__skill-row--hp {
@@ -377,8 +407,7 @@
 }
 
 .loadout-screen__skill-head--hp {
-  position: relative;
-  justify-content: flex-end;
+  align-items: flex-start;
 }
 
 .loadout-screen__skill-label--hp {
