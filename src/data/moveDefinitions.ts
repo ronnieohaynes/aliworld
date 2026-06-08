@@ -113,7 +113,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
-      { skill: 'hp', amount: (r) => r.playerDmg * 1.3 },
     ],
     uiDescription: 'hit the opening. trade if they swing.',
     uiClassName: 'battle-screen__move--strike',
@@ -150,7 +149,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'attack', amount: (r) => r.playerDmg * 3 },
-      { skill: 'hp', amount: (r) => r.playerDmg },
     ],
     uiDescription: 'wild sweep. crit applies bleed — chip each turn.',
     uiClassName: 'battle-screen__move--fury-sweep',
@@ -204,7 +202,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'attack', amount: (r) => r.playerDmg * 3.5 },
-      { skill: 'hp', amount: 2 },
     ],
     uiDescription: 'high crit. might shatter their defense.',
     uiClassName: 'battle-screen__move--cannon',
@@ -251,7 +248,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
         skill: 'luck',
         amount: (r) => (r.stunApplied ? XP_LUCK_PROC_BONUS : 0),
       },
-      { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'dodge and counter. avoid their incoming hit.',
     uiClassName: 'battle-screen__move--slip',
@@ -363,7 +359,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: ['brace'],
     xpGrants: [
       { skill: 'defense', amount: defenseMoveXp },
-      { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'brace. take a fraction of the next hit.',
     uiClassName: 'battle-screen__move--hold',
@@ -386,7 +381,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: ['brace'],
     xpGrants: [
       { skill: 'defense', amount: defenseMoveXp },
-      { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'brace and shrug off status this turn.',
     uiClassName: 'battle-screen__move--anchor',
@@ -407,7 +401,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'defense', amount: (r) => Math.max(14, r.healApplied) },
-      { skill: 'hp', amount: (r) => Math.max(8, Math.floor(r.healApplied * 0.5)) },
     ],
     uiDescription: 'breathe. get some back. once a fight.',
     uiClassName: 'battle-screen__move--second-wind',
@@ -493,7 +486,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
           (r.shakeApplied ? XP_LUCK_PROC_BONUS : 0) +
           r.playerDmg * XP_LUCK_DAMAGE_MULT,
       },
-      { skill: 'hp', amount: 2 },
     ],
     uiDescription: 'rattle them. their next hit lands softer.',
     uiClassName: 'battle-screen__move--whisper',
@@ -531,7 +523,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'luck', amount: (r) => 14 + r.playerDmg * XP_LUCK_DAMAGE_MULT },
-      { skill: 'hp', amount: 6 },
     ],
     uiDescription: 'take your cut. hits feed you for a few turns.',
     uiClassName: 'battle-screen__move--devils-cut',

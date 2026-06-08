@@ -894,6 +894,7 @@ function applySkillXpToState(
   const xpResult = applyCombatSkillXp(r, timingBonuses, {
     enemyLevel: state.npc.level,
     playerLevel: computePlayerLevel(getPlayerSkills()),
+    playerHpAfterHit: state.playerHp,
   })
   const skills = getPlayerSkills()
   const playerStats = computePlayerStats(
