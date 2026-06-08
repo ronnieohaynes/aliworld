@@ -26,6 +26,16 @@ import {
 import type { TriggerZone } from './triggerZones'
 import { TRIGGER_ZONES, DARKLINE_SPAWN_X, DARKLINE_SPAWN_Y } from './triggerZones'
 import { OCEANVIEW_GYM_ENTRANCE_ZONE } from './gymEntrance'
+import { SOUTHSIDE_GYM_ENTRANCE_ZONE } from './southsideGymEntrance'
+import {
+  SOUTHSIDE_GYM_EXIT_ZONE,
+  SOUTHSIDE_GYM_INTERIOR_COLLISION_ZONES,
+  SOUTHSIDE_GYM_INTERIOR_ENTRY,
+  SOUTHSIDE_GYM_INTERIOR_MAP_DRAW_SCALE,
+  SOUTHSIDE_GYM_INTERIOR_WORLD_HEIGHT,
+  SOUTHSIDE_GYM_INTERIOR_WORLD_WIDTH,
+  scaleSouthsideGymInteriorZone,
+} from './southsideGymInteriorCollision'
 import {
   FIVE_GYM_EXIT_ZONE,
   FIVE_GYM_INTERIOR_COLLISION_ZONES,
@@ -49,6 +59,7 @@ export type CityId =
   | 'southside'
   | 'blue-store-interior'
   | 'five-gym-interior'
+  | 'southside-gym-interior'
 
 export type CityConfig = {
   id: CityId
@@ -124,6 +135,7 @@ const SOUTHSIDE_TRIGGER_ZONES: TriggerZone[] = [
     height: SOUTHSIDE_ENTRANCE_ZONE.height,
     action: 'OPEN_BLUE_STORE',
   },
+  SOUTHSIDE_GYM_ENTRANCE_ZONE,
 ]
 
 const BLUE_STORE_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
@@ -150,6 +162,15 @@ const FIVE_GYM_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
 ]
 
 const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')
+const SOUTHSIDE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/southside-gym.png')
+
+const SOUTHSIDE_GYM_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
+  {
+    id: 'southside-gym-interior-exit',
+    ...SOUTHSIDE_GYM_EXIT_ZONE,
+    action: 'OPEN_SOUTHSIDE_GYM_EXIT',
+  },
+]
 
 const FIVE_GYM_INTERIOR_NPCS = FIVE_GYM1_INTERIOR_NPCS.map((npc) => ({
   ...npc,
@@ -242,6 +263,22 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     occlusionZones: getOcclusionZones('five-gym-interior').map(scaleFiveGymInteriorZone),
     triggerZones: FIVE_GYM_INTERIOR_TRIGGER_ZONES,
     npcs: [...FIVE_GYM_INTERIOR_NPCS],
+  },
+  'southside-gym-interior': {
+    id: 'southside-gym-interior',
+    label: 'southside gym',
+    mapSrc: SOUTHSIDE_GYM_INTERIOR_MAP_SRC,
+    mapDrawScale: SOUTHSIDE_GYM_INTERIOR_MAP_DRAW_SCALE,
+    worldWidth: SOUTHSIDE_GYM_INTERIOR_WORLD_WIDTH,
+    worldHeight: SOUTHSIDE_GYM_INTERIOR_WORLD_HEIGHT,
+    spawnX: SOUTHSIDE_GYM_INTERIOR_ENTRY.x,
+    spawnY: SOUTHSIDE_GYM_INTERIOR_ENTRY.y,
+    darklineSpawnX: SOUTHSIDE_GYM_INTERIOR_ENTRY.x,
+    darklineSpawnY: SOUTHSIDE_GYM_INTERIOR_ENTRY.y,
+    collisionZones: SOUTHSIDE_GYM_INTERIOR_COLLISION_ZONES.map(scaleSouthsideGymInteriorZone),
+    occlusionZones: getOcclusionZones('southside-gym-interior'),
+    triggerZones: SOUTHSIDE_GYM_INTERIOR_TRIGGER_ZONES,
+    npcs: [],
   },
 }
 

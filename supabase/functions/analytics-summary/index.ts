@@ -108,8 +108,7 @@ function emptyQuest2Serialized() {
     crierSentAhead: false,
     clerkConverted: false,
     restockerDefeated: false,
-    e2Seen: false,
-    e2SecretMoveGranted: false,
+    e2Complete: false,
   }
 }
 

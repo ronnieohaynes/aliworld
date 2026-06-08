@@ -22,6 +22,7 @@ import {
   buildQuest2ObjectiveContext,
   getQuest2ActiveStepId,
   isE2QuestUnlocked,
+  QUEST_2_CLOSING_TEXT,
   QUEST_2_STEPS,
   type Quest2ObjectiveContext,
 } from './quest2Objectives'
@@ -189,6 +190,13 @@ export function resolvePrimaryQuestObjective(
   }
 
   if (shouldShowQuest2(ctx)) {
+    if (ctx.e2Complete) {
+      return {
+        questId: 'quest-2-southside',
+        stepId: 'e2-closing',
+        text: QUEST_2_CLOSING_TEXT,
+      }
+    }
     const quest2 = QUEST_DEFINITIONS[1]
     if (quest2) {
       const q2Ctx = ctx
@@ -197,8 +205,13 @@ export function resolvePrimaryQuestObjective(
           return { questId: quest2.id, stepId: step.id, text: step.getText(q2Ctx) }
         }
       }
-      const last = quest2.steps[quest2.steps.length - 1]!
-      return { questId: quest2.id, stepId: last.id, text: last.getText(q2Ctx) }
+      if (q2Ctx.restockerDefeated) {
+        return {
+          questId: quest2.id,
+          stepId: 'e2-closing-pending',
+          text: 'step outside.',
+        }
+      }
     }
   }
 
@@ -266,8 +279,8 @@ export function getQuestPulseTargetDescriptor(
       return ctx.clerkConverted
         ? { kind: 'npc', id: RESTOCKER_NPC_ID }
         : { kind: 'zone', action: 'OPEN_BLUE_STORE' }
-    case 'e2-field':
-      return null
+    case 'e2-closing-pending':
+      return { kind: 'zone', action: 'OPEN_BLUE_STORE_EXIT' }
     default:
       return null
   }

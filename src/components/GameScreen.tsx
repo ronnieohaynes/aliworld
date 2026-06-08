@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
 import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, WALKER_E2_CROWD_NPC, type NpcData } from '../data/npcs'
-import { isE2QuestUnlocked } from '../data/quest2Objectives'
+import { isE2QuestUnlocked, QUEST_2_CLOSING_TEXT } from '../data/quest2Objectives'
 import { E2_ENABLED } from '../store/quest2Store'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import {
@@ -16,6 +16,8 @@ import {
   type CityId,
 } from '../data/cityConfig'
 import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
+import { SOUTHSIDE_GYM_EXTERIOR_RETURN } from '../data/southsideGymEntrance'
+import { E2_CLOSING_CRIER_NPC, E2_CLOSING_MOB_NPCS } from '../data/e2ClosingNpcs'
 import {
   FIVE_GYM1_HEAD_NPC,
   FIVE_GYM1_ID,
@@ -26,8 +28,12 @@ import {
   getGymRevision,
   isGym5ive1Cleared,
   isOceanviewGymVisited,
+  isSouthsideGymUnlocked,
+  isSouthsideGymVisited,
   recordGym5ive1Win,
   setOceanviewGymVisited,
+  setSouthsideGymUnlocked,
+  setSouthsideGymVisited,
   subscribeGymStore,
 } from '../store/gymStore'
 import {
@@ -74,14 +80,16 @@ import {
   isCrierConverted,
   isCrierSentAhead,
   isCrowdAddressed,
-  isE2SecretMoveGranted,
+  isE2Complete,
+  isE2ClosingCrowdDismissed,
   isRestockerDefeated,
   RESTOCKER_NPC_ID,
   setClerkConverted,
   setCrierConverted,
   setCrierSentAhead,
   setCrowdAddressed,
-  setE2SecretMoveGranted,
+  setE2ClosingCrowdDismissed,
+  setE2Complete,
   setRestockerDefeated,
   subscribeQuest2Store,
   TOWN_CRIER_NPC_ID,
@@ -129,14 +137,11 @@ import {
 import { useCoarsePointer } from '../hooks/useCoarsePointer'
 import { preloadWorldEntry } from '../game/preloadWorldEntry'
 import {
-  getPlayerSkills,
   getShowDebug,
-  grantPlayerSkillXp,
   setLastLocation,
   subscribePlayerStore,
   whenAccountHydrated,
 } from '../store/playerStore'
-import { totalXpForLevel } from '../store/skillStore'
 import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
@@ -260,6 +265,7 @@ export function GameScreen() {
   const pendingGymLossLineRef = useRef(false)
   const pendingGymWelcomeRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
+  const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -393,6 +399,14 @@ export function GameScreen() {
     return null
   }, [currentCity, gymRevision, quest1Revision])
 
+  const southsideGymPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
+    void gymRevision
+    void quest2Revision
+    if (currentCity !== 'southside') return null
+    if (!isE2Complete() || !isSouthsideGymUnlocked() || isSouthsideGymVisited()) return null
+    return { kind: 'zone', action: 'OPEN_SOUTHSIDE_GYM' }
+  }, [currentCity, gymRevision, quest2Revision])
+
   const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
     if (currentCity !== 'five-gym-interior') return null
@@ -401,7 +415,7 @@ export function GameScreen() {
   }, [currentCity, gymHeadPulseDismissed, gymRevision])
 
   const activePulseDescriptor =
-    gymHeadPulseDescriptor ?? gymDoorPulseDescriptor ?? questPulseDescriptor
+    gymHeadPulseDescriptor ?? southsideGymPulseDescriptor ?? gymDoorPulseDescriptor ?? questPulseDescriptor
 
   useEffect(() => {
     if (currentCity === 'five-gym-interior') {
@@ -544,7 +558,11 @@ export function GameScreen() {
       return { ...baseCityConfig, npcs }
     }
     if (currentCity === 'southside') {
-      return { ...baseCityConfig, npcs: [...baseCityConfig.npcs] }
+      let npcs = [...baseCityConfig.npcs]
+      if (isRestockerDefeated() && !isE2Complete() && !isE2ClosingCrowdDismissed()) {
+        npcs = [...npcs, ...E2_CLOSING_MOB_NPCS]
+      }
+      return { ...baseCityConfig, npcs }
     }
     if (currentCity === 'blue-store-interior') {
       let npcs = [...baseCityConfig.npcs]
@@ -672,6 +690,12 @@ export function GameScreen() {
     if (target.cityId === 'five-gym-interior' && !isOceanviewGymVisited()) {
       setOceanviewGymVisited()
       pendingGymWelcomeRef.current = true
+    }
+    if (target.cityId === 'southside-gym-interior' && !isSouthsideGymVisited()) {
+      setSouthsideGymVisited()
+    }
+    if (target.cityId === 'southside') {
+      markCityVisited('southside')
     }
     setCurrentCity(target.cityId)
     playerRef.current?.setPosition(target.x, target.y)
@@ -953,17 +977,57 @@ export function GameScreen() {
     })
   }, [beginNpcDialogue])
 
-  const applyPostE2Unlock = useCallback(() => {
-    if (isE2SecretMoveGranted()) return
-    setE2SecretMoveGranted()
-    const luck = getPlayerSkills().luck
-    const targetLevel = luck.level < 10 ? 10 : luck.level < 22 ? 22 : 22
-    const xpBump = Math.max(0, totalXpForLevel(targetLevel) - luck.xp)
-    if (xpBump > 0) {
-      grantPlayerSkillXp('luck', xpBump)
+  const finishE2Episode = useCallback(() => {
+    setE2Complete()
+    setSouthsideGymUnlocked()
+    e2ClosingPhaseRef.current = 'idle'
+    track('episode_complete', { episode: 'e2' })
+  }, [])
+
+  const runE2ClosingEpisodeCards = useCallback(() => {
+    if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
+    e2ClosingPhaseRef.current = 'cards'
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      episodeName: EPISODE_2_NAME,
+      episodeNumber: 2,
+      type: 'episode_complete',
+      onComplete: () => {
+        showQuestTransition({
+          questName: QUEST_2_CLOSING_TEXT,
+          type: 'quest_complete',
+          onComplete: finishE2Episode,
+        })
+      },
+    })
+  }, [finishE2Episode, showQuestTransition])
+
+  const runE2ClosingMobDialogue = useCallback(() => {
+    if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
+    if (isE2ClosingCrowdDismissed()) {
+      runE2ClosingEpisodeCards()
+      return
     }
-    showNarration(['the gift... something opens.'])
-  }, [showNarration])
+    e2ClosingPhaseRef.current = 'mob'
+    beginNpcDialogue(E2_CLOSING_CRIER_NPC, {
+      onComplete: () => {
+        setE2ClosingCrowdDismissed()
+        runE2ClosingEpisodeCards()
+      },
+    })
+  }, [beginNpcDialogue, runE2ClosingEpisodeCards])
+
+  const startE2ClosingExitInterior = useCallback(() => {
+    if (isE2Complete()) return
+    e2ClosingPhaseRef.current = 'exit-interior'
+    showNarration(['a crowd is forming outside.'], () => {
+      beginMapTransition(
+        'southside',
+        SOUTHSIDE_EXTERIOR_RETURN.x,
+        SOUTHSIDE_EXTERIOR_RETURN.y,
+      )
+    })
+  }, [beginMapTransition, showNarration])
 
   const handleMapTransitionComplete = useCallback(() => {
     mapTransitionRef.current = null
@@ -976,7 +1040,10 @@ export function GameScreen() {
         'welcome to the first gym. beat the leader in the gauntlet to win prizes.',
       ])
     }
-  }, [showNarration])
+    if (e2ClosingPhaseRef.current === 'exit-interior') {
+      runE2ClosingMobDialogue()
+    }
+  }, [runE2ClosingMobDialogue, showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
     showNarration(["the darkline's open now. take it south."])
@@ -1215,6 +1282,21 @@ export function GameScreen() {
           'five',
           FIVE_GYM_EXTERIOR_RETURN.x,
           FIVE_GYM_EXTERIOR_RETURN.y,
+          'down',
+        )
+      } else if (action === 'OPEN_SOUTHSIDE_GYM') {
+        if (currentCity !== 'southside') return
+        if (mapTransitionRef.current) return
+        if (!isSouthsideGymUnlocked()) return
+        const interior = CITY_CONFIGS['southside-gym-interior']
+        beginMapTransition('southside-gym-interior', interior.spawnX, interior.spawnY, 'up')
+      } else if (action === 'OPEN_SOUTHSIDE_GYM_EXIT') {
+        if (currentCity !== 'southside-gym-interior') return
+        if (mapTransitionRef.current) return
+        beginMapTransition(
+          'southside',
+          SOUTHSIDE_GYM_EXTERIOR_RETURN.x,
+          SOUTHSIDE_GYM_EXTERIOR_RETURN.y,
           'down',
         )
       }
@@ -1625,7 +1707,9 @@ export function GameScreen() {
       if (!locationReady || worldEntryActive) return
 
       const context =
-        currentCity === 'five-gym-interior' ? 'gym' : `city:${currentCity}`
+        currentCity === 'five-gym-interior' || currentCity === 'southside-gym-interior'
+          ? 'gym'
+          : `city:${currentCity}`
       syncMusicForContext(context)
     })()
 
@@ -1662,6 +1746,38 @@ export function GameScreen() {
     playCrierHeraldDialogue,
     quest2Revision,
     questTransitionActive,
+  ])
+
+  useEffect(() => {
+    if (isE2Complete() && !isSouthsideGymUnlocked()) {
+      setSouthsideGymUnlocked()
+    }
+  }, [gymRevision, quest2Revision])
+
+  useEffect(() => {
+    if (!isRestockerDefeated() || isE2Complete()) return
+    if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
+      return
+    }
+    if (mapTransitionPending || mapTransition) return
+    if (e2ClosingPhaseRef.current !== 'idle') return
+    if (currentCity === 'blue-store-interior') {
+      startE2ClosingExitInterior()
+    } else if (currentCity === 'southside') {
+      runE2ClosingMobDialogue()
+    }
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    currentCity,
+    cutsceneFlowActive,
+    dialogue,
+    mapTransition,
+    mapTransitionPending,
+    quest2Revision,
+    questTransitionActive,
+    runE2ClosingMobDialogue,
+    startE2ClosingExitInterior,
   ])
 
   const handleBattleEntryMidpoint = useCallback(() => {
@@ -1734,6 +1850,11 @@ export function GameScreen() {
       playCrierHeraldDialogue()
     }
 
+    if (exit?.result === 'win' && exit.npcId === RESTOCKER_NPC_ID && !isE2Complete()) {
+      startE2ClosingExitInterior()
+      return
+    }
+
     if (exit?.result === 'win' && exit.npcId === WALKER_NPC_ID) {
       if (!isEpisode1TitleCardSeen()) {
         showQuestTransition({
@@ -1750,7 +1871,13 @@ export function GameScreen() {
       }
       startPhase2Tutorial()
     }
-  }, [playCrierHeraldDialogue, reportCurrentLocation, showNotYetDialogue, showQuestTransition])
+  }, [
+    playCrierHeraldDialogue,
+    reportCurrentLocation,
+    showNotYetDialogue,
+    showQuestTransition,
+    startE2ClosingExitInterior,
+  ])
 
   const handleWinPayoff = useCallback((npcId: string) => {
     if (isDevSparNpcId(npcId)) return
@@ -1778,7 +1905,6 @@ export function GameScreen() {
     if (npcId === RESTOCKER_NPC_ID) {
       setRestockerDefeated()
       track('npc_converted', { npcId: RESTOCKER_NPC_ID })
-      track('episode_complete', { episode: 'e2' })
     }
     if (npcId === FIVE_GYM1_ID) {
       recordGym5ive1Win()
@@ -1796,9 +1922,6 @@ export function GameScreen() {
         if (battleNpcId === MARK_NPC_ID) {
           showMarkVictoryNarration()
         }
-        if (battleNpcId === RESTOCKER_NPC_ID) {
-          showNarration(["something's wrong in the field.", 'you started it.'], applyPostE2Unlock)
-        }
       }
       if (result === 'lose' && battleNpcId === FIVE_GYM1_ID) {
         pendingGymLossLineRef.current = true
@@ -1806,7 +1929,7 @@ export function GameScreen() {
       pendingBattleExitRef.current = { result, npcId: battleNpcId }
       setBattleWipePhase('exit')
     },
-    [applyPostE2Unlock, battleNpcId, showMarkVictoryNarration, showNarration],
+    [battleNpcId, showMarkVictoryNarration],
   )
 
   const handleFannyPackClose = useCallback(() => {
@@ -1944,7 +2067,10 @@ export function GameScreen() {
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
   const showActiveQuestPulse =
-    showQuestPulse || gymHeadPulseDescriptor != null || gymDoorPulseDescriptor != null
+    showQuestPulse ||
+    gymHeadPulseDescriptor != null ||
+    southsideGymPulseDescriptor != null ||
+    gymDoorPulseDescriptor != null
 
   const isCoarsePointer = useCoarsePointer()
   const showInteractHint =

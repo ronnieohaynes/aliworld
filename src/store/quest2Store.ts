@@ -7,6 +7,9 @@ const STORAGE_KEY = 'aliworld:quest2:v1'
 /** Flip true when episode 2 is ready to ship — gates quest 2, crowd/crier, southside travel. */
 export const E2_ENABLED = true
 
+/** Episode 3 content — off until the e3 build ships. */
+export const E3_ENABLED = false
+
 export const TOWN_CRIER_NPC_ID = 'town-crier'
 export const CLERK_NPC_ID = 'clerk'
 export const RESTOCKER_NPC_ID = 'restocker'
@@ -20,9 +23,10 @@ type Quest2State = {
   crierSentAhead: boolean
   clerkConverted: boolean
   restockerDefeated: boolean
-  e2Seen: boolean
-  /** Post-e2 secret move grant (once). */
-  e2SecretMoveGranted: boolean
+  /** Crier mob beat finished — crowd cleared before episode cards. */
+  e2ClosingCrowdDismissed: boolean
+  /** Full e2 closing sequence finished (crowd → episode card → gym unlock). */
+  e2Complete: boolean
 }
 
 function emptyQuest2State(): Quest2State {
@@ -32,8 +36,8 @@ function emptyQuest2State(): Quest2State {
     crierSentAhead: false,
     clerkConverted: false,
     restockerDefeated: false,
-    e2Seen: false,
-    e2SecretMoveGranted: false,
+    e2ClosingCrowdDismissed: false,
+    e2Complete: false,
   }
 }
 
@@ -44,15 +48,16 @@ function loadQuest2FromStorage(): Quest2State {
     if (!raw) return base
     const parsed: unknown = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object') return base
-    const o = parsed as Partial<Quest2State>
+    const o = parsed as Partial<Quest2State> & { e2Seen?: boolean }
     return {
       crowdAddressed: o.crowdAddressed === true,
       crierConverted: o.crierConverted === true,
       crierSentAhead: o.crierSentAhead === true,
       clerkConverted: o.clerkConverted === true,
       restockerDefeated: o.restockerDefeated === true,
-      e2Seen: o.e2Seen === true,
-      e2SecretMoveGranted: o.e2SecretMoveGranted === true,
+      e2ClosingCrowdDismissed:
+        o.e2ClosingCrowdDismissed === true || o.e2Complete === true || o.e2Seen === true,
+      e2Complete: o.e2Complete === true || o.e2Seen === true,
     }
   } catch {
     return base
@@ -143,31 +148,36 @@ export function isRestockerDefeated(): boolean {
 
 export function setRestockerDefeated(): void {
   if (state.restockerDefeated) return
-  state = { ...state, restockerDefeated: true, e2Seen: true }
+  state = { ...state, restockerDefeated: true }
   saveQuest2ToStorage()
   emit()
 }
 
-export function isE2SecretMoveGranted(): boolean {
-  return state.e2SecretMoveGranted
+export function isE2ClosingCrowdDismissed(): boolean {
+  return state.e2ClosingCrowdDismissed
 }
 
-export function setE2SecretMoveGranted(): void {
-  if (state.e2SecretMoveGranted) return
-  state = { ...state, e2SecretMoveGranted: true }
+export function setE2ClosingCrowdDismissed(): void {
+  if (state.e2ClosingCrowdDismissed) return
+  state = { ...state, e2ClosingCrowdDismissed: true }
   saveQuest2ToStorage()
   emit()
 }
 
+export function isE2Complete(): boolean {
+  return state.e2Complete
+}
+
+export function setE2Complete(): void {
+  if (state.e2Complete) return
+  state = { ...state, e2Complete: true }
+  saveQuest2ToStorage()
+  emit()
+}
+
+/** @deprecated Legacy alias — use isE2Complete. */
 export function isE2Seen(): boolean {
-  return state.e2Seen
-}
-
-export function setE2Seen(): void {
-  if (state.e2Seen) return
-  state = { ...state, e2Seen: true }
-  saveQuest2ToStorage()
-  emit()
+  return state.e2Complete
 }
 
 export type Quest2Serialized = {
@@ -176,8 +186,10 @@ export type Quest2Serialized = {
   crierSentAhead?: boolean
   clerkConverted?: boolean
   restockerDefeated?: boolean
+  e2ClosingCrowdDismissed?: boolean
+  e2Complete?: boolean
+  /** Legacy — migrated to e2Complete on load. */
   e2Seen?: boolean
-  e2SecretMoveGranted?: boolean
 }
 
 export function serialize(): Quest2Serialized {
@@ -187,8 +199,8 @@ export function serialize(): Quest2Serialized {
     crierSentAhead: state.crierSentAhead,
     clerkConverted: state.clerkConverted,
     restockerDefeated: state.restockerDefeated,
-    e2Seen: state.e2Seen,
-    e2SecretMoveGranted: state.e2SecretMoveGranted,
+    e2ClosingCrowdDismissed: state.e2ClosingCrowdDismissed,
+    e2Complete: state.e2Complete,
   }
 }
 
@@ -197,16 +209,16 @@ export function applyState(data: Partial<Quest2Serialized>): void {
     data.crierSentAhead === true ||
     (data.crierConverted === true &&
       (data.clerkConverted === true || data.restockerDefeated === true))
-  const e2SecretMoveGranted =
-    data.e2SecretMoveGranted === true || data.restockerDefeated === true
+  const e2Complete = data.e2Complete === true || data.e2Seen === true
   state = {
     crowdAddressed: data.crowdAddressed === true,
     crierConverted: data.crierConverted === true,
     crierSentAhead,
     clerkConverted: data.clerkConverted === true,
     restockerDefeated: data.restockerDefeated === true,
-    e2Seen: data.e2Seen === true,
-    e2SecretMoveGranted,
+    e2ClosingCrowdDismissed:
+      data.e2ClosingCrowdDismissed === true || e2Complete,
+    e2Complete,
   }
   saveQuest2ToStorage()
   emit()

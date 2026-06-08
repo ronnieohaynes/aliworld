@@ -175,24 +175,29 @@ const CLERK: NpcCombatEntry = entry({
   battleSizeMult: 1,
 })
 
-/** E2 boss — restocker in the back room; defense wall. */
+/** E2 finale — restocker in the back room; defense wall + restock heals. */
 const RESTOCKER: NpcCombatEntry = entry({
   id: 'restocker',
   displayName: 'restocker',
-  level: 6,
-  hpScale: 1.28,
-  moves: ['HOLD', 'HOLD', 'HAYMAKER', 'STRIKE'],
+  level: 9,
+  hpScale: 1.72,
+  moves: ['HOLD', 'HOLD', 'HOLD', 'HAYMAKER', 'STRIKE', 'SLIP', 'LOOP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
-    HOLD: 'roots in —',
+    HOLD: 'restocks —',
     HAYMAKER: 'heaves —',
     STRIKE: 'swings —',
+    SLIP: 'feints —',
+    LOOP: 'draws back —',
+    WHISPER: 'murmurs —',
   },
+  guardCounter: { chance: 0.5, damageMult: 2.4 },
+  enemyGuardPierce: 0.14,
   losingLine: 'it CAN stop...',
   winningLine: 'this floor belongs to me.',
   spriteSrc: MARK_SPRITE,
   battleLocation: 'five',
-  battleSizeMult: 1.08,
+  battleSizeMult: 1.12,
 })
 
 /** Oceanview Gym week 1 head — gauntlet rounds built from fiveGym1Gauntlet.ts. */
@@ -260,7 +265,7 @@ export function chooseMove(
   npcId: string,
   turn: number,
   forced?: EnemyMoveId | null,
-  options?: { walkerHeavyTutorial?: boolean },
+  options?: { walkerHeavyTutorial?: boolean; enemyHpRatio?: number },
 ): EnemyMove {
   const tutorialForced = walkerTutorialForcedMove(
     npcId,
@@ -271,6 +276,15 @@ export function chooseMove(
   if (forced) return forced
   const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
   if (!npc || npc.moves.length === 0) return 'STRIKE'
+
+  if (npcId === 'restocker') {
+    const ratio = options?.enemyHpRatio ?? 1
+    const holdChance = ratio < 0.35 ? 0.78 : ratio < 0.6 ? 0.58 : 0.38
+    if (Math.random() < holdChance) return 'HOLD'
+    const pool = npc.moves.filter((m) => m !== 'HOLD')
+    return pool[Math.floor(Math.random() * pool.length)] ?? 'HOLD'
+  }
+
   const idx = Math.floor(Math.random() * npc.moves.length)
   return npc.moves[idx]!
 }

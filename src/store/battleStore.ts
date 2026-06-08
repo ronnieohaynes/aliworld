@@ -610,11 +610,12 @@ function appendLog(log: string[], line: string): string[] {
   return next
 }
 
-function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove'>): UpcomingMove {
+function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove' | 'enemyHp'>): UpcomingMove {
   if (enemyLosesTurn(state.combatStatus)) return 'STUNNED'
   const forced = state.battleMove.forceEnemyMove
   const pick = chooseMove(state.npc.id, state.turn, forced, {
     walkerHeavyTutorial: isWalkerHeavyTutorialActive(state.npc.id),
+    enemyHpRatio: state.enemyHp / Math.max(1, state.npc.stats.maxHp),
   })
   return pick
 }
@@ -888,7 +889,21 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     turn,
     combatStatus,
     battleMove,
+    enemyHp: state.enemyHp,
   })
+
+  let enemyHp = state.enemyHp
+  let log = state.log
+  if (
+    state.npc.id === 'restocker' &&
+    r.eMove === 'HOLD' &&
+    !r.enemyStunned &&
+    enemyHp < state.npc.stats.maxHp
+  ) {
+    const heal = Math.max(1, Math.floor(state.npc.stats.maxHp * 0.14))
+    enemyHp = Math.min(state.npc.stats.maxHp, enemyHp + heal)
+    log = appendLog(log, `restocker restocks. +${heal}.`)
+  }
 
   return {
     ...state,
@@ -896,6 +911,8 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     upcomingMove,
     combatStatus,
     battleMove,
+    enemyHp,
+    log,
     playerExposedTurns: turnFlags.playerExposedTurns,
     playerSkipTurns: turnFlags.playerSkipTurns,
     deathClocks: tickDeathClocks(state.deathClocks),
@@ -1184,7 +1201,13 @@ export function createInitialBattleState(
   const playerHp = playerStats.maxHp
   const combatStatus = createEmptyCombatStatus()
   const battleMove = createBattleMoveState()
-  const upcomingMove = showTelegraph({ npc, turn: 0, combatStatus, battleMove })
+  const upcomingMove = showTelegraph({
+    npc,
+    turn: 0,
+    combatStatus,
+    battleMove,
+    enemyHp: npc.stats.hp,
+  })
 
   return {
     npc,

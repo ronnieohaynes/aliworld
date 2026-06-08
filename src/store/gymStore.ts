@@ -15,16 +15,28 @@ type GymState = {
   clearedHeads: Record<string, boolean>
   /** True after the player has entered the oceanview gym interior at least once. */
   oceanviewGymVisited: boolean
+  /** Unlocked after e2 closing — southside gym door opens. */
+  southsideGymUnlocked: boolean
+  /** True after entering the southside gym interior at least once. */
+  southsideGymVisited: boolean
 }
 
 export type GymSerialized = {
   headWins?: Record<string, number>
   clearedHeads?: Record<string, boolean>
   oceanviewGymVisited?: boolean
+  southsideGymUnlocked?: boolean
+  southsideGymVisited?: boolean
 }
 
 function emptyGymState(): GymState {
-  return { headWins: {}, clearedHeads: {}, oceanviewGymVisited: false }
+  return {
+    headWins: {},
+    clearedHeads: {},
+    oceanviewGymVisited: false,
+    southsideGymUnlocked: false,
+    southsideGymVisited: false,
+  }
 }
 
 function clampHeadWins(wins: number, max = FIVE_GYM1_WINS_TO_CLEAR): number {
@@ -67,6 +79,8 @@ function reconcileClearedFromWins(state: GymState): GymState {
     headWins,
     clearedHeads,
     oceanviewGymVisited: state.oceanviewGymVisited,
+    southsideGymUnlocked: state.southsideGymUnlocked,
+    southsideGymVisited: state.southsideGymVisited,
   }
 }
 
@@ -82,6 +96,8 @@ function loadGymFromStorage(): GymState {
           headWins: normalizeHeadWins(o.headWins as Record<string, unknown> | undefined),
           clearedHeads: normalizeClearedHeads(o.clearedHeads as Record<string, unknown> | undefined),
           oceanviewGymVisited: o.oceanviewGymVisited === true,
+          southsideGymUnlocked: o.southsideGymUnlocked === true,
+          southsideGymVisited: o.southsideGymVisited === true,
         })
       }
     }
@@ -101,6 +117,8 @@ function loadGymFromStorage(): GymState {
             headWins: { [FIVE_GYM1_ID]: FIVE_GYM1_WINS_TO_CLEAR },
             clearedHeads: { [FIVE_GYM1_ID]: true },
             oceanviewGymVisited: true,
+            southsideGymUnlocked: false,
+            southsideGymVisited: false,
           })
         }
       }
@@ -164,6 +182,28 @@ export function setOceanviewGymVisited(): void {
   emit()
 }
 
+export function isSouthsideGymUnlocked(): boolean {
+  return state.southsideGymUnlocked
+}
+
+export function setSouthsideGymUnlocked(): void {
+  if (state.southsideGymUnlocked) return
+  state = { ...state, southsideGymUnlocked: true }
+  saveGymToStorage()
+  emit()
+}
+
+export function isSouthsideGymVisited(): boolean {
+  return state.southsideGymVisited
+}
+
+export function setSouthsideGymVisited(): void {
+  if (state.southsideGymVisited) return
+  state = { ...state, southsideGymVisited: true }
+  saveGymToStorage()
+  emit()
+}
+
 /** Record a win; clears the head at exactly `FIVE_GYM1_WINS_TO_CLEAR`. Losses never reset wins. */
 export function recordGymHeadWin(headId: string): void {
   if (isGymHeadCleared(headId)) return
@@ -191,6 +231,8 @@ export function setGymHeadCleared(headId: string): void {
     headWins: { ...state.headWins, [headId]: FIVE_GYM1_WINS_TO_CLEAR },
     clearedHeads: { ...state.clearedHeads, [headId]: true },
     oceanviewGymVisited: state.oceanviewGymVisited,
+    southsideGymUnlocked: state.southsideGymUnlocked,
+    southsideGymVisited: state.southsideGymVisited,
   })
   saveGymToStorage()
   emit()
@@ -205,6 +247,8 @@ export function serialize(): GymSerialized {
     headWins: { ...state.headWins },
     clearedHeads: { ...state.clearedHeads },
     oceanviewGymVisited: state.oceanviewGymVisited,
+    southsideGymUnlocked: state.southsideGymUnlocked,
+    southsideGymVisited: state.southsideGymVisited,
   }
 }
 
@@ -219,6 +263,8 @@ export function applyState(data: Partial<GymSerialized>): void {
     headWins,
     clearedHeads,
     oceanviewGymVisited: data.oceanviewGymVisited === true,
+    southsideGymUnlocked: data.southsideGymUnlocked === true,
+    southsideGymVisited: data.southsideGymVisited === true,
   })
   saveGymToStorage()
   emit()
