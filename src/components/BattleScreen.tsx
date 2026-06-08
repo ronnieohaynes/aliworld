@@ -85,7 +85,7 @@ import {
   leanSkillAccentColor,
 } from '../data/skillCounter'
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
-import { getEnemyMoveDef, type EnemyMoveId } from '../data/enemyMoves'
+import { enemyMoveSkillColor, getEnemyMoveDef, type EnemyMoveId } from '../data/enemyMoves'
 import {
   STATUS_EFFECT_HINTS,
   STATUS_EFFECT_LEGEND,
@@ -589,7 +589,11 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   }, [state.phase, state.result, npcId, onWinPayoff])
   const logLines = state.log.slice(-2)
   const telegraphDisplay = getTelegraphDisplay(state)
-  const telegraphAccent = leanSkillAccentColor(state.npc.leanSkill)
+  const leanAccent = leanSkillAccentColor(state.npc.leanSkill)
+  const telegraphMoveColor =
+    state.upcomingMove !== 'STUNNED'
+      ? enemyMoveSkillColor(state.upcomingMove as EnemyMoveId)
+      : leanAccent
   const heavyTelegraph =
     state.upcomingMove !== 'STUNNED' &&
     state.phase !== 'ended' &&
@@ -958,7 +962,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                       <span className="battle-screen__plate-level"> · LVL {state.npc.level}</span>
                     ) : null}
                   </span>
-                  <span className="battle-screen__plate-archetype">
+                  <span className="battle-screen__plate-archetype" style={{ color: leanAccent }}>
                     {deriveNpcArchetypeLabel(state.npc.stats, state.npc.leanSkill)}
                   </span>
                   <div className="battle-screen__hp-track">
@@ -1007,7 +1011,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                         {telegraphDisplay.moveName ? (
                           <span
                             className="battle-screen__telegraph-move"
-                            style={{ color: telegraphAccent }}
+                            style={{ color: telegraphMoveColor }}
                           >
                             {telegraphDisplay.moveName}
                           </span>

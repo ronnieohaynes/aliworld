@@ -26,11 +26,11 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 4,
     fixedHp: 60,
-    moves: ['STRIKE', 'HOLD', 'HAYMAKER', 'LOOP'],
+    moves: ['STRIKE', 'BAIT', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
       STRIKE: 'sets a jab —',
-      HOLD: 'anchors in —',
+      BAIT: 'opens up —',
       HAYMAKER: 'winds up —',
       LOOP: 'draws the loop —',
     },
@@ -38,11 +38,11 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 7,
     fixedHp: 90,
-    moves: ['STRIKE', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP'],
+    moves: ['STRIKE', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
       STRIKE: 'feints, then jabs —',
-      HOLD: 'roots in —',
+      BAIT: 'leaves a gap —',
       HAYMAKER: 'commits heavy —',
       LOOP: 'spins the loop —',
     },
@@ -50,13 +50,13 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 10,
     fixedHp: 120,
-    moves: ['STRIKE', 'HOLD', 'HOLD', 'HOLD', 'HAYMAKER', 'LOOP', 'LOOP'],
+    moves: ['STRIKE', 'BAIT', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP', 'LOOP'],
     leanSkill: 'defense',
     guardCounter: { chance: 0.7, damageMult: 2.85 },
     enemyGuardPierce: 0.55,
     telegraphFlavor: {
       STRIKE: 'cuts through —',
-      HOLD: 'waits to counter —',
+      BAIT: 'dares you to swing —',
       HAYMAKER: 'loads up —',
       LOOP: 'the loop is coming —',
     },
