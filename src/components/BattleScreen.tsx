@@ -826,9 +826,9 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   useEffect(() => {
     if (state.phase !== 'busy') return
     // Hold resolution while the level-up notification is open — but only after the
-    // full turn has resolved (idle). During pause_after_first / pause_after_second
-    // we let the timers fire so both phases complete before we surface the overlay.
-    if (state.pendingLevelUpNotification && state.resolveStep === 'idle') return
+    // full turn has resolved (idle) AND all floaters have finished, so the player
+    // sees the battle animations before the overlay appears.
+    if (state.pendingLevelUpNotification && state.resolveStep === 'idle' && floaters.length === 0) return
 
     if (state.resolveStep === 'pause_after_first') {
       const timer = window.setTimeout(() => {
@@ -843,7 +843,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       }, BATTLE_ROUND_END_GAP_MS)
       return () => window.clearTimeout(timer)
     }
-  }, [state.phase, state.resolveStep, state.pendingLevelUpNotification])
+  }, [state.phase, state.resolveStep, state.pendingLevelUpNotification, floaters.length])
 
   useEffect(() => {
     let cancelled = false
@@ -1231,7 +1231,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           stepsOverride={WALKER_HEAVY_CONFIRM_STEPS}
         />
       )}
-      {state.pendingLevelUpNotification && state.resolveStep === 'idle' && (
+      {state.pendingLevelUpNotification && state.resolveStep === 'idle' && floaters.length === 0 && (
         <LevelUpOverlay
           notification={state.pendingLevelUpNotification}
           onDismiss={() => dispatch({ type: 'DISMISS_LEVEL_UP' })}
