@@ -407,6 +407,7 @@
 }
 
 .loadout-screen__skill-head--hp {
+  position: relative;
   align-items: flex-start;
 }
 
