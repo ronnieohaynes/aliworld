@@ -394,7 +394,7 @@ export function LoadoutScreen({
                     <div className="loadout-screen__skill-head loadout-screen__skill-head--hp">
                       <div className="loadout-screen__hp-label-stack">
                         <span className="loadout-screen__skill-label loadout-screen__skill-label--hp">HP</span>
-                        <span className="loadout-screen__hp-fraction">{baseHp} / {totalMaxHp}</span>
+                        <span className="loadout-screen__hp-fraction">Max hp: {totalMaxHp}</span>
                       </div>
                       <span className="loadout-screen__skill-level">lvl {level}</span>
                     </div>

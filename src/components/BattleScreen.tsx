@@ -70,7 +70,7 @@ import {
   getPlayerSkills,
 } from '../store/playerStore'
 import { deriveBuildLoopType, deriveBuildName } from '../data/buildName'
-import { totalXpForLevel, MAX_PLAYER_LEVEL } from '../store/skillStore'
+import { sumSkillLevels, MAX_PLAYER_LEVEL } from '../store/skillStore'
 import {
   isBattleTutorialSeen,
   setBattleTutorialSeen,
@@ -529,19 +529,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const enemyStatusTags = getFighterStatusTags('enemy', state.combatStatus)
   const playerStatusTags = getFighterStatusTags('player', state.combatStatus)
   const playerLevel = getPlayerLevel()
-  // Smooth progress toward next combat level — includes fractional XP within each skill level
+  // Progress within the current player level — based on integer skill levels only,
+  // so it only moves when a skill levels up, not on every XP tick mid-fight.
   const playerLevelPct = (() => {
     if (playerLevel >= MAX_PLAYER_LEVEL) return 100
-    const SKILL_IDS = ['attack', 'speed', 'defense', 'luck', 'hp'] as const
-    const effectiveTotal = SKILL_IDS.reduce((sum, id) => {
-      const s = playerSkills[id]
-      const xpAtLevel = totalXpForLevel(s.level)
-      const xpAtNext = totalXpForLevel(s.level + 1)
-      const span = xpAtNext - xpAtLevel
-      const frac = span > 0 ? (s.xp - xpAtLevel) / span : 0
-      return sum + s.level + Math.min(1, Math.max(0, frac))
-    }, 0)
-    const raw = Math.max(0, (effectiveTotal - 5) * 99 / 320)
+    const totalSkillLevels = sumSkillLevels(playerSkills)
+    const raw = Math.max(0, (totalSkillLevels - 5) * 99 / 320)
     return Math.min(100, (raw % 1) * 100)
   })()
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
@@ -1092,7 +1085,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
               {floaters.map((f) => (
                 <span
                   key={f.id}
-                  className={`battle-screen__floater battle-screen__floater--${f.target} battle-screen__floater--${FLOATER_TONE_CLASS[f.tone]}${f.kind === 'crit' ? ' battle-screen__floater--crit-pop' : ''}`}
+                  className={`battle-screen__floater battle-screen__floater--${f.target} battle-screen__floater--${FLOATER_TONE_CLASS[f.tone]}${f.kind ? ` battle-screen__floater--kind-${f.kind}` : ' battle-screen__floater--kind-damage'}${f.kind === 'crit' ? ' battle-screen__floater--crit-pop' : ''}`}
                 >
                   {f.text}
                 </span>

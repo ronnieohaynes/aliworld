@@ -762,17 +762,58 @@
   animation: battle-floater-rise 0.9s ease-out forwards;
   z-index: 20;
 }
-/* Enemy damage: appears to the right of center */
-.battle-screen__floater--enemy {
-  top: 16%;
-  left: auto;
-  right: 8%;
+/* ── Floater zones: each kind gets its own fixed spot so nothing overlaps ── */
+
+/* --- ENEMY side (top half) --- */
+/* Damage number: top-right */
+.battle-screen__floater--enemy.battle-screen__floater--kind-damage {
+  top: 12%; right: 8%; left: auto;
+}
+/* Crit: top-center */
+.battle-screen__floater--enemy.battle-screen__floater--kind-crit {
+  top: 6%; left: 50%; transform: translateX(-50%);
+}
+/* Counter hit on enemy: right-center */
+.battle-screen__floater--enemy.battle-screen__floater--kind-counter {
+  top: 28%; right: 6%; left: auto;
+}
+/* XP bonus on enemy: far right, below damage */
+.battle-screen__floater--enemy.battle-screen__floater--kind-xp-bonus {
+  top: 22%; right: 6%; left: auto;
+}
+/* Status effects on enemy: left side of top half */
+.battle-screen__floater--enemy.battle-screen__floater--kind-status {
+  top: 22%; left: 8%;
 }
 
-/* Player damage: appears to the left of center */
-.battle-screen__floater--player {
-  top: 58%;
-  left: 8%;
+/* --- PLAYER side (bottom half) --- */
+/* Damage number: bottom-left */
+.battle-screen__floater--player.battle-screen__floater--kind-damage {
+  top: 60%; left: 8%;
+}
+/* Blocked: bottom-left, offset right of damage */
+.battle-screen__floater--player.battle-screen__floater--kind-blocked {
+  top: 66%; left: 30%;
+}
+/* Dodged: bottom-right */
+.battle-screen__floater--player.battle-screen__floater--kind-dodged {
+  top: 60%; right: 8%; left: auto;
+}
+/* Counter (player counters enemy): center-left */
+.battle-screen__floater--player.battle-screen__floater--kind-counter {
+  top: 52%; left: 8%;
+}
+/* Perfect guard: bottom-right */
+.battle-screen__floater--player.battle-screen__floater--kind-perfect-guard {
+  top: 66%; right: 8%; left: auto;
+}
+/* Heal / xp-bonus on player: bottom-center */
+.battle-screen__floater--player.battle-screen__floater--kind-xp-bonus {
+  top: 72%; left: 50%; transform: translateX(-50%);
+}
+/* Status effects (bleed, stun, shake, slow) on player: bottom-right under dodged */
+.battle-screen__floater--player.battle-screen__floater--kind-status {
+  top: 68%; right: 8%; left: auto;
 }
 .battle-screen__floater--attack { color: #ff4d4d; }
 .battle-screen__floater--defense { color: #4488cc; }
