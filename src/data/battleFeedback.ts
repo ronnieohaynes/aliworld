@@ -82,17 +82,18 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
+  // Priority order: stun → bleed/crit bleed → shake → slow
+  if (r.stunApplied) {
+    events.push({ kind: 'status', text: 'stun!', target: 'enemy', tone: 'stun' })
+  }
+  if (r.bleedApplied) {
+    events.push({ kind: 'status', text: r.crit ? 'crit bleed!' : 'bleed!', target: 'enemy', tone: 'bleed' })
+  }
   if (r.shakeApplied) {
     events.push({ kind: 'status', text: 'shake!', target: 'enemy', tone: 'shake' })
   }
   if (r.slowApplied) {
     events.push({ kind: 'status', text: 'slow!', target: 'enemy', tone: 'slow' })
-  }
-  if (r.bleedApplied) {
-    events.push({ kind: 'status', text: r.crit ? 'crit bleed!' : 'bleed!', target: 'enemy', tone: 'bleed' })
-  }
-  if (r.stunApplied) {
-    events.push({ kind: 'status', text: 'stun!', target: 'enemy', tone: 'stun' })
   }
 
   return events

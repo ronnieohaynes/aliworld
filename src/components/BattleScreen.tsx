@@ -47,6 +47,8 @@ import {
   applyBattleEndHealing,
   BATTLE_MOVE_GAP_MS,
   BATTLE_ROUND_END_GAP_MS,
+  RIB_MOVE_GAP_MS,
+  RIB_ROUND_END_GAP_MS,
   battleReducer,
   createInitialBattleState,
   getTelegraphDisplay,
@@ -292,11 +294,13 @@ function LevelUpOverlay({
 
 type Props = {
   npcId: string
-  onBattleEnd: (result: 'win' | 'lose', turns: number) => void
+  onBattleEnd: (result: 'win' | 'lose' | 'draw', turns: number) => void
   /** Commits conversion flags the moment the player wins, before exit narration ends. */
   onWinPayoff?: (npcId: string) => void
   /** True once enter wipe has lifted and the battle is visible. */
   battleRevealed?: boolean
+  /** True when this is a "Run it back!" rematch — doubled damage, dramatic pauses. */
+  runItBack?: boolean
 }
 
 /**
@@ -385,7 +389,7 @@ function drawEnemyBattleSprite(
   )
 }
 
-export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed = true }: Props) {
+export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed = true, runItBack = false }: Props) {
   const battleScreenRef = useRef<HTMLDivElement>(null)
   const playfieldRef = useRef<HTMLDivElement>(null)
   const telegraphRowRef = useRef<HTMLElement>(null)
@@ -427,8 +431,15 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const [state, dispatch] = useReducer(
     battleReducer,
     npcId,
-    (id) => createInitialBattleState(id),
+    (id) => createInitialBattleState(id, { runItBack }),
   )
+
+  // Snapshot player skills at battle start for XP summary
+  const battleStartSkillsRef = useRef<ReturnType<typeof getPlayerSkills> | null>(null)
+  useEffect(() => {
+    battleStartSkillsRef.current = { ...getPlayerSkills() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Measure stage height so sprite feet Y positions stay in the right half
   useEffect(() => {
@@ -597,11 +608,15 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     (walkerHeavyBeat === 'teach' || walkerHeavyBeat === 'confirm')
   const inputBlocked = battleTutorialBlocking || walkerHeavyBlocking || showWinNarration
 
+  const [drawPopup, setDrawPopup] = useState(false)
+
   const finishBattle = useCallback(
-    (result: 'win' | 'lose') => {
+    (result: 'win' | 'lose' | 'draw') => {
       if (endHandledRef.current) return
       endHandledRef.current = true
-      const healed = applyBattleEndHealing(result, state.playerStats.maxHp, state.playerHp)
+      // Draw heals same as a loss (full HP); run-it-back flag is set by GameScreen
+      const healResult = result === 'draw' ? 'lose' : result
+      const healed = applyBattleEndHealing(healResult, state.playerStats.maxHp, state.playerHp)
       setOverworldPlayerHp(healed)
       onBattleEnd(result, state.turn)
     },
@@ -675,7 +690,15 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   // After the final blow animation completes, show the appropriate end screen.
   const KNOCKOUT_POPUP_DELAY_MS = 2400  // animation (1300ms) + 1s pause before popup
   useEffect(() => {
+    if (state.phase !== 'ended' || state.result !== 'draw') return
+    const timer = window.setTimeout(() => setDrawPopup(true), KNOCKOUT_POPUP_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase, state.result])
+
+  useEffect(() => {
     if (state.phase !== 'ended') return
+    if (state.result === 'draw') return  // handled by draw effect above
     const hasNarration = payoffNpc.losingLine.trim().length > 0
     if (state.result === 'lose') {
       const hasWinNarration = (payoffNpc.winningLine ?? '').trim().length > 0
@@ -796,6 +819,8 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       }, enemyImpact)
     }
     const CRIT_EXTRA_MS = 500
+    // Status effects appear after the hit settles (not immediately on impact)
+    const STATUS_SETTLE_MS = 300
     if (events.some((e) => e.kind === 'crit')) {
       window.setTimeout(() => {
         setEnemyCritFx(true)
@@ -803,20 +828,30 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       }, playerImpact + CRIT_EXTRA_MS)
     }
 
-    events.forEach((event, index) => {
-      const id = Date.now() + Math.random() + index
+    // Use separate stagger indices per target so enemy-side and player-side
+    // floaters don't delay each other's timing.
+    let enemyEvtIdx = 0
+    let playerEvtIdx = 0
+    events.forEach((event) => {
+      const isEnemyTarget = event.target === 'enemy'
+      const evtIdx = isEnemyTarget ? enemyEvtIdx++ : playerEvtIdx++
+      const id = Date.now() + Math.random() + evtIdx
       const durationMs = event.kind === 'crit' ? 1200 : 900
       const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
+      // crit bleed fires with the same delay as a crit (appears after hit animation)
+      const isCritBleed = event.tone === 'bleed' && event.text.startsWith('crit')
+      const critBleedOffset = isCritBleed ? CRIT_EXTRA_MS : 0
+      const statusOffset = event.kind === 'status' ? STATUS_SETTLE_MS : 0
       // Events targeting the enemy come from the player's attack — use playerImpact.
       // Events targeting the player come from the enemy's attack — use enemyImpact.
-      const baseDelay = event.target === 'enemy' ? playerImpact : enemyImpact
+      const baseDelay = isEnemyTarget ? playerImpact : enemyImpact
       window.setTimeout(() => {
         setFloaters((f) => [
           ...f,
           { id, text: event.text, target: event.target, tone: event.tone, kind: event.kind },
         ])
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), durationMs)
-      }, baseDelay + index * 500 + critOffset)
+      }, baseDelay + evtIdx * 500 + critOffset + critBleedOffset + statusOffset)
     })
     clampBattleScrollDrift()
   }, [state.feedbackSeq, state.feedbackEvents, clampBattleScrollDrift])
@@ -840,20 +875,23 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     // sees the battle animations before the overlay appears.
     if (state.pendingLevelUpNotification && state.resolveStep === 'idle' && floaters.length === 0) return
 
+    const moveGapMs = state.runItBackMode ? RIB_MOVE_GAP_MS : BATTLE_MOVE_GAP_MS
+    const roundEndGapMs = state.runItBackMode ? RIB_ROUND_END_GAP_MS : BATTLE_ROUND_END_GAP_MS
+
     if (state.resolveStep === 'pause_after_first') {
       const timer = window.setTimeout(() => {
         dispatch({ type: 'RESOLVE_SECOND' })
-      }, BATTLE_MOVE_GAP_MS)
+      }, moveGapMs)
       return () => window.clearTimeout(timer)
     }
 
     if (state.resolveStep === 'pause_after_second') {
       const timer = window.setTimeout(() => {
         dispatch({ type: 'RESOLVE_FINISH' })
-      }, BATTLE_ROUND_END_GAP_MS)
+      }, roundEndGapMs)
       return () => window.clearTimeout(timer)
     }
-  }, [state.phase, state.resolveStep, state.pendingLevelUpNotification, floaters.length])
+  }, [state.phase, state.resolveStep, state.pendingLevelUpNotification, state.runItBackMode, floaters.length])
 
   useEffect(() => {
     let cancelled = false
@@ -1252,14 +1290,69 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           onDismiss={() => dispatch({ type: 'DISMISS_LEVEL_UP' })}
         />
       )}
-      {knockoutPopup && (
-        <div className="battle-knockout-overlay" onClick={handleKnockoutContinue}>
-          <div className="battle-knockout-card">
-            <p className="battle-knockout-name">
-              {knockoutPopup === 'win' ? state.npc.displayName.toUpperCase() : playerHandle.toUpperCase()}
-            </p>
-            <p className="battle-knockout-label">has fallen.</p>
-            <span className="battle-knockout-continue">tap to continue ▸</span>
+      {knockoutPopup && (() => {
+        const startSkills = battleStartSkillsRef.current
+        const endSkills = playerSkills
+        const xpGains = startSkills
+          ? (Object.keys(endSkills) as Array<keyof typeof endSkills>).flatMap((k) => {
+              const sv = startSkills[k]
+              const ev = endSkills[k]
+              if (!sv || !ev) return []
+              const xpGained = (ev.xp ?? 0) - (sv.xp ?? 0)
+              const leveled = (ev.level ?? 1) > (sv.level ?? 1)
+              if (xpGained <= 0 && !leveled) return []
+              return [{ skill: k as string, xpGained, leveled, startLv: sv.level ?? 1, endLv: ev.level ?? 1 }]
+            })
+          : []
+        return (
+          <div className="battle-knockout-overlay" onClick={handleKnockoutContinue}>
+            <div className="battle-knockout-card">
+              <p className="battle-knockout-name">
+                {knockoutPopup === 'win' ? state.npc.displayName.toUpperCase() : playerHandle.toUpperCase()}
+              </p>
+              <p className="battle-knockout-label">has fallen.</p>
+              {xpGains.length > 0 && (
+                <div className="battle-knockout-xp-summary">
+                  {xpGains.map(({ skill, xpGained, leveled, startLv, endLv }) => (
+                    <div key={skill} className="battle-knockout-xp-row">
+                      <span className="battle-knockout-xp-skill">{SKILL_DISPLAY[skill] ?? skill}</span>
+                      {xpGained > 0 && (
+                        <span className="battle-knockout-xp-gained">+{xpGained} xp</span>
+                      )}
+                      {leveled && (
+                        <span className="battle-knockout-xp-level">lv {startLv}→{endLv}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <span className="battle-knockout-continue">tap to continue ▸</span>
+            </div>
+          </div>
+        )
+      })()}
+      {drawPopup && (
+        <div className="battle-draw-overlay">
+          <div className="battle-draw-card">
+            <p className="battle-draw-title">DRAW.</p>
+            <p className="battle-draw-subtitle">both fighters fell.</p>
+            <div className="battle-draw-actions">
+              <button
+                type="button"
+                className="battle-draw-btn battle-draw-btn--rib"
+                onClick={() => finishBattle('draw')}
+              >
+                run it back!
+                <span className="battle-draw-btn-hint">2× damage · dramatic pacing</span>
+              </button>
+              <button
+                type="button"
+                className="battle-draw-btn battle-draw-btn--leave"
+                onClick={() => finishBattle('lose')}
+              >
+                leave it
+              </button>
+            </div>
           </div>
         </div>
       )}

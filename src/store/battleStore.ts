@@ -67,7 +67,7 @@ import { computePlayerLevel, getSkillStatBonuses, type SkillsState } from './ski
 export type PlayerMove = PlayerMoveId
 export type ArchetypeId = 'lck' | 'atk' | 'def' | 'spd'
 export type BattlePhase = 'player' | 'busy' | 'ended'
-export type BattleResult = 'win' | 'lose'
+export type BattleResult = 'win' | 'lose' | 'draw'
 export type { UpcomingMove } from '../data/enemyMoves'
 export type { SkillLevelUp }
 
@@ -79,10 +79,14 @@ export type LevelUpNotification = {
 }
 
 /** Pause between first and second actor resolution each round. */
-export const BATTLE_MOVE_GAP_MS = 2800
+export const BATTLE_MOVE_GAP_MS = 1400
 
 /** Pause after both actors resolve before the next turn telegraph. */
-export const BATTLE_ROUND_END_GAP_MS = 2300
+export const BATTLE_ROUND_END_GAP_MS = 1150
+
+/** Run-it-back mode: more dramatic inter-phase pauses (slower). */
+export const RIB_MOVE_GAP_MS = 2100
+export const RIB_ROUND_END_GAP_MS = 1800
 
 export type BattleResolveStep = 'idle' | 'pause_after_first' | 'pause_after_second'
 
@@ -157,6 +161,8 @@ export type BattleState = {
   feedbackBleedDamage: number
   /** Non-null when a skill or combat level-up just occurred — shown as an overlay. */
   pendingLevelUpNotification: LevelUpNotification | null
+  /** True when this battle is a "Run it back!" rematch — doubled damage, dramatic pauses. */
+  runItBackMode: boolean
 }
 
 export type BattleAction =
@@ -728,6 +734,7 @@ function applyPlayerResolutionPhase(
   ended: boolean
   result?: BattleResult
   bleedDamage: number
+  bleedActualHpChange: number
 } {
   const lower = state.npc.displayName.toLowerCase()
   let nextEnemyHp = enemyHp
@@ -792,10 +799,19 @@ function applyPlayerResolutionPhase(
   }
 
   let bleedDamage = 0
-  if (working.combatStatus.enemyBleed > 0 && nextEnemyHp > 0) {
-    const b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT))
-    nextEnemyHp = Math.max(0, nextEnemyHp - b)
-    nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
+  let bleedActualHpChange = 0
+  if (working.combatStatus.enemyBleed > 0) {
+    let b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT))
+    if (state.runItBackMode) b *= 2
+    if (nextEnemyHp > 0) {
+      // Enemy alive — bleed deals real damage
+      nextEnemyHp = Math.max(0, nextEnemyHp - b)
+      nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
+      bleedActualHpChange = b
+    } else {
+      // Enemy already dead from attack — bleed fires visually only
+      nextLog = appendLog(nextLog, `${lower} bleeds.`)
+    }
     bleedDamage = b
   }
 
@@ -809,6 +825,7 @@ function applyPlayerResolutionPhase(
       ended: true,
       result: 'win',
       bleedDamage,
+      bleedActualHpChange,
     }
   }
 
@@ -819,6 +836,7 @@ function applyPlayerResolutionPhase(
     working,
     ended: false,
     bleedDamage,
+    bleedActualHpChange,
   }
 }
 
@@ -976,7 +994,16 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   if (consumed.wasExposed) {
     applyPostResolveEffects(working, resolved.post)
   }
-  const r = resolved.out
+  // Apply run-it-back damage doubling before any phase resolution.
+  let r = resolved.out
+  if (working.runItBackMode) {
+    r = {
+      ...r,
+      playerDmg: Math.round(r.playerDmg * 2),
+      incoming: Math.round(r.incoming * 2),
+      rawIncoming: Math.round(r.rawIncoming * 2),
+    }
+  }
 
   const enemyFirst = enemyActsFirstInResolution(working)
   working = withResolveFeedback(working, r, enemyFirst)
@@ -991,6 +1018,23 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
       working.log,
     )
     if (enemyPhase.ended) {
+      // Draw check: enemy killed the player, but would player's attack + bleed also kill enemy?
+      const bleedB = working.combatStatus.enemyBleed > 0
+        ? Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT)) * (working.runItBackMode ? 2 : 1)
+        : 0
+      const effectiveDmg = r.playerActed ? r.playerDmg : 0
+      if (effectiveDmg + bleedB >= working.enemyHp) {
+        return {
+          ...working,
+          playerHp: 0,
+          enemyHp: 0,
+          log: [...enemyPhase.log, 'both fighters fall.'],
+          pendingResolve: null,
+          resolveStep: 'idle',
+          phase: 'ended',
+          result: 'draw',
+        }
+      }
       return {
         ...working,
         playerHp: enemyPhase.playerHp,
@@ -1030,11 +1074,24 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
           { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
         ],
         feedbackSeq: playerPhase.working.feedbackSeq + 1,
-        feedbackBleedDamage: playerPhase.bleedDamage,
+        feedbackBleedDamage: playerPhase.bleedActualHpChange,
       }
     : playerPhase.working
 
   if (playerPhase.ended) {
+    // Draw check: player killed enemy, but would enemy's unresolved attack also kill the player?
+    if (r.incoming > 0 && playerPhase.playerHp - r.incoming <= 0) {
+      return {
+        ...playerPhaseWorking,
+        enemyHp: 0,
+        playerHp: 0,
+        log: [...playerPhase.log, 'both fighters fall.'],
+        pendingResolve: null,
+        resolveStep: 'idle',
+        phase: 'ended',
+        result: 'draw',
+      }
+    }
     return {
       ...playerPhaseWorking,
       enemyHp: playerPhase.enemyHp,
@@ -1081,7 +1138,7 @@ function applySecondResolve(state: BattleState): BattleState {
             { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
           ],
           feedbackSeq: playerPhase.working.feedbackSeq + 1,
-          feedbackBleedDamage: playerPhase.bleedDamage,
+          feedbackBleedDamage: playerPhase.bleedActualHpChange,
         }
       : playerPhase.working
     if (playerPhase.ended) {
@@ -1177,6 +1234,7 @@ export function createInitialBattleState(
     archetype?: ArchetypeId
     accessories?: AccessoryBonuses[]
     carryHp?: number
+    runItBack?: boolean
   },
 ): BattleState {
   const npc = isDevSparNpcId(npcId)
@@ -1227,6 +1285,7 @@ export function createInitialBattleState(
     feedbackEnemyActedFirst: false,
     feedbackBleedDamage: 0,
     pendingLevelUpNotification: null,
+    runItBackMode: options?.runItBack ?? false,
   }
 }
 

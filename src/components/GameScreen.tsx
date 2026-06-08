@@ -263,8 +263,9 @@ export function GameScreen() {
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
   const [battleReady, setBattleReady] = useState(false)
+  const [battleRunItBack, setBattleRunItBack] = useState(false)
   const pendingBattleExitRef = useRef<{
-    result: 'win' | 'lose'
+    result: 'win' | 'lose' | 'draw'
     npcId: string | null
   } | null>(null)
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
@@ -1648,6 +1649,17 @@ export function GameScreen() {
   const handleBattleExitComplete = useCallback(() => {
     const exit = pendingBattleExitRef.current
     pendingBattleExitRef.current = null
+
+    // Draw → restart same battle in "Run it back!" mode
+    if (exit?.result === 'draw' && exit.npcId) {
+      setBattleRunItBack(true)
+      setBattleReady(false)       // unmount current BattleScreen
+      setBattleWipePhase('enter') // start entry wipe for rematch
+      reportCurrentLocation()
+      return
+    }
+
+    setBattleRunItBack(false)
     setBattleNpcId(null)
     setBattleReady(false)
     setBattleWipePhase(null)
@@ -1716,7 +1728,7 @@ export function GameScreen() {
   }, [])
 
   const handleBattleEnd = useCallback(
-    (result: 'win' | 'lose', turns: number) => {
+    (result: 'win' | 'lose' | 'draw', turns: number) => {
       const safeTurns = Number.isFinite(turns) && turns >= 0 ? turns : 0
       const isDevSpar = battleNpcId != null && isDevSparNpcId(battleNpcId)
       if (battleNpcId && !isDevSpar) {
@@ -2080,11 +2092,12 @@ export function GameScreen() {
             )}
             {battleNpcId && battleReady && (
               <BattleScreen
-                key={battleNpcId}
+                key={`${battleNpcId}-${battleRunItBack ? 'rib' : 'normal'}`}
                 npcId={battleNpcId}
                 battleRevealed={!battleWipePhase}
                 onBattleEnd={handleBattleEnd}
                 onWinPayoff={handleWinPayoff}
+                runItBack={battleRunItBack}
               />
             )}
             {battleWipePhase && (

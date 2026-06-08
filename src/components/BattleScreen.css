@@ -788,9 +788,21 @@
 .battle-screen__floater--enemy.battle-screen__floater--kind-xp-bonus {
   top: 22%; right: 6%; left: auto;
 }
-/* Status effects on enemy: left side of top half */
+/* Status effects on enemy: left side of top half — staggered vertically by tone */
 .battle-screen__floater--enemy.battle-screen__floater--kind-status {
   top: 22%; left: 8%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--stun {
+  top: 16%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--bleed {
+  top: 22%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--shake {
+  top: 28%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--slow {
+  top: 34%;
 }
 
 /* --- PLAYER side (bottom half) --- */
@@ -1034,4 +1046,124 @@
   letter-spacing: 0.1em;
   color: rgba(255, 255, 255, 0.3);
   text-transform: uppercase;
+}
+
+/* ── Knockout XP summary ── */
+.battle-knockout-xp-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 14px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 160px;
+}
+.battle-knockout-xp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-pixel, monospace);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+.battle-knockout-xp-skill {
+  width: 32px;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 700;
+}
+.battle-knockout-xp-gained {
+  color: #a5d68c;
+  flex: 1;
+}
+.battle-knockout-xp-level {
+  color: #c084fc;
+}
+
+/* ── Draw overlay ── */
+.battle-draw-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(3px);
+  animation: battle-levelup-fade-in 0.3s ease-out;
+}
+.battle-draw-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 32px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(10, 10, 18, 0.92);
+  animation: battle-levelup-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.battle-draw-title {
+  font-family: var(--font-pixel, monospace);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #f5e08a;
+  margin: 0 0 2px;
+  text-transform: uppercase;
+}
+.battle-draw-subtitle {
+  font-family: var(--font-pixel, monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
+  margin: 0 0 12px;
+}
+.battle-draw-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.battle-draw-btn {
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f4e8c1;
+  font-family: var(--font-pixel, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: lowercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.battle-draw-btn--rib {
+  border-color: #f5e08a;
+  background: rgba(245, 224, 138, 0.1);
+  color: #f5e08a;
+}
+.battle-draw-btn--rib:active {
+  background: rgba(245, 224, 138, 0.2);
+}
+.battle-draw-btn--leave {
+  color: rgba(255, 255, 255, 0.4);
+}
+.battle-draw-btn--leave:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+.battle-draw-btn-hint {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(245, 224, 138, 0.55);
+  font-weight: 400;
 }
