@@ -6,7 +6,7 @@
 export const SKILL_STAT_BONUS_LINEAR_CAP = 18
 export const SKILL_STAT_BONUS_TAIL_FACTOR = 0.72
 /** Max HP per effective skill step (softened from 2 — keeps attrition fights winnable). */
-export const SKILL_HP_BONUS_PER_STEP = 1.5
+export const SKILL_HP_BONUS_PER_LEVEL = 3
 
 export const BLACKOUT_INTERRUPTIBLE = true
 
