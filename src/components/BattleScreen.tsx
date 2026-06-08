@@ -950,7 +950,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
               {/* ── Enemy at top of arena ── */}
               {/* Enemy plate — fixed anchor, never animates */}
-              <div className="battle-screen__plate-anchor battle-screen__plate-anchor--enemy" style={{ top: enemyPlacement.visibleDrawY }}>
+              <div className="battle-screen__plate-anchor battle-screen__plate-anchor--enemy" style={{ top: enemyPlacement.visibleDrawY + 5 }}>
                 <div className="battle-screen__sprite-plate">
                   <span className="battle-screen__plate-name">
                     {state.npc.displayName.toUpperCase()}
@@ -979,7 +979,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
               {/* Enemy sprite — animates independently */}
               <div
                 className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
-                style={{ top: enemyPlacement.drawY }}
+                style={{ top: enemyPlacement.drawY + 5 }}
               >
                 <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
                   <canvas
