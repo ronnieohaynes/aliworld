@@ -270,6 +270,46 @@
   gap: 8px;
 }
 
+/* ── Level XP bar (between skills label and HP block) ── */
+.loadout-screen__level-xp-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.loadout-screen__level-xp-label {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  font-size: 9px;
+  color: rgba(200, 190, 160, 0.7);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.loadout-screen__level-xp-center {
+  text-align: center;
+}
+
+.loadout-screen__level-xp-label > span:last-child {
+  text-align: right;
+}
+
+.loadout-screen__level-xp-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(14, 14, 24, 0.96);
+  border: 1px solid #2a2a3e;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loadout-screen__level-xp-fill {
+  height: 100%;
+  background: #f5c842;
+  border-radius: 1px;
+  transition: width 0.4s ease;
+}
+
 .loadout-screen__skill-block {
   border: 2px solid #2a2a3e;
   border-radius: 4px;

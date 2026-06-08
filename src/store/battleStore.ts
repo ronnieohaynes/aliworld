@@ -150,6 +150,8 @@ export type BattleState = {
   /** Pop-up combat callouts for the battle UI (blocked, dodged, status, etc.). */
   feedbackEvents: BattleFeedbackEvent[]
   feedbackSeq: number
+  /** Which side resolved first this round — used to offset floater timing. */
+  feedbackEnemyActedFirst: boolean
   /** Non-null when a skill or combat level-up just occurred — shown as an overlay. */
   pendingLevelUpNotification: LevelUpNotification | null
 }
@@ -365,10 +367,10 @@ function applyPostResolveEffects(
   }
 }
 
-function withResolveFeedback(state: BattleState, r: ResolveResult): BattleState {
+function withResolveFeedback(state: BattleState, r: ResolveResult, enemyActedFirst: boolean): BattleState {
   const feedbackEvents = appendBattleFeedback([], r)
   if (feedbackEvents.length === 0) return state
-  return { ...state, feedbackEvents, feedbackSeq: state.feedbackSeq + 1 }
+  return { ...state, feedbackEvents, feedbackSeq: state.feedbackSeq + 1, feedbackEnemyActedFirst: enemyActedFirst }
 }
 
 function mitigateIncoming(
@@ -722,6 +724,7 @@ function applyPlayerResolutionPhase(
   working: BattleState
   ended: boolean
   result?: BattleResult
+  bleedTicked: boolean
 } {
   const lower = state.npc.displayName.toLowerCase()
   let nextEnemyHp = enemyHp
@@ -785,10 +788,12 @@ function applyPlayerResolutionPhase(
     nextPlayerHp = working.playerHp
   }
 
+  let bleedTicked = false
   if (working.combatStatus.enemyBleed > 0 && nextEnemyHp > 0) {
     const b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT))
     nextEnemyHp = Math.max(0, nextEnemyHp - b)
     nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
+    bleedTicked = true
   }
 
   if (nextEnemyHp <= 0) {
@@ -800,6 +805,7 @@ function applyPlayerResolutionPhase(
       working,
       ended: true,
       result: 'win',
+      bleedTicked,
     }
   }
 
@@ -809,6 +815,7 @@ function applyPlayerResolutionPhase(
     log: nextLog,
     working,
     ended: false,
+    bleedTicked,
   }
 }
 
@@ -968,9 +975,8 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   }
   const r = resolved.out
 
-  working = withResolveFeedback(working, r)
-
   const enemyFirst = enemyActsFirstInResolution(working)
+  working = withResolveFeedback(working, r, enemyFirst)
   const pending: PendingResolve = { r, enemyFirst }
 
   if (enemyFirst) {
@@ -1012,9 +1018,13 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
     working.log,
   )
 
+  const playerPhaseWorking = playerPhase.bleedTicked
+    ? { ...playerPhase.working, feedbackEvents: [...playerPhase.working.feedbackEvents, { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const }], feedbackSeq: playerPhase.working.feedbackSeq + 1 }
+    : playerPhase.working
+
   if (playerPhase.ended) {
     return {
-      ...playerPhase.working,
+      ...playerPhaseWorking,
       enemyHp: playerPhase.enemyHp,
       playerHp: playerPhase.playerHp,
       log: playerPhase.log,
@@ -1026,7 +1036,7 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   }
 
   return {
-    ...playerPhase.working,
+    ...playerPhaseWorking,
     enemyHp: playerPhase.enemyHp,
     playerHp: playerPhase.playerHp,
     log: playerPhase.log,
@@ -1050,9 +1060,12 @@ function applySecondResolve(state: BattleState): BattleState {
       state.playerHp,
       state.log,
     )
+    const playerPhaseWorking = playerPhase.bleedTicked
+      ? { ...playerPhase.working, feedbackEvents: [...playerPhase.working.feedbackEvents, { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const }], feedbackSeq: playerPhase.working.feedbackSeq + 1 }
+      : playerPhase.working
     if (playerPhase.ended) {
       return {
-        ...playerPhase.working,
+        ...playerPhaseWorking,
         enemyHp: playerPhase.enemyHp,
         playerHp: playerPhase.playerHp,
         log: playerPhase.log,
@@ -1063,7 +1076,7 @@ function applySecondResolve(state: BattleState): BattleState {
       }
     }
     return {
-      ...playerPhase.working,
+      ...playerPhaseWorking,
       enemyHp: playerPhase.enemyHp,
       playerHp: playerPhase.playerHp,
       log: playerPhase.log,
@@ -1190,6 +1203,7 @@ export function createInitialBattleState(
     playerLevelFlash: false,
     feedbackEvents: [],
     feedbackSeq: 0,
+    feedbackEnemyActedFirst: false,
     pendingLevelUpNotification: null,
   }
 }

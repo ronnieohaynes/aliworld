@@ -70,7 +70,6 @@ import {
   getPlayerSkills,
 } from '../store/playerStore'
 import { deriveBuildLoopType, deriveBuildName } from '../data/buildName'
-import { sumSkillLevels, MAX_PLAYER_LEVEL } from '../store/skillStore'
 import {
   isBattleTutorialSeen,
   setBattleTutorialSeen,
@@ -529,14 +528,6 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const enemyStatusTags = getFighterStatusTags('enemy', state.combatStatus)
   const playerStatusTags = getFighterStatusTags('player', state.combatStatus)
   const playerLevel = getPlayerLevel()
-  // Progress within the current player level — based on integer skill levels only,
-  // so it only moves when a skill levels up, not on every XP tick mid-fight.
-  const playerLevelPct = (() => {
-    if (playerLevel >= MAX_PLAYER_LEVEL) return 100
-    const totalSkillLevels = sumSkillLevels(playerSkills)
-    const raw = Math.max(0, (totalSkillLevels - 5) * 99 / 320)
-    return Math.min(100, (raw % 1) * 100)
-  })()
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
   // Split stage backgrounds — enemy uses their battleLocation, player uses chosen hometown
   const playerHometownId = useSyncExternalStore(
@@ -781,33 +772,41 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
     const skill = lastPlayerMoveSkillRef.current
     const lunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
-    const impactDelay = lunge + 540  // match damage floater timing
+    // When the enemy acts first, the player's attack lands in phase 2 (after BATTLE_MOVE_GAP_MS).
+    // Enemy-targeting floaters must be offset by that gap so they align with the hit.
+    const enemyActedFirst = state.feedbackEnemyActedFirst
+    const playerPhaseDelay = enemyActedFirst ? BATTLE_MOVE_GAP_MS : 0
+    const playerImpact = lunge + 540 + playerPhaseDelay  // when player's strike lands
+    const enemyImpact = lunge + 540                       // when enemy's strike lands (phase 1)
 
     if (events.some((e) => e.kind === 'dodged')) {
       window.setTimeout(() => {
         setPlayerDodgeFx(true)
         window.setTimeout(() => setPlayerDodgeFx(false), 420)
-      }, impactDelay)
+      }, enemyImpact)
     }
     const CRIT_EXTRA_MS = 500
     if (events.some((e) => e.kind === 'crit')) {
       window.setTimeout(() => {
         setEnemyCritFx(true)
         window.setTimeout(() => setEnemyCritFx(false), 480)
-      }, impactDelay + CRIT_EXTRA_MS)
+      }, playerImpact + CRIT_EXTRA_MS)
     }
 
     events.forEach((event, index) => {
       const id = Date.now() + Math.random() + index
       const durationMs = event.kind === 'crit' ? 1200 : 900
       const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
+      // Events targeting the enemy come from the player's attack — use playerImpact.
+      // Events targeting the player come from the enemy's attack — use enemyImpact.
+      const baseDelay = event.target === 'enemy' ? playerImpact : enemyImpact
       window.setTimeout(() => {
         setFloaters((f) => [
           ...f,
           { id, text: event.text, target: event.target, tone: event.tone, kind: event.kind },
         ])
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), durationMs)
-      }, impactDelay + index * 500 + critOffset)
+      }, baseDelay + index * 500 + critOffset)
     })
     clampBattleScrollDrift()
   }, [state.feedbackSeq, state.feedbackEvents, clampBattleScrollDrift])
@@ -826,8 +825,10 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
   useEffect(() => {
     if (state.phase !== 'busy') return
-    // Hold resolution while the level-up notification is open
-    if (state.pendingLevelUpNotification) return
+    // Hold resolution while the level-up notification is open — but only after the
+    // full turn has resolved (idle). During pause_after_first / pause_after_second
+    // we let the timers fire so both phases complete before we surface the overlay.
+    if (state.pendingLevelUpNotification && state.resolveStep === 'idle') return
 
     if (state.resolveStep === 'pause_after_first') {
       const timer = window.setTimeout(() => {
@@ -1030,13 +1031,6 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
               {/* Player plate — fixed anchor, never animates */}
               <div className="battle-screen__plate-anchor battle-screen__plate-anchor--player" style={{ top: playerPlacement.visibleDrawY }}>
                 <div ref={playerPlateRef} className="battle-screen__sprite-plate">
-                  {/* XP progress toward next combat level */}
-                  <div ref={xpBarRef} className="battle-screen__xp-track" title={`Level progress: ${Math.round(playerLevelPct)}%`}>
-                    <div
-                      className="battle-screen__xp-fill"
-                      style={{ width: `${playerLevelPct}%` }}
-                    />
-                  </div>
                   <span className="battle-screen__plate-name">
                     {playerHandle.toUpperCase()}
                     <span className={`battle-screen__plate-level${state.playerLevelFlash ? ' battle-screen__plate-level--flash' : ''}`}>
@@ -1237,7 +1231,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           stepsOverride={WALKER_HEAVY_CONFIRM_STEPS}
         />
       )}
-      {state.pendingLevelUpNotification && (
+      {state.pendingLevelUpNotification && state.resolveStep === 'idle' && (
         <LevelUpOverlay
           notification={state.pendingLevelUpNotification}
           onDismiss={() => dispatch({ type: 'DISMISS_LEVEL_UP' })}

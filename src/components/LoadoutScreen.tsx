@@ -45,7 +45,10 @@ import { ARCHETYPE_STATS } from '../store/battleStore'
 import {
   getSkillStatBonuses,
   MAX_SKILL_LEVEL,
+  MAX_PLAYER_LEVEL,
   totalXpForLevel,
+  sumSkillLevels,
+  computePlayerLevel,
 } from '../store/skillStore'
 import { generateIdentityCard } from '../lib/identityCard'
 import { IdentityCardPreview } from './IdentityCardPreview'
@@ -375,6 +378,28 @@ export function LoadoutScreen({
 
           <section className="loadout-screen__skills" aria-label="Skill ladders">
             <h2 className="loadout-screen__section-label">skills</h2>
+
+            {/* Overall level XP progress bar */}
+            {(() => {
+              const playerLevel = computePlayerLevel(skills)
+              const pct = playerLevel >= MAX_PLAYER_LEVEL ? 100 : (() => {
+                const totalSkillLevels = sumSkillLevels(skills)
+                const raw = Math.max(0, (totalSkillLevels - 5) * 99 / 320)
+                return Math.min(100, (raw % 1) * 100)
+              })()
+              return (
+                <div className="loadout-screen__level-xp-wrap">
+                  <div className="loadout-screen__level-xp-label">
+                    <span>lvl {playerLevel}</span>
+                    <span className="loadout-screen__level-xp-center">player level</span>
+                    <span>lvl {Math.min(playerLevel + 1, MAX_PLAYER_LEVEL)}</span>
+                  </div>
+                  <div className="loadout-screen__level-xp-track">
+                    <div className="loadout-screen__level-xp-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* HP — first, stat-only, no move ladder */}
             {(() => {
