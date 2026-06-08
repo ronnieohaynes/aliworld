@@ -82,7 +82,10 @@ function speedDodgeMoveXp(r: MoveXpContext): number {
       (r.dodged && r.playerDmg > 0 ? Math.floor(r.playerDmg * 0.5) : 0)
     )
   }
-  return XP_FALLBACK_SMALL
+  if (r.playerDmg > 0) {
+    return Math.floor(r.playerDmg * 0.5)
+  }
+  return 0
 }
 
 function def(
