@@ -1024,12 +1024,13 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   const playerPhaseWorking = playerPhase.bleedDamage > 0
     ? {
         ...playerPhase.working,
+        // Fresh array so the seq bump only re-fires bleed events, not the full prior set.
         feedbackEvents: [
-          ...playerPhase.working.feedbackEvents,
           { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const },
           { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
         ],
         feedbackSeq: playerPhase.working.feedbackSeq + 1,
+        feedbackBleedDamage: playerPhase.bleedDamage,
       }
     : playerPhase.working
 
@@ -1074,8 +1075,8 @@ function applySecondResolve(state: BattleState): BattleState {
     const playerPhaseWorking = playerPhase.bleedDamage > 0
       ? {
           ...playerPhase.working,
+          // Fresh array so the seq bump only re-fires bleed events, not the full prior set.
           feedbackEvents: [
-            ...playerPhase.working.feedbackEvents,
             { kind: 'status' as const, text: 'bleed!', target: 'enemy' as const, tone: 'bleed' as const },
             { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
           ],
