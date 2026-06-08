@@ -105,10 +105,10 @@ export const ARCHETYPE_STATS: Record<
   ArchetypeId,
   { hp: number; maxHp: number; atk: number; def: number; spd: number; lck: number }
 > = {
-  lck: { hp: 25, maxHp: 25, atk: 4, def: 4, spd: 4, lck: 9 },
-  atk: { hp: 28, maxHp: 28, atk: 9, def: 3, spd: 4, lck: 4 },
-  def: { hp: 40, maxHp: 40, atk: 4, def: 9, spd: 3, lck: 4 },
-  spd: { hp: 28, maxHp: 28, atk: 5, def: 4, spd: 9, lck: 4 },
+  lck: { hp: 45, maxHp: 45, atk: 4, def: 4, spd: 4, lck: 9 },
+  atk: { hp: 50, maxHp: 50, atk: 9, def: 3, spd: 4, lck: 4 },
+  def: { hp: 65, maxHp: 65, atk: 4, def: 9, spd: 3, lck: 4 },
+  spd: { hp: 50, maxHp: 50, atk: 5, def: 4, spd: 9, lck: 4 },
 }
 
 export const DEFAULT_ARCHETYPE: ArchetypeId = 'atk'
