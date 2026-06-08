@@ -388,6 +388,25 @@
   color: #e060a0;
 }
 
+.loadout-screen__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.loadout-screen__total-xp {
+  flex-shrink: 0;
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  color: #7a7a96;
+  white-space: nowrap;
+}
+
+.loadout-screen__bar--flex {
+  flex: 1;
+  min-width: 0;
+}
+
 .loadout-screen__skill-xp {
   font-size: 9px;
   letter-spacing: 0.04em;
