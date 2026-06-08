@@ -354,7 +354,7 @@
 }
 
 .loadout-screen__bar-fill--hp {
-  background: #44aacc;
+  background: #e060a0;
 }
 
 .loadout-screen__skill-block--hp {
@@ -374,6 +374,18 @@
   box-sizing: border-box;
   color: #b8b8d0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.loadout-screen__skill-head--hp {
+  position: relative;
+  justify-content: flex-end;
+}
+
+.loadout-screen__skill-label--hp {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #e060a0;
 }
 
 .loadout-screen__skill-xp {
