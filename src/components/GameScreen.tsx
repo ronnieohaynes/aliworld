@@ -130,6 +130,14 @@ import {
   subscribePlayerStore,
   whenAccountHydrated,
 } from '../store/playerStore'
+import {
+  awardPatch,
+  getAvailablePatchSkills,
+  getNextPatchXp,
+  isEpisodePatchAwarded,
+} from '../store/patchesStore'
+import { getSkillLabels, type SkillId } from '../store/skillStore'
+import { PatchSkillPicker } from './PatchSkillPicker'
 import { signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
@@ -164,6 +172,18 @@ const NARRATOR_NPC: NpcData = {
   y: 0,
   lines: [],
   color: '#000',
+}
+
+// b.stax / Patches feature toggle — flip back to true to re-enable.
+const PATCHES_FEATURE_ENABLED = false
+
+const B_STAX_NPC: NpcData = {
+  id: 'b-stax',
+  name: 'b.stax',
+  x: 0,
+  y: 0,
+  lines: [],
+  color: '#9b7ce8',
 }
 
 const PRELUDE_QUEST_NAME = "Midnight's Story"
@@ -260,6 +280,8 @@ export function GameScreen() {
 
   const cutsceneFlowActive = cutscene != null
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
+  const [patchPickerOpen, setPatchPickerOpen] = useState(false)
+  const patchAwardContinueRef = useRef<(() => void) | null>(null)
   const [battleNpcId, setBattleNpcId] = useState<string | null>(null)
   const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
   const [battleReady, setBattleReady] = useState(false)
@@ -926,6 +948,58 @@ export function GameScreen() {
     })
   }, [])
 
+  const showBStaxLines = useCallback((lines: string[], onComplete?: () => void) => {
+    setDialogue({
+      npc: B_STAX_NPC,
+      lineIndex: 0,
+      speakerLines: lines.map((text) => ({ speaker: 'b.stax', text })),
+      onComplete,
+    })
+  }, [])
+
+  /**
+   * Award the patch tied to a Midnight's Story episode (1-based index), if it
+   * hasn't been claimed yet. Plays a short b.stax handoff, lets the player
+   * choose which skill the patch's xp goes to, then confirms the result.
+   * Always calls `onDone` when finished (immediately if the patch was already
+   * claimed or none remain).
+   */
+  const awardMidnightPatch = useCallback((episodeIndex: number, onDone: () => void) => {
+    // b.stax / patches feature is hidden for now — skip straight through.
+    if (!PATCHES_FEATURE_ENABLED) {
+      onDone()
+      return
+    }
+    if (isEpisodePatchAwarded(episodeIndex) || getAvailablePatchSkills().length === 0) {
+      onDone()
+      return
+    }
+    showBStaxLines(
+      [
+        "yo — that's a wrap. you earned a patch for the jacket.",
+        "pick a skill. this patch's xp goes straight into it.",
+      ],
+      () => {
+        patchAwardContinueRef.current = onDone
+        setPatchPickerOpen(true)
+      },
+    )
+  }, [showBStaxLines])
+
+  const handlePatchSkillPicked = useCallback((skill: SkillId) => {
+    setPatchPickerOpen(false)
+    const result = awardPatch(skill)
+    const onDone = patchAwardContinueRef.current
+    patchAwardContinueRef.current = null
+    const skillLabel = getSkillLabels().find((s) => s.id === skill)?.label ?? skill
+    const xpLine = result
+      ? `+${result.xp} ${skillLabel} xp. patch's on the jacket.`
+      : "patch's on the jacket."
+    showBStaxLines([xpLine], () => {
+      onDone?.()
+    })
+  }, [showBStaxLines])
+
   const handleMapTransitionComplete = useCallback(() => {
     mapTransitionRef.current = null
     setMapTransition(null)
@@ -1013,8 +1087,8 @@ export function GameScreen() {
     setCutscene(null)
     if (!pendingCafeVideoHandoffRef.current) return
     pendingCafeVideoHandoffRef.current = false
-    runCafeVideoHandoffOnce()
-  }, [runCafeVideoHandoffOnce])
+    awardMidnightPatch(1, runCafeVideoHandoffOnce)
+  }, [awardMidnightPatch, runCafeVideoHandoffOnce])
 
   const canPlayDevCutscene = useCallback(() => {
     return (
@@ -2224,6 +2298,15 @@ export function GameScreen() {
               name={dialogue.speakerLines[dialogue.lineIndex]?.speaker ?? dialogue.npc.name}
               line={dialogue.speakerLines[dialogue.lineIndex]?.text ?? ''}
               onAdvance={advanceDialogue}
+            />
+          )}
+          {PATCHES_FEATURE_ENABLED && patchPickerOpen && !battleNpcId && (
+            <PatchSkillPicker
+              xpAmount={getNextPatchXp()}
+              skills={getSkillLabels().filter((skill) =>
+                getAvailablePatchSkills().includes(skill.id),
+              )}
+              onPick={handlePatchSkillPicked}
             />
           )}
           {cutscene && (

@@ -181,16 +181,27 @@ export function speedInitiativeBonus(spdSkillLevel: number): number {
 /** Luck stat weight in crit rolls — makes luck investment show up in fight feel. */
 export const LCK_CRIT_STAT_SCALE = 1.48
 
-/** Move XP — scale rewards with what each skill actually accomplished. */
-export const XP_DAMAGE_DEALT_MULT = 3
+/** Move XP — scale rewards with what each skill actually accomplished.
+ *  One multiplier per skill: every move in that skill applies the same rate
+ *  to its damage-based outcome, with move identity expressed via flat bonuses. */
+export const XP_DAMAGE_DEALT_MULT = 2
 /** Higher than damage-dealt — defensive actions happen on fewer turns. */
-export const XP_DAMAGE_BLOCKED_MULT = 6
-export const XP_DAMAGE_AVOIDED_MULT = 6
+export const XP_DAMAGE_BLOCKED_MULT = 5
+export const XP_DAMAGE_AVOIDED_MULT = 5
+/** Speed skill's shared rate for moves that deal damage as part of their effect
+ *  (counter-trades, GRAVITY_SHIFT, REFRACT) — distinct from the dodge-avoidance
+ *  rate above, which uses XP_DAMAGE_AVOIDED_MULT. */
+export const XP_SPEED_DAMAGE_MULT = 3
+/** Flat XP for pure-utility moves (HYPERDRIVE, SNAG, SEALED_FATE, INVINCIBLE,
+ *  SECOND_WIND, GRAVITY_SHIFT, BRICK_WALL) on top of any damage/block/avoid/heal
+ *  XP they earn — these moves carry real strategic cost (recharge, once-per-
+ *  battle) even on a turn where nothing damage-related happens. */
+export const XP_UTILITY_MOVE_BONUS = 12
 /** Flat bonus when brace/dodge succeeds so low-block turns still progress. */
 export const XP_DEFENSE_SPEED_ACTION_BONUS = 10
 export const XP_LUCK_PROC_BONUS = 16
 /** Luck moves that chip damage — lower weight than attack damage XP. */
-export const XP_LUCK_DAMAGE_MULT = 3.5
+export const XP_LUCK_DAMAGE_MULT = 5
 export const XP_FALLBACK_SMALL = 6
 
 /** Bonus skill XP for skilled timing — meaningful boost, not a level shortcut. */

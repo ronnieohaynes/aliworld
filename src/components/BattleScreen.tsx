@@ -102,6 +102,38 @@ import './PlayerLevelBadge.css'
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
+/** How long a damage-induced HP bar/number countdown takes, end to end. */
+const HP_TICK_DURATION_MS = 400
+/** Cap on how many discrete ticks a single hit's countdown is split into. */
+const HP_TICK_MAX_STEPS = 20
+
+/**
+ * Steps a displayed HP value down from `from` to `to` in small ticks rather
+ * than jumping straight to the final value.
+ */
+function animateHpTicks(
+  setDisplayed: (value: number) => void,
+  from: number,
+  to: number,
+  durationMs: number = HP_TICK_DURATION_MS,
+): void {
+  const delta = from - to
+  if (delta <= 0) {
+    setDisplayed(to)
+    return
+  }
+  const steps = Math.min(delta, HP_TICK_MAX_STEPS)
+  const stepMs = Math.max(16, Math.floor(durationMs / steps))
+  let i = 0
+  const tick = () => {
+    i += 1
+    const value = i < steps ? from - Math.round((delta * i) / steps) : to
+    setDisplayed(value)
+    if (i < steps) window.setTimeout(tick, stepMs)
+  }
+  window.setTimeout(tick, stepMs)
+}
+
 const WALKER_HEAVY_TEACH_STEPS = [
   {
     text: 'that wind-up means a HAYMAKER is coming. it hits hard.',
@@ -509,6 +541,23 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   // Displayed HP lags real HP — only updates after the lunge animation finishes
   const [displayedEnemyHp, setDisplayedEnemyHp] = useState(state.enemyHp)
   const [displayedPlayerHp, setDisplayedPlayerHp] = useState(state.playerHp)
+  // Displayed log lags state.log for moves that produced crit/status feedback
+  // (e.g. a Fury Sweep crit applying bleed) — the log line is held back until
+  // those callouts have actually appeared, so the text doesn't spoil the
+  // attack animation by reporting the result before it plays.
+  // appendLog caps state.log at 3 entries (shifting the oldest off), so its
+  // .length stops changing once full — track the array reference instead,
+  // since appendLog always returns a new array when a line is added.
+  const prevLogRef = useRef(state.log)
+  const [displayedLog, setDisplayedLog] = useState<string[]>(state.log)
+  // While a turn resolves, the telegraph line is replaced with the name of
+  // whichever move goes first. Reverts to the enemy telegraph once the turn
+  // fully settles (same moment the result log line updates).
+  const [turnAnnounce, setTurnAnnounce] = useState<string | null>(null)
+  const prevPendingResolveRef = useRef(state.pendingResolve)
+  // Single battle-log line cycles through these — telegraph and the last
+  // action result are never shown at the same time.
+  const [logLineMode, setLogLineMode] = useState<'telegraph' | 'announce' | 'result'>('telegraph')
   const [enemyHitFx, setEnemyHitFx] = useState(false)
   const [enemyAtkFx, setEnemyAtkFx] = useState(false)
   const [playerHitFx, setPlayerHitFx] = useState(false)
@@ -591,7 +640,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     winPayoffCommittedRef.current = true
     onWinPayoff?.(npcId)
   }, [state.phase, state.result, npcId, onWinPayoff])
-  const logLines = state.log.slice(-2)
+  const logLines = displayedLog.slice(-2)
   const telegraphDisplay = getTelegraphDisplay(state)
   const leanAccent = leanSkillAccentColor(state.npc.leanSkill)
   const telegraphMoveColor =
@@ -734,6 +783,10 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   useEffect(() => {
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp
     const playerDelta = prevPlayerHpRef.current - state.playerHp
+    // Capture pre-update HP now — the refs get overwritten to the new values
+    // before these animations run (they're scheduled via setTimeout).
+    const fromEnemyHp = prevEnemyHpRef.current
+    const fromPlayerHp = prevPlayerHpRef.current
     // When both sides take damage simultaneously (reflect, bleed, etc.),
     // stagger the second floater by 500ms so they never overlap.
     const STAGGER_MS = enemyDelta > 0 && playerDelta > 0 ? 500 : 0
@@ -744,9 +797,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       const HIT_FLASH_MS = 40
       const DAMAGE_DELAY_MS = 540
       const HIT_MS = 840
+      const BLEED_DAMAGE_DELAY_MS = 2000
       const id = Date.now() + Math.random()
       // Bleed damage has its own feedback floater — only show the direct attack portion here.
-      const attackDelta = Math.max(0, enemyDelta - state.feedbackBleedDamage)
+      const bleedDelta = Math.min(state.feedbackBleedDamage, enemyDelta)
+      const attackDelta = Math.max(0, enemyDelta - bleedDelta)
+      const afterAttackHp = fromEnemyHp - attackDelta
       setPlayerAtkFx(skill)
       window.setTimeout(() => setPlayerAtkFx(null), LUNGE_MS)
       window.setTimeout(() => {
@@ -754,7 +810,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         window.setTimeout(() => setEnemyHitFx(false), HIT_MS)
       }, LUNGE_MS + HIT_FLASH_MS)
       window.setTimeout(() => {
-        setDisplayedEnemyHp(state.enemyHp)
+        animateHpTicks(setDisplayedEnemyHp, fromEnemyHp, afterAttackHp)
         if (attackDelta > 0) {
           setFloaters((f) => [
             ...f,
@@ -763,6 +819,18 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
           window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
         }
       }, LUNGE_MS + DAMAGE_DELAY_MS)
+      // Bleed's HP tick lands alongside its floater — after both attacks land
+      // this turn, plus the bleed delay.
+      if (bleedDelta > 0) {
+        const enemyActedFirst = state.feedbackEnemyActedFirst
+        const playerPhaseDelay = enemyActedFirst ? BATTLE_MOVE_GAP_MS : 0
+        const playerImpact = LUNGE_MS + DAMAGE_DELAY_MS + playerPhaseDelay
+        const enemyImpact = LUNGE_MS + DAMAGE_DELAY_MS
+        const bleedHpDelay = Math.max(playerImpact, enemyImpact) + BLEED_DAMAGE_DELAY_MS
+        window.setTimeout(() => {
+          animateHpTicks(setDisplayedEnemyHp, afterAttackHp, state.enemyHp)
+        }, bleedHpDelay)
+      }
       clampBattleScrollDrift()
     }
     if (playerDelta > 0) {
@@ -778,7 +846,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
       }, LUNGE_MS + HIT_FLASH_MS + STAGGER_MS)
       window.setTimeout(() => {
-        setDisplayedPlayerHp(state.playerHp)
+        animateHpTicks(setDisplayedPlayerHp, fromPlayerHp, state.playerHp)
         setFloaters((f) => [
           ...f,
           { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
@@ -819,8 +887,14 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       }, enemyImpact)
     }
     const CRIT_EXTRA_MS = 500
-    // Status effects appear after the hit settles (not immediately on impact)
-    const STATUS_SETTLE_MS = 300
+    // Status effects wait for the hit-flash animation to fully finish before appearing.
+    // Hit flash starts at +40ms (HIT_FLASH_MS) and runs for 840ms (HIT_MS), ending at
+    // +880ms relative to lunge start — i.e. +340ms relative to baseDelay (lunge+540).
+    // Add a small buffer so the status floater never overlaps the tail of the flash.
+    const STATUS_SETTLE_MS = 380
+    // Bleed damage always trails the attack's own damage floater by a fixed 500ms,
+    // independent of any crit/status stagger ahead of it.
+    const BLEED_DAMAGE_DELAY_MS = 2000
     if (events.some((e) => e.kind === 'crit')) {
       window.setTimeout(() => {
         setEnemyCritFx(true)
@@ -838,23 +912,103 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       const id = Date.now() + Math.random() + evtIdx
       const durationMs = event.kind === 'crit' ? 1200 : 900
       const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
-      // crit bleed fires with the same delay as a crit (appears after hit animation)
-      const isCritBleed = event.tone === 'bleed' && event.text.startsWith('crit')
-      const critBleedOffset = isCritBleed ? CRIT_EXTRA_MS : 0
       const statusOffset = event.kind === 'status' ? STATUS_SETTLE_MS : 0
       // Events targeting the enemy come from the player's attack — use playerImpact.
       // Events targeting the player come from the enemy's attack — use enemyImpact.
       const baseDelay = isEnemyTarget ? playerImpact : enemyImpact
+      const isBleedDamage = event.kind === 'damage' && event.tone === 'bleed'
+      // Bleed renders last — after BOTH attacks have landed this turn, even if the
+      // bleed status was applied on this same turn's hit.
+      const delay = isBleedDamage
+        ? Math.max(playerImpact, enemyImpact) + BLEED_DAMAGE_DELAY_MS
+        : baseDelay + evtIdx * 500 + critOffset + statusOffset
       window.setTimeout(() => {
         setFloaters((f) => [
           ...f,
           { id, text: event.text, target: event.target, tone: event.tone, kind: event.kind },
         ])
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), durationMs)
-      }, baseDelay + evtIdx * 500 + critOffset + critBleedOffset + statusOffset)
+      }, delay)
     })
     clampBattleScrollDrift()
   }, [state.feedbackSeq, state.feedbackEvents, clampBattleScrollDrift])
+
+  // Mirror the floater timing for the battle log line. Plain log lines (no
+  // crit/status feedback) sync immediately; lines describing a crit and/or a
+  // status application (e.g. "fury sweep. 24! crit bleed.") wait until the
+  // last of those callouts would have appeared, using the same delay formula
+  // as the floaters above.
+  useEffect(() => {
+    if (state.log === prevLogRef.current) return
+    prevLogRef.current = state.log
+
+    const events = state.feedbackEvents
+    if (events.length === 0) {
+      setDisplayedLog(state.log)
+      setTurnAnnounce(null)
+      setLogLineMode('result')
+      return
+    }
+
+    const skill = lastPlayerMoveSkillRef.current
+    const lunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+    const enemyActedFirst = state.feedbackEnemyActedFirst
+    const playerPhaseDelay = enemyActedFirst ? BATTLE_MOVE_GAP_MS : 0
+    const playerImpact = lunge + 540 + playerPhaseDelay
+    const enemyImpact = lunge + 540
+    const CRIT_EXTRA_MS = 500
+    const STATUS_SETTLE_MS = 380
+    const BLEED_DAMAGE_DELAY_MS = 2000
+
+    let enemyEvtIdx = 0
+    let playerEvtIdx = 0
+    let maxDelay = 0
+    events.forEach((event) => {
+      const isEnemyTarget = event.target === 'enemy'
+      const evtIdx = isEnemyTarget ? enemyEvtIdx++ : playerEvtIdx++
+      const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
+      const statusOffset = event.kind === 'status' ? STATUS_SETTLE_MS : 0
+      const baseDelay = isEnemyTarget ? playerImpact : enemyImpact
+      const isBleedDamage = event.kind === 'damage' && event.tone === 'bleed'
+      const total = isBleedDamage
+        ? Math.max(playerImpact, enemyImpact) + BLEED_DAMAGE_DELAY_MS
+        : baseDelay + evtIdx * 500 + critOffset + statusOffset
+      if (total > maxDelay) maxDelay = total
+    })
+
+    const nextLog = state.log
+    const timer = window.setTimeout(() => {
+      setDisplayedLog(nextLog)
+      setTurnAnnounce(null)
+      setLogLineMode('result')
+    }, maxDelay)
+    return () => window.clearTimeout(timer)
+  }, [state.log, state.feedbackEvents, state.feedbackEnemyActedFirst])
+
+  // When a move is selected, the telegraph line is replaced by the name of
+  // whichever side's move resolves first this turn.
+  useEffect(() => {
+    const prev = prevPendingResolveRef.current
+    prevPendingResolveRef.current = state.pendingResolve
+    if (state.pendingResolve && state.pendingResolve !== prev) {
+      const { r, enemyFirst } = state.pendingResolve
+      const moveName = enemyFirst
+        ? r.eMove !== 'STUNNED'
+          ? getEnemyMoveDef(r.eMove as EnemyMoveId).displayName
+          : null
+        : getMoveDef(r.pMove).displayName
+      setTurnAnnounce(moveName)
+      if (moveName) setLogLineMode('announce')
+    }
+  }, [state.pendingResolve])
+
+  // Once the player is free to act again, the line reverts to showing the
+  // upcoming enemy telegraph.
+  useEffect(() => {
+    if (state.phase === 'player') {
+      setLogLineMode('telegraph')
+    }
+  }, [state.phase])
 
   useLayoutEffect(() => {
     clampBattleScrollDrift()
@@ -1048,34 +1202,52 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                 </div>
               </div>
 
-              {/* ── Telegraph between fighters ── */}
+              {/* ── Telegraph / announce / last-action — only one shown at a time ── */}
               {!showWinNarration && (
                 <section className="battle-screen__log" ref={telegraphRowRef} aria-live="polite">
-                  {/* Line 1: telegraph */}
-                  <div
-                    className={`battle-screen__log-line battle-screen__log-line--telegraph${heavyTelegraph ? ' battle-screen__log-line--heavy' : ''}`}
-                  >
-                    {telegraphDisplay ? (
-                      <>
-                        {telegraphDisplay.prefix}
-                        {telegraphDisplay.moveName ? (
-                          <span
-                            className="battle-screen__telegraph-move"
-                            style={{ color: telegraphMoveColor }}
-                          >
-                            {telegraphDisplay.moveName}
-                          </span>
-                        ) : null}
-                        {telegraphDisplay.suffix}
-                      </>
+                  {logLineMode === 'announce' && turnAnnounce ? (
+                    <div
+                      className={`battle-screen__log-line battle-screen__log-line--telegraph${heavyTelegraph ? ' battle-screen__log-line--heavy' : ''}`}
+                    >
+                      <span
+                        className="battle-screen__telegraph-move"
+                        style={{ color: telegraphMoveColor }}
+                      >
+                        {turnAnnounce}
+                      </span>
+                    </div>
+                  ) : logLineMode === 'result' ? (
+                    logLines.length > 0 ? (
+                      logLines.map((line, i) => (
+                        <div className="battle-screen__log-line" key={i}>
+                          {line}
+                        </div>
+                      ))
                     ) : (
-                      <>&nbsp;</>
-                    )}
-                  </div>
-                  {/* Line 2: last action */}
-                  <div className="battle-screen__log-line">
-                    {logLines[logLines.length - 1] ?? <>&nbsp;</>}
-                  </div>
+                      <div className="battle-screen__log-line">&nbsp;</div>
+                    )
+                  ) : (
+                    <div
+                      className={`battle-screen__log-line battle-screen__log-line--telegraph${heavyTelegraph ? ' battle-screen__log-line--heavy' : ''}`}
+                    >
+                      {telegraphDisplay ? (
+                        <>
+                          {telegraphDisplay.prefix}
+                          {telegraphDisplay.moveName ? (
+                            <span
+                              className="battle-screen__telegraph-move"
+                              style={{ color: telegraphMoveColor }}
+                            >
+                              {telegraphDisplay.moveName}
+                            </span>
+                          ) : null}
+                          {telegraphDisplay.suffix}
+                        </>
+                      ) : (
+                        <>&nbsp;</>
+                      )}
+                    </div>
+                  )}
                 </section>
               )}
 
@@ -1086,7 +1258,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                 <div ref={playerPlateRef} className="battle-screen__sprite-plate">
                   <span className="battle-screen__plate-name">
                     {playerHandle.toUpperCase()}
-                    <span className={`battle-screen__plate-level${state.playerLevelFlash ? ' battle-screen__plate-level--flash' : ''}`}>
+                    <span className="battle-screen__plate-level">
                       {' · LVL '}{playerLevel}
                     </span>
                   </span>
