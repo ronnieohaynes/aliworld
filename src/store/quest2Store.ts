@@ -25,7 +25,7 @@ type Quest2State = {
   restockerDefeated: boolean
   /** Crier mob beat finished — crowd cleared before episode cards. */
   e2ClosingCrowdDismissed: boolean
-  /** Full e2 closing sequence finished (crowd → episode card → gym unlock). */
+  /** Full e2 closing sequence finished (crowd → episode card). */
   e2Complete: boolean
 }
 

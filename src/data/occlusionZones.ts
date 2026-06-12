@@ -59,7 +59,6 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
   ],
   southside: [],
   'blue-store-interior': [],
-  'southside-gym-interior': [],
   // five-gym-interior zones stored at native 1224px coords — scaled ×0.5 in cityConfig
   'five-gym-interior': [
     // left wall equipment — punching bags / heavy bags (3 units)

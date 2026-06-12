@@ -16,7 +16,6 @@ import {
   type CityId,
 } from '../data/cityConfig'
 import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
-import { SOUTHSIDE_GYM_EXTERIOR_RETURN } from '../data/southsideGymEntrance'
 import { E2_CLOSING_CRIER_NPC, E2_CLOSING_MOB_NPCS } from '../data/e2ClosingNpcs'
 import {
   FIVE_GYM1_HEAD_NPC,
@@ -28,12 +27,8 @@ import {
   getGymRevision,
   isGym5ive1Cleared,
   isOceanviewGymVisited,
-  isSouthsideGymUnlocked,
-  isSouthsideGymVisited,
   recordGym5ive1Win,
   setOceanviewGymVisited,
-  setSouthsideGymUnlocked,
-  setSouthsideGymVisited,
   subscribeGymStore,
 } from '../store/gymStore'
 import {
@@ -399,14 +394,6 @@ export function GameScreen() {
     return null
   }, [currentCity, gymRevision, quest1Revision])
 
-  const southsideGymPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
-    void gymRevision
-    void quest2Revision
-    if (currentCity !== 'southside') return null
-    if (!isE2Complete() || !isSouthsideGymUnlocked() || isSouthsideGymVisited()) return null
-    return { kind: 'zone', action: 'OPEN_SOUTHSIDE_GYM' }
-  }, [currentCity, gymRevision, quest2Revision])
-
   const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
     if (currentCity !== 'five-gym-interior') return null
@@ -415,7 +402,7 @@ export function GameScreen() {
   }, [currentCity, gymHeadPulseDismissed, gymRevision])
 
   const activePulseDescriptor =
-    gymHeadPulseDescriptor ?? southsideGymPulseDescriptor ?? gymDoorPulseDescriptor ?? questPulseDescriptor
+    gymHeadPulseDescriptor ?? gymDoorPulseDescriptor ?? questPulseDescriptor
 
   useEffect(() => {
     if (currentCity === 'five-gym-interior') {
@@ -690,9 +677,6 @@ export function GameScreen() {
     if (target.cityId === 'five-gym-interior' && !isOceanviewGymVisited()) {
       setOceanviewGymVisited()
       pendingGymWelcomeRef.current = true
-    }
-    if (target.cityId === 'southside-gym-interior' && !isSouthsideGymVisited()) {
-      setSouthsideGymVisited()
     }
     if (target.cityId === 'southside') {
       markCityVisited('southside')
@@ -979,7 +963,6 @@ export function GameScreen() {
 
   const finishE2Episode = useCallback(() => {
     setE2Complete()
-    setSouthsideGymUnlocked()
     e2ClosingPhaseRef.current = 'idle'
     track('episode_complete', { episode: 'e2' })
   }, [])
@@ -1282,21 +1265,6 @@ export function GameScreen() {
           'five',
           FIVE_GYM_EXTERIOR_RETURN.x,
           FIVE_GYM_EXTERIOR_RETURN.y,
-          'down',
-        )
-      } else if (action === 'OPEN_SOUTHSIDE_GYM') {
-        if (currentCity !== 'southside') return
-        if (mapTransitionRef.current) return
-        if (!isSouthsideGymUnlocked()) return
-        const interior = CITY_CONFIGS['southside-gym-interior']
-        beginMapTransition('southside-gym-interior', interior.spawnX, interior.spawnY, 'up')
-      } else if (action === 'OPEN_SOUTHSIDE_GYM_EXIT') {
-        if (currentCity !== 'southside-gym-interior') return
-        if (mapTransitionRef.current) return
-        beginMapTransition(
-          'southside',
-          SOUTHSIDE_GYM_EXTERIOR_RETURN.x,
-          SOUTHSIDE_GYM_EXTERIOR_RETURN.y,
           'down',
         )
       }
@@ -1707,9 +1675,7 @@ export function GameScreen() {
       if (!locationReady || worldEntryActive) return
 
       const context =
-        currentCity === 'five-gym-interior' || currentCity === 'southside-gym-interior'
-          ? 'gym'
-          : `city:${currentCity}`
+        currentCity === 'five-gym-interior' ? 'gym' : `city:${currentCity}`
       syncMusicForContext(context)
     })()
 
@@ -1747,12 +1713,6 @@ export function GameScreen() {
     quest2Revision,
     questTransitionActive,
   ])
-
-  useEffect(() => {
-    if (isE2Complete() && !isSouthsideGymUnlocked()) {
-      setSouthsideGymUnlocked()
-    }
-  }, [gymRevision, quest2Revision])
 
   useEffect(() => {
     if (!isRestockerDefeated() || isE2Complete()) return
@@ -2069,7 +2029,6 @@ export function GameScreen() {
   const showActiveQuestPulse =
     showQuestPulse ||
     gymHeadPulseDescriptor != null ||
-    southsideGymPulseDescriptor != null ||
     gymDoorPulseDescriptor != null
 
   const isCoarsePointer = useCoarsePointer()
