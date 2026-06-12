@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient, type User } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 import { corsHeaders } from '../_shared/cors.ts'
+import { isRegisteredMidnightVariantId } from '../_shared/midnightVariantRegistry.ts'
 
 type DayCount = { day: string; count: number }
 
@@ -39,15 +40,6 @@ const SKILL_IDS = ['attack', 'speed', 'defense', 'luck', 'hp'] as const
 const MAX_PLAYER_LEVEL = 100
 const DEFAULT_EQUIPPED_MOVES = ['STRIKE', 'SLIP', 'HOLD', 'WHISPER'] as const
 const DEFAULT_UNLOCKED_MOVES = ['strike', 'slip', 'whisper', 'hold'] as const
-
-const MIDNIGHT_VARIANT_IDS = new Set([
-  'default',
-  'asian-f',
-  'latino-m',
-  'white-f',
-  'filipino-m',
-  'danny-ali',
-])
 
 type SkillId = (typeof SKILL_IDS)[number]
 type SkillProgress = { level: number; xp: number }
@@ -402,7 +394,7 @@ async function handleUserSetVariantAction(
   if (!userId) return badRequest('user_id required')
 
   const variantId = typeof body.variant_id === 'string' ? body.variant_id.trim() : ''
-  if (!MIDNIGHT_VARIANT_IDS.has(variantId)) {
+  if (!isRegisteredMidnightVariantId(variantId)) {
     return badRequest('variant_id must be a registered midnight variant')
   }
 

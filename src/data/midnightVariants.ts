@@ -1,14 +1,22 @@
 import { publicAsset } from '../utils/publicAsset'
+import {
+  isRegisteredMidnightVariantId,
+  listRegisteredMidnightVariantIds,
+  MIDNIGHT_VARIANT_SHEET,
+  type MidnightVariantId,
+} from '../../supabase/functions/_shared/midnightVariantRegistry.ts'
 
-const MIDNIGHT_DIR = publicAsset('Assets/Characters/midnight')
+export type { MidnightVariantId }
 
-export type MidnightVariantId =
-  | 'default'
-  | 'asian-f'
-  | 'latino-m'
-  | 'white-f'
-  | 'filipino-m'
-  | 'danny-ali'
+const CHARACTERS_DIR = publicAsset('Assets/Characters')
+
+/** Full variant MAP — id → walk sheet URL (every renderable sprite). */
+const WALK_SRC = Object.fromEntries(
+  Object.entries(MIDNIGHT_VARIANT_SHEET).map(([id, { folder, file }]) => [
+    id,
+    `${CHARACTERS_DIR}/${folder}/${file}`,
+  ]),
+) as Record<MidnightVariantId, string>
 
 /** Manual per-variant sprite crop / feet tuning (no auto-detection). */
 export type MidnightVariantRenderTuning = {
@@ -61,7 +69,7 @@ export const MIDNIGHT_DEFAULT_VARIANT_ID: MidnightVariantId = 'default'
 
 const BASELINE_RENDER = MIDNIGHT_DEFAULT_RENDER_TUNING
 
-/** Shown on the creation carousel only — hidden admin-grant variants excluded. */
+/** Creation carousel only — subset of the full MAP. */
 export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   { id: 'default', render: BASELINE_RENDER },
   {
@@ -109,50 +117,40 @@ export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   },
 ] as const
 
-/** Registered for rendering + admin — not on the public select screen. */
-const HIDDEN_MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
-  { id: 'danny-ali', render: BASELINE_RENDER },
-] as const
-
-const ALL_MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
-  ...MIDNIGHT_VARIANTS,
-  ...HIDDEN_MIDNIGHT_VARIANTS,
-]
-
-const WALK_SRC: Record<MidnightVariantId, string> = {
-  default: `${MIDNIGHT_DIR}/midnight-default.png`,
-  'asian-f': `${MIDNIGHT_DIR}/midnight-asian-f.png`,
-  'latino-m': `${MIDNIGHT_DIR}/midnight-latino-m.png`,
-  'white-f': `${MIDNIGHT_DIR}/midnight-white-f.png`,
-  'filipino-m': `${MIDNIGHT_DIR}/midnight-filipino-m.png`,
-  'danny-ali': `${MIDNIGHT_DIR}/danny-ali.png`,
-}
-
-const RENDER_BY_ID = Object.fromEntries(
-  ALL_MIDNIGHT_VARIANTS.map((v) => [v.id, v.render]),
-) as Record<MidnightVariantId, MidnightVariantRenderTuning>
+const RENDER_BY_ID = (() => {
+  const map = Object.fromEntries(
+    listRegisteredMidnightVariantIds().map((id) => [id, BASELINE_RENDER]),
+  ) as Record<MidnightVariantId, MidnightVariantRenderTuning>
+  for (const variant of MIDNIGHT_VARIANTS) {
+    map[variant.id] = variant.render
+  }
+  return map
+})()
 
 const SELECTABLE_IDS = new Set(MIDNIGHT_VARIANTS.map((v) => v.id))
 
 export function isMidnightVariantId(value: string): value is MidnightVariantId {
-  return Object.prototype.hasOwnProperty.call(WALK_SRC, value)
+  return isRegisteredMidnightVariantId(value)
 }
 
 export function isSelectableMidnightVariantId(value: string): boolean {
-  return isMidnightVariantId(value) && SELECTABLE_IDS.has(value as MidnightVariantId)
+  return isMidnightVariantId(value) && SELECTABLE_IDS.has(value)
 }
 
-/** All variant ids for admin (selectable + hidden). */
+/** Admin + assign — every id in the full MAP; hidden = not on creation carousel. */
 export function listAllMidnightVariantOptions(): {
   id: MidnightVariantId
   label: string
   hidden: boolean
 }[] {
-  return ALL_MIDNIGHT_VARIANTS.map((v) => ({
-    id: v.id,
-    label: SELECTABLE_IDS.has(v.id) ? v.id : `${v.id} (hidden)`,
-    hidden: !SELECTABLE_IDS.has(v.id),
-  }))
+  return listRegisteredMidnightVariantIds()
+    .slice()
+    .sort((a, b) => a.localeCompare(b))
+    .map((id) => ({
+      id,
+      label: SELECTABLE_IDS.has(id) ? id : `${id} (hidden)`,
+      hidden: !SELECTABLE_IDS.has(id),
+    }))
 }
 
 /** Walk sheet URL for a variant; unknown ids fall back to midnight-default. */
