@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient, type User } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 import { corsHeaders } from '../_shared/cors.ts'
-import { isRegisteredMidnightVariantId } from '../_shared/midnightVariantRegistry.ts'
+import { isRegisteredMidnightVariantId } from './variantRegistry.ts'
 
 type DayCount = { day: string; count: number }
 
