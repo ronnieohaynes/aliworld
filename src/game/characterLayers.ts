@@ -45,8 +45,6 @@ const SPRITE_SHEET_ROW: Record<Direction, number> = {
 /* ── Midnight sheet creation / loading ──────────────────────────── */
 
 const SHEET_OPTIONS = {
-  chromaKey: true,
-  removeGroundShadow: false,
   framesPerDirection: MIDNIGHT_WALK_FRAMES_PER_DIRECTION,
 } as const
 
@@ -205,15 +203,11 @@ export function getIdleFrameIndex(): number {
 /* ── V2 body tone stubs (keep CustomizationScreen.tsx compiling) ── */
 
 const BODY_WALK_SHEET_OPTIONS = {
-  chromaKey: true,
-  removeGroundShadow: false,
   framesPerDirection: BASE_BODY_WALK_FRAMES_PER_DIRECTION,
   deriveFrameSizeFromImage: true,
 } as const
 
 const BODY_IDLE_SHEET_OPTIONS = {
-  chromaKey: true,
-  removeGroundShadow: false,
   framesPerDirection: BASE_BODY_IDLE_COLUMNS,
   deriveFrameSizeFromImage: true,
 } as const
