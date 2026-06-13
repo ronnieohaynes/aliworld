@@ -9,6 +9,13 @@
   background: #030303;
   pointer-events: none;
 }
+.battle-screen__settle-cover--fade-out {
+  animation: battle-settle-cover-fade-out 400ms ease-out forwards;
+}
+@keyframes battle-settle-cover-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
 
 .battle-screen {
   position: absolute;
@@ -218,18 +225,6 @@
   justify-content: center;
 }
 
-/* Level flash on player level-up */
-.battle-screen__plate-level--flash {
-  color: #f5c842;
-  animation: battle-level-flash 0.6s ease;
-}
-
-@keyframes battle-level-flash {
-  0% { color: #f5c842; }
-  60% { color: #fffbe8; }
-  100% { color: inherit; }
-}
-
 /* ── HP bar ── */
 /* ── XP progress bar (player plate only) ── */
 .battle-screen__xp-track {
@@ -246,6 +241,17 @@
   border-radius: 1px;
   opacity: 0.7;
   transition: width 600ms ease-out;
+}
+
+.battle-screen__hp-label {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 6px;
+  letter-spacing: 0.04em;
+  color: #7a7a96;
+  text-align: right;
+  line-height: 1.1;
+  margin-top: 1px;
 }
 
 .battle-screen__hp-track {
@@ -356,14 +362,13 @@
   width: 100%;
   font-size: 10px;
   line-height: 22px;
-  height: 22px;
   color: #d4b87a;
   text-align: center;
   text-transform: lowercase;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   flex-shrink: 0;
 }
 
@@ -751,17 +756,70 @@
   animation: battle-floater-rise 0.9s ease-out forwards;
   z-index: 20;
 }
-/* Enemy damage: appears to the right of center */
-.battle-screen__floater--enemy {
+/* ── Floater zones: each kind gets its own fixed spot so nothing overlaps ── */
+
+/* --- ENEMY side (top half) --- */
+/* Damage number: top-right */
+.battle-screen__floater--enemy.battle-screen__floater--kind-damage {
+  top: 12%; right: 8%; left: auto;
+}
+/* Crit: top-center */
+.battle-screen__floater--enemy.battle-screen__floater--kind-crit {
+  top: 6%; left: 50%; transform: translateX(-50%);
+}
+/* Counter hit on enemy: right-center */
+.battle-screen__floater--enemy.battle-screen__floater--kind-counter {
+  top: 28%; right: 6%; left: auto;
+}
+/* XP bonus on enemy: far right, below damage */
+.battle-screen__floater--enemy.battle-screen__floater--kind-xp-bonus {
+  top: 22%; right: 6%; left: auto;
+}
+/* Status effects on enemy: left side of top half — staggered vertically by tone */
+.battle-screen__floater--enemy.battle-screen__floater--kind-status {
+  top: 22%; left: 8%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--stun {
   top: 16%;
-  left: auto;
-  right: 8%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--bleed {
+  top: 22%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--shake {
+  top: 28%;
+}
+.battle-screen__floater--enemy.battle-screen__floater--kind-status.battle-screen__floater--slow {
+  top: 34%;
 }
 
-/* Player damage: appears to the left of center */
-.battle-screen__floater--player {
-  top: 58%;
-  left: 8%;
+/* --- PLAYER side (bottom half) --- */
+/* Damage number: bottom-left */
+.battle-screen__floater--player.battle-screen__floater--kind-damage {
+  top: 60%; left: 8%;
+}
+/* Blocked: bottom-left, offset right of damage */
+.battle-screen__floater--player.battle-screen__floater--kind-blocked {
+  top: 66%; left: 30%;
+}
+/* Dodged: bottom-right */
+.battle-screen__floater--player.battle-screen__floater--kind-dodged {
+  top: 60%; right: 8%; left: auto;
+}
+/* Counter (player counters enemy): center-left */
+.battle-screen__floater--player.battle-screen__floater--kind-counter {
+  top: 52%; left: 8%;
+}
+/* Perfect guard: bottom-right */
+.battle-screen__floater--player.battle-screen__floater--kind-perfect-guard {
+  top: 66%; right: 8%; left: auto;
+}
+/* Heal / xp-bonus on player: bottom-center */
+.battle-screen__floater--player.battle-screen__floater--kind-xp-bonus {
+  top: 72%; left: 50%; transform: translateX(-50%);
+}
+/* Status effects (bleed, stun, shake, slow) on player: bottom-right under dodged */
+.battle-screen__floater--player.battle-screen__floater--kind-status {
+  top: 68%; right: 8%; left: auto;
 }
 .battle-screen__floater--attack { color: #ff4d4d; }
 .battle-screen__floater--defense { color: #4488cc; }
@@ -953,26 +1011,155 @@
   animation: battle-levelup-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .battle-knockout-name {
-  font-family: var(--font-pixel, monospace);
-  font-size: 22px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  color: #f5f5f5;
+  letter-spacing: 2px;
+  text-transform: lowercase;
+  color: #f4e8c1;
   margin: 0;
   text-align: center;
 }
 .battle-knockout-label {
-  font-family: var(--font-pixel, monospace);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.45);
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #9b7ce8;
   text-transform: lowercase;
   margin: 0 0 12px;
 }
 .battle-knockout-continue {
-  font-family: var(--font-pixel, monospace);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.3);
-  text-transform: uppercase;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #555568;
+  text-transform: lowercase;
+  animation: dialogue-blink 1.2s ease-in-out infinite;
+}
+
+/* ── Knockout XP summary ── */
+.battle-knockout-xp-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 14px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 160px;
+}
+.battle-knockout-xp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  color: #e8e8f0;
+  text-transform: lowercase;
+}
+.battle-knockout-xp-skill {
+  width: 32px;
+  color: #9b7ce8;
+  font-weight: 700;
+}
+.battle-knockout-xp-gained {
+  color: #e8e8f0;
+  flex: 1;
+}
+.battle-knockout-xp-level {
+  color: #f4e8c1;
+}
+
+/* ── Draw overlay ── */
+.battle-draw-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(3px);
+  animation: battle-levelup-fade-in 0.3s ease-out;
+}
+.battle-draw-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 32px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(10, 10, 18, 0.92);
+  animation: battle-levelup-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.battle-draw-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #f4e8c1;
+  margin: 0 0 2px;
+  text-transform: lowercase;
+}
+.battle-draw-subtitle {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #9b7ce8;
+  text-transform: lowercase;
+  margin: 0 0 12px;
+}
+.battle-draw-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.battle-draw-btn {
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: lowercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.battle-draw-btn--rib {
+  border-color: #f5e08a;
+  background: rgba(245, 224, 138, 0.1);
+  color: #f5e08a;
+}
+.battle-draw-btn--rib:active {
+  background: rgba(245, 224, 138, 0.2);
+}
+.battle-draw-btn--leave {
+  color: rgba(255, 255, 255, 0.4);
+}
+.battle-draw-btn--leave:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+.battle-draw-btn-hint {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(245, 224, 138, 0.55);
+  font-weight: 400;
+  text-transform: lowercase;
 }

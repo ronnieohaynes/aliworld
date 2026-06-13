@@ -566,7 +566,7 @@ export type CombatXpResult = {
 export function applyCombatSkillXp(
   r: ResolveResult,
   timingBonuses: TimingBonusGrant[] = [],
-  options?: { enemyLevel?: number; playerLevel?: number },
+  options?: { enemyLevel?: number; playerLevel?: number; playerHpAfterHit?: number },
 ): CombatXpResult {
   const prevPlayerLevel = computePlayerLevel(state.skills)
   const playerLevelBefore = options?.playerLevel ?? prevPlayerLevel
@@ -578,6 +578,15 @@ export function applyCombatSkillXp(
   const { skills: afterMoveXp, levelUpLines } = awardMoveXp(before, r, scaleXp)
   let skills = afterMoveXp
   let levelUpLinesAll = [...levelUpLines]
+
+  // HP XP: grant incoming damage as HP XP only if player survived the hit
+  const playerHpAfterHit = options?.playerHpAfterHit ?? 1
+  if (r.incoming > 0 && playerHpAfterHit > 0) {
+    const hpXp = scaleXp(r.incoming)
+    const result = grantSkillXpAmount(skills, 'hp', hpXp)
+    skills = result.skills
+    levelUpLinesAll = [...levelUpLinesAll, ...result.lines]
+  }
 
   for (const bonus of timingBonuses) {
     const result = grantSkillXpAmount(skills, bonus.skill, scaleXp(bonus.amount))

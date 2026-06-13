@@ -1,0 +1,66 @@
+.patch-picker {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  padding: 16px 20px 18px;
+  background: rgba(6, 6, 14, 0.92);
+  border-top: 2px solid #3a2d6b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.patch-picker__name {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: lowercase;
+  color: #9b7ce8;
+}
+
+.patch-picker__text {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #e8e8f0;
+  text-transform: lowercase;
+}
+
+.patch-picker__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.patch-picker__btn {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 80px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #534ab7;
+  border-radius: 6px;
+  background: rgba(83, 74, 183, 0.12);
+  color: #f4e8c1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: lowercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.patch-picker__btn:hover {
+  filter: brightness(1.08);
+}
+
+.patch-picker__btn:active {
+  background: rgba(192, 132, 252, 0.18);
+}

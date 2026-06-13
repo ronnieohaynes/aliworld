@@ -39,12 +39,18 @@ import {
   getEquippedMoves,
   getPlayerLevel,
   getPlayerSkills,
+  getPlayerStoreState,
   setEquippedMove,
   subscribePlayerStore,
 } from '../store/playerStore'
+import { ARCHETYPE_STATS } from '../store/battleStore'
 import {
+  getSkillStatBonuses,
   MAX_SKILL_LEVEL,
+  MAX_PLAYER_LEVEL,
   totalXpForLevel,
+  sumSkillLevels,
+  computePlayerLevel,
 } from '../store/skillStore'
 import { generateIdentityCard } from '../lib/identityCard'
 import { IdentityCardPreview } from './IdentityCardPreview'
@@ -376,6 +382,68 @@ export function LoadoutScreen({
 
           <section className="loadout-screen__skills" aria-label="Skill ladders">
             <h2 className="loadout-screen__section-label">skills</h2>
+
+            {/* Overall level XP progress bar */}
+            {(() => {
+              const playerLevel = computePlayerLevel(skills)
+              const pct = playerLevel >= MAX_PLAYER_LEVEL ? 100 : (() => {
+                const totalSkillLevels = sumSkillLevels(skills)
+                const raw = Math.max(0, (totalSkillLevels - 5) * 99 / 320)
+                return Math.min(100, (raw % 1) * 100)
+              })()
+              return (
+                <div className="loadout-screen__level-xp-wrap">
+                  <div className="loadout-screen__level-xp-label">
+                    <span>lvl {playerLevel}</span>
+                    <span className="loadout-screen__level-xp-center">player level</span>
+                    <span>lvl {Math.min(playerLevel + 1, MAX_PLAYER_LEVEL)}</span>
+                  </div>
+                  <div className="loadout-screen__level-xp-track">
+                    <div className="loadout-screen__level-xp-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* HP — first, stat-only, no move ladder */}
+            {(() => {
+              const { level, xp } = skills.hp
+              const atMax = level >= MAX_SKILL_LEVEL
+              const floor = totalXpForLevel(level)
+              const ceil = totalXpForLevel(level + 1)
+              const withinLevel = xp - floor
+              const needed = ceil - floor
+              const pct = atMax ? 100 : Math.round((withinLevel / needed) * 100)
+              const archetype = getPlayerStoreState().archetype
+              const baseHp = ARCHETYPE_STATS[archetype].maxHp
+              const totalMaxHp = baseHp + getSkillStatBonuses(skills).maxHp
+              return (
+                <div className="loadout-screen__skill-block loadout-screen__skill-block--hp">
+                  <div className="loadout-screen__skill-row loadout-screen__skill-row--hp">
+                    <div className="loadout-screen__skill-head loadout-screen__skill-head--hp">
+                      <div className="loadout-screen__hp-label-stack">
+                        <span className="loadout-screen__skill-label loadout-screen__skill-label--hp">HP</span>
+                        <span className="loadout-screen__hp-fraction">Max hp: {totalMaxHp}</span>
+                      </div>
+                      <span className="loadout-screen__skill-level">lvl {level}</span>
+                    </div>
+                    <div className="loadout-screen__bar-row">
+                      <span className="loadout-screen__total-xp">Total xp: {xp}</span>
+                      <div className="battle-screen__hp-track loadout-screen__bar loadout-screen__bar--flex">
+                        <div
+                          className="battle-screen__hp-fill loadout-screen__bar-fill loadout-screen__bar-fill--hp"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className="loadout-screen__skill-xp">
+                      {atMax ? 'MAX' : `${withinLevel} / ${needed} xp to next level`}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
+
             {skillSections.map((section) => {
               const expanded = expandedSkill === section.skill
               const statRef =
@@ -404,16 +472,19 @@ export function LoadoutScreen({
                       <span className="loadout-screen__skill-label">{section.label}</span>
                       <span className="loadout-screen__skill-level">lvl {section.level}</span>
                     </div>
-                    <div className="battle-screen__hp-track loadout-screen__bar">
-                      <div
-                        className={`battle-screen__hp-fill loadout-screen__bar-fill loadout-screen__bar-fill--${section.skill}`}
-                        style={{ width: `${section.pct}%` }}
-                      />
+                    <div className="loadout-screen__bar-row">
+                      <span className="loadout-screen__total-xp">Total xp: {section.xp}</span>
+                      <div className="battle-screen__hp-track loadout-screen__bar loadout-screen__bar--flex">
+                        <div
+                          className={`battle-screen__hp-fill loadout-screen__bar-fill loadout-screen__bar-fill--${section.skill}`}
+                          style={{ width: `${section.pct}%` }}
+                        />
+                      </div>
                     </div>
                     <span className="loadout-screen__skill-xp">
                       {section.atMax
                         ? 'MAX'
-                        : `${section.xp - section.floor} / ${section.ceil - section.floor}`}
+                        : `${section.xp - section.floor} / ${section.ceil - section.floor} xp to next level`}
                     </span>
                   </button>
 

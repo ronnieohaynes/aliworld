@@ -1,5 +1,5 @@
 import {
-  SKILL_HP_BONUS_PER_STEP,
+  SKILL_HP_BONUS_PER_LEVEL,
   SKILL_STAT_BONUS_LINEAR_CAP,
   SKILL_STAT_BONUS_TAIL_FACTOR,
 } from '../data/moveBalance'
@@ -96,7 +96,7 @@ export function getSkillStatBonuses(skills: SkillsState): SkillStatBonuses {
     spd: skillBonusSteps(skills.speed.level),
     def: skillBonusSteps(skills.defense.level),
     lck: skillBonusSteps(skills.luck.level),
-    maxHp: Math.floor(skillBonusSteps(skills.hp.level) * SKILL_HP_BONUS_PER_STEP),
+    maxHp: (skills.hp.level - 1) * SKILL_HP_BONUS_PER_LEVEL,
   }
 }
 

@@ -107,10 +107,6 @@ function allFinalForm(skills: SkillsState): boolean {
   )
 }
 
-function buildNameUnlocked(skills: SkillsState): boolean {
-  const ranked = rankedCombatSkills(skills)
-  return ranked[0]!.level - ranked[1]!.level >= BUILD_NAME_UNLOCK_GAP
-}
 
 function isEquilibrium(skills: SkillsState): boolean {
   const levels = rankedCombatSkills(skills).map((s) => s.level)
@@ -152,10 +148,6 @@ function deriveLowStatBuild(skills: SkillsState): BuildName | null {
 
 /** Derive build identity from combat skill levels (attack/speed/defense/luck). */
 export function deriveBuildName(skills: SkillsState): BuildName {
-  if (!buildNameUnlocked(skills)) {
-    return BALANCED
-  }
-
   if (allFinalForm(skills)) {
     if (isEquilibrium(skills)) {
       return { name: 'equilibrium', color: CREAM }
@@ -194,8 +186,6 @@ export function getBuildName(): BuildName {
 
 /** Dominant skill for matchup counters; null when still blank slate. */
 export function deriveBuildLoopType(skills: SkillsState): BuildLoopSkill | null {
-  if (!buildNameUnlocked(skills)) return null
-
   const ranked = rankedCombatSkills(skills)
   const top = ranked[0]!
   const second = ranked[1]!

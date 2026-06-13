@@ -60,6 +60,20 @@
   pointer-events: auto;
 }
 
+.game-screen-battle-world-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #0a0a12;
+  pointer-events: none;
+  animation: battle-world-fade-in 450ms ease-out forwards;
+}
+
+@keyframes battle-world-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .game-screen-interact-hint {
   position: absolute;
   bottom: 118px;

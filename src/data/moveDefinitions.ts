@@ -21,10 +21,9 @@ import {
   XP_DAMAGE_AVOIDED_MULT,
   XP_DAMAGE_BLOCKED_MULT,
   XP_DAMAGE_DEALT_MULT,
-  XP_DEFENSE_SPEED_ACTION_BONUS,
-  XP_FALLBACK_SMALL,
   XP_LUCK_DAMAGE_MULT,
-  XP_LUCK_PROC_BONUS,
+  XP_SPEED_DAMAGE_MULT,
+  XP_UTILITY_MOVE_BONUS,
 } from './moveBalance'
 import type { PlayerMoveId } from './moveIds'
 import { unlockLevelForRung } from './moveUnlock'
@@ -54,35 +53,20 @@ import type { MoveDefinition, MoveXpContext } from './moveTypes'
  *   When added: ANCHOR cleanses, brace reduces chip.
  */
 
-function luckProcCount(r: MoveXpContext): number {
-  let count = 0
-  if (r.crit) count++
-  if (r.shakeApplied) count++
-  if (r.bleedApplied) count++
-  if (r.stunApplied) count++
-  if (r.slowApplied) count++
-  if (r.missApplied) count++
-  if (r.doubleApplied) count++
-  if (r.reflectApplied) count++
-  return count
-}
-
 function defenseMoveXp(r: MoveXpContext): number {
-  if (r.damageBlocked > 0) {
-    return r.damageBlocked * XP_DAMAGE_BLOCKED_MULT + XP_DEFENSE_SPEED_ACTION_BONUS
-  }
-  return r.braced ? XP_DEFENSE_SPEED_ACTION_BONUS : XP_FALLBACK_SMALL
+  // Flat floor so a turn where the enemy doesn't attack (nothing to block)
+  // doesn't zero out — same treatment as the utility moves.
+  return r.damageBlocked * XP_DAMAGE_BLOCKED_MULT + XP_UTILITY_MOVE_BONUS
 }
 
 function speedDodgeMoveXp(r: MoveXpContext): number {
-  if (r.damageAvoided > 0) {
-    return (
-      r.damageAvoided * XP_DAMAGE_AVOIDED_MULT +
-      XP_DEFENSE_SPEED_ACTION_BONUS +
-      (r.dodged && r.playerDmg > 0 ? Math.floor(r.playerDmg * 0.5) : 0)
-    )
-  }
-  return XP_FALLBACK_SMALL
+  // Flat floor so a clean whiff (nothing to dodge, no counter landed) doesn't
+  // zero out — same treatment as the utility moves.
+  return (
+    r.damageAvoided * XP_DAMAGE_AVOIDED_MULT +
+    Math.floor(r.playerDmg * XP_SPEED_DAMAGE_MULT) +
+    XP_UTILITY_MOVE_BONUS
+  )
 }
 
 function def(
@@ -113,7 +97,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
-      { skill: 'hp', amount: (r) => r.playerDmg * 1.3 },
     ],
     uiDescription: 'hit the opening. trade if they swing.',
     uiClassName: 'battle-screen__move--strike',
@@ -149,8 +132,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: (r) => r.playerDmg * 3 },
-      { skill: 'hp', amount: (r) => r.playerDmg },
+      { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
     ],
     uiDescription: 'wild sweep. crit applies bleed — chip each turn.',
     uiClassName: 'battle-screen__move--fury-sweep',
@@ -172,8 +154,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: 6 },
-      { skill: 'luck', amount: 4 },
+      { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
     ],
     uiDescription: 'break their aim. low damage, high control.',
     uiClassName: 'battle-screen__move--dark-break',
@@ -203,8 +184,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: (r) => r.playerDmg * 3.5 },
-      { skill: 'hp', amount: 2 },
+      { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
     ],
     uiDescription: 'high crit. might shatter their defense.',
     uiClassName: 'battle-screen__move--cannon',
@@ -221,7 +201,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'loadTurn' },
     behavior: { kind: 'blackout' },
     onResolve: [],
-    xpGrants: [{ skill: 'attack', amount: 12 }],
+    xpGrants: [
+      { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
+    ],
     uiDescription: 'load. exposed. then the biggest hit.',
     uiClassName: 'battle-screen__move--blackout',
     playerLogLine: (r) => {
@@ -247,11 +229,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'speed', amount: speedDodgeMoveXp },
-      {
-        skill: 'luck',
-        amount: (r) => (r.stunApplied ? XP_LUCK_PROC_BONUS : 0),
-      },
-      { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'dodge and counter. avoid their incoming hit.',
     uiClassName: 'battle-screen__move--slip',
@@ -287,7 +264,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: [],
     xpGrants: [
       { skill: 'speed', amount: speedDodgeMoveXp },
-      { skill: 'defense', amount: (r) => (r.dodged ? XP_FALLBACK_SMALL : 0) },
     ],
     uiDescription: 'deflect and sting. tiny reflect on dodge.',
     uiClassName: 'battle-screen__move--parry',
@@ -309,8 +285,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [{ effect: 'slow', turns: 3 }],
     xpGrants: [
-      { skill: 'speed', amount: (r) => 12 + r.playerDmg },
-      { skill: 'luck', amount: 4 },
+      { skill: 'speed', amount: (r) => Math.floor(r.playerDmg * XP_SPEED_DAMAGE_MULT) + XP_UTILITY_MOVE_BONUS },
     ],
     uiDescription: 'slow them down. you set the tempo.',
     uiClassName: 'battle-screen__move--gravity-shift',
@@ -327,7 +302,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'refract' },
     onResolve: [],
     xpGrants: [
-      { skill: 'speed', amount: (r) => Math.max(14, r.playerDmg * 2.5) },
+      { skill: 'speed', amount: (r) => Math.floor(r.playerDmg * XP_SPEED_DAMAGE_MULT) },
     ],
     uiDescription: 'mirror their last hit back.',
     uiClassName: 'battle-screen__move--refract',
@@ -344,7 +319,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'rechargeTurn' },
     behavior: { kind: 'hyperdrive' },
     onResolve: [],
-    xpGrants: [{ skill: 'speed', amount: 22 }],
+    xpGrants: [
+      { skill: 'speed', amount: (r) => Math.floor(r.playerDmg * XP_SPEED_DAMAGE_MULT) + XP_UTILITY_MOVE_BONUS },
+    ],
     uiDescription: 'double next turn. then you skip — exposed.',
     uiClassName: 'battle-screen__move--hyperdrive',
     playerLogLine: (r) =>
@@ -363,7 +340,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: ['brace'],
     xpGrants: [
       { skill: 'defense', amount: defenseMoveXp },
-      { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'brace. take a fraction of the next hit.',
     uiClassName: 'battle-screen__move--hold',
@@ -386,7 +362,6 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     onResolve: ['brace'],
     xpGrants: [
       { skill: 'defense', amount: defenseMoveXp },
-      { skill: 'hp', amount: 3 },
     ],
     uiDescription: 'brace and shrug off status this turn.',
     uiClassName: 'battle-screen__move--anchor',
@@ -406,8 +381,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'second-wind' },
     onResolve: [],
     xpGrants: [
-      { skill: 'defense', amount: (r) => Math.max(14, r.healApplied) },
-      { skill: 'hp', amount: (r) => Math.max(8, Math.floor(r.healApplied * 0.5)) },
+      { skill: 'defense', amount: (r) => r.healApplied * XP_DAMAGE_BLOCKED_MULT + XP_UTILITY_MOVE_BONUS },
     ],
     uiDescription: 'breathe. get some back. once a fight.',
     uiClassName: 'battle-screen__move--second-wind',
@@ -447,11 +421,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     xpGrants: [
       {
         skill: 'defense',
-        amount: (r) =>
-          r.damageAvoided > 0 || r.damageBlocked > 0
-            ? (r.damageAvoided + r.damageBlocked) * XP_DAMAGE_BLOCKED_MULT +
-              XP_DEFENSE_SPEED_ACTION_BONUS
-            : XP_DEFENSE_SPEED_ACTION_BONUS,
+        amount: (r) => (r.damageAvoided + r.damageBlocked) * XP_DAMAGE_BLOCKED_MULT + XP_UTILITY_MOVE_BONUS,
       },
     ],
     uiDescription: 'nullify the next hit entirely.',
@@ -468,7 +438,12 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'oncePerBattle' },
     behavior: { kind: 'invincible' },
     onResolve: [],
-    xpGrants: [{ skill: 'defense', amount: 24 }],
+    xpGrants: [
+      {
+        skill: 'defense',
+        amount: (r) => (r.damageAvoided + r.damageBlocked) * XP_DAMAGE_BLOCKED_MULT + XP_UTILITY_MOVE_BONUS,
+      },
+    ],
     uiDescription: 'half your hp. block the next 3 hits. once per fight.',
     uiClassName: 'battle-screen__move--invincible',
     playerLogLine: () => 'invincible. for now.',
@@ -486,14 +461,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: ['shake'],
     xpGrants: [
-      {
-        skill: 'luck',
-        amount: (r) =>
-          XP_DEFENSE_SPEED_ACTION_BONUS +
-          (r.shakeApplied ? XP_LUCK_PROC_BONUS : 0) +
-          r.playerDmg * XP_LUCK_DAMAGE_MULT,
-      },
-      { skill: 'hp', amount: 2 },
+      { skill: 'luck', amount: (r) => r.playerDmg * XP_LUCK_DAMAGE_MULT },
     ],
     uiDescription: 'rattle them. their next hit lands softer.',
     uiClassName: 'battle-screen__move--whisper',
@@ -512,7 +480,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'loop' },
     onResolve: [],
     xpGrants: [
-      { skill: 'luck', amount: (r) => 16 + r.playerDmg * XP_LUCK_DAMAGE_MULT },
+      { skill: 'luck', amount: (r) => r.playerDmg * XP_LUCK_DAMAGE_MULT },
     ],
     uiDescription: 'make them repeat their last move.',
     uiClassName: 'battle-screen__move--loop',
@@ -530,8 +498,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'devils-cut' },
     onResolve: [],
     xpGrants: [
-      { skill: 'luck', amount: (r) => 14 + r.playerDmg * XP_LUCK_DAMAGE_MULT },
-      { skill: 'hp', amount: 6 },
+      { skill: 'luck', amount: (r) => r.playerDmg * XP_LUCK_DAMAGE_MULT },
     ],
     uiDescription: 'take your cut. hits feed you for a few turns.',
     uiClassName: 'battle-screen__move--devils-cut',
@@ -547,7 +514,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'snag' },
     onResolve: [],
-    xpGrants: [{ skill: 'luck', amount: 22 }],
+    xpGrants: [
+      { skill: 'luck', amount: (r) => r.playerDmg * XP_LUCK_DAMAGE_MULT + XP_UTILITY_MOVE_BONUS },
+    ],
     uiDescription: 'steal one of their moves for this fight.',
     uiClassName: 'battle-screen__move--snag',
     playerLogLine: (r) =>
@@ -563,13 +532,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     behavior: { kind: 'phenomena' },
     onResolve: [],
     xpGrants: [
-      {
-        skill: 'luck',
-        amount: (r) =>
-          XP_DEFENSE_SPEED_ACTION_BONUS +
-          luckProcCount(r) * XP_LUCK_PROC_BONUS +
-          r.playerDmg * XP_LUCK_DAMAGE_MULT,
-      },
+      { skill: 'luck', amount: (r) => r.playerDmg * XP_LUCK_DAMAGE_MULT },
     ],
     uiDescription: 'pure rng from the known pool.',
     uiClassName: 'battle-screen__move--phenomena',
@@ -585,7 +548,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: { kind: 'sealed-fate' },
     onResolve: [],
-    xpGrants: [{ skill: 'luck', amount: 24 }],
+    xpGrants: [
+      { skill: 'luck', amount: (r) => r.playerDmg * XP_LUCK_DAMAGE_MULT + XP_UTILITY_MOVE_BONUS },
+    ],
     uiDescription: 'death clock. huge hit soon or you pay.',
     uiClassName: 'battle-screen__move--sealed-fate',
     playerLogLine: () => 'sealed fate marked.',

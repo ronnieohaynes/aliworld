@@ -23,6 +23,8 @@ import { WORLD_CANVAS_FILL } from '../constants/worldAssets'
 import { getCollisionZones, type CollisionZone } from '../data/collisionZones'
 import { NPC_INTERACT_RANGE, NPC_SIZE } from '../data/npcs'
 import { getNpcCombatEntry } from '../data/npcRegistry'
+import { leanSkillAccentColor } from '../data/skillCounter'
+import { deriveBuildName } from '../data/buildName'
 import { drawStoryIdleNpcPose, type StoryIdlePoses } from '../game/npcIdleSprites'
 import {
   assignStripSpriteToNpc,
@@ -128,6 +130,7 @@ function drawOverworldStatusPlate(
   archetype: string,
   cx: number,
   plateBottom: number,
+  archetypeColor: string = 'rgba(140, 200, 255, 0.8)',
 ) {
   const nameText = name.toLowerCase()
   const levelText = `lv ${level}`
@@ -173,7 +176,7 @@ function drawOverworldStatusPlate(
   ctx.textAlign = 'left'
   ctx.fillText(levelText, innerLeft, rowY)
   ctx.textAlign = 'right'
-  ctx.fillStyle = 'rgba(140, 200, 255, 0.8)'
+  ctx.fillStyle = archetypeColor
   ctx.fillText(archetypeText, innerRight, rowY)
 
   ctx.restore()
@@ -1569,9 +1572,10 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
                 'attack' as 'attack' | 'defense' | 'speed' | 'luck',
               )
               const archetype = deriveArchetypeLabel(pStats, leanSkill)
+              const playerBuildName = deriveBuildName(skills)
               const plateCenterX = worldDrawX + drawDw / 2
               const plateBottomY = worldDrawY - 4
-              drawOverworldStatusPlate(ctx, handle, pLevel, archetype, plateCenterX, plateBottomY)
+              drawOverworldStatusPlate(ctx, handle, pLevel, archetype, plateCenterX, plateBottomY, playerBuildName.color)
             }
           }
         } else {
@@ -1660,6 +1664,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
           const combatEntry = getNpcCombatEntry(npc.id)
           if (combatEntry != null) {
             const archetype = deriveArchetypeLabel(combatEntry.stats, combatEntry.leanSkill)
+            const npcColor = leanSkillAccentColor(combatEntry.leanSkill)
             const plateCenterX = dx + displayW / 2
             const plateBottomY = dy - 4
             drawOverworldStatusPlate(
@@ -1669,6 +1674,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
               archetype,
               plateCenterX,
               plateBottomY,
+              npcColor,
             )
           }
         }

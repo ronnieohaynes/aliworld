@@ -69,7 +69,7 @@ import { computePlayerLevel, getSkillStatBonuses, type SkillsState } from './ski
 export type PlayerMove = PlayerMoveId
 export type ArchetypeId = 'lck' | 'atk' | 'def' | 'spd'
 export type BattlePhase = 'player' | 'busy' | 'ended'
-export type BattleResult = 'win' | 'lose'
+export type BattleResult = 'win' | 'lose' | 'draw'
 export type { UpcomingMove } from '../data/enemyMoves'
 export type { SkillLevelUp }
 
@@ -81,10 +81,14 @@ export type LevelUpNotification = {
 }
 
 /** Pause between first and second actor resolution each round. */
-export const BATTLE_MOVE_GAP_MS = 2800
+export const BATTLE_MOVE_GAP_MS = 1400
 
 /** Pause after both actors resolve before the next turn telegraph. */
-export const BATTLE_ROUND_END_GAP_MS = 2300
+export const BATTLE_ROUND_END_GAP_MS = 1150
+
+/** Run-it-back mode: more dramatic inter-phase pauses (slower). */
+export const RIB_MOVE_GAP_MS = 2100
+export const RIB_ROUND_END_GAP_MS = 1800
 
 export type BattleResolveStep = 'idle' | 'pause_after_first' | 'pause_after_second'
 
@@ -107,10 +111,10 @@ export const ARCHETYPE_STATS: Record<
   ArchetypeId,
   { hp: number; maxHp: number; atk: number; def: number; spd: number; lck: number }
 > = {
-  lck: { hp: 25, maxHp: 25, atk: 4, def: 4, spd: 4, lck: 9 },
-  atk: { hp: 28, maxHp: 28, atk: 9, def: 3, spd: 4, lck: 4 },
-  def: { hp: 40, maxHp: 40, atk: 4, def: 9, spd: 3, lck: 4 },
-  spd: { hp: 28, maxHp: 28, atk: 5, def: 4, spd: 9, lck: 4 },
+  lck: { hp: 45, maxHp: 45, atk: 4, def: 4, spd: 4, lck: 9 },
+  atk: { hp: 50, maxHp: 50, atk: 9, def: 3, spd: 4, lck: 4 },
+  def: { hp: 65, maxHp: 65, atk: 4, def: 9, spd: 3, lck: 4 },
+  spd: { hp: 50, maxHp: 50, atk: 5, def: 4, spd: 9, lck: 4 },
 }
 
 export const DEFAULT_ARCHETYPE: ArchetypeId = 'atk'
@@ -147,13 +151,18 @@ export type BattleState = {
   /** Staged turn resolution — player move is chosen before steps run. */
   pendingResolve: PendingResolve | null
   resolveStep: BattleResolveStep
-  /** True for one turn after combat level increases (battle UI flash). */
-  playerLevelFlash: boolean
   /** Pop-up combat callouts for the battle UI (blocked, dodged, status, etc.). */
   feedbackEvents: BattleFeedbackEvent[]
   feedbackSeq: number
+  /** Which side resolved first this round — used to offset floater timing. */
+  feedbackEnemyActedFirst: boolean
+  /** Bleed damage dealt this turn — subtracted from the HP-delta floater so the
+   *  attack number and bleed number are shown separately. */
+  feedbackBleedDamage: number
   /** Non-null when a skill or combat level-up just occurred — shown as an overlay. */
   pendingLevelUpNotification: LevelUpNotification | null
+  /** True when this battle is a "Run it back!" rematch — doubled damage, dramatic pauses. */
+  runItBackMode: boolean
 }
 
 export type BattleAction =
@@ -369,10 +378,10 @@ function applyPostResolveEffects(
   }
 }
 
-function withResolveFeedback(state: BattleState, r: ResolveResult): BattleState {
+function withResolveFeedback(state: BattleState, r: ResolveResult, enemyActedFirst: boolean): BattleState {
   const feedbackEvents = appendBattleFeedback([], r)
   if (feedbackEvents.length === 0) return state
-  return { ...state, feedbackEvents, feedbackSeq: state.feedbackSeq + 1 }
+  return { ...state, feedbackEvents, feedbackSeq: state.feedbackSeq + 1, feedbackEnemyActedFirst: enemyActedFirst }
 }
 
 function mitigateIncoming(
@@ -620,13 +629,35 @@ function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' 
   return pick
 }
 
-function enemyActsFirstInResolution(state: BattleState): boolean {
-  return !playerActsFirstDespiteSpd(
+/** True if the player's chosen move is a speed "counter" move (dodge-and-counter). */
+function isPlayerCounterMove(pMove: PlayerMove): boolean {
+  return getMoveDef(pMove).behavior.kind === 'dodge'
+}
+
+/** True if the enemy's chosen move is its speed "counter" move. */
+function isEnemyCounterMove(eMove: UpcomingMove): boolean {
+  if (eMove === 'STUNNED') return false
+  return getEnemyMoveDef(eMove as EnemyMoveId).skillType === 'speed'
+}
+
+function enemyActsFirstInResolution(state: BattleState, r?: ResolveResult): boolean {
+  const speedBased = !playerActsFirstDespiteSpd(
     state.combatStatus,
     state.playerStats.spd,
     state.npc.stats.spd,
     getPlayerSkills().speed.level,
   )
+
+  if (!r) return speedBased
+
+  // Speed "counter" moves (SLIP/PARRY for the player, SLIP for the enemy) are
+  // reactive — they should resolve AFTER the other side's move, unless both
+  // sides picked a counter move, in which case fall back to speed.
+  const pCounter = isPlayerCounterMove(r.pMove)
+  const eCounter = isEnemyCounterMove(r.eMove)
+  if (pCounter && !eCounter) return true // enemy goes first, player's counter goes second
+  if (eCounter && !pCounter) return false // player goes first, enemy's counter goes second
+  return speedBased
 }
 
 function processTurnStart(state: BattleState): BattleState {
@@ -734,6 +765,9 @@ function applyPlayerResolutionPhase(
   working: BattleState
   ended: boolean
   result?: BattleResult
+  bleedDamage: number
+  bleedActualHpChange: number
+  xpBonusEvents: BattleFeedbackEvent[]
 } {
   const lower = state.npc.displayName.toLowerCase()
   let nextEnemyHp = enemyHp
@@ -786,6 +820,7 @@ function applyPlayerResolutionPhase(
 
   working = { ...working, combatStatus }
 
+  let xpBonusEvents: BattleFeedbackEvent[] = []
   if (r.playerActed) {
     const afterXp = applySkillXpToState(
       { ...working, enemyHp: nextEnemyHp, playerHp: nextPlayerHp, log: nextLog },
@@ -795,16 +830,23 @@ function applyPlayerResolutionPhase(
     working = afterXp.state
     nextLog = afterXp.log
     nextPlayerHp = working.playerHp
+    xpBonusEvents = afterXp.xpBonusEvents
   }
 
-  if (working.combatStatus.enemyBleed > 0 && nextEnemyHp > 0) {
+  let bleedDamage = 0
+  let bleedActualHpChange = 0
+  if (working.combatStatus.enemyBleed > 0) {
     const potency = working.combatStatus.enemyBleedPotencyMult ?? 1
-    const b = Math.max(
-      1,
-      Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT * potency),
-    )
-    nextEnemyHp = Math.max(0, nextEnemyHp - b)
-    nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
+    let b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT * potency))
+    if (state.runItBackMode) b *= 2
+    if (nextEnemyHp > 0) {
+      nextEnemyHp = Math.max(0, nextEnemyHp - b)
+      nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
+      bleedActualHpChange = b
+    } else {
+      nextLog = appendLog(nextLog, `${lower} bleeds.`)
+    }
+    bleedDamage = b
   }
 
   const braceChip = r.braceChipDmg ?? 0
@@ -822,6 +864,9 @@ function applyPlayerResolutionPhase(
       working,
       ended: true,
       result: 'win',
+      bleedDamage,
+      bleedActualHpChange,
+      xpBonusEvents,
     }
   }
 
@@ -831,6 +876,9 @@ function applyPlayerResolutionPhase(
     log: nextLog,
     working,
     ended: false,
+    bleedDamage,
+    bleedActualHpChange,
+    xpBonusEvents,
   }
 }
 
@@ -926,12 +974,13 @@ function applySkillXpToState(
   state: BattleState,
   r: ResolveResult,
   log: string[],
-): { state: BattleState; log: string[] } {
+): { state: BattleState; log: string[]; xpBonusEvents: BattleFeedbackEvent[] } {
   const prevMaxHp = state.playerStats.maxHp
   const timingBonuses = computeTimingBonusGrants(r, state.npc.leanSkill)
   const xpResult = applyCombatSkillXp(r, timingBonuses, {
     enemyLevel: state.npc.level,
     playerLevel: computePlayerLevel(getPlayerSkills()),
+    playerHpAfterHit: state.playerHp,
   })
   const skills = getPlayerSkills()
   const playerStats = computePlayerStats(
@@ -949,13 +998,8 @@ function applySkillXpToState(
   // XP skill lines and level-up lines are intentionally not shown in the battle log
 
   // Filter out xp-bonus floaters (outleveled bonus) — not shown in battle
-  const bonusFeedback = xpResult.bonusCallouts.filter((e) => e.kind !== 'xp-bonus')
-  const feedbackEvents =
-    bonusFeedback.length > 0
-      ? [...state.feedbackEvents, ...bonusFeedback]
-      : state.feedbackEvents
-  const feedbackSeq =
-    bonusFeedback.length > 0 ? state.feedbackSeq + 1 : state.feedbackSeq
+  // Returned separately so callers can fire these AFTER damage feedback resolves.
+  const xpBonusEvents = xpResult.bonusCallouts.filter((e) => e.kind !== 'xp-bonus')
 
   const hasLevelUp = xpResult.skillLevelUps.length > 0 || xpResult.playerLevelLine != null
   const pendingLevelUpNotification: LevelUpNotification | null = hasLevelUp
@@ -972,12 +1016,10 @@ function applySkillXpToState(
       ...state,
       playerStats,
       playerHp,
-      playerLevelFlash: xpResult.playerLevelLine != null,
-      feedbackEvents,
-      feedbackSeq,
       pendingLevelUpNotification,
     },
     log: nextLog,
+    xpBonusEvents,
   }
 }
 
@@ -1003,11 +1045,19 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   if (consumed.wasExposed) {
     applyPostResolveEffects(working, resolved.post)
   }
-  const r = resolved.out
+  // Apply run-it-back damage doubling before any phase resolution.
+  let r = resolved.out
+  if (working.runItBackMode) {
+    r = {
+      ...r,
+      playerDmg: Math.round(r.playerDmg * 2),
+      incoming: Math.round(r.incoming * 2),
+      rawIncoming: Math.round(r.rawIncoming * 2),
+    }
+  }
 
-  working = withResolveFeedback(working, r)
-
-  const enemyFirst = enemyActsFirstInResolution(working)
+  const enemyFirst = enemyActsFirstInResolution(working, r)
+  working = withResolveFeedback(working, r, enemyFirst)
   const pending: PendingResolve = { r, enemyFirst }
 
   if (enemyFirst) {
@@ -1019,6 +1069,23 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
       working.log,
     )
     if (enemyPhase.ended) {
+      // Draw check: enemy killed the player, but would player's attack + bleed also kill enemy?
+      const bleedB = working.combatStatus.enemyBleed > 0
+        ? Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT)) * (working.runItBackMode ? 2 : 1)
+        : 0
+      const effectiveDmg = r.playerActed ? r.playerDmg : 0
+      if (effectiveDmg + bleedB >= working.enemyHp) {
+        return {
+          ...working,
+          playerHp: 0,
+          enemyHp: 0,
+          log: [...enemyPhase.log, 'both fighters fall.'],
+          pendingResolve: null,
+          resolveStep: 'idle',
+          phase: 'ended',
+          result: 'draw',
+        }
+      }
       return {
         ...working,
         playerHp: enemyPhase.playerHp,
@@ -1049,9 +1116,45 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
     working.log,
   )
 
+  // Preserve the crit/status events already queued by withResolveFeedback (e.g. the
+  // "CRIT" callout and "bleed!" status from a Fury Sweep) and append the bleed damage
+  // text + xp bonus floaters after them, so a single seq bump carries the full,
+  // correctly-ordered sequence — nothing from the original hit gets dropped.
+  // XP bonus floaters intentionally fire AFTER damage/bleed feedback resolves.
+  const followUpFeedback: BattleFeedbackEvent[] = [
+    ...playerPhase.working.feedbackEvents,
+    ...(playerPhase.bleedDamage > 0
+      ? [
+          { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
+        ]
+      : []),
+    ...playerPhase.xpBonusEvents,
+  ]
+  const playerPhaseWorking = followUpFeedback.length > 0
+    ? {
+        ...playerPhase.working,
+        feedbackEvents: followUpFeedback,
+        feedbackSeq: state.feedbackSeq + 1,
+        feedbackBleedDamage: playerPhase.bleedActualHpChange,
+      }
+    : { ...playerPhase.working, feedbackBleedDamage: playerPhase.bleedActualHpChange }
+
   if (playerPhase.ended) {
+    // Draw check: player killed enemy, but would enemy's unresolved attack also kill the player?
+    if (r.incoming > 0 && playerPhase.playerHp - r.incoming <= 0) {
+      return {
+        ...playerPhaseWorking,
+        enemyHp: 0,
+        playerHp: 0,
+        log: [...playerPhase.log, 'both fighters fall.'],
+        pendingResolve: null,
+        resolveStep: 'idle',
+        phase: 'ended',
+        result: 'draw',
+      }
+    }
     return {
-      ...playerPhase.working,
+      ...playerPhaseWorking,
       enemyHp: playerPhase.enemyHp,
       playerHp: playerPhase.playerHp,
       log: playerPhase.log,
@@ -1063,7 +1166,7 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   }
 
   return {
-    ...playerPhase.working,
+    ...playerPhaseWorking,
     enemyHp: playerPhase.enemyHp,
     playerHp: playerPhase.playerHp,
     log: playerPhase.log,
@@ -1087,9 +1190,23 @@ function applySecondResolve(state: BattleState): BattleState {
       state.playerHp,
       state.log,
     )
+    const playerPhaseWorking = playerPhase.bleedDamage > 0
+      ? {
+          ...playerPhase.working,
+          // Preserve the crit/status events already queued for this turn (e.g. "CRIT"
+          // and "bleed!" from withResolveFeedback) and append the bleed damage text
+          // after them, so nothing from the original hit gets dropped.
+          feedbackEvents: [
+            ...playerPhase.working.feedbackEvents,
+            { kind: 'damage' as const, text: `-${playerPhase.bleedDamage}`, target: 'enemy' as const, tone: 'bleed' as const },
+          ],
+          feedbackSeq: playerPhase.working.feedbackSeq + 1,
+          feedbackBleedDamage: playerPhase.bleedActualHpChange,
+        }
+      : { ...playerPhase.working, feedbackBleedDamage: playerPhase.bleedActualHpChange }
     if (playerPhase.ended) {
       return {
-        ...playerPhase.working,
+        ...playerPhaseWorking,
         enemyHp: playerPhase.enemyHp,
         playerHp: playerPhase.playerHp,
         log: playerPhase.log,
@@ -1100,7 +1217,7 @@ function applySecondResolve(state: BattleState): BattleState {
       }
     }
     return {
-      ...playerPhase.working,
+      ...playerPhaseWorking,
       enemyHp: playerPhase.enemyHp,
       playerHp: playerPhase.playerHp,
       log: playerPhase.log,
@@ -1180,6 +1297,7 @@ export function createInitialBattleState(
     archetype?: ArchetypeId
     accessories?: AccessoryBonuses[]
     carryHp?: number
+    runItBack?: boolean
   },
 ): BattleState {
   const npc = isDevSparNpcId(npcId)
@@ -1230,10 +1348,12 @@ export function createInitialBattleState(
     result: null,
     pendingResolve: null,
     resolveStep: 'idle',
-    playerLevelFlash: false,
     feedbackEvents: [],
     feedbackSeq: 0,
+    feedbackEnemyActedFirst: false,
+    feedbackBleedDamage: 0,
     pendingLevelUpNotification: null,
+    runItBackMode: options?.runItBack ?? false,
   }
 }
 
