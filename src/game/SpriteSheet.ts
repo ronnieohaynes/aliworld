@@ -1,5 +1,3 @@
-import { chromaKeyImage } from './chromaKeyImage'
-
 export const DIRECTIONS = ['down', 'up', 'left', 'right'] as const
 export type Direction = (typeof DIRECTIONS)[number]
 
@@ -40,12 +38,6 @@ export type FrameRect = {
 export type SpriteSheetOptions = {
   /** Frames per direction; defaults to `columns` when omitted. */
   framesPerDirection?: number
-  /** Strip flat background (RGB exports) via corner colour key. */
-  chromaKey?: boolean
-  /** Only remove background pixels connected to the image edge (keeps interior blacks). */
-  edgeConnectedKey?: boolean
-  /** Strip dark ground-shadow pixels baked into the art. */
-  removeGroundShadow?: boolean
   /**
    * After load, set frame size from image pixels: naturalWidth/columns × naturalHeight/rows.
    * Used for base body tone sheets only.
@@ -78,15 +70,9 @@ export class SpriteSheet {
     this.frameWidth = initialFrameWidth
     this.frameHeight = initialFrameHeight
     this.framesPerDirection = options.framesPerDirection ?? columns
-    this.chromaKey = options.chromaKey ?? false
-    this.edgeConnectedKey = options.edgeConnectedKey ?? true
-    this.removeGroundShadow = options.removeGroundShadow ?? false
     this.deriveFrameSizeFromImage = options.deriveFrameSizeFromImage ?? false
   }
 
-  private readonly chromaKey: boolean
-  private readonly edgeConnectedKey: boolean
-  private readonly removeGroundShadow: boolean
   private readonly deriveFrameSizeFromImage: boolean
 
   getFrameWidth(): number {
@@ -109,12 +95,7 @@ export class SpriteSheet {
           this.frameWidth = Math.floor(img.naturalWidth / this.columns)
           this.frameHeight = Math.floor(img.naturalHeight / this.rows)
         }
-        this.drawSource = this.chromaKey
-          ? chromaKeyImage(img, {
-              edgeConnected: this.edgeConnectedKey,
-              removeGroundShadow: this.removeGroundShadow,
-            })
-          : img
+        this.drawSource = img
         resolve(img)
       }
       img.onerror = () => reject(new Error(`Failed to load sprite sheet: ${this.src}`))
