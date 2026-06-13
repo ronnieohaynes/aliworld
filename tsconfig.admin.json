@@ -1,4 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["admin", "src/data/midnightVariants.ts"]
+  "include": ["admin", "src/data/midnightVariants.ts", "supabase/functions/_shared/midnightVariantRegistry.ts"]
 }
