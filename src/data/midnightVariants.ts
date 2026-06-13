@@ -1,10 +1,13 @@
 import { publicAsset } from '../utils/publicAsset'
 import {
   isRegisteredMidnightVariantId,
+  listAdminMidnightVariantOptions,
   listRegisteredMidnightVariantIds,
   MIDNIGHT_VARIANT_SHEET,
   type MidnightVariantId,
-} from '../../supabase/functions/_shared/midnightVariantRegistry.ts'
+} from '../../supabase/functions/analytics-summary/variantRegistry.ts'
+
+export { isRegisteredMidnightVariantId, listRegisteredMidnightVariantIds } from '../../supabase/functions/analytics-summary/variantRegistry.ts'
 
 export type { MidnightVariantId }
 
@@ -138,19 +141,8 @@ export function isSelectableMidnightVariantId(value: string): boolean {
 }
 
 /** Admin + assign — every id in the full MAP; hidden = not on creation carousel. */
-export function listAllMidnightVariantOptions(): {
-  id: MidnightVariantId
-  label: string
-  hidden: boolean
-}[] {
-  return listRegisteredMidnightVariantIds()
-    .slice()
-    .sort((a, b) => a.localeCompare(b))
-    .map((id) => ({
-      id,
-      label: SELECTABLE_IDS.has(id) ? id : `${id} (hidden)`,
-      hidden: !SELECTABLE_IDS.has(id),
-    }))
+export function listAllMidnightVariantOptions() {
+  return listAdminMidnightVariantOptions(SELECTABLE_IDS)
 }
 
 /** Walk sheet URL for a variant; unknown ids fall back to midnight-default. */

@@ -10,7 +10,7 @@ import {
 } from './analyticsApi'
 import { AdminGrantsSection } from './AdminGrantsSection'
 import type { AdminUserDetail } from './types'
-import { listAllMidnightVariantOptions } from '../src/data/midnightVariants'
+import { listAllMidnightVariantOptions, isRegisteredMidnightVariantId } from '../src/data/midnightVariants'
 
 type Props = {
   adminSecret: string
@@ -72,6 +72,10 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
 
   const handleSaveVariant = async () => {
     if (!detail || !variantDraft) return
+    if (!isRegisteredMidnightVariantId(variantDraft)) {
+      showToast('unknown variant id — not in the sprite MAP')
+      return
+    }
     setSavingVariant(true)
     try {
       const { midnight_variant } = await setUserVariant(adminSecret, userId, variantDraft)
