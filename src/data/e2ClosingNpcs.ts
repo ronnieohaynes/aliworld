@@ -1,9 +1,9 @@
 import { publicAsset } from '../utils/publicAsset'
+import { TOWN_CRIER_IDLE_SPRITE } from './npcs'
 import type { NpcData } from './npcs'
 
 const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const NPC4_SPRITE = publicAsset('Assets/Characters/npcs/npc4-idle-sheet.png')
-const JASON_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 
 /** Post-restocker crowd — blue store sidewalk (southside exterior). */
@@ -17,7 +17,7 @@ export const E2_CLOSING_CRIER_NPC: NpcData = {
     'the world IS changing. and WE have to take it back.',
   ],
   color: '#c084fc',
-  spriteSrc: JASON_SPRITE,
+  spriteSrc: TOWN_CRIER_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',
   fixedFacing: 'down',
   blocksMovement: false,

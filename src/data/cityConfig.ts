@@ -213,7 +213,6 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     id: 'blue-store-interior',
     label: 'blue store',
     mapSrc: BLUE_STORE_INTERIOR_MAP_SRC,
-    characterScale: 1.25,
     mapDrawScale: BLUE_STORE_INTERIOR_MAP_DRAW_SCALE,
     worldWidth: BLUE_STORE_INTERIOR_WORLD_WIDTH,
     worldHeight: BLUE_STORE_INTERIOR_WORLD_HEIGHT,

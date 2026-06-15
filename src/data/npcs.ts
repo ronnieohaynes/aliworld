@@ -49,8 +49,11 @@ const MARK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 const JACLYN_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const WALKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JASON_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
+const CLERK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/clerk-idle.png')
+const RESTOCKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/restocker-idle.png')
+const TOWN_CRIER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/towncrier-idle.png')
 /** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
-export { JASON_IDLE_SPRITE }
+export { JASON_IDLE_SPRITE, TOWN_CRIER_IDLE_SPRITE }
 
 /** Quest 1 gating NPC — Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
@@ -260,7 +263,7 @@ export const TOWN_CRIER_NPC: NpcData = {
     'send me ahead. they need to hear it before you arrive.',
   ],
   color: '#c084fc',
-  spriteSrc: JASON_IDLE_SPRITE,
+  spriteSrc: TOWN_CRIER_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',
 }
 
@@ -281,7 +284,7 @@ export const CLERK_NPC: NpcData = {
     'everyone should have one. everyone.',
   ],
   color: '#4488cc',
-  spriteSrc: ADAM_IDLE_SPRITE,
+  spriteSrc: CLERK_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',
 }
 
@@ -297,7 +300,7 @@ export const RESTOCKER_NPC: NpcData = {
   ],
   linesConverted: ['it CAN stop...', "he'll know soon enough."],
   color: '#cc4444',
-  spriteSrc: MARK_IDLE_SPRITE,
+  spriteSrc: RESTOCKER_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',
 }
 
