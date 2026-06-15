@@ -221,7 +221,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnX: BLUE_STORE_INTERIOR_ENTRY.x,
     darklineSpawnY: BLUE_STORE_INTERIOR_ENTRY.y,
     collisionZones: BLUE_STORE_INTERIOR_COLLISION_ZONES.map(scaleBlueStoreInteriorZone),
-    occlusionZones: getOcclusionZones('blue-store-interior'),
+    occlusionZones: getOcclusionZones('blue-store-interior').map(scaleBlueStoreInteriorZone),
     triggerZones: BLUE_STORE_INTERIOR_TRIGGER_ZONES,
     npcs: [...BLUE_STORE_INTERIOR_NPCS],
   },

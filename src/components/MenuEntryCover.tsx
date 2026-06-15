@@ -10,6 +10,12 @@ const MENU_TRANSITION_EXIT_MS = MENU_TRANSITION_MS - MENU_TRANSITION_MIDPOINT_MS
 type Props = {
   /** Resume gameplay: swap under cover instantly, no fade (avoids flashing the map). */
   immediateMidpoint?: boolean
+  /** Override the midpoint timing in ms (defaults to MENU_TRANSITION_MIDPOINT_MS). */
+  midpointMs?: number
+  /** Override the total transition timing in ms (defaults to MENU_TRANSITION_MS). */
+  totalMs?: number
+  /** Fade the panel in over midpointMs instead of snapping to black. */
+  fadeIn?: boolean
   onMidpoint: () => void
   onComplete: () => void
 }
@@ -23,9 +29,13 @@ export type MenuTransitionTarget =
  */
 export function MenuEntryCover({
   immediateMidpoint = false,
+  midpointMs = MENU_TRANSITION_MIDPOINT_MS,
+  totalMs = MENU_TRANSITION_MS,
+  fadeIn = false,
   onMidpoint,
   onComplete,
 }: Props) {
+  const exitMs = totalMs - midpointMs
   const [exiting, setExiting] = useState(false)
   const midpointCalled = useRef(false)
   const completeCalled = useRef(false)
@@ -50,19 +60,19 @@ export function MenuEntryCover({
       midpointCalled.current = true
       onMidpoint()
       setExiting(true)
-    }, MENU_TRANSITION_MIDPOINT_MS)
+    }, midpointMs)
 
     const completeTimer = window.setTimeout(() => {
       if (completeCalled.current) return
       completeCalled.current = true
       onComplete()
-    }, MENU_TRANSITION_MS)
+    }, totalMs)
 
     return () => {
       window.clearTimeout(midpointTimer)
       window.clearTimeout(completeTimer)
     }
-  }, [immediateMidpoint, onMidpoint, onComplete])
+  }, [immediateMidpoint, midpointMs, totalMs, onMidpoint, onComplete])
 
   if (immediateMidpoint) {
     return (
@@ -77,12 +87,17 @@ export function MenuEntryCover({
       <div
         className={`menu-entry-cover__panel${
           exiting ? ' midnight-select-transition--exit' : ''
+        }${
+          fadeIn && !exiting ? ' menu-entry-cover__panel--fade-in' : ''
         }`}
-        style={
-          exiting
-            ? { ['--midnight-select-transition-ms' as string]: `${MENU_TRANSITION_EXIT_MS}ms` }
-            : undefined
-        }
+        style={{
+          ...(exiting
+            ? { ['--midnight-select-transition-ms' as string]: `${exitMs}ms` }
+            : {}),
+          ...(fadeIn && !exiting
+            ? { ['--menu-cover-fade-in-ms' as string]: `${midpointMs}ms` }
+            : {}),
+        }}
       />
     </div>
   )

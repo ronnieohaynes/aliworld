@@ -57,8 +57,26 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
     { x: 844, y: 1218, width: 25,  height: 16  },
     { x: 1020, y: 996, width: 15,  height: 43  },
   ],
-  southside: [],
-  'blue-store-interior': [],
+  southside: [
+    // Sign/light post in the parking lot — merged sign + pole into one zone
+    // spanning the full object. Splitting them caused the sign portion to be
+    // skipped (feetY past its bottom edge) even when the player's upper body
+    // still overlapped it, so only the legs got clipped instead of the whole sprite.
+    { x: 448, y: 548, width: 41, height: 382 },
+  ],
+  // blue-store-interior zones stored at native 1254px coords — scaled ×0.55 in cityConfig
+  'blue-store-interior': [
+    // front desk counter — hides the clerk's lower half behind the counter top
+    { x: 466, y: 233, width: 88, height: 106 },
+    // top row equipment — overhead markers
+    { x: 258, y: 358, width: 94, height: 20 },
+    { x: 508, y: 365, width: 14, height: 13 },
+    { x: 683, y: 358, width: 79, height: 20 },
+    // bottom row equipment — overhead markers
+    { x: 270, y: 622, width: 75, height: 20 },
+    { x: 478, y: 628, width: 70, height: 17 },
+    { x: 710, y: 618, width: 20, height: 17 },
+  ],
   // five-gym-interior zones stored at native 1224px coords — scaled ×0.5 in cityConfig
   'five-gym-interior': [
     // left wall equipment — punching bags / heavy bags (3 units)

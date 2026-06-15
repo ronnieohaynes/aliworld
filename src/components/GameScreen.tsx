@@ -15,7 +15,11 @@ import {
   type CityConfig,
   type CityId,
 } from '../data/cityConfig'
-import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
+import { OCEANVIEW_GYM_ENTRANCE_ZONE } from '../data/gymEntrance'
+import { resolveDoorSpawn, DOOR_SPAWN_OFFSET } from '../data/doorSpawn'
+import { BLUE_STORE_EXIT_ZONE } from '../data/blueStoreInteriorCollision'
+import { FIVE_GYM_EXIT_ZONE } from '../data/gymInteriorCollision'
+import { SOUTHSIDE_ENTRANCE_ZONE } from '../data/southsideCollision'
 import { E2_CLOSING_CRIER_NPC, E2_CLOSING_MOB_NPCS } from '../data/e2ClosingNpcs'
 import {
   FIVE_GYM1_HEAD_NPC,
@@ -106,7 +110,7 @@ import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
-import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
+import { MenuEntryCover, MENU_TRANSITION_MIDPOINT_MS, MENU_TRANSITION_MS, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { CultTransition, type CultTransitionMode } from './CultTransition'
 import { DarklineScreen } from './DarklineScreen'
@@ -268,6 +272,7 @@ export function GameScreen() {
   const prevCityRef = useRef<CityId | null>(null)
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
+  const [darklineEnterTransition, setDarklineEnterTransition] = useState(false)
   const [cultDarklinePhase, setCultDarklinePhase] = useState<CultTransitionMode | null>(null)
   const cultDarklinePhaseRef = useRef<CultTransitionMode | null>(null)
   cultDarklinePhaseRef.current = cultDarklinePhase
@@ -1292,9 +1297,9 @@ export function GameScreen() {
       if (action === 'OPEN_13GALLONS') {
         setShowInterior(true)
       } else if (action === 'OPEN_DARKLINE') {
-        if (cultDarklinePhase) return
+        if (cultDarklinePhase || darklineEnterTransition) return
         if (isMarkDefeated()) {
-          setCultDarklinePhase('enter')
+          setDarklineEnterTransition(true)
           return
         }
         if (!canApproachMark()) {
@@ -1316,34 +1321,49 @@ export function GameScreen() {
         }
         {
           const interior = CITY_CONFIGS['blue-store-interior']
-          beginMapTransition(
-            'blue-store-interior',
-            interior.spawnX,
-            interior.spawnY,
+          const spawn = resolveDoorSpawn(
+            BLUE_STORE_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
           )
+          beginMapTransition('blue-store-interior', spawn.x, spawn.y)
         }
       } else if (action === 'OPEN_BLUE_STORE_EXIT') {
         if (currentCity !== 'blue-store-interior') return
         if (mapTransitionRef.current) return
-        beginMapTransition(
-          'southside',
-          SOUTHSIDE_EXTERIOR_RETURN.x,
-          SOUTHSIDE_EXTERIOR_RETURN.y,
-        )
+        {
+          const exterior = CITY_CONFIGS['southside']
+          const spawn = resolveDoorSpawn(
+            SOUTHSIDE_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('southside', spawn.x, spawn.y)
+        }
       } else if (action === 'OPEN_OCEANVIEW_GYM') {
         if (currentCity !== 'five') return
         if (mapTransitionRef.current) return
-        const interior = CITY_CONFIGS['five-gym-interior']
-        beginMapTransition('five-gym-interior', interior.spawnX, interior.spawnY, 'up')
+        {
+          const interior = CITY_CONFIGS['five-gym-interior']
+          const spawn = resolveDoorSpawn(
+            FIVE_GYM_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
+          )
+          beginMapTransition('five-gym-interior', spawn.x, spawn.y, 'up')
+        }
       } else if (action === 'OPEN_OCEANVIEW_GYM_EXIT') {
         if (currentCity !== 'five-gym-interior') return
         if (mapTransitionRef.current) return
-        beginMapTransition(
-          'five',
-          FIVE_GYM_EXTERIOR_RETURN.x,
-          FIVE_GYM_EXTERIOR_RETURN.y,
-          'down',
-        )
+        {
+          const exterior = CITY_CONFIGS['five']
+          const spawn = resolveDoorSpawn(
+            OCEANVIEW_GYM_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('five', spawn.x, spawn.y, 'down')
+        }
       }
     },
     [
@@ -1391,12 +1411,16 @@ export function GameScreen() {
     setCultDarklinePhase('exit')
   }, [])
 
+  const handleDarklineEnterMidpoint = useCallback(() => {
+    setShowDarkline(true)
+  }, [])
+
+  const handleDarklineEnterComplete = useCallback(() => {
+    setDarklineEnterTransition(false)
+  }, [])
+
   const handleCultDarklineMidpoint = useCallback(() => {
     const phase = cultDarklinePhaseRef.current
-    if (phase === 'enter') {
-      setShowDarkline(true)
-      return
-    }
     if (phase === 'exit') {
       setShowDarkline(false)
       const target = darklineExitTargetRef.current
@@ -1804,7 +1828,7 @@ export function GameScreen() {
       return
     }
     if (mapTransitionPending || mapTransition) return
-    if (showDarkline || cultDarklinePhase === 'enter') return
+    if (showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) return
     if (e2ClosingPhaseRef.current !== 'idle') return
     if (currentCity === 'blue-store-interior') {
       startE2ClosingExitInterior()
@@ -2249,6 +2273,7 @@ export function GameScreen() {
                 !!dialogue ||
                 worldEntryActive ||
                 !!battleWipePhase ||
+                darklineEnterTransition ||
                 cultDarklinePhase === 'enter' ||
                 showDarkline ||
                 !!menuTransition ||
@@ -2284,6 +2309,15 @@ export function GameScreen() {
               destinations={darklineDestinations}
               inactiveDestinations={darklineInactiveDestinations}
               onBeginExit={handleDarklineBeginExit}
+            />
+          )}
+          {darklineEnterTransition && (
+            <MenuEntryCover
+              fadeIn
+              midpointMs={200}
+              totalMs={MENU_TRANSITION_MS * 2}
+              onMidpoint={handleDarklineEnterMidpoint}
+              onComplete={handleDarklineEnterComplete}
             />
           )}
           {cultDarklinePhase && (

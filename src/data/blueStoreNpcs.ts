@@ -9,10 +9,14 @@ import { CLERK_NPC, RESTOCKER_NPC, type NpcData } from './npcs'
  */
 export const CLERK_INTERIOR_NPC: NpcData = {
   ...CLERK_NPC,
-  x: 282,
-  y: 905,
-  fixedFacing: 'left',
+  x: 510,
+  y: 291,
+  fixedFacing: 'down',
   blocksMovement: true,
+  // Shrink the default 45x75 NPC collision box — it was blocking too much of the desk area.
+  collisionWidth: 36,
+  collisionHeight: 30,
+  collisionOffsetY: 10,
 }
 
 /** Back of store — past the clerk, toward shelf / stock room. */
