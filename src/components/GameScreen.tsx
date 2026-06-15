@@ -269,6 +269,8 @@ export function GameScreen() {
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
   const [cultDarklinePhase, setCultDarklinePhase] = useState<CultTransitionMode | null>(null)
+  const cultDarklinePhaseRef = useRef<CultTransitionMode | null>(null)
+  cultDarklinePhaseRef.current = cultDarklinePhase
   const darklineExitTargetRef = useRef<CityId | 'close' | null>(null)
   const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
   const [cafeSceneLine, setCafeSceneLine] = useState(0)
@@ -1390,11 +1392,12 @@ export function GameScreen() {
   }, [])
 
   const handleCultDarklineMidpoint = useCallback(() => {
-    if (cultDarklinePhase === 'enter') {
+    const phase = cultDarklinePhaseRef.current
+    if (phase === 'enter') {
       setShowDarkline(true)
       return
     }
-    if (cultDarklinePhase === 'exit') {
+    if (phase === 'exit') {
       setShowDarkline(false)
       const target = darklineExitTargetRef.current
       if (target === 'close') {
@@ -1404,10 +1407,12 @@ export function GameScreen() {
       }
       darklineExitTargetRef.current = null
     }
-  }, [cultDarklinePhase, handleDarklineClose, handleDarklineTravel])
+  }, [handleDarklineClose, handleDarklineTravel])
 
   const handleCultDarklineComplete = useCallback(() => {
     setCultDarklinePhase(null)
+    setShowDarkline(false)
+    darklineExitTargetRef.current = null
   }, [])
 
   const completeAdamMp3Handoff = useCallback(() => {
@@ -1795,6 +1800,7 @@ export function GameScreen() {
       return
     }
     if (mapTransitionPending || mapTransition) return
+    if (showDarkline || cultDarklinePhase === 'enter') return
     if (e2ClosingPhaseRef.current !== 'idle') return
     if (currentCity === 'blue-store-interior') {
       startE2ClosingExitInterior()
@@ -1804,6 +1810,7 @@ export function GameScreen() {
   }, [
     battleNpcId,
     battleWipePhase,
+    cultDarklinePhase,
     currentCity,
     cutsceneFlowActive,
     dialogue,
@@ -1812,6 +1819,7 @@ export function GameScreen() {
     quest2Revision,
     questTransitionActive,
     runE2ClosingMobDialogue,
+    showDarkline,
     startE2ClosingExitInterior,
   ])
 
@@ -2237,14 +2245,14 @@ export function GameScreen() {
                 !!dialogue ||
                 worldEntryActive ||
                 !!battleWipePhase ||
-                !!cultDarklinePhase ||
+                cultDarklinePhase === 'enter' ||
+                showDarkline ||
                 !!menuTransition ||
                 !!mapTransition ||
                 mapTransitionPending ||
                 showFannyPack ||
                 showLoadout ||
                 showStartMenu ||
-                showDarkline ||
                 cutsceneFlowActive ||
                 questTransitionActive
               }
