@@ -26,8 +26,8 @@ export const SOUTHSIDE_ENTRANCE_ZONE = {
   height: 56,
 };
 
-// Player spawns here when arriving via Darkline.
-export const SOUTHSIDE_DARKLINE_ARRIVAL = { x: 197, y: 1035 };
+// Player spawns here when arriving via Darkline (threshold floor inside entrance).
+export const SOUTHSIDE_DARKLINE_ARRIVAL = { x: 210, y: 1016 };
 
 export const SOUTHSIDE_COLLISION_ZONES: CollisionZone[] = [
   { x: 0, y: 344, width: 1254, height: 136 },
