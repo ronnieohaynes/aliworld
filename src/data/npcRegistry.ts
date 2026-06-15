@@ -1,4 +1,9 @@
 import { publicAsset } from '../utils/publicAsset'
+import {
+  CLERK_IDLE_SPRITE,
+  RESTOCKER_IDLE_SPRITE,
+  TOWN_CRIER_IDLE_SPRITE,
+} from './npcs'
 import { buildDevSpar, isDevSparNpcId } from './devSpar'
 import type { BattleLocationId } from './battleBackgrounds'
 import { computeNpcCombatStats } from './npcCombatStats'
@@ -64,8 +69,6 @@ export type NpcCombatEntry = {
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
-const ADAM_SPRITE = publicAsset('Assets/Characters/npcs/Adam-idle.PNG')
-const JASON_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 
 function entry(
   base: Omit<NpcCombatEntry, 'stats'> & { hpScale?: number; fixedHp?: number },
@@ -153,7 +156,7 @@ const TOWN_CRIER: NpcCombatEntry = entry({
   },
   losingLine: "...no. no — you're right. you were always right.",
   winningLine: "the crowd's not buying it.",
-  spriteSrc: JASON_SPRITE,
+  spriteSrc: TOWN_CRIER_IDLE_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 0.98,
 })
@@ -172,8 +175,8 @@ const CLERK: NpcCombatEntry = entry({
   },
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
-  spriteSrc: ADAM_SPRITE,
-  battleLocation: 'five',
+  spriteSrc: CLERK_IDLE_SPRITE,
+  battleLocation: 'hillside',
   battleSizeMult: 1,
 })
 
@@ -197,8 +200,8 @@ const RESTOCKER: NpcCombatEntry = entry({
   enemyGuardPierce: 0.14,
   losingLine: 'it CAN stop...',
   winningLine: 'this floor belongs to me.',
-  spriteSrc: MARK_SPRITE,
-  battleLocation: 'five',
+  spriteSrc: RESTOCKER_IDLE_SPRITE,
+  battleLocation: 'hillside',
   battleSizeMult: 1.12,
 })
 

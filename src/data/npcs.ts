@@ -53,7 +53,7 @@ const CLERK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/clerk-idle.png')
 const RESTOCKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/restocker-idle.png')
 const TOWN_CRIER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/towncrier-idle.png')
 /** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
-export { JASON_IDLE_SPRITE, TOWN_CRIER_IDLE_SPRITE }
+export { JASON_IDLE_SPRITE, TOWN_CRIER_IDLE_SPRITE, CLERK_IDLE_SPRITE, RESTOCKER_IDLE_SPRITE }
 
 /** Quest 1 gating NPC — Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
