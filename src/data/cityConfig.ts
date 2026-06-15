@@ -198,7 +198,6 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     label: 'southside',
     mapSrc: SOUTHSIDE_MAP_SRC,
     foregroundMapSrc: SOUTHSIDE_FOREGROUND_MAP_SRC,
-    characterScale: 1.25,
     worldWidth: SOUTHSIDE_MAP_SIZE.width,
     worldHeight: SOUTHSIDE_MAP_SIZE.height,
     spawnX: SOUTHSIDE_DARKLINE_ARRIVAL.x,
