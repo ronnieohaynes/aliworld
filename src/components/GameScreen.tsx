@@ -1410,9 +1410,13 @@ export function GameScreen() {
   }, [handleDarklineClose, handleDarklineTravel])
 
   const handleCultDarklineComplete = useCallback(() => {
+    const phase = cultDarklinePhaseRef.current
     setCultDarklinePhase(null)
-    setShowDarkline(false)
-    darklineExitTargetRef.current = null
+    // Enter: keep darkline open for destination pick. Exit: midpoint already dismissed it.
+    if (phase === 'exit') {
+      setShowDarkline(false)
+      darklineExitTargetRef.current = null
+    }
   }, [])
 
   const completeAdamMp3Handoff = useCallback(() => {
