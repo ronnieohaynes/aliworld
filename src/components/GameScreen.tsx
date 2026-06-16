@@ -110,7 +110,7 @@ import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
-import { MenuEntryCover, MENU_TRANSITION_MIDPOINT_MS, MENU_TRANSITION_MS, type MenuTransitionTarget } from './MenuEntryCover'
+import { MenuEntryCover, MENU_TRANSITION_MS, MENU_TRANSITION_MIDPOINT_MS, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { CultTransition, type CultTransitionMode } from './CultTransition'
 import { DarklineScreen } from './DarklineScreen'
@@ -2314,7 +2314,7 @@ export function GameScreen() {
           {darklineEnterTransition && (
             <MenuEntryCover
               fadeIn
-              midpointMs={200}
+              midpointMs={MENU_TRANSITION_MIDPOINT_MS}
               totalMs={MENU_TRANSITION_MS * 2}
               onMidpoint={handleDarklineEnterMidpoint}
               onComplete={handleDarklineEnterComplete}

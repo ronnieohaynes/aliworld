@@ -5,7 +5,6 @@ import './MenuEntryCover.css'
 /** Faster than battle entry — menu ↔ sub-screen should feel snappy. */
 export const MENU_TRANSITION_MS = 450
 export const MENU_TRANSITION_MIDPOINT_MS = 200
-const MENU_TRANSITION_EXIT_MS = MENU_TRANSITION_MS - MENU_TRANSITION_MIDPOINT_MS
 
 type Props = {
   /** Resume gameplay: swap under cover instantly, no fade (avoids flashing the map). */
