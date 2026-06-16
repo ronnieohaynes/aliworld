@@ -46,6 +46,15 @@ export type MidnightVariantAdminOption = {
   hidden: boolean
 }
 
+/** IDs on the creation carousel — keep aligned with MIDNIGHT_VARIANTS in midnightVariants.ts */
+export const MIDNIGHT_CREATION_VARIANT_IDS = new Set<string>([
+  'default',
+  'asian-f',
+  'latino-m',
+  'white-f',
+  'filipino-m',
+])
+
 /** Mothership dropdown — full MAP; hidden tag = not on creation carousel. */
 export function listAdminMidnightVariantOptions(
   creationSelectIds: ReadonlySet<string>,
@@ -58,4 +67,9 @@ export function listAdminMidnightVariantOptions(
       label: creationSelectIds.has(id) ? id : `${id} (hidden)`,
       hidden: !creationSelectIds.has(id),
     }))
+}
+
+/** Full admin list using creation-carousel ids for hidden tagging. */
+export function listAllAdminMidnightVariantOptions(): MidnightVariantAdminOption[] {
+  return listAdminMidnightVariantOptions(MIDNIGHT_CREATION_VARIANT_IDS)
 }

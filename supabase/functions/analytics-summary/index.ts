@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient, type User } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 import { corsHeaders } from '../_shared/cors.ts'
-import { isRegisteredMidnightVariantId } from './variantRegistry.ts'
+import { isRegisteredMidnightVariantId, listAllAdminMidnightVariantOptions } from './variantRegistry.ts'
 
 type DayCount = { day: string; count: number }
 
@@ -66,6 +66,7 @@ const GET_ACTIONS = new Set([
   'signups',
   'emails_combined',
   'events_recent',
+  'variants',
 ])
 
 function createDefaultSkills(): SkillsState {
@@ -97,9 +98,10 @@ function emptyQuest2Serialized() {
   return {
     crowdAddressed: false,
     crierConverted: false,
+    crierSentAhead: false,
     clerkConverted: false,
     restockerDefeated: false,
-    e2Seen: false,
+    e2Complete: false,
   }
 }
 
@@ -747,6 +749,8 @@ Deno.serve(async (req) => {
         return await handleEmailsCombinedAction(supabase)
       case 'events_recent':
         return await handleEventsRecentAction(supabase, url.searchParams.get('limit'))
+      case 'variants':
+        return jsonResponse(listAllAdminMidnightVariantOptions())
       case 'events_clear':
       case 'clear_events':
         return await handleClearEventsAction(supabase)

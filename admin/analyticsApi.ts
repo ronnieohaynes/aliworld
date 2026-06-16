@@ -107,6 +107,16 @@ export async function setUserVariant(
   return postAction(adminSecret, 'user_set_variant', { user_id: userId, variant_id: variantId })
 }
 
+export type MidnightVariantOption = {
+  id: string
+  label: string
+  hidden: boolean
+}
+
+export async function fetchVariantOptions(adminSecret: string): Promise<MidnightVariantOption[]> {
+  return analyticsRequest<MidnightVariantOption[]>(adminSecret, 'action=variants')
+}
+
 export async function fetchEmailSignups(adminSecret: string): Promise<EmailSignupRow[]> {
   return analyticsRequest<EmailSignupRow[]>(adminSecret, 'action=signups')
 }
