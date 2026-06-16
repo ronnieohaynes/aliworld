@@ -147,6 +147,11 @@ const FIVE_GYM_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
     ...FIVE_GYM_EXIT_ZONE,
     action: 'OPEN_OCEANVIEW_GYM_EXIT',
   },
+  {
+    id: 'five-gym-leaderboard',
+    ...scaleFiveGymInteriorZone({ x: 130, y: 300, width: 160, height: 120 }),
+    action: 'OPEN_GYM_LEADERBOARD',
+  },
 ]
 
 const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')

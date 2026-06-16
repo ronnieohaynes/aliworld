@@ -108,6 +108,7 @@ import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
+import { GymLeaderboardScreen } from './GymLeaderboardScreen'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
 import { MenuEntryCover, MENU_TRANSITION_MS, MENU_TRANSITION_MIDPOINT_MS, type MenuTransitionTarget } from './MenuEntryCover'
@@ -149,7 +150,7 @@ import {
 } from '../store/patchesStore'
 import { getSkillLabels, type SkillId } from '../store/skillStore'
 import { PatchSkillPicker } from './PatchSkillPicker'
-import { signOut } from '../store/authStore'
+import { getAuthState, signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
   StartMenuScreen,
@@ -318,6 +319,7 @@ export function GameScreen() {
   const [showLoadout, setShowLoadout] = useState(false)
   const [bugReportScreenshot, setBugReportScreenshot] = useState<string | null>(null)
   const [showBugReport, setShowBugReport] = useState(false)
+  const [showGymLeaderboard, setShowGymLeaderboard] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -733,6 +735,16 @@ export function GameScreen() {
     beginMenuTransition({ kind: 'resume' })
   }, [beginMenuTransition])
 
+  const openGymLeaderboard = useCallback(() => {
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowGymLeaderboard(true)
+  }, [])
+
+  const handleGymLeaderboardClose = useCallback(() => {
+    setShowGymLeaderboard(false)
+  }, [])
+
   const toggleStartMenu = useCallback(() => {
     console.log('[tutorial-start] toggleStartMenu enter', {
       loadoutTutorialStep,
@@ -746,6 +758,7 @@ export function GameScreen() {
       console.log('[tutorial-start] toggleStartMenu guard: menuTransition')
       return
     }
+    if (showGymLeaderboard) return
     if (showStartMenu) {
       console.log('[tutorial-start] toggleStartMenu guard: already open → resume')
       resumeFromPauseMenu()
@@ -771,11 +784,12 @@ export function GameScreen() {
     resumeFromPauseMenu,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
   ])
 
   const handleFannyPack = useCallback(() => {
-    if (menuTransition || worldEntryActive || showStartMenu) return
+    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard) return
     if (showFannyPack) {
       if (menuReturnPending) {
         beginResumeTransition()
@@ -791,6 +805,7 @@ export function GameScreen() {
     menuReturnPending,
     menuTransition,
     showFannyPack,
+    showGymLeaderboard,
     showStartMenu,
     worldEntryActive,
   ])
@@ -807,13 +822,13 @@ export function GameScreen() {
       ) {
         return
       }
-      if (worldEntryActive || showStartMenu) return
+      if (worldEntryActive || showStartMenu || showGymLeaderboard) return
       e.preventDefault()
       handleFannyPack()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleFannyPack, showStartMenu])
+  }, [handleFannyPack, showStartMenu, showGymLeaderboard])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -825,6 +840,11 @@ export function GameScreen() {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement
       ) {
+        return
+      }
+      if (showGymLeaderboard) {
+        e.preventDefault()
+        setShowGymLeaderboard(false)
         return
       }
       if (showLoadout || showFannyPack) {
@@ -866,6 +886,7 @@ export function GameScreen() {
     menuReturnPending,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     menuTransition,
   ])
@@ -930,6 +951,7 @@ export function GameScreen() {
       !showStartMenu &&
       !showLoadout &&
       !showFannyPack &&
+      !showGymLeaderboard &&
       cafeFade !== 'scene'
     )
   }, [
@@ -946,6 +968,7 @@ export function GameScreen() {
     showStartMenu,
     showLoadout,
     showFannyPack,
+    showGymLeaderboard,
     cafeFade,
   ])
 
@@ -1364,6 +1387,9 @@ export function GameScreen() {
           )
           beginMapTransition('five', spawn.x, spawn.y, 'down')
         }
+      } else if (action === 'OPEN_GYM_LEADERBOARD') {
+        if (currentCity !== 'five-gym-interior') return
+        openGymLeaderboard()
       }
     },
     [
@@ -1372,6 +1398,7 @@ export function GameScreen() {
       canApproachMark,
       cultDarklinePhase,
       currentCity,
+      openGymLeaderboard,
       showMarkBlockedDialogue,
       showNotYetDialogue,
       startMarkBattle,
@@ -1621,7 +1648,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout)
+    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard)
       return
     openNearbyNpcDialogue()
   }, [
@@ -1636,6 +1663,7 @@ export function GameScreen() {
     battleNpcId,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     menuTransition,
     worldEntryActive,
@@ -1646,7 +1674,7 @@ export function GameScreen() {
     if (cutsceneFlowActive || questTransitionActive) return
     if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
-    if (worldEntryActive || showStartMenu) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -1694,6 +1722,7 @@ export function GameScreen() {
         showStartMenu ||
         showLoadout ||
         showFannyPack ||
+        showGymLeaderboard ||
         battleNpcId ||
         battleWipePhase ||
         menuTransition
@@ -1716,6 +1745,7 @@ export function GameScreen() {
     menuTransition,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     worldEntryActive,
   ])
@@ -2031,7 +2061,7 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard) return
     if (showLoadout) {
       handleLoadoutClose()
       return
@@ -2098,6 +2128,9 @@ export function GameScreen() {
           setShowBugReport(true)
           break
         }
+        case 'champions':
+          openGymLeaderboard()
+          break
         case 'new-game':
           break
         case 'sign-out':
@@ -2107,7 +2140,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, resumeFromPauseMenu],
+    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, openGymLeaderboard, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -2146,6 +2179,7 @@ export function GameScreen() {
     !showStartMenu &&
     !showLoadout &&
     !showFannyPack &&
+    !showGymLeaderboard &&
     !showDarkline &&
     !cultDarklinePhase &&
     !showInterior &&
@@ -2281,6 +2315,7 @@ export function GameScreen() {
                 mapTransitionPending ||
                 showFannyPack ||
                 showLoadout ||
+                showGymLeaderboard ||
                 showStartMenu ||
                 cutsceneFlowActive ||
                 questTransitionActive
@@ -2521,6 +2556,12 @@ export function GameScreen() {
               loadoutTutorialStep={loadoutTutorialStep}
               onLoadoutTutorialNext={advanceLoadoutTutorial}
               onLoadoutTutorialSkip={skipLoadoutTutorial}
+            />
+          )}
+          {showGymLeaderboard && (
+            <GymLeaderboardScreen
+              viewerHandle={getAuthState().profile?.handle ?? null}
+              onClose={handleGymLeaderboardClose}
             />
           )}
       </GameShell>
