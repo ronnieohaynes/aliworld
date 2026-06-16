@@ -30,7 +30,7 @@ export type NpcData = {
   fixedFacing?: Direction
   /** When false, the player can walk through this NPC (interact range unchanged). */
   blocksMovement?: boolean
-  /** Optional tight movement hitbox (world pixels); defaults to 45×75. */
+  /** Optional tight movement hitbox (world pixels at design scale; map applies WORLD_NPC_MAP_SCALE). */
   collisionWidth?: number
   collisionHeight?: number
   /** Shifts a custom hitbox up (world pixels; positive = north). */

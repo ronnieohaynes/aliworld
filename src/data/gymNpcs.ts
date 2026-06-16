@@ -1,5 +1,6 @@
 import { publicAsset } from '../utils/publicAsset'
 import { FIVE_GYM1_ID } from '../store/gymStore'
+import { isGymGauntletCombatId } from './gymWeeks'
 import type { NpcData } from './npcs'
 
 export { FIVE_GYM1_ID }
@@ -73,8 +74,6 @@ export const FIVE_GYM_AMBIENT_NPCS: readonly NpcData[] = [
   GYM_AMBIENT_BENCH,
   GYM_AMBIENT_RING,
 ]
-
-import { isGymGauntletCombatId } from './gymWeeks'
 
 export function isGymHeadCombatId(npcId: string): boolean {
   return npcId === FIVE_GYM1_ID || isGymGauntletCombatId(npcId)

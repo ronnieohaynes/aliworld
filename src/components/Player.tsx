@@ -38,6 +38,11 @@ import {
   resolveQuestPulseWorldPoint,
 } from '../data/questObjectives'
 import { drawWorldForegroundOverlay, drawWorldMap } from '../game/drawWorldBackground'
+import {
+  MAP_NPC_DISPLAY_H,
+  MAP_NPC_DISPLAY_W,
+  scaleNpcMapBoundary,
+} from '../game/worldSpriteRender'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { playerScreenAnchor } from '../game/playerScreenAnchor'
 import { isDevModeEnabled } from '../lib/devMode'
@@ -72,8 +77,8 @@ const NPC_SPRITE_COL: Record<Direction, number> = {
   right: 3,
 }
 
-const NPC_DISPLAY_W = 48
-const NPC_DISPLAY_H = 120
+const NPC_DISPLAY_W = MAP_NPC_DISPLAY_W
+const NPC_DISPLAY_H = MAP_NPC_DISPLAY_H
 const NPC_INTERACT_DEBUG_RADIUS = NPC_INTERACT_RANGE
 
 function getNpcRosterKey(city: CityConfig): string {
@@ -621,18 +626,18 @@ function getNpcCollisionRect(npc: {
 }): CollisionZone {
   if (npc.collisionWidth == null && npc.collisionHeight == null) {
     return {
-      x: npc.x - NPC_COLLISION_RADIUS + 15,
-      y: npc.y - NPC_COLLISION_RADIUS - 20,
-      width: 45,
-      height: NPC_COLLISION_RADIUS * 2 + 15,
+      x: npc.x - scaleNpcMapBoundary(NPC_COLLISION_RADIUS) + scaleNpcMapBoundary(15),
+      y: npc.y - scaleNpcMapBoundary(NPC_COLLISION_RADIUS) - scaleNpcMapBoundary(20),
+      width: scaleNpcMapBoundary(45),
+      height: scaleNpcMapBoundary(NPC_COLLISION_RADIUS * 2 + 15),
     }
   }
-  const width = npc.collisionWidth ?? 45
-  const height = npc.collisionHeight ?? NPC_COLLISION_RADIUS * 2 + 15
+  const width = scaleNpcMapBoundary(npc.collisionWidth ?? 45)
+  const height = scaleNpcMapBoundary(npc.collisionHeight ?? NPC_COLLISION_RADIUS * 2 + 15)
   const feetX = npc.x
   const feetY = getNpcFeetY(npc)
-  const offsetY = npc.collisionOffsetY ?? 0
-  const offsetX = npc.collisionOffsetX ?? 0
+  const offsetY = scaleNpcMapBoundary(npc.collisionOffsetY ?? 0)
+  const offsetX = scaleNpcMapBoundary(npc.collisionOffsetX ?? 0)
   return {
     x: feetX - width / 2 + offsetX,
     y: feetY - height - offsetY,
@@ -1582,8 +1587,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
           const npc = entry.npc
           const half = NPC_SIZE / 2
           const npcFacing = npc.fixedFacing ?? npcFacingMap.current.get(npc.id) ?? 'down'
-          const displayW = 48
-          const displayH = 120
+          const displayW = NPC_DISPLAY_W
+          const displayH = NPC_DISPLAY_H
           const dx = Math.floor(npc.x - displayW / 2)
           const dy = Math.floor(npc.y + half - displayH)
           const npcFeetY = getNpcFeetY(npc)

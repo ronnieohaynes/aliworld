@@ -19,9 +19,24 @@ export const WORLD_PLAYER_DISPLAY_WIDTH = Math.floor(
   (MIDNIGHT_WALK_FRAME_WIDTH / MIDNIGHT_WALK_FRAME_HEIGHT) * WORLD_PLAYER_DISPLAY_HEIGHT,
 )
 
-/** NPC idle sprite on-map display size (Player.tsx). */
-export const WORLD_NPC_DISPLAY_W = 48
-export const WORLD_NPC_DISPLAY_H = 120
+const NPC_BASE_DISPLAY_W = 48
+const NPC_BASE_DISPLAY_H = 120
+
+/** Battle + shared reference size (unchanged). */
+export const WORLD_NPC_DISPLAY_W = NPC_BASE_DISPLAY_W
+export const WORLD_NPC_DISPLAY_H = NPC_BASE_DISPLAY_H
+
+/** Unified map footprint scale for overworld NPC sprites and collision. */
+export const WORLD_NPC_MAP_SCALE = 0.92
+
+/** Overworld map display — 8% smaller than battle reference. */
+export const MAP_NPC_DISPLAY_W = Math.round(NPC_BASE_DISPLAY_W * WORLD_NPC_MAP_SCALE)
+export const MAP_NPC_DISPLAY_H = Math.round(NPC_BASE_DISPLAY_H * WORLD_NPC_MAP_SCALE)
+
+/** Scale authored NPC boundary pixels (collision, offsets) for map display. */
+export function scaleNpcMapBoundary(value: number): number {
+  return Math.round(value * WORLD_NPC_MAP_SCALE)
+}
 
 /** NPC idle sheet column per facing (Player.tsx). */
 export const WORLD_NPC_SPRITE_COL: Record<Direction, number> = {
