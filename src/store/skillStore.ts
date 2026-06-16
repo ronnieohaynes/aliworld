@@ -23,9 +23,14 @@ export const MAX_PLAYER_LEVEL = 100
 
 const XP_CURVE = buildXpCurve(MAX_SKILL_LEVEL)
 
-/** XP to advance from level `n` to `n + 1`. */
+/** XP to advance attack/speed/defense/luck/hp from skill level `n` to `n + 1`. */
+export function xpForSkillLevel(n: number): number {
+  return XP_CURVE.xpForSkillLevel(n)
+}
+
+/** @deprecated Prefer xpForSkillLevel */
 export function xpForLevel(n: number): number {
-  return XP_CURVE.xpForLevel(n)
+  return xpForSkillLevel(n)
 }
 
 /** Total XP required to reach level `n` (level 1 = 0). */
