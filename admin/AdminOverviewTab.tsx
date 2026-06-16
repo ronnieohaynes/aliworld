@@ -11,7 +11,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { isAnalyticsEmpty, type AnalyticsSummary } from './types'
+import { formatDateTime, formatJoinedDate } from './analyticsApi'
+import { SortableMetricTableHead, useMetricTableSort } from './SortableAdminTable'
+import { isAnalyticsEmpty, type AnalyticsSummary, type MilestonesResponse } from './types'
 
 const CHART = {
   grid: '#2e2840',
@@ -32,9 +34,16 @@ type Props = {
   loading: boolean
   error: string | null
   summary: AnalyticsSummary | null
+  milestones: MilestonesResponse | null
 }
 
-export function AdminOverviewTab({ loading, error, summary }: Props) {
+function formatMilestoneLabel(key: string): string {
+  if (key.startsWith('level:')) return `Level ${key.slice(6)}`
+  if (key.startsWith('episode:')) return `Episode ${key.slice(8).toUpperCase()}`
+  return key
+}
+
+export function AdminOverviewTab({ loading, error, summary, milestones }: Props) {
   const dauSeries = useMemo(
     () => [...(summary?.dau ?? [])].sort((a, b) => a.day.localeCompare(b.day)),
     [summary],
@@ -46,6 +55,40 @@ export function AdminOverviewTab({ loading, error, summary }: Props) {
   )
 
   const empty = summary ? isAnalyticsEmpty(summary) : false
+
+  const battleRows = useMemo(
+    () =>
+      (summary?.battleStats ?? []).map((row) => ({
+        enemy: row.enemy,
+        wins: row.wins,
+        losses: row.losses,
+        avgTurns: row.avgTurns ?? 0,
+      })),
+    [summary],
+  )
+
+  const {
+    sorted: sortedBattleRows,
+    toggleSort: toggleBattleSort,
+    sortIndicator: battleSortIndicator,
+  } = useMetricTableSort(battleRows, 'wins')
+
+  const milestoneRows = useMemo(
+    () =>
+      (milestones?.rows ?? []).map((row) => ({
+        milestone: formatMilestoneLabel(row.milestone_key),
+        milestone_key: row.milestone_key,
+        handle: row.handle ? `@${row.handle}` : row.user_id.slice(0, 8),
+        achieved_at: row.achieved_at,
+      })),
+    [milestones],
+  )
+
+  const {
+    sorted: sortedMilestones,
+    toggleSort: toggleMilestoneSort,
+    sortIndicator: milestoneSortIndicator,
+  } = useMetricTableSort(milestoneRows, 'achieved_at')
 
   return (
     <>
@@ -259,21 +302,23 @@ export function AdminOverviewTab({ loading, error, summary }: Props) {
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Enemy</th>
-                  <th>Wins</th>
-                  <th>Losses</th>
-                  <th>Avg turns</th>
-                </tr>
-              </thead>
+              <SortableMetricTableHead
+                columns={[
+                  { key: 'enemy', label: 'Enemy' },
+                  { key: 'wins', label: 'Wins', align: 'right' },
+                  { key: 'losses', label: 'Losses', align: 'right' },
+                  { key: 'avgTurns', label: 'Avg turns', align: 'right' },
+                ]}
+                toggleSort={toggleBattleSort}
+                sortIndicator={battleSortIndicator}
+              />
               <tbody>
-                {summary.battleStats.map((row) => (
+                {sortedBattleRows.map((row) => (
                   <tr key={row.enemy}>
                     <td>{row.enemy}</td>
-                    <td>{row.wins}</td>
-                    <td>{row.losses}</td>
-                    <td>{row.avgTurns ?? '—'}</td>
+                    <td className="admin-table__num">{row.wins}</td>
+                    <td className="admin-table__num">{row.losses}</td>
+                    <td className="admin-table__num">{row.avgTurns || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -281,6 +326,47 @@ export function AdminOverviewTab({ loading, error, summary }: Props) {
           </div>
         </section>
       ) : null}
+
+      <section className="admin-panel admin-panel--wide">
+        <h2>First to milestone</h2>
+        <p className="admin-panel__lede">
+          Write-once race board — only milestones hit after ship counts.
+          {milestones?.tracking_since
+            ? ` Tracking since ${formatJoinedDate(milestones.tracking_since)}.`
+            : null}
+        </p>
+        {milestones?.table_missing ? (
+          <p className="admin-error">
+            Run <code>db/006_mothership_analytics.sql</code> in Supabase to enable first-to tracking.
+          </p>
+        ) : null}
+        {milestoneRows.length === 0 ? (
+          <p className="admin-empty">No first-to milestones recorded yet.</p>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <SortableMetricTableHead
+                columns={[
+                  { key: 'milestone', label: 'Milestone' },
+                  { key: 'handle', label: 'Player' },
+                  { key: 'achieved_at', label: 'When' },
+                ]}
+                toggleSort={toggleMilestoneSort}
+                sortIndicator={milestoneSortIndicator}
+              />
+              <tbody>
+                {sortedMilestones.map((row) => (
+                  <tr key={row.milestone_key}>
+                    <td>{row.milestone}</td>
+                    <td>{row.handle}</td>
+                    <td>{formatDateTime(row.achieved_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </>
   )
 }

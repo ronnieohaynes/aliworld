@@ -25,7 +25,23 @@ export type AdminUserRow = {
   email: string
   handle: string | null
   level: number
+  build_name: string
+  hours_played: number
+  gym_wins: Record<string, number>
   joined: string
+}
+
+export type MilestoneFirstRow = {
+  milestone_key: string
+  user_id: string
+  handle: string | null
+  achieved_at: string
+}
+
+export type MilestonesResponse = {
+  tracking_since: string
+  rows: MilestoneFirstRow[]
+  table_missing?: boolean
 }
 
 export type AdminUserDetail = {
@@ -36,6 +52,12 @@ export type AdminUserDetail = {
   last_sign_in: string | null
   last_played_at: string | null
   level: number
+  build_name: string
+  build_color: string
+  hours_played: number
+  hours_tracking_since: string
+  gym_wins: Record<string, number>
+  gym_head_ids: string[]
   skills: Record<string, { level: number; xp: number }>
   equipped_moves: unknown
   moves_unlocked: unknown

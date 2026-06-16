@@ -10,6 +10,7 @@ import type { BattleFeedbackEvent } from '../data/battleFeedback'
 import type { TimingBonusGrant } from '../data/timingBonusXp'
 import { combatXpLevelMultiplier } from '../data/moveBalance'
 import { track } from '../lib/analytics'
+import { PLAYER_LEVEL_MILESTONES } from '../lib/analyticsConstants'
 import { isDevModeEnabled, subscribeDevMode } from '../lib/devMode'
 import { supabase } from '../lib/supabaseClient'
 import type { AccessoryBonuses, ArchetypeId, ResolveResult } from './battleStore'
@@ -285,6 +286,17 @@ function trackSkillLevelUps(before: SkillsState, after: SkillsState): void {
   }
 }
 
+function trackPlayerLevelMilestones(before: SkillsState, after: SkillsState): void {
+  const prev = computePlayerLevel(before)
+  const next = computePlayerLevel(after)
+  if (next <= prev) return
+  for (const threshold of PLAYER_LEVEL_MILESTONES) {
+    if (prev < threshold && next >= threshold) {
+      track('player_level_milestone', { level: threshold })
+    }
+  }
+}
+
 const listeners = new Set<() => void>()
 const saveStatusListeners = new Set<() => void>()
 let skipAccountSave = false
@@ -523,6 +535,7 @@ export function grantPlayerSkillXp(skill: SkillId, amount: number): string[] {
   const before = state.skills
   const { skills, lines } = grantSkillXpAmount(before, skill, amount)
   trackSkillLevelUps(before, skills)
+  trackPlayerLevelMilestones(before, skills)
   state = { ...state, skills }
   trackBuildNameIfChanged(skills)
   emit()
@@ -605,6 +618,7 @@ export function applyCombatSkillXp(
   const newlyUnlockedMoves: PlayerMoveId[] = movesAfter.filter((m) => !movesBefore.has(m))
 
   trackSkillLevelUps(before, skills)
+  trackPlayerLevelMilestones(before, skills)
   state = { ...state, skills }
   trackBuildNameIfChanged(skills)
   emit()

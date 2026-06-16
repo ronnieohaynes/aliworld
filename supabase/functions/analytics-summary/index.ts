@@ -1,5 +1,11 @@
 import { createClient, type SupabaseClient, type User } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 import { corsHeaders } from '../_shared/cors.ts'
+import {
+  ANALYTICS_V2_TRACKING_SINCE,
+  GYM_HEAD_ENEMY_IDS,
+  HEARTBEAT_MINUTES,
+} from '../_shared/analyticsConstants.ts'
+import { deriveBuildName } from '../_shared/buildName.ts'
 import { isRegisteredMidnightVariantId, listAllAdminMidnightVariantOptions } from './variantRegistry.ts'
 
 type DayCount = { day: string; count: number }
@@ -21,7 +27,22 @@ type AdminUserRow = {
   email: string
   handle: string | null
   level: number
+  build_name: string
+  hours_played: number
+  gym_wins: Record<string, number>
   joined: string
+}
+
+type MilestoneFirstRow = {
+  milestone_key: string
+  user_id: string
+  handle: string | null
+  achieved_at: string
+}
+
+type MilestonesResponse = {
+  tracking_since: string
+  rows: MilestoneFirstRow[]
 }
 
 const EMPTY: AnalyticsSummary = {
@@ -67,6 +88,7 @@ const GET_ACTIONS = new Set([
   'emails_combined',
   'events_recent',
   'variants',
+  'milestones',
 ])
 
 function createDefaultSkills(): SkillsState {
@@ -197,12 +219,99 @@ async function fetchAllAuthUsers(supabase: SupabaseClient): Promise<User[]> {
   return users
 }
 
+function heartbeatsToHours(heartbeats: number): number {
+  return Math.round(((heartbeats * HEARTBEAT_MINUTES) / 60) * 10) / 10
+}
+
+async function fetchPlaytimeHeartbeatsForUser(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('aw_events')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('event_type', 'session_heartbeat')
+    .gte('created_at', ANALYTICS_V2_TRACKING_SINCE)
+
+  if (error) {
+    console.error('playtime heartbeats', error.message)
+    return 0
+  }
+  return count ?? 0
+}
+
+async function fetchGymWinsForUser(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Record<string, number>> {
+  const wins: Record<string, number> = {}
+  for (const enemyId of GYM_HEAD_ENEMY_IDS) {
+    const { count, error } = await supabase
+      .from('aw_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('event_type', 'battle_end')
+      .eq('metadata->>result', 'win')
+      .eq('metadata->>enemyId', enemyId)
+      .gte('created_at', ANALYTICS_V2_TRACKING_SINCE)
+
+    if (error) {
+      console.error('gym wins', enemyId, error.message)
+      wins[enemyId] = 0
+    } else {
+      wins[enemyId] = count ?? 0
+    }
+  }
+  return wins
+}
+
+async function fetchPlaytimeHeartbeatsByUser(
+  supabase: SupabaseClient,
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  const { data, error } = await supabase.rpc('admin_user_playtime_heartbeats', {
+    p_since: ANALYTICS_V2_TRACKING_SINCE,
+  })
+  if (error) {
+    console.error('admin_user_playtime_heartbeats', error.message)
+    return map
+  }
+  for (const row of data ?? []) {
+    if (row.user_id) map.set(row.user_id, Number(row.heartbeats) || 0)
+  }
+  return map
+}
+
+async function fetchGymWinsByUser(
+  supabase: SupabaseClient,
+): Promise<Map<string, Record<string, number>>> {
+  const map = new Map<string, Record<string, number>>()
+  const { data, error } = await supabase.rpc('admin_user_gym_wins', {
+    p_since: ANALYTICS_V2_TRACKING_SINCE,
+  })
+  if (error) {
+    console.error('admin_user_gym_wins', error.message)
+    return map
+  }
+  for (const row of data ?? []) {
+    if (!row.user_id || !row.enemy_id) continue
+    const existing = map.get(row.user_id) ?? {}
+    existing[row.enemy_id] = Number(row.wins) || 0
+    map.set(row.user_id, existing)
+  }
+  return map
+}
+
 async function handleUsersAction(supabase: SupabaseClient): Promise<Response> {
-  const [authUsers, awUsersResult, profilesResult] = await Promise.all([
-    fetchAllAuthUsers(supabase),
-    supabase.from('aw_users').select('user_id, handle, email'),
-    supabase.from('aw_profiles').select('user_id, avatar_config'),
-  ])
+  const [authUsers, awUsersResult, profilesResult, heartbeatsByUser, gymWinsByUser] =
+    await Promise.all([
+      fetchAllAuthUsers(supabase),
+      supabase.from('aw_users').select('user_id, handle, email'),
+      supabase.from('aw_profiles').select('user_id, avatar_config'),
+      fetchPlaytimeHeartbeatsByUser(supabase),
+      fetchGymWinsByUser(supabase),
+    ])
 
   if (awUsersResult.error) return jsonResponse({ error: awUsersResult.error.message }, 500)
   if (profilesResult.error) return jsonResponse({ error: profilesResult.error.message }, 500)
@@ -225,11 +334,15 @@ async function handleUsersAction(supabase: SupabaseClient): Promise<Response> {
 
   const rows: AdminUserRow[] = authUsers.map((user) => {
     const skills = skillsByUserId.get(user.id) ?? createDefaultSkills()
+    const heartbeats = heartbeatsByUser.get(user.id) ?? 0
     return {
       user_id: user.id,
       email: user.email ?? emailByUserId.get(user.id) ?? '',
       handle: handleByUserId.get(user.id) ?? null,
       level: computePlayerLevel(skills),
+      build_name: deriveBuildName(skills).name,
+      hours_played: heartbeatsToHours(heartbeats),
+      gym_wins: gymWinsByUser.get(user.id) ?? {},
       joined: user.created_at ?? new Date(0).toISOString(),
     }
   })
@@ -245,7 +358,7 @@ async function handleUserDetailAction(
   const userId = requireUserId(body)
   if (!userId) return badRequest('user_id required')
 
-  const [{ data: authData, error: authError }, awUserResult, profileResult, eventStats] =
+  const [{ data: authData, error: authError }, awUserResult, profileResult, eventStats, heartbeats, gymWins] =
     await Promise.all([
       supabase.auth.admin.getUserById(userId),
       supabase.from('aw_users').select('user_id, handle, email, created_at, last_played_at').eq('user_id', userId).maybeSingle(),
@@ -256,6 +369,8 @@ async function handleUserDetailAction(
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1),
+      fetchPlaytimeHeartbeatsForUser(supabase, userId),
+      fetchGymWinsForUser(supabase, userId),
     ])
 
   if (authError) return jsonResponse({ error: authError.message }, 500)
@@ -268,6 +383,7 @@ async function handleUserDetailAction(
   const profile = profileResult.data
   const avatarConfig = (profile?.avatar_config ?? {}) as Record<string, unknown>
   const skills = parseSkills(avatarConfig.skills)
+  const build = deriveBuildName(skills)
 
   return jsonResponse({
     user_id: userId,
@@ -277,6 +393,12 @@ async function handleUserDetailAction(
     last_sign_in: authUser.last_sign_in_at ?? null,
     last_played_at: awUserResult.data?.last_played_at ?? null,
     level: computePlayerLevel(skills),
+    build_name: build.name,
+    build_color: build.color,
+    hours_played: heartbeatsToHours(heartbeats),
+    hours_tracking_since: ANALYTICS_V2_TRACKING_SINCE,
+    gym_wins: gymWins,
+    gym_head_ids: [...GYM_HEAD_ENEMY_IDS],
     skills,
     equipped_moves: profile?.moves_equipped ?? DEFAULT_EQUIPPED_MOVES,
     moves_unlocked: profile?.moves_unlocked ?? DEFAULT_UNLOCKED_MOVES,
@@ -674,6 +796,42 @@ async function handleGrantDeleteAction(
   return jsonResponse({ deleted: true })
 }
 
+async function handleMilestonesAction(supabase: SupabaseClient): Promise<Response> {
+  const { data, error } = await supabase
+    .from('aw_milestone_firsts')
+    .select('milestone_key, user_id, achieved_at')
+    .order('achieved_at', { ascending: true })
+
+  if (error) {
+    return jsonResponse({
+      tracking_since: ANALYTICS_V2_TRACKING_SINCE,
+      rows: [],
+      table_missing: error.message.includes('aw_milestone_firsts'),
+    } satisfies MilestonesResponse & { table_missing?: boolean })
+  }
+
+  const userIds = [...new Set((data ?? []).map((r) => r.user_id))]
+  const handleByUserId = new Map<string, string>()
+  if (userIds.length > 0) {
+    const { data: users } = await supabase.from('aw_users').select('user_id, handle').in('user_id', userIds)
+    for (const row of users ?? []) {
+      if (row.user_id) handleByUserId.set(row.user_id, row.handle)
+    }
+  }
+
+  const rows: MilestoneFirstRow[] = (data ?? []).map((row) => ({
+    milestone_key: row.milestone_key,
+    user_id: row.user_id,
+    handle: handleByUserId.get(row.user_id) ?? null,
+    achieved_at: row.achieved_at,
+  }))
+
+  return jsonResponse({
+    tracking_since: ANALYTICS_V2_TRACKING_SINCE,
+    rows,
+  } satisfies MilestonesResponse)
+}
+
 async function handleSummaryAction(supabase: SupabaseClient, days: number): Promise<Response> {
   const { data, error } = await supabase.rpc('analytics_summary', { p_days: days })
 
@@ -751,6 +909,8 @@ Deno.serve(async (req) => {
         return await handleEventsRecentAction(supabase, url.searchParams.get('limit'))
       case 'variants':
         return jsonResponse(listAllAdminMidnightVariantOptions())
+      case 'milestones':
+        return await handleMilestonesAction(supabase)
       case 'events_clear':
       case 'clear_events':
         return await handleClearEventsAction(supabase)
