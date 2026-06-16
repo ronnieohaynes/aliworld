@@ -1,91 +1,139 @@
 /**
- * Gym head progress — wins per head and clear flags (`5ive-gym1`, `5ive-gym2`, …).
+ * Weekly gym gauntlet — one-run four-fight progress, streak, and calendar rotation.
  */
 
-import { FIVE_GYM1_WINS_TO_CLEAR } from '../data/fiveGym1Gauntlet'
+import {
+  getAbsoluteWeekIndex,
+  getCurrentGymWeek,
+  getGymRunCombatId,
+  getGymWeekById,
+  getRetiredGymWeeks,
+  isCurrentGymWeek,
+  type GymWeekDefinition,
+} from '../data/gymWeeks'
 
-const STORAGE_KEY = 'aliworld:gym:v1'
+const STORAGE_KEY = 'aliworld:gym:v2'
+const LEGACY_STORAGE_KEY = 'aliworld:gym:v1'
 const LEGACY_QUEST1_STORAGE_KEY = 'aliworld:quest1-five:v1'
 
 export const FIVE_GYM1_ID = '5ive-gym1'
 
+export type GymActiveRun = {
+  weekId: string
+  /** 0–3 henchman index or leader at 3 */
+  fightIndex: number
+  /** Practice replays — no rewards */
+  practice: boolean
+}
+
 type GymState = {
-  /** Wins recorded per head id (0 … winsToClear). */
-  headWins: Record<string, number>
-  clearedHeads: Record<string, boolean>
-  /** True after the player has entered the oceanview gym interior at least once. */
   oceanviewGymVisited: boolean
+  weeklyGauntletExplainerSeen: boolean
+  /** Absolute calendar week index last synced (rollover + streak step-back). */
+  trackedAbsoluteWeek: number | null
+  /** Absolute week indices cleared for full reward. */
+  clearedAbsoluteWeeks: number[]
+  weeklyStreak: number
+  activeRun: GymActiveRun | null
 }
 
 export type GymSerialized = {
+  oceanviewGymVisited?: boolean
+  weeklyGauntletExplainerSeen?: boolean
+  trackedAbsoluteWeek?: number | null
+  clearedAbsoluteWeeks?: number[]
+  weeklyStreak?: number
+  activeRun?: GymActiveRun | null
+  /** @deprecated legacy cumulative wins — migrated on load */
   headWins?: Record<string, number>
   clearedHeads?: Record<string, boolean>
-  oceanviewGymVisited?: boolean
 }
 
 function emptyGymState(): GymState {
   return {
-    headWins: {},
-    clearedHeads: {},
     oceanviewGymVisited: false,
+    weeklyGauntletExplainerSeen: false,
+    trackedAbsoluteWeek: null,
+    clearedAbsoluteWeeks: [],
+    weeklyStreak: 0,
+    activeRun: null,
   }
 }
 
-function clampHeadWins(wins: number, max = FIVE_GYM1_WINS_TO_CLEAR): number {
-  if (!Number.isFinite(wins) || wins < 0) return 0
-  return Math.min(Math.floor(wins), max)
-}
-
-function normalizeHeadWins(raw: Record<string, unknown> | undefined): Record<string, number> {
-  const headWins: Record<string, number> = {}
-  if (!raw || typeof raw !== 'object') return headWins
-  for (const [id, val] of Object.entries(raw)) {
-    if (typeof val === 'number' && Number.isFinite(val) && val > 0) {
-      headWins[id] = clampHeadWins(val)
+function normalizeClearedWeeks(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return []
+  const out: number[] = []
+  for (const val of raw) {
+    if (typeof val === 'number' && Number.isFinite(val) && val >= 0) {
+      out.push(Math.floor(val))
     }
   }
-  return headWins
+  return [...new Set(out)].sort((a, b) => a - b)
 }
 
-function normalizeClearedHeads(raw: Record<string, unknown> | undefined): Record<string, boolean> {
-  const clearedHeads: Record<string, boolean> = {}
-  if (!raw || typeof raw !== 'object') return clearedHeads
-  for (const [id, val] of Object.entries(raw)) {
-    if (val === true) clearedHeads[id] = true
-  }
-  return clearedHeads
-}
-
-function reconcileClearedFromWins(state: GymState): GymState {
-  const headWins = { ...state.headWins }
-  const clearedHeads = { ...state.clearedHeads }
-  for (const [id, wins] of Object.entries(headWins)) {
-    if (wins >= FIVE_GYM1_WINS_TO_CLEAR) {
-      clearedHeads[id] = true
-    }
-  }
-  if (clearedHeads[FIVE_GYM1_ID] && (headWins[FIVE_GYM1_ID] ?? 0) < FIVE_GYM1_WINS_TO_CLEAR) {
-    headWins[FIVE_GYM1_ID] = FIVE_GYM1_WINS_TO_CLEAR
-  }
+function normalizeActiveRun(raw: unknown): GymActiveRun | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Partial<GymActiveRun>
+  if (typeof o.weekId !== 'string' || !getGymWeekById(o.weekId)) return null
+  const fightIndex =
+    typeof o.fightIndex === 'number' && o.fightIndex >= 0 && o.fightIndex <= 3
+      ? Math.floor(o.fightIndex)
+      : 0
   return {
-    headWins,
-    clearedHeads,
-    oceanviewGymVisited: state.oceanviewGymVisited,
+    weekId: o.weekId,
+    fightIndex,
+    practice: o.practice === true,
   }
+}
+
+function migrateLegacyClears(parsed: Partial<GymSerialized>): number[] {
+  const cleared: number[] = []
+  if (parsed.clearedHeads?.[FIVE_GYM1_ID] === true) {
+    cleared.push(0)
+  }
+  const legacyWins = parsed.headWins?.[FIVE_GYM1_ID]
+  if (typeof legacyWins === 'number' && legacyWins >= 3) {
+    if (!cleared.includes(0)) cleared.push(0)
+  }
+  try {
+    const legacyRaw = localStorage.getItem(LEGACY_QUEST1_STORAGE_KEY)
+    if (legacyRaw) {
+      const legacyParsed = JSON.parse(legacyRaw) as {
+        gymTier1Cleared?: boolean
+        gym5ive1Cleared?: boolean
+      }
+      if (legacyParsed.gym5ive1Cleared === true || legacyParsed.gymTier1Cleared === true) {
+        if (!cleared.includes(0)) cleared.push(0)
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return cleared
 }
 
 function loadGymFromStorage(): GymState {
-  const base = emptyGymState()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed: unknown = JSON.parse(raw)
       if (parsed && typeof parsed === 'object') {
-        const o = parsed as Partial<GymState>
-        return reconcileClearedFromWins({
-          headWins: normalizeHeadWins(o.headWins as Record<string, unknown> | undefined),
-          clearedHeads: normalizeClearedHeads(o.clearedHeads as Record<string, unknown> | undefined),
+        const o = parsed as GymSerialized
+        const legacyClears = migrateLegacyClears(o)
+        const clearedAbsoluteWeeks = [
+          ...new Set([...normalizeClearedWeeks(o.clearedAbsoluteWeeks), ...legacyClears]),
+        ].sort((a, b) => a - b)
+        return syncWeeklyCalendar({
           oceanviewGymVisited: o.oceanviewGymVisited === true,
+          weeklyGauntletExplainerSeen: o.weeklyGauntletExplainerSeen === true,
+          trackedAbsoluteWeek:
+            typeof o.trackedAbsoluteWeek === 'number' ? o.trackedAbsoluteWeek : null,
+          clearedAbsoluteWeeks,
+          weeklyStreak:
+            typeof o.weeklyStreak === 'number' && o.weeklyStreak >= 0
+              ? Math.floor(o.weeklyStreak)
+              : 0,
+          activeRun: normalizeActiveRun(o.activeRun),
         })
       }
     }
@@ -93,27 +141,25 @@ function loadGymFromStorage(): GymState {
     // ignore
   }
 
-  // One-time migration from quest1 gymTier1Cleared.
   try {
-    const legacyRaw = localStorage.getItem(LEGACY_QUEST1_STORAGE_KEY)
+    const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY)
     if (legacyRaw) {
       const parsed: unknown = JSON.parse(legacyRaw)
       if (parsed && typeof parsed === 'object') {
-        const o = parsed as { gymTier1Cleared?: boolean; gym5ive1Cleared?: boolean }
-        if (o.gym5ive1Cleared === true || o.gymTier1Cleared === true) {
-          return reconcileClearedFromWins({
-            headWins: { [FIVE_GYM1_ID]: FIVE_GYM1_WINS_TO_CLEAR },
-            clearedHeads: { [FIVE_GYM1_ID]: true },
-            oceanviewGymVisited: true,
-          })
-        }
+        const o = parsed as GymSerialized
+        const legacyClears = migrateLegacyClears(o)
+        return syncWeeklyCalendar({
+          ...emptyGymState(),
+          oceanviewGymVisited: o.oceanviewGymVisited === true,
+          clearedAbsoluteWeeks: legacyClears,
+        })
       }
     }
   } catch {
     // ignore
   }
 
-  return base
+  return syncWeeklyCalendar(emptyGymState())
 }
 
 function saveGymToStorage(): void {
@@ -126,7 +172,6 @@ function saveGymToStorage(): void {
 
 let state: GymState = loadGymFromStorage()
 let storeRevision = 0
-
 const listeners = new Set<() => void>()
 
 function emit(): void {
@@ -145,16 +190,51 @@ export function subscribeGymStore(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-export function getGymHeadWins(headId: string): number {
-  return state.headWins[headId] ?? 0
+/** Advance calendar week, step streak back if prior week uncleared. */
+export function syncWeeklyCalendar(input: GymState = state, nowMs = Date.now()): GymState {
+  const abs = getAbsoluteWeekIndex(nowMs)
+  let next = { ...input }
+
+  if (next.trackedAbsoluteWeek == null) {
+    next.trackedAbsoluteWeek = abs
+    return next
+  }
+
+  if (abs <= next.trackedAbsoluteWeek) {
+    return next
+  }
+
+  for (let w = next.trackedAbsoluteWeek; w < abs; w += 1) {
+    if (!next.clearedAbsoluteWeeks.includes(w)) {
+      next = {
+        ...next,
+        weeklyStreak: Math.max(0, next.weeklyStreak - 1),
+      }
+    }
+  }
+
+  const currentWeek = getCurrentGymWeek(nowMs)
+  if (next.activeRun && !next.activeRun.practice && next.activeRun.weekId !== currentWeek.id) {
+    next = { ...next, activeRun: null }
+  }
+
+  next.trackedAbsoluteWeek = abs
+  return next
 }
 
-export function isGymHeadCleared(headId: string): boolean {
-  return state.clearedHeads[headId] === true
-}
-
-export function isGym5ive1Cleared(): boolean {
-  return isGymHeadCleared(FIVE_GYM1_ID)
+export function refreshWeeklyGymCalendar(nowMs = Date.now()): void {
+  const synced = syncWeeklyCalendar(state, nowMs)
+  if (
+    synced.trackedAbsoluteWeek === state.trackedAbsoluteWeek &&
+    synced.weeklyStreak === state.weeklyStreak &&
+    synced.activeRun === state.activeRun &&
+    synced.clearedAbsoluteWeeks === state.clearedAbsoluteWeeks
+  ) {
+    return
+  }
+  state = synced
+  saveGymToStorage()
+  emit()
 }
 
 export function isOceanviewGymVisited(): boolean {
@@ -168,61 +248,212 @@ export function setOceanviewGymVisited(): void {
   emit()
 }
 
-/** Record a win; clears the head at exactly `FIVE_GYM1_WINS_TO_CLEAR`. Losses never reset wins. */
-export function recordGymHeadWin(headId: string): void {
-  if (isGymHeadCleared(headId)) return
-  const wins = getGymHeadWins(headId)
-  if (wins >= FIVE_GYM1_WINS_TO_CLEAR) return
-  const next = wins + 1
-  const headWins = { ...state.headWins, [headId]: next }
-  const clearedHeads =
-    next >= FIVE_GYM1_WINS_TO_CLEAR
-      ? { ...state.clearedHeads, [headId]: true }
-      : state.clearedHeads
-  state = { ...state, headWins, clearedHeads }
+export function isWeeklyGauntletExplainerSeen(): boolean {
+  return state.weeklyGauntletExplainerSeen
+}
+
+export function setWeeklyGauntletExplainerSeen(): void {
+  if (state.weeklyGauntletExplainerSeen) return
+  state = { ...state, weeklyGauntletExplainerSeen: true }
   saveGymToStorage()
   emit()
 }
 
-export function recordGym5ive1Win(): void {
-  recordGymHeadWin(FIVE_GYM1_ID)
+export function getWeeklyStreak(): number {
+  return state.weeklyStreak
 }
 
-/** @deprecated Use recordGymHeadWin — kept for save migration only. */
-export function setGymHeadCleared(headId: string): void {
-  if (state.clearedHeads[headId]) return
-  state = reconcileClearedFromWins({
-    headWins: { ...state.headWins, [headId]: FIVE_GYM1_WINS_TO_CLEAR },
-    clearedHeads: { ...state.clearedHeads, [headId]: true },
-    oceanviewGymVisited: state.oceanviewGymVisited,
-  })
+export function getActiveGymRun(): GymActiveRun | null {
+  return state.activeRun ? { ...state.activeRun } : null
+}
+
+export function getCurrentAbsoluteWeekIndex(nowMs = Date.now()): number {
+  refreshWeeklyGymCalendar(nowMs)
+  return getAbsoluteWeekIndex(nowMs)
+}
+
+export function isCurrentWeeklyGymCleared(nowMs = Date.now()): boolean {
+  refreshWeeklyGymCalendar(nowMs)
+  return state.clearedAbsoluteWeeks.includes(getAbsoluteWeekIndex(nowMs))
+}
+
+/** @deprecated — use isCurrentWeeklyGymCleared */
+export function isGym5ive1Cleared(nowMs = Date.now()): boolean {
+  return isCurrentWeeklyGymCleared(nowMs)
+}
+
+/** @deprecated — weekly gauntlet has no cumulative wins */
+export function getGymHeadWins(_headId: string): number {
+  return 0
+}
+
+export function isGymHeadCleared(_headId: string): boolean {
+  return isCurrentWeeklyGymCleared()
+}
+
+export function beginGymRun(weekId: string, practice: boolean, nowMs = Date.now()): GymActiveRun | null {
+  const week = getGymWeekById(weekId)
+  if (!week) return null
+
+  if (practice) {
+    const retired = getRetiredGymWeeks(nowMs)
+    const isLiveWeek = isCurrentGymWeek(weekId, nowMs)
+    if (!isLiveWeek && !retired.some((w) => w.id === weekId)) return null
+  } else {
+    if (!isCurrentGymWeek(weekId, nowMs)) return null
+    if (isCurrentWeeklyGymCleared(nowMs)) return null
+  }
+
+  const run: GymActiveRun = { weekId, fightIndex: 0, practice }
+  state = { ...state, activeRun: run }
+  saveGymToStorage()
+  emit()
+  return { ...run }
+}
+
+export function restartGymRun(): GymActiveRun | null {
+  if (!state.activeRun) return null
+  const run: GymActiveRun = { ...state.activeRun, fightIndex: 0 }
+  state = { ...state, activeRun: run }
+  saveGymToStorage()
+  emit()
+  return { ...run }
+}
+
+export function getActiveGymRunCombatId(): string | null {
+  const run = state.activeRun
+  if (!run) return null
+  const week = getGymWeekById(run.weekId)
+  if (!week) return null
+  return getGymRunCombatId(week, run.fightIndex)
+}
+
+export function getActiveGymWeek(): GymWeekDefinition | null {
+  const run = state.activeRun
+  if (!run) return null
+  return getGymWeekById(run.weekId) ?? null
+}
+
+/** After a gauntlet fight win — returns next combat id or null when run complete. */
+export function advanceGymRunAfterWin(): {
+  nextCombatId: string | null
+  completed: boolean
+  run: GymActiveRun
+} | null {
+  const run = state.activeRun
+  if (!run) return null
+  const week = getGymWeekById(run.weekId)
+  if (!week) return null
+
+  if (run.fightIndex >= 3) {
+    return { nextCombatId: null, completed: true, run: { ...run } }
+  }
+
+  const nextIndex = run.fightIndex + 1
+  const nextRun: GymActiveRun = { ...run, fightIndex: nextIndex }
+  state = { ...state, activeRun: nextRun }
+  saveGymToStorage()
+  emit()
+  return {
+    nextCombatId: getGymRunCombatId(week, nextIndex),
+    completed: false,
+    run: nextRun,
+  }
+}
+
+/** Loss ends the run — must restart from henchman 1 on next attempt. */
+export function resetGymRunOnLoss(): void {
+  if (!state.activeRun) return
+  state = { ...state, activeRun: null }
   saveGymToStorage()
   emit()
 }
 
-export function setGym5ive1Cleared(): void {
-  setGymHeadCleared(FIVE_GYM1_ID)
+export type GymWeekClearResult = {
+  weekId: string
+  absoluteWeekIndex: number
+  streak: number
+  practice: boolean
+}
+
+/** Mark current-week gauntlet cleared; updates streak. No-op for practice. */
+export function recordWeeklyGymClear(nowMs = Date.now()): GymWeekClearResult | null {
+  const run = state.activeRun
+  if (!run || run.practice) return null
+  if (!isCurrentGymWeek(run.weekId, nowMs)) return null
+
+  const abs = getAbsoluteWeekIndex(nowMs)
+  if (state.clearedAbsoluteWeeks.includes(abs)) {
+    state = { ...state, activeRun: null }
+    saveGymToStorage()
+    emit()
+    return null
+  }
+
+  let streak = state.weeklyStreak
+  const prevCleared = state.clearedAbsoluteWeeks.filter((w) => w < abs).pop()
+  if (prevCleared == null) {
+    streak = 1
+  } else if (prevCleared === abs - 1) {
+    streak += 1
+  } else {
+    const missed = abs - prevCleared - 1
+    streak = Math.max(0, streak - missed) + 1
+  }
+
+  state = {
+    ...state,
+    clearedAbsoluteWeeks: [...state.clearedAbsoluteWeeks, abs].sort((a, b) => a - b),
+    weeklyStreak: streak,
+    activeRun: null,
+  }
+  saveGymToStorage()
+  emit()
+
+  return {
+    weekId: run.weekId,
+    absoluteWeekIndex: abs,
+    streak,
+    practice: false,
+  }
+}
+
+export function clearActiveGymRun(): void {
+  if (!state.activeRun) return
+  state = { ...state, activeRun: null }
+  saveGymToStorage()
+  emit()
 }
 
 export function serialize(): GymSerialized {
   return {
-    headWins: { ...state.headWins },
-    clearedHeads: { ...state.clearedHeads },
     oceanviewGymVisited: state.oceanviewGymVisited,
+    weeklyGauntletExplainerSeen: state.weeklyGauntletExplainerSeen,
+    trackedAbsoluteWeek: state.trackedAbsoluteWeek,
+    clearedAbsoluteWeeks: [...state.clearedAbsoluteWeeks],
+    weeklyStreak: state.weeklyStreak,
+    activeRun: state.activeRun ? { ...state.activeRun } : null,
   }
 }
 
 export function applyState(data: Partial<GymSerialized>): void {
-  const headWins = normalizeHeadWins(data.headWins as Record<string, unknown> | undefined)
-  const clearedHeads = normalizeClearedHeads(data.clearedHeads as Record<string, unknown> | undefined)
-  const legacy = data as Partial<GymSerialized & { gymTier1Cleared?: boolean }>
-  if (legacy.gymTier1Cleared === true) {
-    clearedHeads[FIVE_GYM1_ID] = true
-  }
-  state = reconcileClearedFromWins({
-    headWins,
-    clearedHeads,
+  const legacyClears = migrateLegacyClears(data)
+  state = syncWeeklyCalendar({
     oceanviewGymVisited: data.oceanviewGymVisited === true,
+    weeklyGauntletExplainerSeen: data.weeklyGauntletExplainerSeen === true,
+    trackedAbsoluteWeek:
+      typeof data.trackedAbsoluteWeek === 'number' ? data.trackedAbsoluteWeek : null,
+    clearedAbsoluteWeeks: [
+      ...new Set([
+        ...normalizeClearedWeeks(data.clearedAbsoluteWeeks),
+        ...legacyClears,
+      ]),
+    ].sort((a, b) => a - b),
+    weeklyStreak:
+      typeof data.weeklyStreak === 'number' && data.weeklyStreak >= 0
+        ? Math.floor(data.weeklyStreak)
+        : 0,
+    activeRun: normalizeActiveRun(data.activeRun),
   })
   saveGymToStorage()
   emit()
@@ -230,5 +461,6 @@ export function applyState(data: Partial<GymSerialized>): void {
 
 export function resetState(): void {
   state = emptyGymState()
+  saveGymToStorage()
   emit()
 }
