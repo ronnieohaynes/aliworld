@@ -61,6 +61,7 @@ import {
   migrateSkillsToXpCurveV2,
   playerLevelUpLine,
   totalXpForLevel,
+  xpForSkillLevel,
   type SkillId,
   type SkillsState,
 } from './skillStore'
@@ -563,7 +564,7 @@ export function grantPlayerSkillXp(skill: SkillId, amount: number): string[] {
   return lines
 }
 
-export { cumulativeXpForLevel, totalXpForLevel }
+export { cumulativeXpForLevel, totalXpForLevel, xpForSkillLevel }
 
 export function getOverworldPlayerHp(): number | null {
   return state.hp
