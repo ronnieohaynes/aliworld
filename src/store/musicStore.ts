@@ -1,5 +1,5 @@
 /**
- * GameShell music bar — facade over the context-aware audio manager.
+ * GameShell music bar, facade over the context-aware audio manager.
  */
 
 import { isMusicEnabled } from '../config/musicEnabled'
@@ -25,7 +25,7 @@ export type MusicStoreSnapshot = {
   playerGranted: boolean
 }
 
-/** Stable reference for useSyncExternalStore — only replaced when values change. */
+/** Stable reference for useSyncExternalStore, only replaced when values change. */
 let musicStoreSnapshot: MusicStoreSnapshot = {
   playing: false,
   current: null,
@@ -52,7 +52,7 @@ export function getMusicStoreSnapshot(): MusicStoreSnapshot {
   return musicStoreSnapshot
 }
 
-// ── Cached primitive snapshots — values are frozen at emit time so
+// ── Cached primitive snapshots, values are frozen at emit time so
 //    useSyncExternalStore never sees a mid-render change (fixes #185).
 let _playerGranted = hasMusicPlayer()
 let _muted = hasMusicPlayer() ? isMusicMuted() : false
@@ -84,7 +84,7 @@ export function subscribeMusicStore(listener: () => void): () => void {
   }
 }
 
-/** Primitive selectors — safe for useSyncExternalStore without object snapshots. */
+/** Primitive selectors, safe for useSyncExternalStore without object snapshots. */
 export function getMusicPlayerGrantedSnapshot(): boolean {
   return _playerGranted
 }

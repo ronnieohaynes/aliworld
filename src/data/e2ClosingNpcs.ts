@@ -6,7 +6,7 @@ const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const NPC4_SPRITE = publicAsset('Assets/Characters/npcs/npc4-idle-sheet.png')
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 
-/** Post-restocker crowd — blue store sidewalk (southside exterior). */
+/** Post-restocker crowd, blue store sidewalk (southside exterior). */
 export const E2_CLOSING_CRIER_NPC: NpcData = {
   id: 'e2-closing-crier',
   name: 'town crier',

@@ -1,4 +1,4 @@
-/** Server-side build name derivation — keep aligned with src/data/buildName.ts */
+/** Server-side build name derivation, keep aligned with src/data/buildName.ts */
 
 export type SkillProgress = { level: number; xp: number }
 export type SkillsState = Record<'attack' | 'speed' | 'defense' | 'luck' | 'hp', SkillProgress>

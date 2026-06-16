@@ -98,7 +98,7 @@ export function AdminOverviewTab({ loading, error, summary, milestones }: Props)
         <section className="admin-panel admin-panel--hero">
           <h2>Not enough data yet</h2>
           <p className="admin-empty">
-            Events are flowing into <code>aw_events</code> — check back after more play sessions.
+            Events are flowing into <code>aw_events</code>, check back after more play sessions.
           </p>
         </section>
       ) : null}
@@ -107,26 +107,26 @@ export function AdminOverviewTab({ loading, error, summary, milestones }: Props)
         <div className="admin-stat admin-stat--hero">
           <span className="admin-stat__label">Avg session (est. min)</span>
           <span className="admin-stat__value">
-            {summary ? summary.avgSessionMinutes.toFixed(1) : '—'}
+            {summary ? summary.avgSessionMinutes.toFixed(1) : '-'}
           </span>
           <span className="admin-stat__hint">from heartbeat cadence</span>
         </div>
         <div className="admin-stat admin-stat--hero">
           <span className="admin-stat__label">Theater opens (30d)</span>
           <span className="admin-stat__value">
-            {summary ? summary.theaterOpens.toLocaleString() : '—'}
+            {summary ? summary.theaterOpens.toLocaleString() : '-'}
           </span>
         </div>
         <div className="admin-stat">
           <span className="admin-stat__label">Latest DAU</span>
           <span className="admin-stat__value">
-            {dauSeries.length ? dauSeries[dauSeries.length - 1]!.count : '—'}
+            {dauSeries.length ? dauSeries[dauSeries.length - 1]!.count : '-'}
           </span>
         </div>
         <div className="admin-stat">
           <span className="admin-stat__label">Quest steps tracked</span>
           <span className="admin-stat__value">
-            {summary ? summary.questDropoff.length : '—'}
+            {summary ? summary.questDropoff.length : '-'}
           </span>
         </div>
       </div>
@@ -178,7 +178,7 @@ export function AdminOverviewTab({ loading, error, summary, milestones }: Props)
 
         <section className="admin-panel admin-panel--wide">
           <h2>Quest drop-off</h2>
-          <p className="admin-panel__lede">distinct players per step — where the funnel thins</p>
+          <p className="admin-panel__lede">distinct players per step, where the funnel thins</p>
           {!summary?.questDropoff.length ? (
             <p className="admin-empty">No quest steps yet</p>
           ) : (
@@ -259,7 +259,7 @@ export function AdminOverviewTab({ loading, error, summary, milestones }: Props)
 
         <section className="admin-panel admin-panel--wide">
           <h2>Funnel clicks</h2>
-          <p className="admin-panel__lede">streams · merch · theater — the money signal</p>
+          <p className="admin-panel__lede">streams · merch · theater, the money signal</p>
           {!summary?.funnelClicks.length ? (
             <p className="admin-empty">No external clicks yet</p>
           ) : (
@@ -318,7 +318,7 @@ export function AdminOverviewTab({ loading, error, summary, milestones }: Props)
                     <td>{row.enemy}</td>
                     <td className="admin-table__num">{row.wins}</td>
                     <td className="admin-table__num">{row.losses}</td>
-                    <td className="admin-table__num">{row.avgTurns || '—'}</td>
+                    <td className="admin-table__num">{row.avgTurns || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -330,7 +330,7 @@ export function AdminOverviewTab({ loading, error, summary, milestones }: Props)
       <section className="admin-panel admin-panel--wide">
         <h2>First to milestone</h2>
         <p className="admin-panel__lede">
-          Write-once race board — only milestones hit after ship counts.
+          Write-once race board, only milestones hit after ship counts.
           {milestones?.tracking_since
             ? ` Tracking since ${formatJoinedDate(milestones.tracking_since)}.`
             : null}

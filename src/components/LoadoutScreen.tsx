@@ -406,7 +406,7 @@ export function LoadoutScreen({
               )
             })()}
 
-            {/* HP — first, stat-only, no move ladder */}
+            {/* HP, first, stat-only, no move ladder */}
             {(() => {
               const { level, xp } = skills.hp
               const atMax = level >= MAX_SKILL_LEVEL

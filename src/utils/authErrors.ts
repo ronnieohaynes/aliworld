@@ -18,10 +18,10 @@ export function toFriendlyAuthError(message: string): string {
   if (lower.includes('valid email')) return 'that email does not look right.'
   if (lower.includes('same password')) return 'pick a different password than before.'
   if (lower.includes('session') && lower.includes('expired')) {
-    return 'that reset link expired — request a new one.'
+    return 'that reset link expired, request a new one.'
   }
   if (lower.includes('rate limit') || lower.includes('too many requests')) {
-    return 'too many tries — wait a minute and try again.'
+    return 'too many tries, wait a minute and try again.'
   }
 
   return message.toLowerCase()

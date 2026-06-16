@@ -12,7 +12,7 @@ create index if not exists aw_milestone_firsts_user_idx on public.aw_milestone_f
 
 alter table public.aw_milestone_firsts enable row level security;
 
--- No client access — service role / edge function only.
+-- No client access, service role / edge function only.
 
 create or replace function public.claim_milestone_first_from_event()
 returns trigger

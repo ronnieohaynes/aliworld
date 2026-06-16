@@ -214,7 +214,7 @@ function spritesOverlap(a: CollisionZone, b: CollisionZone): boolean {
   )
 }
 
-/** Player is close below an NPC and sprites overlap — draw Midnight on top. */
+/** Player is close below an NPC and sprites overlap, draw Midnight on top. */
 function shouldPlayerDrawOverNpc(
   playerDrawX: number,
   playerDrawY: number,
@@ -315,7 +315,7 @@ function resolveNpcFacingTowardPlayer(
   return bestFacing
 }
 
-/** Feet hitbox size — tweak for how tight collision feels (world pixels). */
+/** Feet hitbox size, tweak for how tight collision feels (world pixels). */
 const FEET_HITBOX_WIDTH = 30
 const FEET_HITBOX_HEIGHT = 20
 
@@ -584,7 +584,7 @@ function formatDebugText(
       `Zoom: ${coords.zoom.toFixed(2)}`,
       coords.pointer.active
         ? `Pointer: (${coords.pointer.x.toFixed(1)}, ${coords.pointer.y.toFixed(1)})`
-        : 'Pointer: —',
+        : 'Pointer:',
     )
   }
   return lines.join('\n')

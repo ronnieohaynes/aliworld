@@ -1,4 +1,4 @@
-/** Public shape — must match gym-leaderboard edge function output exactly. */
+/** Public shape, must match gym-leaderboard edge function output exactly. */
 export type GymLeaderboardEntry = {
   handle: string
   winCount: number

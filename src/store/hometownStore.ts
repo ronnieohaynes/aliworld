@@ -1,5 +1,5 @@
 /**
- * Hometown store — tracks which hometown the player has selected.
+ * Hometown store, tracks which hometown the player has selected.
  *
  * Kept separate from playerStore so we don't have to rewrite that file.
  * Persisted in localStorage under 'aw_hometown' (simple string key).

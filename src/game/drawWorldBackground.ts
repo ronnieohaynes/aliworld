@@ -22,7 +22,7 @@ export function drawWorldMap(
   ctx.drawImage(image, 0, 0, dw, dh)
 }
 
-/** Full-map foreground overlay (transparent PNG) — drawn after Midnight/NPCs. */
+/** Full-map foreground overlay (transparent PNG), drawn after Midnight/NPCs. */
 export function drawWorldForegroundOverlay(
   ctx: CanvasRenderingContext2D,
   overlaySrc: string,

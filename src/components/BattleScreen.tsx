@@ -142,7 +142,7 @@ const WALKER_HEAVY_TEACH_STEPS = [
     target: 'telegraph' as const,
   },
   {
-    text: 'HOLD braces the hit. SLIP sidesteps it. read the telegraph — then pick.',
+    text: 'HOLD braces the hit. SLIP sidesteps it. read the telegraph, then pick.',
     target: 'moves' as const,
   },
 ]
@@ -333,7 +333,7 @@ type Props = {
   onWinPayoff?: (npcId: string) => void
   /** True once enter wipe has lifted and the battle is visible. */
   battleRevealed?: boolean
-  /** True when this is a "Run it back!" rematch — doubled damage, dramatic pauses. */
+  /** True when this is a "Run it back!" rematch, doubled damage, dramatic pauses. */
   runItBack?: boolean
   combatXpPolicy?: 'normal' | 'none' | 'fixed-level'
   battleEndHealing?: 'default' | 'full-on-win'
@@ -346,13 +346,13 @@ type Props = {
  */
 function StageBackground({ enemySrc, playerSrc }: { enemySrc: string; playerSrc: string }) {
   useEffect(() => {
-    console.log('[BattleScreen] stage bg — enemy:', enemySrc, 'player:', playerSrc)
+    console.log('[BattleScreen] stage bg, enemy:', enemySrc, 'player:', playerSrc)
   }, [enemySrc, playerSrc])
 
   return (
     <div className="battle-screen__stage-bg" aria-hidden>
       <div className="battle-screen__stage-bg-fallback" />
-      {/* Enemy hometown — top half */}
+      {/* Enemy hometown, top half */}
       <img
         className="battle-screen__stage-bg-img battle-screen__stage-bg-img--top"
         src={enemySrc}
@@ -360,7 +360,7 @@ function StageBackground({ enemySrc, playerSrc }: { enemySrc: string; playerSrc:
         draggable={false}
         onError={() => console.error('[BattleScreen] Failed to load enemy bg:', enemySrc)}
       />
-      {/* Player hometown — bottom half */}
+      {/* Player hometown, bottom half */}
       <img
         className="battle-screen__stage-bg-img battle-screen__stage-bg-img--bottom"
         src={playerSrc}
@@ -553,17 +553,17 @@ export function BattleScreen({
   const prevPlayerHpRef = useRef(state.playerHp)
   const prevFeedbackSeqRef = useRef(state.feedbackSeq)
   const winMatchupCalloutRef = useRef(false)
-  /** Skill of the last player move — used to pick the attack animation variant. */
+  /** Skill of the last player move, used to pick the attack animation variant. */
   const lastPlayerMoveSkillRef = useRef<'attack' | 'speed' | 'defense' | 'luck'>('attack')
-  // Displayed HP lags real HP — only updates after the lunge animation finishes
+  // Displayed HP lags real HP, only updates after the lunge animation finishes
   const [displayedEnemyHp, setDisplayedEnemyHp] = useState(state.enemyHp)
   const [displayedPlayerHp, setDisplayedPlayerHp] = useState(state.playerHp)
   // Displayed log lags state.log for moves that produced crit/status feedback
-  // (e.g. a Fury Sweep crit applying bleed) — the log line is held back until
+  // (e.g. a Fury Sweep crit applying bleed), the log line is held back until
   // those callouts have actually appeared, so the text doesn't spoil the
   // attack animation by reporting the result before it plays.
   // appendLog caps state.log at 3 entries (shifting the oldest off), so its
-  // .length stops changing once full — track the array reference instead,
+  // .length stops changing once full, track the array reference instead,
   // since appendLog always returns a new array when a line is added.
   const prevLogRef = useRef(state.log)
   const [displayedLog, setDisplayedLog] = useState<string[]>(state.log)
@@ -572,7 +572,7 @@ export function BattleScreen({
   // fully settles (same moment the result log line updates).
   const [turnAnnounce, setTurnAnnounce] = useState<string | null>(null)
   const prevPendingResolveRef = useRef(state.pendingResolve)
-  // Single battle-log line cycles through these — telegraph and the last
+  // Single battle-log line cycles through these, telegraph and the last
   // action result are never shown at the same time.
   const [logLineMode, setLogLineMode] = useState<'telegraph' | 'announce' | 'result'>('telegraph')
   const [enemyHitFx, setEnemyHitFx] = useState(false)
@@ -606,7 +606,7 @@ export function BattleScreen({
   const playerStatusTags = getFighterStatusTags('player', state.combatStatus)
   const playerLevel = getPlayerLevel()
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
-  // Split stage backgrounds — enemy uses their battleLocation, player uses chosen hometown
+  // Split stage backgrounds, enemy uses their battleLocation, player uses chosen hometown
   const playerHometownId = useSyncExternalStore(
     subscribeHometownStore,
     getPlayerHometown,
@@ -805,7 +805,7 @@ export function BattleScreen({
   useEffect(() => {
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp
     const playerDelta = prevPlayerHpRef.current - state.playerHp
-    // Capture pre-update HP now — the refs get overwritten to the new values
+    // Capture pre-update HP now, the refs get overwritten to the new values
     // before these animations run (they're scheduled via setTimeout).
     const fromEnemyHp = prevEnemyHpRef.current
     const fromPlayerHp = prevPlayerHpRef.current
@@ -821,7 +821,7 @@ export function BattleScreen({
       const HIT_MS = 840
       const BLEED_DAMAGE_DELAY_MS = 2000
       const id = Date.now() + Math.random()
-      // Bleed damage has its own feedback floater — only show the direct attack portion here.
+      // Bleed damage has its own feedback floater, only show the direct attack portion here.
       const bleedDelta = Math.min(state.feedbackBleedDamage, enemyDelta)
       const attackDelta = Math.max(0, enemyDelta - bleedDelta)
       const afterAttackHp = fromEnemyHp - attackDelta
@@ -841,7 +841,7 @@ export function BattleScreen({
           window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
         }
       }, LUNGE_MS + DAMAGE_DELAY_MS)
-      // Bleed's HP tick lands alongside its floater — after both attacks land
+      // Bleed's HP tick lands alongside its floater, after both attacks land
       // this turn, plus the bleed delay.
       if (bleedDelta > 0) {
         const enemyActedFirst = state.feedbackEnemyActedFirst
@@ -911,7 +911,7 @@ export function BattleScreen({
     const CRIT_EXTRA_MS = 500
     // Status effects wait for the hit-flash animation to fully finish before appearing.
     // Hit flash starts at +40ms (HIT_FLASH_MS) and runs for 840ms (HIT_MS), ending at
-    // +880ms relative to lunge start — i.e. +340ms relative to baseDelay (lunge+540).
+    // +880ms relative to lunge start, i.e. +340ms relative to baseDelay (lunge+540).
     // Add a small buffer so the status floater never overlaps the tail of the flash.
     const STATUS_SETTLE_MS = 380
     // Bleed damage always trails the attack's own damage floater by a fixed 500ms,
@@ -935,11 +935,11 @@ export function BattleScreen({
       const durationMs = event.kind === 'crit' ? 1200 : 900
       const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
       const statusOffset = event.kind === 'status' ? STATUS_SETTLE_MS : 0
-      // Events targeting the enemy come from the player's attack — use playerImpact.
-      // Events targeting the player come from the enemy's attack — use enemyImpact.
+      // Events targeting the enemy come from the player's attack, use playerImpact.
+      // Events targeting the player come from the enemy's attack, use enemyImpact.
       const baseDelay = isEnemyTarget ? playerImpact : enemyImpact
       const isBleedDamage = event.kind === 'damage' && event.tone === 'bleed'
-      // Bleed renders last — after BOTH attacks have landed this turn, even if the
+      // Bleed renders last, after BOTH attacks have landed this turn, even if the
       // bleed status was applied on this same turn's hit.
       const delay = isBleedDamage
         ? Math.max(playerImpact, enemyImpact) + BLEED_DAMAGE_DELAY_MS
@@ -1046,7 +1046,7 @@ export function BattleScreen({
 
   useEffect(() => {
     if (state.phase !== 'busy') return
-    // Hold resolution while the level-up notification is open — but only after the
+    // Hold resolution while the level-up notification is open, but only after the
     // full turn has resolved (idle) AND all floaters have finished, so the player
     // sees the battle animations before the overlay appears.
     if (state.pendingLevelUpNotification && state.resolveStep === 'idle' && floaters.length === 0) return
@@ -1173,13 +1173,13 @@ export function BattleScreen({
       <div className="battle-screen__content">
         <div className="battle-screen__playfield" ref={playfieldRef}>
 
-          {/* Stage fills the screen — fighters, plates, log all live inside */}
+          {/* Stage fills the screen, fighters, plates, log all live inside */}
           <section className="battle-screen__stage" ref={stageRef} aria-hidden>
             <StageBackground enemySrc={enemyBattleBgSrc} playerSrc={playerBattleBgSrc} />
             <div className="battle-screen__arena">
 
               {/* ── Enemy at top of arena ── */}
-              {/* Enemy plate — fixed anchor, never animates */}
+              {/* Enemy plate, fixed anchor, never animates */}
               <div className="battle-screen__plate-anchor battle-screen__plate-anchor--enemy" style={{ top: enemyPlacement.visibleDrawY + 5 }}>
                 <div className="battle-screen__sprite-plate">
                   <span className="battle-screen__plate-name">
@@ -1206,7 +1206,7 @@ export function BattleScreen({
                 </div>
               </div>
 
-              {/* Enemy sprite — animates independently */}
+              {/* Enemy sprite, animates independently */}
               <div
                 className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
                 style={{ top: enemyPlacement.drawY + 5 }}
@@ -1224,7 +1224,7 @@ export function BattleScreen({
                 </div>
               </div>
 
-              {/* ── Telegraph / announce / last-action — only one shown at a time ── */}
+              {/* ── Telegraph / announce / last-action, only one shown at a time ── */}
               {!showWinNarration && (
                 <section className="battle-screen__log" ref={telegraphRowRef} aria-live="polite">
                   {logLineMode === 'announce' && turnAnnounce ? (
@@ -1275,7 +1275,7 @@ export function BattleScreen({
 
 
 
-              {/* Player plate — fixed anchor, never animates */}
+              {/* Player plate, fixed anchor, never animates */}
               <div className="battle-screen__plate-anchor battle-screen__plate-anchor--player" style={{ top: playerPlacement.visibleDrawY }}>
                 <div ref={playerPlateRef} className="battle-screen__sprite-plate">
                   <span className="battle-screen__plate-name">
@@ -1305,7 +1305,7 @@ export function BattleScreen({
                 </div>
               </div>
 
-              {/* Player sprite — animates independently */}
+              {/* Player sprite, animates independently */}
               <div
                 className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ` battle-screen__fighter--atk-${playerAtkFx}` : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
                 style={{ top: playerPlacement.drawY }}
@@ -1393,7 +1393,7 @@ export function BattleScreen({
                   })}
                 </div>
             </section>
-            {/* NPC losing line — overlays moveset after player wins */}
+            {/* NPC losing line, overlays moveset after player wins */}
             {showWinNarration && knockoutPopup === null && (
               <button
                 type="button"
@@ -1405,7 +1405,7 @@ export function BattleScreen({
                 <span className="battle-screen__narration-continue">tap to continue ▸</span>
               </button>
             )}
-            {/* NPC winning line — overlays moveset after player loses */}
+            {/* NPC winning line, overlays moveset after player loses */}
             {loseNarrationVisible && (
               <button
                 type="button"

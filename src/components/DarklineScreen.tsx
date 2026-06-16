@@ -15,7 +15,7 @@ type Props = {
   currentCity: CityId
   destinations?: readonly CityId[]
   inactiveDestinations?: readonly { label: string; status: string }[]
-  /** Begin cult exit wipe — null closes back to overworld, CityId travels there. */
+  /** Begin cult exit wipe, null closes back to overworld, CityId travels there. */
   onBeginExit: (destination: CityId | null) => void
 }
 

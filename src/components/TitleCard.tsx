@@ -29,7 +29,7 @@ export function TitleCard({ onStart }: Props) {
       className="title-card"
       role="button"
       tabIndex={0}
-      aria-label="ALIWORLD title screen — tap to start"
+      aria-label="ALIWORLD title screen, tap to start"
       onClick={handleStart}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {

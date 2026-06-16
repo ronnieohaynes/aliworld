@@ -1,7 +1,7 @@
 import { publicAsset } from '../utils/publicAsset'
 
 /**
- * On disk: `public/Assets/Characters/` — use `publicAsset()` so paths respect Vite `base`.
+ * On disk: `public/Assets/Characters/`, use `publicAsset()` so paths respect Vite `base`.
  */
 const CHAR_DIR = publicAsset('Assets/Characters')
 
@@ -26,7 +26,7 @@ export const MIDNIGHT_WALK_FRAME_WIDTH = 256
 export const MIDNIGHT_WALK_FRAME_HEIGHT = 256
 export const MIDNIGHT_WALK_FRAMES_PER_DIRECTION = 4
 
-/** Neutral standing pose (second column) — held while idle. */
+/** Neutral standing pose (second column), held while idle. */
 export const MIDNIGHT_WALK_IDLE_FRAME = 1
 
 /** On-canvas scale relative to the original 96px-tall overworld size. */

@@ -148,24 +148,24 @@ export type BattleState = {
   log: string[]
   phase: BattlePhase
   result: BattleResult | null
-  /** Staged turn resolution — player move is chosen before steps run. */
+  /** Staged turn resolution, player move is chosen before steps run. */
   pendingResolve: PendingResolve | null
   resolveStep: BattleResolveStep
   /** Pop-up combat callouts for the battle UI (blocked, dodged, status, etc.). */
   feedbackEvents: BattleFeedbackEvent[]
   feedbackSeq: number
-  /** Which side resolved first this round — used to offset floater timing. */
+  /** Which side resolved first this round, used to offset floater timing. */
   feedbackEnemyActedFirst: boolean
-  /** Bleed damage dealt this turn — subtracted from the HP-delta floater so the
+  /** Bleed damage dealt this turn, subtracted from the HP-delta floater so the
    *  attack number and bleed number are shown separately. */
   feedbackBleedDamage: number
-  /** Non-null when a skill or combat level-up just occurred — shown as an overlay. */
+  /** Non-null when a skill or combat level-up just occurred, shown as an overlay. */
   pendingLevelUpNotification: LevelUpNotification | null
-  /** True when this battle is a "Run it back!" rematch — doubled damage, dramatic pauses. */
+  /** True when this battle is a "Run it back!" rematch, doubled damage, dramatic pauses. */
   runItBackMode: boolean
   /** When `none`, combat skill XP is skipped entirely for this battle. */
   combatXpPolicy: 'normal' | 'none' | 'fixed-level'
-  /** Override win healing — gauntlet uses full heal between chained fights. */
+  /** Override win healing, gauntlet uses full heal between chained fights. */
   battleEndHealing: 'default' | 'full-on-win'
 }
 
@@ -249,7 +249,7 @@ export type ResolveResult = {
   reflectApplied: boolean
   enemyAttacks: boolean
   enemyStunned: boolean
-  /** False during exposed / skip turns — no player move effects or XP move line. */
+  /** False during exposed / skip turns, no player move effects or XP move line. */
   playerActed: boolean
   phenomenaLine?: string
   rawIncoming: number
@@ -261,7 +261,7 @@ export type ResolveResult = {
   guardCountered: boolean
   /** Healing applied this turn (second wind, lifesteal, phenomena). */
   healApplied: number
-  /** HOLD brace chip — small atk-scaled side damage on successful brace. */
+  /** HOLD brace chip, small atk-scaled side damage on successful brace. */
   braceChipDmg?: number
   eMove: UpcomingMove
   pMove: PlayerMove
@@ -658,7 +658,7 @@ function enemyActsFirstInResolution(state: BattleState, r?: ResolveResult): bool
   if (!r) return speedBased
 
   // Speed "counter" moves (SLIP/PARRY for the player, SLIP for the enemy) are
-  // reactive — they should resolve AFTER the other side's move, unless both
+  // reactive, they should resolve AFTER the other side's move, unless both
   // sides picked a counter move, in which case fall back to speed.
   const pCounter = isPlayerCounterMove(r.pMove)
   const eCounter = isEnemyCounterMove(r.eMove)
@@ -734,7 +734,7 @@ function applyEnemyResolutionPhase(
       const moveName = getEnemyMoveDef(r.eMove as EnemyMoveId).displayName
       nextLog = appendLog(
         nextLog,
-        `${lower}'s ${moveName} — ${split.damageToPlayer}.`,
+        `${lower}'s ${moveName}, ${split.damageToPlayer}.`,
       )
     }
     if (split.damageToEnemy > 0) {
@@ -1008,7 +1008,7 @@ function applySkillXpToState(
   const nextLog = log
   // XP skill lines and level-up lines are intentionally not shown in the battle log
 
-  // Filter out xp-bonus floaters (outleveled bonus) — not shown in battle
+  // Filter out xp-bonus floaters (outleveled bonus), not shown in battle
   // Returned separately so callers can fire these AFTER damage feedback resolves.
   const xpBonusEvents = xpResult.bonusCallouts.filter((e) => e.kind !== 'xp-bonus')
 
@@ -1130,7 +1130,7 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   // Preserve the crit/status events already queued by withResolveFeedback (e.g. the
   // "CRIT" callout and "bleed!" status from a Fury Sweep) and append the bleed damage
   // text + xp bonus floaters after them, so a single seq bump carries the full,
-  // correctly-ordered sequence — nothing from the original hit gets dropped.
+  // correctly-ordered sequence, nothing from the original hit gets dropped.
   // XP bonus floaters intentionally fire AFTER damage/bleed feedback resolves.
   const followUpFeedback: BattleFeedbackEvent[] = [
     ...playerPhase.working.feedbackEvents,

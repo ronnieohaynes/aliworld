@@ -2,7 +2,7 @@
 // Approximated from the magenta-painted collision overlay (re-drawn layout).
 // Source map: 1254x1254 px. Zones are in world pixel coordinates,
 // assuming the map renders at native size with top-left at world (0,0).
-// NOTE: coordinates are estimated from the overlay image — expect to
+// NOTE: coordinates are estimated from the overlay image, expect to
 // fine-tune in-game.
 
 export interface CollisionZone {
@@ -20,7 +20,7 @@ export const SOUTHSIDE_DARKLINE_ZONE = { x: 330, y: 965, width: 75, height: 95 }
 /** Center x of the blue store corner entrance (yellow door zone). */
 export const SOUTHSIDE_STORE_DOOR_X = 1029;
 
-// Blue store entrance — yellow door transition zone.
+// Blue store entrance, yellow door transition zone.
 export const SOUTHSIDE_ENTRANCE_ZONE = {
   x: 1000,
   y: 895,
@@ -43,14 +43,14 @@ export const SOUTHSIDE_COLLISION_ZONES: CollisionZone[] = [
   // Octagon-shaped obstacle, approximated with two stacked rects
   { x: 250, y: 712, width: 155, height: 103 },
   { x: 230, y: 815, width: 170, height: 80 },
-  // Large building block (right side) — split to leave the door gap (x 1000-1058) walkable
+  // Large building block (right side), split to leave the door gap (x 1000-1058) walkable
   { x: 745, y: 487, width: 255, height: 481 },
   { x: 1058, y: 487, width: 32, height: 481 },
-  // Lintel above the blue store door — blocks the gap above doorway height
+  // Lintel above the blue store door, blocks the gap above doorway height
   { x: 1000, y: 487, width: 58, height: 408 },
   // Stepped facade connecting building to parking lot
   { x: 600, y: 790, width: 145, height: 105 },
-  // Barber pole shaft — extends the facade collision up to block its upper portion
+  // Barber pole shaft, extends the facade collision up to block its upper portion
   { x: 645, y: 575, width: 105, height: 215 },
   // Light pole / sign base (collision under the cyan occlusion post)
   { x: 452, y: 930, width: 53, height: 45 },

@@ -12,7 +12,7 @@ export interface CollisionZone {
 
 export const BLUE_STORE_INTERIOR_MAP_SIZE = { width: 1254, height: 1254 };
 
-/** Bitmap draw scale — environment is authored at native 1254; shrink to match Midnight. */
+/** Bitmap draw scale, environment is authored at native 1254; shrink to match Midnight. */
 export const BLUE_STORE_INTERIOR_MAP_DRAW_SCALE = 0.55;
 
 function scaleInteriorCoord(value: number): number {
@@ -46,7 +46,7 @@ export const BLUE_STORE_INTERIOR_ENTRY = { x: 60, y: 506 };
 // Walking into this returns the player to the exterior Blue Store map.
 export const BLUE_STORE_EXIT_ZONE = { x: 248, y: 521, width: 62, height: 52 };
 
-/** Outer shell + equipment rows + front desk (native map pixels — scale via `scaleBlueStoreInteriorZone`). */
+/** Outer shell + equipment rows + front desk (native map pixels, scale via `scaleBlueStoreInteriorZone`). */
 export const BLUE_STORE_INTERIOR_COLLISION_ZONES: CollisionZone[] = [
   { x: 0,    y: 0,    width: 258,  height: 248  }, // top-left wall block
   { x: 680,  y: 118,  width: 574,  height: 100  }, // top-right wall block (extends to right edge)
@@ -56,11 +56,11 @@ export const BLUE_STORE_INTERIOR_COLLISION_ZONES: CollisionZone[] = [
   { x: 620,  y: 170,  width: 45,   height: 160  }, // desk right wall
   { x: 25,   y: 248,  width: 105,  height: 712  }, // left wall
   { x: 888,  y: 118,  width: 366,  height: 1136 }, // right wall (extends to right + bottom edges)
-  // equipment rows — top row
+  // equipment rows, top row
   { x: 258,  y: 378,  width: 100,  height: 210  },
   { x: 465,  y: 378,  width: 100,  height: 232  },
   { x: 665,  y: 378,  width: 113,  height: 210  },
-  // equipment rows — bottom row
+  // equipment rows, bottom row
   { x: 252,  y: 645,  width: 106,  height: 233  },
   { x: 462,  y: 645,  width: 103,  height: 175  },
   { x: 665,  y: 645,  width: 113,  height: 233  },

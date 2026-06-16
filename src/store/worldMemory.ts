@@ -1,5 +1,5 @@
 /**
- * World memory — bosses cleared and cities visited.
+ * World memory, bosses cleared and cities visited.
  */
 
 const STORAGE_KEY = 'aliworld:world-memory:v1'

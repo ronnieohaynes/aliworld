@@ -3,10 +3,10 @@ import type { LeanSkill } from './skillCounter'
 import type { NpcTelegraphFlavor } from './npcRegistry'
 import { publicAsset } from '../utils/publicAsset'
 
-/** Week 1 leader — legacy overworld + combat id. */
+/** Week 1 leader, legacy overworld + combat id. */
 export const WEEK1_LEADER_NPC_ID = '5ive-gym1'
 
-/** Monday 09:00 UTC — week index 0 starts here (week 1 live). */
+/** Monday 09:00 UTC, week index 0 starts here (week 1 live). */
 export const GYM_WEEK_EPOCH_MS = Date.parse('2026-05-26T09:00:00.000Z')
 export const MS_PER_GYM_WEEK = 7 * 24 * 60 * 60 * 1000
 
@@ -27,7 +27,7 @@ export type GymFighterConfig = {
 }
 
 export type GymWeekDefinition = {
-  /** Stable id — badge value uses `gym-week-${id}`. */
+  /** Stable id, badge value uses `gym-week-${id}`. */
   id: string
   weekNumber: number
   leader: GymFighterConfig & {
@@ -50,7 +50,7 @@ const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const JASON_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 
-/** Ordered weekly lineups — author new weeks by appending entries. */
+/** Ordered weekly lineups, author new weeks by appending entries. */
 export const GYM_WEEKS: readonly GymWeekDefinition[] = [
   {
     id: '1',
@@ -67,19 +67,19 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
       guardCounter: { chance: 0.7, damageMult: 2.85 },
       enemyGuardPierce: 0.55,
       telegraphFlavor: {
-        STRIKE: 'cuts through —',
-        BAIT: 'dares you to swing —',
-        HAYMAKER: 'loads up —',
-        LOOP: 'the loop is coming —',
+        STRIKE: 'cuts through',
+        BAIT: 'dares you to swing',
+        HAYMAKER: 'loads up',
+        LOOP: 'the loop is coming',
       },
       spriteSrc: JEROME_SPRITE,
       spriteColumns: 4,
       battleBg: GYM_BATTLE_BG,
       battleSizeMult: 1.02,
       dialogue: {
-        intro: 'week one. four fights, one run — three henchmen, then me. one loss sends you back to the start.',
+        intro: 'week one. four fights, one run, three henchmen, then me. one loss sends you back to the start.',
         inProgress: "you're mid-run. pick up where you left off or restart from the top.",
-        cleared: "week one's yours. come back next week — practice anytime.",
+        cleared: "week one's yours. come back next week, practice anytime.",
         loss: "come back when you're ready.",
       },
     },
@@ -92,9 +92,9 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
         moves: ['STRIKE', 'BAIT', 'HAYMAKER'],
         leanSkill: 'defense',
         telegraphFlavor: {
-          STRIKE: 'sets a jab —',
-          BAIT: 'opens up —',
-          HAYMAKER: 'winds up —',
+          STRIKE: 'sets a jab',
+          BAIT: 'opens up',
+          HAYMAKER: 'winds up',
         },
         spriteSrc: NPC2_SPRITE,
         spriteColumns: 4,
@@ -109,9 +109,9 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
         moves: ['STRIKE', 'BAIT', 'BAIT', 'LOOP'],
         leanSkill: 'speed',
         telegraphFlavor: {
-          STRIKE: 'feints, then jabs —',
-          BAIT: 'leaves a gap —',
-          LOOP: 'draws the loop —',
+          STRIKE: 'feints, then jabs',
+          BAIT: 'leaves a gap',
+          LOOP: 'draws the loop',
         },
         spriteSrc: JASON_SPRITE,
         battleBg: GYM_BATTLE_BG,
@@ -125,10 +125,10 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
         moves: ['STRIKE', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP'],
         leanSkill: 'attack',
         telegraphFlavor: {
-          STRIKE: 'cuts in —',
-          BAIT: 'dares you forward —',
-          HAYMAKER: 'commits heavy —',
-          LOOP: 'spins the loop —',
+          STRIKE: 'cuts in',
+          BAIT: 'dares you forward',
+          HAYMAKER: 'commits heavy',
+          LOOP: 'spins the loop',
         },
         spriteSrc: JACLYN_SPRITE,
         battleBg: GYM_BATTLE_BG,
@@ -161,7 +161,7 @@ export function getGymWeekById(weekId: string): GymWeekDefinition | undefined {
   return GYM_WEEKS.find((w) => w.id === weekId)
 }
 
-/** Live lineup for rewards — rotates through GYM_WEEKS by calendar week. */
+/** Live lineup for rewards, rotates through GYM_WEEKS by calendar week. */
 export function getCurrentGymWeek(nowMs = Date.now()): GymWeekDefinition {
   const abs = getAbsoluteWeekIndex(nowMs)
   return GYM_WEEKS[abs % GYM_WEEKS.length]!
@@ -171,7 +171,7 @@ export function isCurrentGymWeek(weekId: string, nowMs = Date.now()): boolean {
   return getCurrentGymWeek(nowMs).id === weekId
 }
 
-/** Weeks that have rotated out of the live slot — practice only, no rewards. */
+/** Weeks that have rotated out of the live slot, practice only, no rewards. */
 export function getRetiredGymWeeks(nowMs = Date.now()): GymWeekDefinition[] {
   const abs = getAbsoluteWeekIndex(nowMs)
   const current = getCurrentGymWeek(nowMs)

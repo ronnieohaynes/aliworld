@@ -1,5 +1,5 @@
 /**
- * Overworld sprite draw sizes and crop logic — mirrors Player.tsx map rendering.
+ * Overworld sprite draw sizes and crop logic, mirrors Player.tsx map rendering.
  * Battle and other scenes import from here so sizing stays consistent with the map.
  */
 
@@ -29,7 +29,7 @@ export const WORLD_NPC_DISPLAY_H = NPC_BASE_DISPLAY_H
 /** Unified map footprint scale for overworld NPC sprites and collision. */
 export const WORLD_NPC_MAP_SCALE = 0.92
 
-/** Overworld map display — 8% smaller than battle reference. */
+/** Overworld map display, 8% smaller than battle reference. */
 export const MAP_NPC_DISPLAY_W = Math.round(NPC_BASE_DISPLAY_W * WORLD_NPC_MAP_SCALE)
 export const MAP_NPC_DISPLAY_H = Math.round(NPC_BASE_DISPLAY_H * WORLD_NPC_MAP_SCALE)
 

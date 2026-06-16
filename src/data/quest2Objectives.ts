@@ -1,5 +1,5 @@
 /**
- * Quest 2 objectives — southside / blue store (gated in order).
+ * Quest 2 objectives, southside / blue store (gated in order).
  */
 
 import type { QuestObjectiveContext, QuestObjectiveStep } from './questObjectives'
@@ -44,7 +44,7 @@ export function buildQuest2ObjectiveContext(): Quest2ObjectiveContext {
   }
 }
 
-export const QUEST_2_CLOSING_TEXT = 'episode 3 — coming soon.'
+export const QUEST_2_CLOSING_TEXT = 'episode 3, coming soon.'
 
 export const QUEST_2_STEPS: readonly QuestObjectiveStep[] = [
   {

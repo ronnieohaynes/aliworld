@@ -62,7 +62,7 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
   },
 ]
 
-/** No start-menu exception needed — loadout opens directly via the script button. */
+/** No start-menu exception needed, loadout opens directly via the script button. */
 export function allowsStartMenuDuringLoadoutTutorial(_step: number | null): boolean {
   return false
 }

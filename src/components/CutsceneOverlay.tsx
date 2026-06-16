@@ -188,7 +188,7 @@ export function CutsceneOverlay({
     const tryStartPlayback = (player: YTPlayer) => {
       player.mute?.()
       setSoundMuted(true)
-      // Do NOT set playbackStartedAtMsRef here — we don't know yet when the
+      // Do NOT set playbackStartedAtMsRef here, we don't know yet when the
       // video will actually start playing (buffering may take hundreds of ms).
       // onStateChange(YT_PLAYING) is the authoritative clock start point.
       player.playVideo()

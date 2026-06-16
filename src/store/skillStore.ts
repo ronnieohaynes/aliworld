@@ -38,7 +38,7 @@ export function cumulativeXpForLevel(level: number): number {
   return XP_CURVE.cumulativeXpForLevel(level)
 }
 
-/** @deprecated Prefer cumulativeXpForLevel — kept for existing imports. */
+/** @deprecated Prefer cumulativeXpForLevel, kept for existing imports. */
 export function totalXpForLevel(level: number): number {
   return cumulativeXpForLevel(level)
 }
@@ -62,7 +62,7 @@ function clampSkillProgress(prev: SkillProgress): SkillProgress {
   return { level, xp }
 }
 
-/** Forward-only level sync — never delevels; used for XP grants and grandfather migration. */
+/** Forward-only level sync, never delevels; used for XP grants and grandfather migration. */
 export function advanceSkillLevelFromXp(prev: SkillProgress): SkillProgress {
   let { level, xp } = clampSkillProgress(prev)
   while (level < MAX_SKILL_LEVEL && xp >= cumulativeXpForLevel(level + 1)) {
@@ -137,7 +137,7 @@ export type SkillStatBonuses = {
   maxHp: number
 }
 
-/** Effective bonus steps from raw skill level — sub-linear past mid levels. */
+/** Effective bonus steps from raw skill level, sub-linear past mid levels. */
 export function skillBonusSteps(level: number): number {
   const raw = Math.max(0, level - 1)
   if (raw <= SKILL_STAT_BONUS_LINEAR_CAP) return raw

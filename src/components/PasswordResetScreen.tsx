@@ -35,7 +35,7 @@ export function PasswordResetScreen() {
           return
         }
         clearAuthParamsFromUrl()
-        setMessage('password updated — you are signed in.')
+        setMessage('password updated, you are signed in.')
       } finally {
         setSubmitting(false)
       }

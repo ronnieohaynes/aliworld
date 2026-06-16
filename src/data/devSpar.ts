@@ -1,4 +1,4 @@
-// ── DEV ONLY: sparring dummy — REMOVE BEFORE LAUNCH ──
+// ── DEV ONLY: sparring dummy, REMOVE BEFORE LAUNCH ──
 // grep "DEV ONLY" to find all launch-blockers.
 
 import { publicAsset } from '../utils/publicAsset'
@@ -17,7 +17,7 @@ export const DEV_SPAR_NPC_ID = 'dev-spar'
 
 const DEV_SPAR_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 
-/** HARD sparring moveset — strike, brace, feint, telegraphed heavy. */
+/** HARD sparring moveset, strike, brace, feint, telegraphed heavy. */
 const DEV_SPAR_MOVES = ['STRIKE', 'HOLD', 'SLIP', 'HAYMAKER'] as const
 
 const HP_MULT = 1.2

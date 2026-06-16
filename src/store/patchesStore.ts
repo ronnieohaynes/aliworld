@@ -1,5 +1,5 @@
 /**
- * Jacket Patches — rewards for completing episodes of "Midnight's Story".
+ * Jacket Patches, rewards for completing episodes of "Midnight's Story".
  *
  * Each patch grants the player a chunk of XP in a skill of their choosing.
  * The first patch grants 100 xp, doubling with each subsequent patch
@@ -75,7 +75,7 @@ function emit(): void {
   }
 }
 
-/** Monotonic counter for useSyncExternalStore — never return mutable state as snapshot. */
+/** Monotonic counter for useSyncExternalStore, never return mutable state as snapshot. */
 export function getPatchesRevision(): number {
   return storeRevision
 }
@@ -97,7 +97,7 @@ export function getPatchCount(): number {
   return state.patches.length
 }
 
-/** XP the NEXT patch (not yet awarded) would grant — doubles each time, starting at 100. */
+/** XP the NEXT patch (not yet awarded) would grant, doubles each time, starting at 100. */
 export function getNextPatchXp(): number {
   return PATCH_BASE_XP * 2 ** state.patches.length
 }

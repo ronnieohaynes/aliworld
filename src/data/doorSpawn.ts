@@ -9,7 +9,7 @@
 
 import type { CollisionZone } from './collisionZones'
 
-/** Standalone copy of Player.tsx's feet-hitbox constants — kept in sync manually. */
+/** Standalone copy of Player.tsx's feet-hitbox constants, kept in sync manually. */
 const PLAYER_DISPLAY_HEIGHT = 72
 const FEET_HITBOX_WIDTH = 30
 const FEET_HITBOX_HEIGHT = 20

@@ -88,7 +88,7 @@ export function SortableAdminTable<T extends Record<string, unknown>>({
             <tr key={getRowKey(row)} onClick={onRowClick ? () => onRowClick(row) : undefined}>
               {columns.map((col) => (
                 <td key={col.key} className={col.align === 'right' ? 'admin-table__num' : undefined}>
-                  {col.render ? col.render(row) : String(row[col.key] ?? '—')}
+                  {col.render ? col.render(row) : String(row[col.key] ?? '-')}
                 </td>
               ))}
             </tr>

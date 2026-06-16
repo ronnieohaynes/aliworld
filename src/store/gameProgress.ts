@@ -1,5 +1,5 @@
 /**
- * Full save reset — used by START menu "New Game" confirmation.
+ * Full save reset, used by START menu "New Game" confirmation.
  */
 
 import { resetArtifactsForDebug } from './artifactStore'

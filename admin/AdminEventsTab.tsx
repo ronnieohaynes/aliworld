@@ -23,7 +23,7 @@ export function AdminEventsTab({ rows, loading, error, onRefresh }: Props) {
       {error ? <p className="admin-error">{error}</p> : null}
 
       {!loading && rows.length === 0 ? (
-        <p className="admin-empty">No events yet — play the game and refresh.</p>
+        <p className="admin-empty">No events yet, play the game and refresh.</p>
       ) : null}
 
       {rows.length > 0 ? (

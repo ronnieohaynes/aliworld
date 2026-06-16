@@ -2,10 +2,10 @@ import type { Caption } from '../data/episode1Captions'
 
 export type { Caption }
 
-/** ALIWORLD episode theater ids — respawn-to-5ive after playback when flagged. */
+/** ALIWORLD episode theater ids, respawn-to-5ive after playback when flagged. */
 export const ALIWORLD_EPISODE_VIDEO_IDS = ['6t83Cdmq1fM'] as const
 
-/** Options for {@link PlayCutsceneOptions} — consumed by GameScreen / CutsceneOverlay. */
+/** Options for {@link PlayCutsceneOptions}, consumed by GameScreen / CutsceneOverlay. */
 export type PlayCutsceneOptions = {
   videoId: string
   startSeconds: number

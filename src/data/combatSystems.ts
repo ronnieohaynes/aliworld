@@ -20,7 +20,7 @@ export type EnemyStrikeResolution = {
   eDmg: number
 }
 
-/** Single source of truth for incoming enemy damage — dodge/brace read eDmg from here. */
+/** Single source of truth for incoming enemy damage, dodge/brace read eDmg from here. */
 export function resolveEnemyStrike(
   eMove: UpcomingMove,
   ctx: {
@@ -102,7 +102,7 @@ export function scheduleDeathClock(
   ]
 }
 
-/** Call at turn start — fires clocks at 0 and ticks the rest. */
+/** Call at turn start, fires clocks at 0 and ticks the rest. */
 export function resolveDeathClocksAtTurnStart(clocks: DeathClock[]): {
   clocks: DeathClock[]
   hits: DeathClockHit[]
@@ -170,7 +170,7 @@ export function splitIncomingWithReflect(
   }
 }
 
-/** Player's next hit lands twice — returns total damage to apply. */
+/** Player's next hit lands twice, returns total damage to apply. */
 export function applyDoubleHit(playerDmg: number, playerDouble: number): {
   totalDamage: number
   consumedDouble: boolean

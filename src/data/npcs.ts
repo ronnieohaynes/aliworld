@@ -20,8 +20,8 @@ export type NpcData = {
   /** Path to an idle sprite sheet (horizontal strip: down, up, left, right). */
   spriteSrc?: string
   /**
-   * `strip-columns` — equal-width columns (gating NPC placeholders).
-   * `horizontal-bbox` — 1536×1024 story sheets; one idle pose per direction, bbox-cropped.
+   * `strip-columns`, equal-width columns (gating NPC placeholders).
+   * `horizontal-bbox`, 1536×1024 story sheets; one idle pose per direction, bbox-cropped.
    */
   spriteLayout?: 'strip-columns' | 'horizontal-bbox'
   /** Number of direction columns in the sprite sheet (default 4; strip-columns only). */
@@ -55,7 +55,7 @@ const TOWN_CRIER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/towncrier-idl
 /** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
 export { JASON_IDLE_SPRITE, TOWN_CRIER_IDLE_SPRITE, CLERK_IDLE_SPRITE, RESTOCKER_IDLE_SPRITE }
 
-/** Quest 1 gating NPC — Bayview Grocery sidewalk (upper-left). */
+/** Quest 1 gating NPC, Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
   id: 'npc1',
   name: '',
@@ -70,7 +70,7 @@ export const GATING_NPC_1: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — main road, left of center. */
+/** Quest 1 gating NPC, main road, left of center. */
 export const GATING_NPC_2: NpcData = {
   id: 'npc2',
   name: '',
@@ -84,7 +84,7 @@ export const GATING_NPC_2: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — far east sidewalk. */
+/** Quest 1 gating NPC, far east sidewalk. */
 export const GATING_NPC_3: NpcData = {
   id: 'npc3',
   name: '',
@@ -99,7 +99,7 @@ export const GATING_NPC_3: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 gating NPC — west sidewalk. */
+/** Quest 1 gating NPC, west sidewalk. */
 export const GATING_NPC_4: NpcData = {
   id: 'npc4',
   name: '',
@@ -142,7 +142,7 @@ export const WALKER_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 1 — second conversion fight; Sunset Bakery sidewalk (upper-right). */
+/** Quest 1, second conversion fight; Sunset Bakery sidewalk (upper-right). */
 export const JACLYN_NPC: NpcData = {
   id: 'jaclyn',
   name: 'jaclyn',
@@ -162,7 +162,7 @@ export const JACLYN_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Mark — Darkline guard; blocks stairs until Quest 1 complete. */
+/** Mark, Darkline guard; blocks stairs until Quest 1 complete. */
 export const MARK_NPC: NpcData = {
   id: 'mark',
   name: 'mark',
@@ -182,7 +182,7 @@ export const MARK_NPC: NpcData = {
   fixedFacing: 'up',
 }
 
-/** Adam — Prelude MP3 player handoff, placed near five spawn (see cityConfig). */
+/** Adam, Prelude MP3 player handoff, placed near five spawn (see cityConfig). */
 export const ADAM_NPC: NpcData = {
   id: 'adam',
   name: 'adam',
@@ -207,7 +207,7 @@ export const FIVE_OVERWORLD_NPCS: readonly NpcData[] = [
   MARK_NPC,
 ]
 
-/** Quest 2 — crowd outside the 5ive after e1. */
+/** Quest 2, crowd outside the 5ive after e1. */
 export const CROWD_1_NPC: NpcData = {
   id: 'crowd1',
   name: 'crowd',
@@ -231,7 +231,7 @@ export const CROWD_2_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2 — returning walker in the e2 crowd (converted; faintly wrong). */
+/** Quest 2, returning walker in the e2 crowd (converted; faintly wrong). */
 export const WALKER_E2_CROWD_NPC: NpcData = {
   id: 'walker-crowd',
   name: 'walker',
@@ -246,7 +246,7 @@ export const WALKER_E2_CROWD_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2 — town crier at the 5ive. */
+/** Quest 2, town crier at the 5ive. */
 export const TOWN_CRIER_NPC: NpcData = {
   id: 'town-crier',
   name: 'town crier',
@@ -258,7 +258,7 @@ export const TOWN_CRIER_NPC: NpcData = {
     'convince me.',
   ],
   linesConverted: [
-    "...no. no — you're right. you were always right.",
+    "...no. no, you're right. you were always right.",
     "i'll tell them. everyone. they'll listen this time.",
     'send me ahead. they need to hear it before you arrive.',
   ],
@@ -267,7 +267,7 @@ export const TOWN_CRIER_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2 — blue store clerk (dialogue/combat template; placement in blueStoreNpcs.ts). */
+/** Quest 2, blue store clerk (dialogue/combat template; placement in blueStoreNpcs.ts). */
 export const CLERK_NPC: NpcData = {
   id: 'clerk',
   name: 'clerk',
@@ -288,7 +288,7 @@ export const CLERK_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2 — restocker boss (dialogue/combat template; placement in blueStoreNpcs.ts). */
+/** Quest 2, restocker boss (dialogue/combat template; placement in blueStoreNpcs.ts). */
 export const RESTOCKER_NPC: NpcData = {
   id: 'restocker',
   name: 'restocker',
@@ -304,10 +304,10 @@ export const RESTOCKER_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Southside overworld — fights live in blue-store-interior. */
+/** Southside overworld, fights live in blue-store-interior. */
 export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = []
 
-/** Mando — renders inside the 13 Gallons interior overlay. */
+/** Mando, renders inside the 13 Gallons interior overlay. */
 export const MANDO_NPC: NpcData = {
   id: 'mando',
   name: 'mando',

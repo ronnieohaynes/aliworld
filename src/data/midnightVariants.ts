@@ -13,7 +13,7 @@ export type { MidnightVariantId }
 
 const CHARACTERS_DIR = publicAsset('Assets/Characters')
 
-/** Full variant MAP — id → walk sheet URL (every renderable sprite). */
+/** Full variant MAP, id → walk sheet URL (every renderable sprite). */
 const WALK_SRC = Object.fromEntries(
   Object.entries(MIDNIGHT_VARIANT_SHEET).map(([id, { folder, file }]) => [
     id,
@@ -72,7 +72,7 @@ export const MIDNIGHT_DEFAULT_VARIANT_ID: MidnightVariantId = 'default'
 
 const BASELINE_RENDER = MIDNIGHT_DEFAULT_RENDER_TUNING
 
-/** Creation carousel only — subset of the full MAP. */
+/** Creation carousel only, subset of the full MAP. */
 export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   { id: 'default', render: BASELINE_RENDER },
   {
@@ -140,7 +140,7 @@ export function isSelectableMidnightVariantId(value: string): boolean {
   return isMidnightVariantId(value) && SELECTABLE_IDS.has(value)
 }
 
-/** Admin + assign — every id in the full MAP; hidden = not on creation carousel. */
+/** Admin + assign, every id in the full MAP; hidden = not on creation carousel. */
 export function listAllMidnightVariantOptions() {
   return listAllAdminMidnightVariantOptions()
 }

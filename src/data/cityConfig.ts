@@ -75,7 +75,7 @@ export type CityConfig = {
 }
 
 const HILLCREST_MAP_SRC = publicAsset('Assets/tileset/hillcrest-map.png')
-/** Primary southside art — swap to hillside-market tileset when art lands. */
+/** Primary southside art, swap to hillside-market tileset when art lands. */
 const SOUTHSIDE_MAP_SRC = publicAsset('Assets/tileset/southside-map.png')
 /** Walkable fallback if southside-map fails to load (reuse hillcrest until art ships). */
 export const SOUTHSIDE_PLACEHOLDER_MAP_SRC = HILLCREST_MAP_SRC
@@ -253,10 +253,10 @@ export const DARKLINE_DESTINATIONS: CityId[] = [
   'san-bruno',
 ]
 
-/** Unlocked after E1 cafe beat — appended to darkline destinations at runtime. */
+/** Unlocked after E1 cafe beat, appended to darkline destinations at runtime. */
 export const POST_E1_DARKLINE_DESTINATION: CityId = 'southside'
 
-/** Unlocked when Quest 2 is active — Southside / Hillside Market. */
+/** Unlocked when Quest 2 is active, Southside / Hillside Market. */
 export const POST_E2_DARKLINE_DESTINATION: CityId = 'southside'
 
 export const INACTIVE_DESTINATIONS: { label: string; status: string }[] = [

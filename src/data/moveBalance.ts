@@ -1,4 +1,4 @@
-/** Tunable combat balance — adjust here during playtests.
+/** Tunable combat balance, adjust here during playtests.
  *  Leveling depth: display level is cosmetic; fights use skill bonuses below + counter loop.
  *  Build matchup + timing should beat a modest (~3–5 skill step) raw-stat gap. */
 
@@ -7,7 +7,7 @@ import type { PlayerMoveId } from './moveIds'
 /** Sub-linear stat steps: full linear growth through this raw skill level, then tail factor. */
 export const SKILL_STAT_BONUS_LINEAR_CAP = 18
 export const SKILL_STAT_BONUS_TAIL_FACTOR = 0.72
-/** Max HP per effective skill step (softened from 2 — keeps attrition fights winnable). */
+/** Max HP per effective skill step (softened from 2, keeps attrition fights winnable). */
 export const SKILL_HP_BONUS_PER_LEVEL = 3
 
 export const BLACKOUT_INTERRUPTIBLE = true
@@ -34,7 +34,7 @@ export const CANNON_CRIT_MULT = 1.5
 export const CANNON_DEF_SHATTER_CHANCE = 0.05
 
 export const BLACKOUT_ARMED_DAMAGE_MULT = 3.2
-/** Dodge chance multiplier on blackout release (huge hit — not free, but answerable). */
+/** Dodge chance multiplier on blackout release (huge hit, not free, but answerable). */
 export const BLACKOUT_RELEASE_DODGE_MULT = 0.62
 
 export const SECOND_WIND_HEAL_BASE_PCT = 0.2
@@ -86,7 +86,7 @@ export const ENEMY_SHAKE_OUTGOING_MULT = 0.4
 export const ENEMY_SLOW_OUTGOING_MULT = 0.56
 /** Bleed chip each turn as a fraction of enemy max hp. */
 export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
-/** Shared enemy LOOP / HAYMAKER strike multiplier — telegraphed heavies. */
+/** Shared enemy LOOP / HAYMAKER strike multiplier, telegraphed heavies. */
 export const ENEMY_LOOP_STRIKE_MULT = 2
 
 /** Combat XP scales with enemy level vs player level (clamp). */
@@ -111,9 +111,9 @@ export function earlyStrikeDamageScale(attackSkillLevel: number): number {
   return EARLY_STRIKE_DAMAGE_FLOOR_MULT + (1 - EARLY_STRIKE_DAMAGE_FLOOR_MULT) * t
 }
 
-/** Defense skill — brace blocks more per level (multiplier reduction, capped). */
+/** Defense skill, brace blocks more per level (multiplier reduction, capped). */
 export const DEF_MITIGATION_PER_LEVEL = 0.025
-/** Defense skill — passive incoming damage reduction per level (kept modest vs counter loop). */
+/** Defense skill, passive incoming damage reduction per level (kept modest vs counter loop). */
 export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.009
 /** Hard cap on total defense mitigation so builds never become invincible. */
 export const DEF_MAX_MITIGATION = 0.6
@@ -137,7 +137,7 @@ export function braceIncomingMultiplier(baseMult: number, defSkillLevel: number)
   return Math.max(DEF_BRACE_INCOMING_FLOOR, scaled)
 }
 
-/** Brace status chip mitigation — stronger at higher defense skill. */
+/** Brace status chip mitigation, stronger at higher defense skill. */
 export function braceStatusIncomingMultiplier(defSkillLevel: number): number {
   const bonus = Math.min(0.35, Math.max(0, defSkillLevel - 1) * DEF_MITIGATION_PER_LEVEL)
   return Math.max(DEF_BRACE_INCOMING_FLOOR, DEF_BRACE_STATUS_BASE_MULT - bonus)
@@ -153,7 +153,7 @@ export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: n
   return Math.max(1, Math.floor(incoming * (1 - frac)))
 }
 
-/** Speed skill — dodge reliability and counter scaling per level. */
+/** Speed skill, dodge reliability and counter scaling per level. */
 export const SPD_DODGE_PER_LEVEL = 0.02
 export const SPD_DODGE_MAX = 0.5
 /** Extra counter damage multiplier per speed level (on top of dodge bonus). */
@@ -180,46 +180,46 @@ export function speedInitiativeBonus(spdSkillLevel: number): number {
   return Math.max(0, spdSkillLevel - 1) * SPD_INITIATIVE_WEIGHT
 }
 
-/** Luck stat weight in crit rolls — makes luck investment show up in fight feel. */
+/** Luck stat weight in crit rolls, makes luck investment show up in fight feel. */
 export const LCK_CRIT_STAT_SCALE = 1.48
 
-/** Move XP — scale rewards with what each skill actually accomplished.
+/** Move XP, scale rewards with what each skill actually accomplished.
  *  One multiplier per skill: every move in that skill applies the same rate
  *  to its damage-based outcome, with move identity expressed via flat bonuses. */
 export const XP_DAMAGE_DEALT_MULT = 2
-/** Higher than damage-dealt — defensive actions happen on fewer turns. */
+/** Higher than damage-dealt, defensive actions happen on fewer turns. */
 export const XP_DAMAGE_BLOCKED_MULT = 5
 export const XP_DAMAGE_AVOIDED_MULT = 5
 /** Speed skill's shared rate for moves that deal damage as part of their effect
- *  (counter-trades, GRAVITY_SHIFT, REFRACT) — distinct from the dodge-avoidance
+ *  (counter-trades, GRAVITY_SHIFT, REFRACT), distinct from the dodge-avoidance
  *  rate above, which uses XP_DAMAGE_AVOIDED_MULT. */
 export const XP_SPEED_DAMAGE_MULT = 3
 /** Flat XP for pure-utility moves (HYPERDRIVE, SNAG, SEALED_FATE, INVINCIBLE,
  *  SECOND_WIND, GRAVITY_SHIFT, BRICK_WALL) on top of any damage/block/avoid/heal
- *  XP they earn — these moves carry real strategic cost (recharge, once-per-
+ *  XP they earn, these moves carry real strategic cost (recharge, once-per-
  *  battle) even on a turn where nothing damage-related happens. */
 export const XP_UTILITY_MOVE_BONUS = 12
 /** Flat bonus when brace/dodge succeeds so low-block turns still progress. */
 export const XP_DEFENSE_SPEED_ACTION_BONUS = 10
 export const XP_LUCK_PROC_BONUS = 16
-/** Luck moves that chip damage — lower weight than attack damage XP. */
+/** Luck moves that chip damage, lower weight than attack damage XP. */
 export const XP_LUCK_DAMAGE_MULT = 5
 export const XP_FALLBACK_SMALL = 6
 
-/** Bonus skill XP for skilled timing — meaningful boost, not a level shortcut. */
+/** Bonus skill XP for skilled timing, meaningful boost, not a level shortcut. */
 export const COUNTER_XP_BONUS = 14
 export const PERFECT_GUARD_XP_BONUS = 16
 export const ADVANTAGE_XP_BONUS = 12
 export const TELEGRAPH_READ_XP_BONUS = 18
 
-/** Soft skill counter loop — attack > speed > luck > defense > attack. */
+/** Soft skill counter loop, attack > speed > luck > defense > attack. */
 export const COUNTER_ADVANTAGE_DMG_MULT = 1.22
 export const COUNTER_DISADVANTAGE_DMG_MULT = 0.82
 export const COUNTER_ADVANTAGE_INCOMING_MULT = 0.82
 export const COUNTER_DISADVANTAGE_INCOMING_MULT = 1.22
 
 // ---------------------------------------------------------------------------
-// CROSS_SCALE — secondary stat hooks (~25% swing). Primary ladder stays ~75%.
+// CROSS_SCALE, secondary stat hooks (~25% swing). Primary ladder stays ~75%.
 // Tune per-move weights here; resolver reads these only (no hardcoded hooks).
 // ---------------------------------------------------------------------------
 
@@ -231,7 +231,7 @@ export const CROSS_SCALE_SECONDARY_SHARE = 0.25
 export const CROSS_SCALE = {
   SECONDARY_SHARE: CROSS_SCALE_SECONDARY_SHARE,
 
-  // ATTACK ladder — secondary hooks
+  // ATTACK ladder, secondary hooks
   /** STRIKE: +crit chance % per luck skill level (small). */
   STRIKE_CRIT_CHANCE_PER_LCK_LVL: 0.4,
   /** FURY_SWEEP: extra bleed turns on crit (luck). */
@@ -250,7 +250,7 @@ export const CROSS_SCALE = {
   BLACKOUT_MOMENTUM_PER_SPD_LVL: 0.014,
   BLACKOUT_MOMENTUM_CAP: 0.28,
 
-  // SPEED ladder — secondary hooks
+  // SPEED ladder, secondary hooks
   /** SLIP: counter damage from attack skill investment. */
   SLIP_COUNTER_ATK_PER_ATK_LVL: 0.016,
   SLIP_COUNTER_ATK_CAP: 0.32,
@@ -267,7 +267,7 @@ export const CROSS_SCALE = {
   HYPERDRIVE_SETUP_ATK_PER_ATK_LVL: 0.014,
   HYPERDRIVE_SETUP_ATK_CAP: 0.3,
 
-  // DEFENSE ladder — secondary hooks
+  // DEFENSE ladder, secondary hooks
   /** HOLD: chip damage on successful brace (attack skill), 1–3 hp scale. */
   HOLD_BRACE_CHIP_PER_ATK_LVL: 0.22,
   HOLD_BRACE_CHIP_CAP: 3,
@@ -287,8 +287,8 @@ export const CROSS_SCALE = {
   INVINCIBLE_SACRIFICE_RELIEF_PER_LCK_LVL: 0.009,
   INVINCIBLE_SACRIFICE_RELIEF_CAP: 0.14,
 
-  // LUCK ladder — secondary hooks
-  /** WHISPER: extra shake weaken — lower outgoing mult (speed). */
+  // LUCK ladder, secondary hooks
+  /** WHISPER: extra shake weaken, lower outgoing mult (speed). */
   WHISPER_SHAKE_WEAKEN_PER_SPD_LVL: 0.012,
   WHISPER_SHAKE_WEAKEN_CAP: 0.12,
   /** LOOP: repeat-window strike bonus (attack skill). */
@@ -376,7 +376,7 @@ export function crossScaleUiParts(
   return parts
 }
 
-/** Additive bonus capped — for crit %, heal pct, reflect pct slices. */
+/** Additive bonus capped, for crit %, heal pct, reflect pct slices. */
 export function crossSecondaryBonus(
   secondaryLevel: number,
   perLevel: number,
@@ -385,7 +385,7 @@ export function crossSecondaryBonus(
   return Math.min(cap, secondaryLevel * perLevel) * CROSS_SCALE.SECONDARY_SHARE
 }
 
-/** Multiplier 1 + bonus — for damage/counter/hit mult hooks. */
+/** Multiplier 1 + bonus, for damage/counter/hit mult hooks. */
 export function crossSecondaryMultiplier(
   secondaryLevel: number,
   perLevel: number,
@@ -394,7 +394,7 @@ export function crossSecondaryMultiplier(
   return 1 + crossSecondaryBonus(secondaryLevel, perLevel, cap)
 }
 
-/** Small flat integer bonus — brace chip, extra turns, heal hp. */
+/** Small flat integer bonus, brace chip, extra turns, heal hp. */
 export function crossSecondaryFlat(
   secondaryLevel: number,
   perLevel: number,

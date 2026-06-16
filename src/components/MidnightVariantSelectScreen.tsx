@@ -22,7 +22,7 @@ import './MidnightVariantSelectScreen.css'
 
 const ENTRANCE_MS = MIDNIGHT_SELECT_TRANSITION_MS
 const FIVE_BG_SRC = getBattleBackgroundSrc('five')
-/** Carousel preview display is 2× world size — bitmap matches CSS so pixels stay crisp. */
+/** Carousel preview display is 2× world size, bitmap matches CSS so pixels stay crisp. */
 const PREVIEW_PIXEL_SCALE = 2
 const PREVIEW_DISPLAY_W = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH * PREVIEW_PIXEL_SCALE)
 const PREVIEW_DISPLAY_H = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT * PREVIEW_PIXEL_SCALE)

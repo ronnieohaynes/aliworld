@@ -1,5 +1,5 @@
 /**
- * 5ive Quest 1 — gating NPC conversations and Mark / Subway Pass gate.
+ * 5ive Quest 1, gating NPC conversations and Mark / Subway Pass gate.
  */
 
 const STORAGE_KEY = 'aliworld:quest1-five:v1'
@@ -105,7 +105,7 @@ function emit(): void {
   }
 }
 
-/** Monotonic counter for useSyncExternalStore — never return mutable state as snapshot. */
+/** Monotonic counter for useSyncExternalStore, never return mutable state as snapshot. */
 export function getQuest1Revision(): number {
   return storeRevision
 }

@@ -67,7 +67,7 @@ function weeklyGymLeaderLine(): string {
   return week.leader.dialogue.intro
 }
 
-/** Pick pre/post (or blocked) lines from quest memory — no parallel dialogue state. */
+/** Pick pre/post (or blocked) lines from quest memory, no parallel dialogue state. */
 export function resolveNpcDialogueLines(
   npc: NpcData,
   options?: ResolveNpcDialogueOptions,

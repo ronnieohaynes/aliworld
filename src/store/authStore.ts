@@ -257,7 +257,7 @@ export async function createProfile(handle: string): Promise<AuthResult> {
       .maybeSingle()
 
     if (error) return { error: friendlyDbError(error) }
-    if (!data?.handle) return { error: 'profile not found — try signing in again.' }
+    if (!data?.handle) return { error: 'profile not found, try signing in again.' }
 
     setState({ profile: { handle: data.handle } })
     return {}

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './MidnightSelectTransition.css'
 import './MenuEntryCover.css'
 
-/** Faster than battle entry — menu ↔ sub-screen should feel snappy. */
+/** Faster than battle entry, menu ↔ sub-screen should feel snappy. */
 export const MENU_TRANSITION_MS = 450
 export const MENU_TRANSITION_MIDPOINT_MS = 200
 

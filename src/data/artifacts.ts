@@ -43,7 +43,7 @@ export const FANNY_PACK_ARTIFACTS: readonly CollectibleArtifactDef[] = [
   { id: 'six5ive-tee', name: 'Six5ive Tee', iconSrc: `${ARTIFACT_UI_DIR}/six5ive-tee.png`, collected: false, showInFannyPack: true },
 ] as const
 
-/** Worn by MIDNIGHT throughout the game; surrendered at the mirror battle — not a Fanny Pack collectible. */
+/** Worn by MIDNIGHT throughout the game; surrendered at the mirror battle, not a Fanny Pack collectible. */
 export const JACKET_ARTIFACT: ArtifactDef = {
   id: 'jacket',
   name: 'Jacket',

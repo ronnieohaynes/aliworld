@@ -1,9 +1,9 @@
 /**
- * Shared combat vocabulary — player moves, enemy moves, and cap-tier systems
+ * Shared combat vocabulary, player moves, enemy moves, and cap-tier systems
  * all reference these types only (no ad-hoc status names elsewhere).
  */
 
-/** Fixed status set — do not add effects outside this list. */
+/** Fixed status set, do not add effects outside this list. */
 export type StatusEffectId =
   | 'bleed'
   | 'shake'
@@ -94,7 +94,7 @@ export type DeathClock = {
 
 export type MoveCost =
   | { kind: 'none' }
-  /** Charge turn — schedules an exposed follow-up (blackout). */
+  /** Charge turn, schedules an exposed follow-up (blackout). */
   | { kind: 'loadTurn' }
   /** Player does not act; enemy gets a free swing this turn. */
   | { kind: 'exposedTurn' }

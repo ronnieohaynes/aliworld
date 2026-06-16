@@ -1,5 +1,5 @@
 /**
- * Data-driven quest objectives — conditions read live game state (no parallel tracking).
+ * Data-driven quest objectives, conditions read live game state (no parallel tracking).
  */
 
 import { hasArtifact } from '../store/artifactStore'
@@ -136,9 +136,9 @@ export function isE1ArcComplete(ctx: QuestObjectiveContext): boolean {
   return ctx.markDefeated && ctx.cafeSeen
 }
 
-const E1_CLOSING_OBJECTIVE_TEXT = 'episode 2 — soon.'
+const E1_CLOSING_OBJECTIVE_TEXT = 'episode 2, soon.'
 
-/** Ordered quests — quest 2 activates after e1 cafe beat. */
+/** Ordered quests, quest 2 activates after e1 cafe beat. */
 export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
   {
     id: 'quest-1-five',
@@ -152,7 +152,7 @@ export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
   },
 ]
 
-/** Quest 1 last step never completes — e2 unlocks after cafe + mark. */
+/** Quest 1 last step never completes, e2 unlocks after cafe + mark. */
 function shouldShowQuest2(ctx: QuestObjectiveContext): boolean {
   return isE2QuestUnlocked() && ctx.cafeSeen
 }
@@ -177,7 +177,7 @@ export function resolveActiveObjective(
   return { questId: quest.id, stepId: last.id, text: last.getText(ctx) }
 }
 
-/** Active objective — quest 2 after e1 unlock; otherwise quest 1. */
+/** Active objective, quest 2 after e1 unlock; otherwise quest 1. */
 export function resolvePrimaryQuestObjective(
   ctx: QuestObjectiveContext = buildQuestObjectiveContext(),
 ): ResolvedObjective {

@@ -59,14 +59,14 @@ export type { PlayerMoveResolveOut }
 
 export type ResolveMoveContext = {
   atk: number
-  /** Player attack skill level — scales early STRIKE damage down. */
+  /** Player attack skill level, scales early STRIKE damage down. */
   attackSkillLevel: number
   eDmg: number
-  /** Raw defense skill level — mitigation tuned in moveBalance; matchup loop outweighs level gaps. */
+  /** Raw defense skill level, mitigation tuned in moveBalance; matchup loop outweighs level gaps. */
   def: number
-  /** Speed skill level — scales dodge and initiative. */
+  /** Speed skill level, scales dodge and initiative. */
   spd: number
-  /** Luck skill level — cross-scale secondary hooks. */
+  /** Luck skill level, cross-scale secondary hooks. */
   luckSkillLevel: number
   enemyAttacks: boolean
   lck: number
@@ -210,7 +210,7 @@ function stolenMoveNativeSkillLevel(enemyMoveId: EnemyMoveId, ctx: ResolveMoveCo
   }
 }
 
-/** Enemy strike landing this turn — dodge/brace always key off ctx.eDmg. */
+/** Enemy strike landing this turn, dodge/brace always key off ctx.eDmg. */
 function incomingEnemyHit(ctx: ResolveMoveContext): boolean {
   return ctx.eDmg > 0
 }

@@ -1,13 +1,13 @@
 /**
- * Quest 2 — southside / blue store spine (crowd → crier → clerk → restocker).
+ * Quest 2, southside / blue store spine (crowd → crier → clerk → restocker).
  */
 
 const STORAGE_KEY = 'aliworld:quest2:v1'
 
-/** Flip true when episode 2 is ready to ship — gates quest 2, crowd/crier, southside travel. */
+/** Flip true when episode 2 is ready to ship, gates quest 2, crowd/crier, southside travel. */
 export const E2_ENABLED = true
 
-/** Episode 3 content — off until the e3 build ships. */
+/** Episode 3 content, off until the e3 build ships. */
 export const E3_ENABLED = false
 
 export const TOWN_CRIER_NPC_ID = 'town-crier'
@@ -23,7 +23,7 @@ type Quest2State = {
   crierSentAhead: boolean
   clerkConverted: boolean
   restockerDefeated: boolean
-  /** Crier mob beat finished — crowd cleared before episode cards. */
+  /** Crier mob beat finished, crowd cleared before episode cards. */
   e2ClosingCrowdDismissed: boolean
   /** Full e2 closing sequence finished (crowd → episode card). */
   e2Complete: boolean
@@ -84,7 +84,7 @@ function emit(): void {
   }
 }
 
-/** Monotonic counter for useSyncExternalStore — never return mutable state as snapshot. */
+/** Monotonic counter for useSyncExternalStore, never return mutable state as snapshot. */
 export function getQuest2Revision(): number {
   return storeRevision
 }
@@ -175,7 +175,7 @@ export function setE2Complete(): void {
   emit()
 }
 
-/** @deprecated Legacy alias — use isE2Complete. */
+/** @deprecated Legacy alias, use isE2Complete. */
 export function isE2Seen(): boolean {
   return state.e2Complete
 }
@@ -188,7 +188,7 @@ export type Quest2Serialized = {
   restockerDefeated?: boolean
   e2ClosingCrowdDismissed?: boolean
   e2Complete?: boolean
-  /** Legacy — migrated to e2Complete on load. */
+  /** Legacy, migrated to e2Complete on load. */
   e2Seen?: boolean
 }
 

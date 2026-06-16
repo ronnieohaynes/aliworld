@@ -17,7 +17,7 @@ export type BattleFeedbackEvent = {
   tone: BattleFeedbackTone
 }
 
-/** Build UI callouts from a resolved turn — mirrors what the player accomplished. */
+/** Build UI callouts from a resolved turn, mirrors what the player accomplished. */
 export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedbackEvent[] {
   const events: BattleFeedbackEvent[] = []
 

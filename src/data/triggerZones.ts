@@ -17,7 +17,7 @@ export type TriggerZone = {
   action: TriggerAction
 }
 
-/** Door/exit triggers that swap maps — seeded on spawn so they do not fire until left once. */
+/** Door/exit triggers that swap maps, seeded on spawn so they do not fire until left once. */
 const MAP_TRANSITION_ACTIONS = new Set<TriggerAction>([
   'OPEN_BLUE_STORE',
   'OPEN_BLUE_STORE_EXIT',
@@ -29,7 +29,7 @@ export function isMapTransitionTrigger(action: TriggerAction): boolean {
   return MAP_TRANSITION_ACTIONS.has(action)
 }
 
-/** 13 Gallons door — disabled until interior is ready; add back to TRIGGER_ZONES to re-enable. */
+/** 13 Gallons door, disabled until interior is ready; add back to TRIGGER_ZONES to re-enable. */
 export const GALLONS_ENTRANCE_ZONE: TriggerZone = {
   id: 'gallons-entrance',
   x: 490,
@@ -50,6 +50,6 @@ export const TRIGGER_ZONES: TriggerZone[] = [
   },
 ]
 
-/** Spawn point when returning from Darkline — south sidewalk in front of the entrance. */
+/** Spawn point when returning from Darkline, south sidewalk in front of the entrance. */
 export const DARKLINE_SPAWN_X = 512
 export const DARKLINE_SPAWN_Y = 620

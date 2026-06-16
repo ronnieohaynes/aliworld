@@ -43,7 +43,7 @@ function isHeavyTelegraphedMove(move: UpcomingMove): boolean {
   return getEnemyMoveDef(move as EnemyMoveId).damageMult >= 1.6
 }
 
-/** Extra skill XP when the player reads the fight — stacked only when distinct moments fire. */
+/** Extra skill XP when the player reads the fight, stacked only when distinct moments fire. */
 export function computeTimingBonusGrants(
   r: ResolveResult,
   enemyLean: LeanSkill,

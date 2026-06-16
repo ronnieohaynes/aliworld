@@ -10,7 +10,7 @@
   image-rendering: crisp-edges;
 }
 
-/* Opaque full viewport — map must not show through during hold or exit. */
+/* Opaque full viewport, map must not show through during hold or exit. */
 .menu-entry-cover__panel {
   position: absolute;
   inset: 0;

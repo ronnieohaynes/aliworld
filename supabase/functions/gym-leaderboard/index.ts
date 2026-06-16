@@ -6,7 +6,7 @@ import {
   type MidnightVariantId,
 } from '../analytics-summary/variantRegistry.ts'
 
-/** Shape-locked public entry — ONLY these fields may reach the client. */
+/** Shape-locked public entry, ONLY these fields may reach the client. */
 export type PublicLeaderboardEntry = {
   handle: string
   winCount: number

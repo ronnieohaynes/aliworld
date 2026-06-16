@@ -270,7 +270,7 @@ export type PlayerStoreState = {
   archetype: ArchetypeId
   accessories: AccessoryBonuses[]
   skills: SkillsState
-  /** Four active battle slots — move ids unlocked via skill ladders. */
+  /** Four active battle slots, move ids unlocked via skill ladders. */
   equippedMoves: readonly [PlayerMoveId, PlayerMoveId, PlayerMoveId, PlayerMoveId]
   /** Overworld / between-battle HP; null = use computed max on next battle. */
   hp: number | null
@@ -482,7 +482,7 @@ function createDefaultPlayerState(): PlayerStoreState {
   }
 }
 
-/** Reset to defaults in memory only — used on logout so the next user starts clean. */
+/** Reset to defaults in memory only, used on logout so the next user starts clean. */
 export function resetProgression(): void {
   skipAccountSave = true
   lastLocation = null
@@ -526,7 +526,7 @@ export function getActiveEquippedMoves(): PlayerMoveId[] {
   return state.equippedMoves.filter((id) => isMoveUnlocked(id, state.skills))
 }
 
-/** Moves unlocked but not in any equipped slot — equip pool for loadout UI. */
+/** Moves unlocked but not in any equipped slot, equip pool for loadout UI. */
 export function getUnequippedUnlockedMoves(): PlayerMoveId[] {
   const unlocked = new Set(getUnlockedMoves(state.skills))
   for (const id of state.equippedMoves) unlocked.delete(id)
@@ -552,7 +552,7 @@ export function setPlayerSkills(skills: SkillsState): void {
   emit()
 }
 
-/** Story / milestone skill XP — persists and triggers account save. */
+/** Story / milestone skill XP, persists and triggers account save. */
 export function grantPlayerSkillXp(skill: SkillId, amount: number): string[] {
   const before = state.skills
   const { skills, lines } = grantSkillXpAmount(before, skill, amount)

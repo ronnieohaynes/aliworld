@@ -5,7 +5,7 @@ import type { NpcTelegraphFlavor } from './npcRegistry'
 /** Wins required to clear week-one head; losses never reset this count. */
 export const FIVE_GYM1_WINS_TO_CLEAR = 3
 
-/** Round-3 guard riposte — punishes blind aggression into HOLD. */
+/** Round-3 guard riposte, punishes blind aggression into HOLD. */
 export type FiveGym1GuardCounter = {
   chance: number
   damageMult: number
@@ -21,7 +21,7 @@ export type FiveGym1RoundConfig = {
   enemyGuardPierce?: number
 }
 
-/** Per-round tuning — one block for difficulty passes. Index = wins before fight (0–2). */
+/** Per-round tuning, one block for difficulty passes. Index = wins before fight (0–2). */
 export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 4,
@@ -29,10 +29,10 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
     moves: ['STRIKE', 'BAIT', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
-      STRIKE: 'sets a jab —',
-      BAIT: 'opens up —',
-      HAYMAKER: 'winds up —',
-      LOOP: 'draws the loop —',
+      STRIKE: 'sets a jab',
+      BAIT: 'opens up',
+      HAYMAKER: 'winds up',
+      LOOP: 'draws the loop',
     },
   },
   {
@@ -41,10 +41,10 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
     moves: ['STRIKE', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
-      STRIKE: 'feints, then jabs —',
-      BAIT: 'leaves a gap —',
-      HAYMAKER: 'commits heavy —',
-      LOOP: 'spins the loop —',
+      STRIKE: 'feints, then jabs',
+      BAIT: 'leaves a gap',
+      HAYMAKER: 'commits heavy',
+      LOOP: 'spins the loop',
     },
   },
   {
@@ -55,10 +55,10 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
     guardCounter: { chance: 0.7, damageMult: 2.85 },
     enemyGuardPierce: 0.55,
     telegraphFlavor: {
-      STRIKE: 'cuts through —',
-      BAIT: 'dares you to swing —',
-      HAYMAKER: 'loads up —',
-      LOOP: 'the loop is coming —',
+      STRIKE: 'cuts through',
+      BAIT: 'dares you to swing',
+      HAYMAKER: 'loads up',
+      LOOP: 'the loop is coming',
     },
   },
 ] as const

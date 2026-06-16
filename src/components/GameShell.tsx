@@ -303,7 +303,7 @@ function GameShellMusicBar() {
           {!playerGranted ? 'no player yet' : hasTrackMeta ? trackTitle : 'no track'}
         </div>
         <div className="game-shell__track-artist">
-          {!playerGranted ? '—' : hasTrackMeta ? trackArtist : '—'}
+          {!playerGranted ? '-' : hasTrackMeta ? trackArtist : '-'}
         </div>
         <div
           className="game-shell__progress"

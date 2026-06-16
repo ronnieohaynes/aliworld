@@ -7,7 +7,7 @@
 3. `npm run dev`
 
 Supabase config ships in the committed `.env` (public anon key only).
-Real secrets, if ever needed, go in `.env.local` (gitignored) — never in `.env`.
+Real secrets, if ever needed, go in `.env.local` (gitignored), never in `.env`.
 
 ## coming soon (play.dannyali.com)
 
@@ -15,7 +15,7 @@ Real secrets, if ever needed, go in `.env.local` (gitignored) — never in `.env
 2. `play.dannyali.com` shows the coming-soon page automatically (see `COMING_SOON_HOSTS` in `src/config/comingSoon.ts`).
 3. `aliworld.pages.dev`, preview deploys, and localhost serve the **real game** for testing.
 4. Update `BLNT_TRACK_URL` in `src/config/comingSoon.ts` with the public stream link.
-5. **Launch:** empty `COMING_SOON_HOSTS` (or remove `play.dannyali.com`), push — the public domain serves the game.
+5. **Launch:** empty `COMING_SOON_HOSTS` (or remove `play.dannyali.com`), push, the public domain serves the game.
 
 ## analytics (mothership dashboard)
 
@@ -31,8 +31,8 @@ Player events land in `aw_events`. RLS blocks cross-user reads, so the dashboard
    supabase functions deploy analytics-summary
    ```
 3. Set edge function secrets (Dashboard → Edge Functions → analytics-summary):
-   - `ANALYTICS_ADMIN_SECRET` — shared with the admin UI
-   - `SUPABASE_SERVICE_ROLE_KEY` — if not auto-provided
+   - `ANALYTICS_ADMIN_SECRET`, shared with the admin UI
+   - `SUPABASE_SERVICE_ROLE_KEY`, if not auto-provided
 
 ### Production admin (`play.dannyali.com/admin`)
 
@@ -40,7 +40,7 @@ Built into `dist/admin/` on every `npm run build`. Cloudflare Pages serves stati
 
 1. Run `db/005_aw_grants.sql` for prize grants.
 2. Deploy edge function (see above).
-3. Danny sets `ANALYTICS_ADMIN_SECRET` in Supabase Dashboard — **not** in the repo or client bundle.
+3. Danny sets `ANALYTICS_ADMIN_SECRET` in Supabase Dashboard, **not** in the repo or client bundle.
 4. Open `/admin`, enter the secret once per browser session (`sessionStorage` + `x-analytics-admin-secret` header).
 
 ```bash

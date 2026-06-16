@@ -1,5 +1,5 @@
 /**
- * Weekly gym gauntlet — one-run four-fight progress, streak, and calendar rotation.
+ * Weekly gym gauntlet, one-run four-fight progress, streak, and calendar rotation.
  */
 
 import {
@@ -22,7 +22,7 @@ export type GymActiveRun = {
   weekId: string
   /** 0–3 henchman index or leader at 3 */
   fightIndex: number
-  /** Practice replays — no rewards */
+  /** Practice replays, no rewards */
   practice: boolean
 }
 
@@ -44,7 +44,7 @@ export type GymSerialized = {
   clearedAbsoluteWeeks?: number[]
   weeklyStreak?: number
   activeRun?: GymActiveRun | null
-  /** @deprecated legacy cumulative wins — migrated on load */
+  /** @deprecated legacy cumulative wins, migrated on load */
   headWins?: Record<string, number>
   clearedHeads?: Record<string, boolean>
 }
@@ -277,12 +277,12 @@ export function isCurrentWeeklyGymCleared(nowMs = Date.now()): boolean {
   return state.clearedAbsoluteWeeks.includes(getAbsoluteWeekIndex(nowMs))
 }
 
-/** @deprecated — use isCurrentWeeklyGymCleared */
+/** @deprecated, use isCurrentWeeklyGymCleared */
 export function isGym5ive1Cleared(nowMs = Date.now()): boolean {
   return isCurrentWeeklyGymCleared(nowMs)
 }
 
-/** @deprecated — weekly gauntlet has no cumulative wins */
+/** @deprecated, weekly gauntlet has no cumulative wins */
 export function getGymHeadWins(_headId: string): number {
   return 0
 }
@@ -334,7 +334,7 @@ export function getActiveGymWeek(): GymWeekDefinition | null {
   return getGymWeekById(run.weekId) ?? null
 }
 
-/** After a gauntlet fight win — returns next combat id or null when run complete. */
+/** After a gauntlet fight win, returns next combat id or null when run complete. */
 export function advanceGymRunAfterWin(): {
   nextCombatId: string | null
   completed: boolean
@@ -361,7 +361,7 @@ export function advanceGymRunAfterWin(): {
   }
 }
 
-/** Loss ends the run — must restart from henchman 1 on next attempt. */
+/** Loss ends the run, must restart from henchman 1 on next attempt. */
 export function resetGymRunOnLoss(): void {
   if (!state.activeRun) return
   state = { ...state, activeRun: null }

@@ -24,19 +24,19 @@ export const BATTLE_ENEMY_GROUND_Y = BATTLE_ENEMY_FEET.y
 /** @deprecated Use BATTLE_PLAYER_FEET.y */
 export const BATTLE_PLAYER_GROUND_Y = BATTLE_PLAYER_FEET.y
 
-/** @deprecated Feet X is derived from BATTLE_ENEMY_FEET — left edge varies per sprite. */
+/** @deprecated Feet X is derived from BATTLE_ENEMY_FEET, left edge varies per sprite. */
 export const BATTLE_ENEMY_X = 36
 
-/** @deprecated Feet X is derived from BATTLE_PLAYER_FEET — left edge varies per sprite. */
+/** @deprecated Feet X is derived from BATTLE_PLAYER_FEET, left edge varies per sprite. */
 export const BATTLE_PLAYER_X = 213
 
 /** Enemy visible height in battle. */
 export const BATTLE_TARGET_VISIBLE_H = 125
 
-/** Player visible height — slightly smaller so the perspective reads correctly. */
+/** Player visible height, slightly smaller so the perspective reads correctly. */
 export const BATTLE_PLAYER_TARGET_VISIBLE_H = 80
 
-/** @deprecated Alias for enemy target height — use with battleSizeMult. */
+/** @deprecated Alias for enemy target height, use with battleSizeMult. */
 export const BATTLE_ENEMY_DISPLAY_H = BATTLE_TARGET_VISIBLE_H
 
 /** Player visible height matches enemy target (no protagonist bump). */
@@ -52,7 +52,7 @@ export const BATTLE_PLAYER_SOURCE_H = WORLD_PLAYER_DISPLAY_HEIGHT
 export type BattleSpritePlacement = {
   x: number
   drawY: number
-  /** Y of the topmost visible pixel — use this for plate anchoring. */
+  /** Y of the topmost visible pixel, use this for plate anchoring. */
   visibleDrawY: number
   displayWidth: number
   displayHeight: number

@@ -30,13 +30,13 @@ export type MoveDodgeProfile = {
   counterMult: number
   weakMult: number
   stunChance: { base: number; lckMult: number }
-  /** Parry — reflect this fraction of enemy hit back on successful dodge. */
+  /** Parry, reflect this fraction of enemy hit back on successful dodge. */
   onDodgeReflectPct?: number
 }
 
 export type MoveBraceProfile = {
   incomingMult: number
-  /** Anchor — immune to new status effects this turn. */
+  /** Anchor, immune to new status effects this turn. */
   blockStatus?: boolean
 }
 
@@ -91,7 +91,7 @@ export type PlayerLogContext = {
   pMove: PlayerMoveId
   playerDmg: number
   incoming: number
-  /** Raw enemy strike before player mitigation — for honest dodge/brace lines. */
+  /** Raw enemy strike before player mitigation, for honest dodge/brace lines. */
   rawIncoming: number
   crit: boolean
   dodged: boolean

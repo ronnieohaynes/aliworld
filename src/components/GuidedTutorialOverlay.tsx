@@ -33,7 +33,7 @@ function padRect(rect: DOMRect, px: number): DOMRect {
 const DIM_RGBA = 'rgba(8, 8, 14, 0.78)'
 
 /**
- * Renders only the purple spotlight ring around a button — no dim, no panel.
+ * Renders only the purple spotlight ring around a button, no dim, no panel.
  * Use during NPC dialogue to highlight a button without blocking interaction.
  */
 export function ButtonSpotlightRing({

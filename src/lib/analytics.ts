@@ -7,7 +7,7 @@ function createSessionId(): string {
   return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 }
 
-/** Random per app load — groups events into one play session. */
+/** Random per app load, groups events into one play session. */
 const sessionId = createSessionId()
 
 export function getAnalyticsSessionId(): string {
@@ -49,7 +49,7 @@ async function sendEvent(event: string, props?: Record<string, unknown>): Promis
   }
 }
 
-/** Funnel — tip jar, streams, merch, etc. */
+/** Funnel, tip jar, streams, merch, etc. */
 export function trackExternalLinkClick(destination: string): void {
   track('external_link_click', { destination })
 }

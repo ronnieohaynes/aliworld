@@ -129,7 +129,7 @@ export function enemyOutgoingDamageMult(status: CombatStatusState): number {
   return mult
 }
 
-/** Slow — player wins initiative while enemy is slowed. */
+/** Slow, player wins initiative while enemy is slowed. */
 export function playerActsFirstDespiteSpd(
   status: CombatStatusState,
   playerSpd: number,

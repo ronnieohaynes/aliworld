@@ -51,9 +51,9 @@ export type NpcCombatEntry = {
   losingLine: string
   /** Line shown when the NPC wins (player loses). Empty = no narration. */
   winningLine?: string
-  /** Optional per-move telegraph flavor (e.g. "winds up —"). */
+  /** Optional per-move telegraph flavor (e.g. "winds up"). */
   telegraphFlavor?: NpcTelegraphFlavor
-  /** Punishes attacking into HOLD — round-tuned on gym heads. */
+  /** Punishes attacking into HOLD, round-tuned on gym heads. */
   guardCounter?: NpcGuardCounter
   /** Fraction of mitigated damage that pierces player HOLD/SLIP (0–1). */
   enemyGuardPierce?: number
@@ -82,7 +82,7 @@ function entry(
   return { ...rest, stats }
 }
 
-/** Tutorial — level 2, teaches brace/dodge vs HAYMAKER. */
+/** Tutorial, level 2, teaches brace/dodge vs HAYMAKER. */
 const WALKER: NpcCombatEntry = entry({
   id: 'walker',
   displayName: 'walker',
@@ -91,8 +91,8 @@ const WALKER: NpcCombatEntry = entry({
   leanSkill: 'none',
   telegraphFlavor: {
     STRIKE: 'lines up',
-    HAYMAKER: 'winds up —',
-    HOLD: 'plants his feet —',
+    HAYMAKER: 'winds up',
+    HOLD: 'plants his feet',
   },
   losingLine: 'i get it now. tell me where to go.',
   winningLine: "not yet. keep going.",
@@ -101,7 +101,7 @@ const WALKER: NpcCombatEntry = entry({
   battleSizeMult: 1.02,
 })
 
-/** Status check — speed lean, slip + telegraphed heavy. */
+/** Status check, speed lean, slip + telegraphed heavy. */
 const JACLYN: NpcCombatEntry = entry({
   id: 'jaclyn',
   displayName: 'jaclyn',
@@ -109,10 +109,10 @@ const JACLYN: NpcCombatEntry = entry({
   moves: ['SLIP', 'STRIKE', 'HAYMAKER', 'WHISPER'],
   leanSkill: 'speed',
   telegraphFlavor: {
-    SLIP: 'feints —',
-    STRIKE: 'cuts in —',
-    HAYMAKER: 'commits —',
-    WHISPER: 'murmurs —',
+    SLIP: 'feints',
+    STRIKE: 'cuts in',
+    HAYMAKER: 'commits',
+    WHISPER: 'murmurs',
   },
   losingLine: "...oh. you're right. of course you're right.",
   winningLine: "you weren't ready. come back.",
@@ -121,7 +121,7 @@ const JACLYN: NpcCombatEntry = entry({
   battleSizeMult: 0.92,
 })
 
-/** Boss wall — defense lean, full kit + telegraphed heavy. */
+/** Boss wall, defense lean, full kit + telegraphed heavy. */
 const MARK: NpcCombatEntry = entry({
   id: 'mark',
   displayName: 'mark',
@@ -129,11 +129,11 @@ const MARK: NpcCombatEntry = entry({
   moves: ['HOLD', 'HOLD', 'HAYMAKER', 'STRIKE', 'SLIP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
-    HOLD: 'roots in —',
-    HAYMAKER: 'draws back —',
-    STRIKE: 'swings —',
-    SLIP: 'feints —',
-    WHISPER: 'murmurs —',
+    HOLD: 'roots in',
+    HAYMAKER: 'draws back',
+    STRIKE: 'swings',
+    SLIP: 'feints',
+    WHISPER: 'murmurs',
   },
   losingLine: 'huh. ...where do you want me.',
   winningLine: "i told you. the wall doesn't move.",
@@ -142,7 +142,7 @@ const MARK: NpcCombatEntry = entry({
   battleSizeMult: 1.04,
 })
 
-/** E2 — town crier at the 5ive; luck-lean rhetorical fight. */
+/** E2, town crier at the 5ive; luck-lean rhetorical fight. */
 const TOWN_CRIER: NpcCombatEntry = entry({
   id: 'town-crier',
   displayName: 'town crier',
@@ -150,18 +150,18 @@ const TOWN_CRIER: NpcCombatEntry = entry({
   moves: ['WHISPER', 'STRIKE', 'SLIP', 'WHISPER'],
   leanSkill: 'luck',
   telegraphFlavor: {
-    WHISPER: 'spreads the word —',
-    STRIKE: 'points —',
-    SLIP: 'sidesteps —',
+    WHISPER: 'spreads the word',
+    STRIKE: 'points',
+    SLIP: 'sidesteps',
   },
-  losingLine: "...no. no — you're right. you were always right.",
+  losingLine: "...no. no, you're right. you were always right.",
   winningLine: "the crowd's not buying it.",
   spriteSrc: TOWN_CRIER_IDLE_SPRITE,
   battleLocation: 'five',
   battleSizeMult: 0.98,
 })
 
-/** E2 gate — blue store clerk; attack-lean scrapper. */
+/** E2 gate, blue store clerk; attack-lean scrapper. */
 const CLERK: NpcCombatEntry = entry({
   id: 'clerk',
   displayName: 'clerk',
@@ -169,9 +169,9 @@ const CLERK: NpcCombatEntry = entry({
   moves: ['STRIKE', 'STRIKE', 'WHISPER', 'HAYMAKER'],
   leanSkill: 'attack',
   telegraphFlavor: {
-    STRIKE: 'swings —',
-    WHISPER: 'lowers his voice —',
-    HAYMAKER: 'commits —',
+    STRIKE: 'swings',
+    WHISPER: 'lowers his voice',
+    HAYMAKER: 'commits',
   },
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
@@ -180,7 +180,7 @@ const CLERK: NpcCombatEntry = entry({
   battleSizeMult: 1,
 })
 
-/** E2 finale — restocker in the back room; defense wall + restock heals. */
+/** E2 finale, restocker in the back room; defense wall + restock heals. */
 const RESTOCKER: NpcCombatEntry = entry({
   id: 'restocker',
   displayName: 'restocker',
@@ -189,12 +189,12 @@ const RESTOCKER: NpcCombatEntry = entry({
   moves: ['HOLD', 'HOLD', 'HOLD', 'HAYMAKER', 'STRIKE', 'SLIP', 'LOOP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
-    HOLD: 'restocks —',
-    HAYMAKER: 'heaves —',
-    STRIKE: 'swings —',
-    SLIP: 'feints —',
-    LOOP: 'draws back —',
-    WHISPER: 'murmurs —',
+    HOLD: 'restocks',
+    HAYMAKER: 'heaves',
+    STRIKE: 'swings',
+    SLIP: 'feints',
+    LOOP: 'draws back',
+    WHISPER: 'murmurs',
   },
   guardCounter: { chance: 0.5, damageMult: 2.4 },
   enemyGuardPierce: 0.14,
@@ -334,16 +334,8 @@ export function formatTelegraphDisplay(
   const flavor = npc.telegraphFlavor?.[moveId]
   if (flavor) {
     const trimmed = flavor.trim()
-    if (trimmed.endsWith('—')) {
-      return {
-        prefix: `${lower} ${trimmed} `,
-        moveName,
-        suffix: heavy ? ' incoming.' : '.',
-        heavy,
-      }
-    }
     return {
-      prefix: `${lower} ${trimmed} — `,
+      prefix: `${lower} ${trimmed} `,
       moveName,
       suffix: heavy ? ' incoming.' : '.',
       heavy,
@@ -351,7 +343,7 @@ export function formatTelegraphDisplay(
   }
   const generic = telegraphLineForEnemyMove(moveId)
   return {
-    prefix: `${lower} ${generic.replace(/\.$/, '')} — `,
+    prefix: `${lower} ${generic.replace(/\.$/, '')} `,
     moveName,
     suffix: '.',
     heavy,
@@ -371,5 +363,5 @@ export function formatTelegraph(
   return line ? `${lower}: ${line}` : ''
 }
 
-/** Re-export for snag / steal mechanics — full enemy move vocabulary. */
+/** Re-export for snag / steal mechanics, full enemy move vocabulary. */
 export { ENEMY_MOVE_IDS, ENEMY_MOVES, getEnemyMoveDef } from './enemyMoves'

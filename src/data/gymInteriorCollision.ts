@@ -1,4 +1,4 @@
-// Oceanview Gym interior — native 1224×1224 `5ive-gym.png`; gameplay at mapDrawScale 0.5.
+// Oceanview Gym interior, native 1224×1224 `5ive-gym.png`; gameplay at mapDrawScale 0.5.
 
 export interface CollisionZone {
   x: number
@@ -9,7 +9,7 @@ export interface CollisionZone {
 
 export const FIVE_GYM_INTERIOR_MAP_SIZE = { width: 1224, height: 1224 }
 
-/** Bitmap draw scale — environment authored at 1224; shrink to match Midnight. */
+/** Bitmap draw scale, environment authored at 1224; shrink to match Midnight. */
 export const FIVE_GYM_INTERIOR_MAP_DRAW_SCALE = 0.5
 
 function scaleInteriorCoord(value: number): number {
@@ -43,10 +43,10 @@ export const FIVE_GYM_INTERIOR_WORLD_HEIGHT = Math.floor(
   FIVE_GYM_INTERIOR_MAP_SIZE.height * FIVE_GYM_INTERIOR_MAP_DRAW_SCALE,
 )
 
-/** Just inside the south door — same threshold as exit (native y=1034 → scaled 517). */
+/** Just inside the south door, same threshold as exit (native y=1034 → scaled 517). */
 export const FIVE_GYM_INTERIOR_ENTRY = scaleFiveGymInteriorPoint({ x: 612, y: 1034 })
 
-/** South doorway exit — the door you enter through (native wall gap at y=1128). */
+/** South doorway exit, the door you enter through (native wall gap at y=1128). */
 export const FIVE_GYM_EXIT_ZONE = {
   x: scaleInteriorCoord(552),
   y: scaleInteriorCoord(1128),
@@ -54,11 +54,11 @@ export const FIVE_GYM_EXIT_ZONE = {
   height: scaleInteriorSize(96),
 }
 
-/** Outer shell + center boxing ring (native map pixels — scale via `scaleFiveGymInteriorZone`). */
+/** Outer shell + center boxing ring (native map pixels, scale via `scaleFiveGymInteriorZone`). */
 export const FIVE_GYM_INTERIOR_COLLISION_ZONES: CollisionZone[] = [
   { x: 0,    y: 0,    width: 1224, height: 252  }, // top wall
   { x: 0,    y: 252,  width: 96,   height: 876  }, // left wall
-  // punching bag stands — magenta base of each left-wall unit (small footprint)
+  // punching bag stands, magenta base of each left-wall unit (small footprint)
   { x: 82,   y: 480,  width: 56,   height: 30   }, // bag stand 1
   { x: 82,   y: 669,  width: 56,   height: 24   }, // bag stand 2
   { x: 82,   y: 855,  width: 52,   height: 34   }, // bag stand 3

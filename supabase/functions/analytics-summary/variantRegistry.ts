@@ -1,5 +1,5 @@
 /**
- * Canonical midnight variant MAP — single source for mothership dropdown,
+ * Canonical midnight variant MAP, single source for mothership dropdown,
  * user_set_variant validation, and game rendering paths.
  *
  * Add an entry here to register a sprite. Omit from MIDNIGHT_VARIANTS
@@ -46,7 +46,7 @@ export type MidnightVariantAdminOption = {
   hidden: boolean
 }
 
-/** IDs on the creation carousel — keep aligned with MIDNIGHT_VARIANTS in midnightVariants.ts */
+/** IDs on the creation carousel, keep aligned with MIDNIGHT_VARIANTS in midnightVariants.ts */
 export const MIDNIGHT_CREATION_VARIANT_IDS = new Set<string>([
   'default',
   'asian-f',
@@ -55,7 +55,7 @@ export const MIDNIGHT_CREATION_VARIANT_IDS = new Set<string>([
   'filipino-m',
 ])
 
-/** Mothership dropdown — full MAP; hidden tag = not on creation carousel. */
+/** Mothership dropdown, full MAP; hidden tag = not on creation carousel. */
 export function listAdminMidnightVariantOptions(
   creationSelectIds: ReadonlySet<string>,
 ): MidnightVariantAdminOption[] {

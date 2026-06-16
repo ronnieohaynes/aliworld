@@ -254,7 +254,7 @@ class AudioManager {
     try {
       await this.audio.play()
     } catch {
-      // autoplay or missing file — stay silent
+      // autoplay or missing file, stay silent
     }
 
     if (gen !== this.fadeGeneration) return
@@ -363,7 +363,7 @@ class AudioManager {
 
   /**
    * Call synchronously from a user gesture (Adam MP3 handoff).
-   * Starts playback for `context` immediately — do not defer behind async boundaries.
+   * Starts playback for `context` immediately, do not defer behind async boundaries.
    */
   grantFromUserGesture(context: string): void {
     if (!isMusicPlayerOwned()) return
@@ -403,7 +403,7 @@ class AudioManager {
       await this.audio.play()
       this.audio.pause()
     } catch {
-      // still mark unlocked — later play() may succeed after Adam's gesture
+      // still mark unlocked, later play() may succeed after Adam's gesture
     }
 
     if (!isMusicPlayerOwned()) {

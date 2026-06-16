@@ -18,7 +18,7 @@ export const BATTLE_TUTORIAL_STEPS: ReadonlyArray<{
     target: 'moves',
   },
   {
-    text: 'status effects show up here — bleed, shake, stun, and your brace.',
+    text: 'status effects show up here, bleed, shake, stun, and your brace.',
     target: 'statuslegend',
   },
   {

@@ -1,4 +1,4 @@
--- Analytics summary RPC — service_role / edge function only (never grant to anon/auth)
+-- Analytics summary RPC, service_role / edge function only (never grant to anon/auth)
 -- Deploy: run in Supabase SQL Editor, then call via analytics-summary edge function.
 
 create or replace function public.analytics_summary(p_days integer default 30)

@@ -1,7 +1,7 @@
 import type { StatusApplySpec } from './combatTypes'
 import { ENEMY_LOOP_STRIKE_MULT } from './moveBalance'
 
-/** Enemy move ids — shared pool for all NPCs (snag steals from this set). */
+/** Enemy move ids, shared pool for all NPCs (snag steals from this set). */
 export const ENEMY_MOVE_IDS = [
   'STRIKE',
   'LOOP',
@@ -18,7 +18,7 @@ export type UpcomingMove = EnemyMoveId | 'STUNNED'
 export type EnemyMoveSkillType = 'attack' | 'speed' | 'defense' | 'luck' | 'neutral'
 
 /**
- * Same conceptual shape as player MoveDefinition — side, telegraph, damage, statuses.
+ * Same conceptual shape as player MoveDefinition, side, telegraph, damage, statuses.
  * Enemy moves do not award XP or use skill ladders.
  */
 export type EnemyMoveDefinition = {
@@ -26,7 +26,7 @@ export type EnemyMoveDefinition = {
   displayName: string
   telegraphLine: string
   isAttacking: boolean
-  /** Which skill type this move belongs to — used for telegraph color. */
+  /** Which skill type this move belongs to, used for telegraph color. */
   skillType: EnemyMoveSkillType
   /** Multiplier on NPC atk when this move strikes. */
   damageMult: number
@@ -46,7 +46,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
   LOOP: {
     id: 'LOOP',
     displayName: 'LOOP',
-    telegraphLine: 'draws back — a heavy loop is coming.',
+    telegraphLine: 'draws back, a heavy loop is coming.',
     isAttacking: true,
     skillType: 'attack',
     damageMult: ENEMY_LOOP_STRIKE_MULT,
@@ -55,7 +55,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
   HAYMAKER: {
     id: 'HAYMAKER',
     displayName: 'HAYMAKER',
-    telegraphLine: 'winds up — HAYMAKER incoming.',
+    telegraphLine: 'winds up, HAYMAKER incoming.',
     isAttacking: true,
     skillType: 'attack',
     damageMult: ENEMY_LOOP_STRIKE_MULT,
@@ -91,7 +91,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
   BAIT: {
     id: 'BAIT',
     displayName: 'BAIT',
-    telegraphLine: 'invites you in — waiting for you to swing.',
+    telegraphLine: 'invites you in, waiting for you to swing.',
     isAttacking: false,
     skillType: 'speed',
     damageMult: 0,

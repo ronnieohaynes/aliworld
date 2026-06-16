@@ -34,7 +34,7 @@ export function AdminUsersTab({ rows, loading, error, onRefresh, onSelectUser }:
     {
       key: 'handle',
       label: 'Handle',
-      render: (row) => (row.handle ? `@${row.handle}` : '—'),
+      render: (row) => (row.handle ? `@${row.handle}` : '-'),
     },
     { key: 'build_name', label: 'Build' },
     { key: 'level', label: 'Level', align: 'right' },
@@ -92,7 +92,7 @@ export function AdminUsersTab({ rows, loading, error, onRefresh, onSelectUser }:
       {!loading && !error && rows.length === 0 ? (
         <section className="admin-panel admin-panel--hero">
           <h2>No accounts yet</h2>
-          <p className="admin-empty">auth.users is empty — signups will appear here.</p>
+          <p className="admin-empty">auth.users is empty, signups will appear here.</p>
         </section>
       ) : null}
 

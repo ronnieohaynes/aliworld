@@ -8,7 +8,7 @@ export const FIVE_MAP_SRC = publicAsset('Assets/tileset/5ive-map.PNG')
 export const WORLD_WIDTH = 1254
 export const WORLD_HEIGHT = 1254
 
-/** Canvas clear color while the map decodes — match game void, not grey. */
+/** Canvas clear color while the map decodes, match game void, not grey. */
 export const WORLD_CANVAS_FILL = '#0a0a12'
 
 /** Default spawn: south sidewalk, below the street. */

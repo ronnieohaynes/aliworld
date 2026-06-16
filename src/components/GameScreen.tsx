@@ -202,7 +202,7 @@ const NARRATOR_NPC: NpcData = {
   color: '#000',
 }
 
-// b.stax / Patches feature toggle — flip back to true to re-enable.
+// b.stax / Patches feature toggle, flip back to true to re-enable.
 const PATCHES_FEATURE_ENABLED = false
 
 const B_STAX_NPC: NpcData = {
@@ -347,7 +347,7 @@ export function GameScreen() {
   const [nearbyNpcId, setNearbyNpcId] = useState<string | null>(null)
   const [locationReady, setLocationReady] = useState(false)
   const pendingRestoreRef = useRef<{ city: CityId; x: number; y: number } | null>(null)
-  /** City to preload for world entry — resolved once after account hydrate. */
+  /** City to preload for world entry, resolved once after account hydrate. */
   const [bootCityId, setBootCityId] = useState<CityId | null>(null)
   const [mapTransition, setMapTransition] = useState<MapTransitionTarget | null>(null)
   const [mapTransitionReady, setMapTransitionReady] = useState(false)
@@ -564,7 +564,7 @@ export function GameScreen() {
         window.requestAnimationFrame(() => run(attempt + 1))
         return
       }
-      console.warn('[quest transition] ref unavailable — skipping overlay')
+      console.warn('[quest transition] ref unavailable, skipping overlay')
       setQuestTransitionActive(false)
       wrapped.onComplete?.()
     }
@@ -971,14 +971,14 @@ export function GameScreen() {
     startNpcBattle(combatId)
   }, [startNpcBattle])
 
-  // ── DEV ONLY: K spawns the sparring dummy — REMOVE BEFORE LAUNCH ──
+  // ── DEV ONLY: K spawns the sparring dummy, REMOVE BEFORE LAUNCH ──
   const startDevSparBattle = useCallback(() => {
     if (battleNpcId || battleWipePhase) return
     setDialogue(null)
     setBattleReady(false)
     setBattleNpcId(DEV_SPAR_NPC_ID)
     setBattleWipePhase('enter')
-    console.log('dev spar — remove before launch')
+    console.log('dev spar, remove before launch')
   }, [battleNpcId, battleWipePhase])
 
   // ── DEV ONLY: Shift+T replays the tutorial battle (walker + tutorial overlay) ──
@@ -989,7 +989,7 @@ export function GameScreen() {
     setBattleReady(false)
     setBattleNpcId(WALKER_NPC_ID)
     setBattleWipePhase('enter')
-    console.log('dev tutorial battle — walker fight with tutorial overlay')
+    console.log('dev tutorial battle, walker fight with tutorial overlay')
   }, [battleNpcId, battleWipePhase])
 
   const canSpawnDevSpar = useCallback(() => {
@@ -1068,7 +1068,7 @@ export function GameScreen() {
       }
       setWeeklyGauntletExplainerSeen()
       showNarration(
-        ['one run. four fights — three henchmen, then the leader. lose once and you start over.'],
+        ['one run. four fights, three henchmen, then the leader. lose once and you start over.'],
         onDone,
       )
     },
@@ -1153,7 +1153,7 @@ export function GameScreen() {
    * claimed or none remain).
    */
   const awardMidnightPatch = useCallback((episodeIndex: number, onDone: () => void) => {
-    // b.stax / patches feature is hidden for now — skip straight through.
+    // b.stax / patches feature is hidden for now, skip straight through.
     if (!PATCHES_FEATURE_ENABLED) {
       onDone()
       return
@@ -1164,7 +1164,7 @@ export function GameScreen() {
     }
     showBStaxLines(
       [
-        "yo — that's a wrap. you earned a patch for the jacket.",
+        "yo, that's a wrap. you earned a patch for the jacket.",
         "pick a skill. this patch's xp goes straight into it.",
       ],
       () => {
@@ -1196,7 +1196,7 @@ export function GameScreen() {
     if (pendingGymWelcomeRef.current) {
       pendingGymWelcomeRef.current = false
       showNarration([
-        'one run. four fights — three henchmen, then the leader. full heal between each. one loss sends you back to the start.',
+        'one run. four fights, three henchmen, then the leader. full heal between each. one loss sends you back to the start.',
       ])
     }
     if (e2ClosingPhaseRef.current === 'exit-interior') {
@@ -2045,7 +2045,7 @@ export function GameScreen() {
             console.error('[gym-week-reward]', err instanceof Error ? err.message : String(err))
           })
         showNarration(
-          [`week ${clearResult.weekId} cleared. xp and badge on the board — come back next week.`],
+          [`week ${clearResult.weekId} cleared. xp and badge on the board, come back next week.`],
         )
       } else if (getActiveGymRun()?.practice) {
         clearActiveGymRun()
@@ -2626,7 +2626,7 @@ export function GameScreen() {
               </p>
               {gymActiveRun && !gymActiveRun.practice ? (
                 <p className="game-screen-gym-choice__progress">
-                  in progress — {gymRunProgressLabel(gymActiveRun.fightIndex)}
+                  in progress, {gymRunProgressLabel(gymActiveRun.fightIndex)}
                 </p>
               ) : null}
               {gymActiveRun && !gymActiveRun.practice ? (

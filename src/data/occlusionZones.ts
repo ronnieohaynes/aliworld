@@ -1,7 +1,7 @@
 // Occlusion zones for ALIWORLD maps.
 // Each zone is { x, y, width, height } in world coordinates (pixels).
 // Generated from cyan (#00FFFF) painted overlay on the map image.
-// Any portion of the player sprite that overlaps a zone is erased —
+// Any portion of the player sprite that overlaps a zone is erased -
 // coverage is proportional to overlap, not a fixed amount.
 
 export interface OcclusionZone {
@@ -13,30 +13,30 @@ export interface OcclusionZone {
 
 export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
   five: [
-    // upper sidewalk — light posts / parking meters
+    // upper sidewalk, light posts / parking meters
     { x: 43,   y: 311, width: 20,  height: 48 },
     { x: 251,  y: 306, width: 16,  height: 50 },
     { x: 484,  y: 307, width: 17,  height: 46 },
     { x: 703,  y: 301, width: 11,  height: 61 },
     { x: 965,  y: 309, width: 15,  height: 53 },
     { x: 1184, y: 302, width: 12,  height: 65 },
-    // upper sidewalk — fire hydrants
+    // upper sidewalk, fire hydrants
     { x: 308,  y: 339, width: 22,  height: 15 },
     { x: 782,  y: 341, width: 16,  height: 16 },
-    // upper road — parked car tops
+    // upper road, parked car tops
     { x: 1,    y: 401, width: 51,  height: 25 },
     { x: 92,   y: 405, width: 113, height: 29 },
     { x: 331,  y: 408, width: 92,  height: 39 },
     { x: 729,  y: 403, width: 112, height: 30 },
     { x: 959,  y: 411, width: 116, height: 31 },
-    // lower sidewalk — light posts / parking meters
+    // lower sidewalk, light posts / parking meters
     { x: 40,   y: 614, width: 25,  height: 53 },
     { x: 242,  y: 613, width: 21,  height: 75 },
     { x: 468,  y: 621, width: 33,  height: 28 },
     { x: 702,  y: 613, width: 14,  height: 69 },
     { x: 963,  y: 601, width: 13,  height: 66 },
     { x: 1188, y: 610, width: 10,  height: 69 },
-    // lower sidewalk — fire hydrant
+    // lower sidewalk, fire hydrant
     { x: 779,  y: 661, width: 25,  height: 24 },
   ],
   'san-bruno': [
@@ -44,7 +44,7 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
     { x: 711, y: 198,  width: 10,  height: 21  },
     { x: 706, y: 358,  width: 19,  height: 28  },
     { x: 708, y: 442,  width: 17,  height: 71  },
-    { x: 708, y: 764,  width: 18,  height: 80  }, // was 707 — minor fix
+    { x: 708, y: 764,  width: 18,  height: 80  }, // was 707, minor fix
     { x: 708, y: 1052, width: 16,  height: 90  },
     { x: 759, y: 1181, width: 22,  height: 74  },
     // cafe patio area (pergola / overhang)
@@ -58,34 +58,34 @@ export const OCCLUSION_ZONES: Record<string, OcclusionZone[]> = {
     { x: 1020, y: 996, width: 15,  height: 43  },
   ],
   southside: [
-    // Sign/light post in the parking lot — merged sign + pole into one zone
+    // Sign/light post in the parking lot, merged sign + pole into one zone
     // spanning the full object. Splitting them caused the sign portion to be
     // skipped (feetY past its bottom edge) even when the player's upper body
     // still overlapped it, so only the legs got clipped instead of the whole sprite.
     { x: 448, y: 548, width: 41, height: 382 },
   ],
-  // blue-store-interior zones stored at native 1254px coords — scaled ×0.55 in cityConfig
+  // blue-store-interior zones stored at native 1254px coords, scaled ×0.55 in cityConfig
   'blue-store-interior': [
-    // front desk counter — hides the clerk's lower half behind the counter top
+    // front desk counter, hides the clerk's lower half behind the counter top
     { x: 466, y: 233, width: 88, height: 106 },
-    // top row equipment — overhead markers
+    // top row equipment, overhead markers
     { x: 258, y: 358, width: 94, height: 20 },
     { x: 508, y: 365, width: 14, height: 13 },
     { x: 683, y: 358, width: 79, height: 20 },
-    // bottom row equipment — overhead markers
+    // bottom row equipment, overhead markers
     { x: 270, y: 622, width: 75, height: 20 },
     { x: 478, y: 628, width: 70, height: 17 },
     { x: 710, y: 618, width: 20, height: 17 },
   ],
-  // five-gym-interior zones stored at native 1224px coords — scaled ×0.5 in cityConfig
+  // five-gym-interior zones stored at native 1224px coords, scaled ×0.5 in cityConfig
   'five-gym-interior': [
-    // left wall equipment — punching bags / heavy bags (3 units)
+    // left wall equipment, punching bags / heavy bags (3 units)
     { x: 82,  y: 361, width: 56, height: 119 },
     { x: 82,  y: 570, width: 56, height: 100 },
     { x: 82,  y: 772, width: 52, height: 83  },
-    // upper-right block — counter top overhang
+    // upper-right block, counter top overhang
     { x: 984, y: 395, width: 150, height: 59 },
-    // boxing ring north rail — partially covers ring-side NPC from the south
+    // boxing ring north rail, partially covers ring-side NPC from the south
     { x: 400, y: 385, width: 440, height: 55 },
   ],
 }

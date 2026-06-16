@@ -46,7 +46,7 @@ export function ComingSoon() {
             break
         }
       } catch {
-        setMessage({ tone: 'error', text: 'could not reach the server — try again soon.' })
+        setMessage({ tone: 'error', text: 'could not reach the server, try again soon.' })
       } finally {
         setSubmitting(false)
       }
