@@ -1,7 +1,7 @@
 import { publicAsset } from '../utils/publicAsset'
 import {
   isRegisteredMidnightVariantId,
-  listAdminMidnightVariantOptions,
+  listAllAdminMidnightVariantOptions,
   listRegisteredMidnightVariantIds,
   MIDNIGHT_VARIANT_SHEET,
   type MidnightVariantId,
@@ -142,7 +142,7 @@ export function isSelectableMidnightVariantId(value: string): boolean {
 
 /** Admin + assign — every id in the full MAP; hidden = not on creation carousel. */
 export function listAllMidnightVariantOptions() {
-  return listAdminMidnightVariantOptions(SELECTABLE_IDS)
+  return listAllAdminMidnightVariantOptions()
 }
 
 /** Walk sheet URL for a variant; unknown ids fall back to midnight-default. */

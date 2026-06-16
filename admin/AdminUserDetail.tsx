@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   deleteUser,
   fetchUserDetail,
+  fetchVariantOptions,
   formatDateTime,
   formatJoinedDate,
   resetUserProgress,
   setUserHandle,
   setUserVariant,
+  type MidnightVariantOption,
 } from './analyticsApi'
 import { AdminGrantsSection } from './AdminGrantsSection'
 import type { AdminUserDetail } from './types'
@@ -28,7 +30,9 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
   const [savingHandle, setSavingHandle] = useState(false)
   const [variantDraft, setVariantDraft] = useState('')
   const [savingVariant, setSavingVariant] = useState(false)
-  const variantOptions = listAllMidnightVariantOptions()
+  const [variantOptions, setVariantOptions] = useState<MidnightVariantOption[]>(() =>
+    listAllMidnightVariantOptions(),
+  )
   const [resetOpen, setResetOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -54,6 +58,14 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    void fetchVariantOptions(adminSecret)
+      .then(setVariantOptions)
+      .catch(() => {
+        // keep bundled fallback list
+      })
+  }, [adminSecret])
 
   const handleSaveHandle = async () => {
     if (!detail) return

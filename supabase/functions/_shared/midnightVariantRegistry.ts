@@ -3,6 +3,7 @@ export {
   getMidnightVariantSheetEntry,
   isRegisteredMidnightVariantId,
   listAdminMidnightVariantOptions,
+  listAllAdminMidnightVariantOptions,
   listRegisteredMidnightVariantIds,
   MIDNIGHT_VARIANT_SHEET,
   type MidnightVariantAdminOption,
