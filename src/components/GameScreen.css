@@ -259,13 +259,30 @@
   bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 56px));
   z-index: 180;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: min(92vw, 420px);
   gap: 10px;
   transform: translateX(-50%);
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid #2a2a3e;
   border-radius: 8px;
   background: rgba(10, 10, 18, 0.96);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.game-screen-gym-choice__title,
+.game-screen-gym-choice__progress {
+  flex: 1 1 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #b8b0d8;
+}
+
+.game-screen-gym-choice__progress {
+  color: #f4e8c1;
 }
 
 .game-screen-gym-choice__btn {

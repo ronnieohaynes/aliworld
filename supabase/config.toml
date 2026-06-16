@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.gym-leaderboard]
 verify_jwt = false
+
+[functions.gym-week-reward]
+verify_jwt = true
