@@ -686,11 +686,9 @@ function drawTransitionZonesDebug(
     const y = Math.floor(zone.y)
     const w = Math.floor(zone.width)
     const h = Math.floor(zone.height)
-    const blueStore =
-      zone.action === 'OPEN_BLUE_STORE' || zone.action === 'OPEN_BLUE_STORE_EXIT'
-    ctx.fillStyle = blueStore ? 'rgba(140, 0, 220, 0.35)' : 'rgba(255, 220, 0, 0.35)'
+    ctx.fillStyle = 'rgba(255, 220, 0, 0.35)'
     ctx.fillRect(x, y, w, h)
-    ctx.strokeStyle = blueStore ? 'rgba(180, 60, 255, 0.95)' : 'rgba(255, 235, 60, 0.95)'
+    ctx.strokeStyle = 'rgba(255, 235, 60, 0.95)'
     ctx.lineWidth = 2
     ctx.strokeRect(x, y, w, h)
   }

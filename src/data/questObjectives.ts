@@ -22,7 +22,6 @@ import {
   buildQuest2ObjectiveContext,
   getQuest2ActiveStepId,
   isE2QuestUnlocked,
-  QUEST_2_CLOSING_TEXT,
   QUEST_2_STEPS,
   type Quest2ObjectiveContext,
 } from './quest2Objectives'
@@ -190,13 +189,6 @@ export function resolvePrimaryQuestObjective(
   }
 
   if (shouldShowQuest2(ctx)) {
-    if (ctx.e2Complete) {
-      return {
-        questId: 'quest-2-southside',
-        stepId: 'e2-closing',
-        text: QUEST_2_CLOSING_TEXT,
-      }
-    }
     const quest2 = QUEST_DEFINITIONS[1]
     if (quest2) {
       const q2Ctx = ctx
@@ -205,13 +197,8 @@ export function resolvePrimaryQuestObjective(
           return { questId: quest2.id, stepId: step.id, text: step.getText(q2Ctx) }
         }
       }
-      if (q2Ctx.restockerDefeated) {
-        return {
-          questId: quest2.id,
-          stepId: 'e2-closing-pending',
-          text: 'step outside.',
-        }
-      }
+      const last = quest2.steps[quest2.steps.length - 1]!
+      return { questId: quest2.id, stepId: last.id, text: last.getText(q2Ctx) }
     }
   }
 
@@ -265,22 +252,14 @@ export function getQuestPulseTargetDescriptor(
       return ctx.crowdAddressed ? null : { kind: 'npc', id: CROWD_2_NPC_ID }
     case 'e2-crier':
       return { kind: 'npc', id: TOWN_CRIER_NPC_ID }
-    case 'e2-herald':
-      return { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-travel':
-      return ctx.inSouthside
-        ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
-        : { kind: 'zone', action: 'OPEN_DARKLINE' }
+      return { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-clerk':
-      return ctx.inSouthside
-        ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
-        : { kind: 'zone', action: 'OPEN_DARKLINE' }
+      return { kind: 'zone', action: 'OPEN_BLUE_STORE' }
     case 'e2-restocker':
-      return ctx.clerkConverted
-        ? { kind: 'npc', id: RESTOCKER_NPC_ID }
-        : { kind: 'zone', action: 'OPEN_BLUE_STORE' }
-    case 'e2-closing-pending':
-      return { kind: 'zone', action: 'OPEN_BLUE_STORE_EXIT' }
+      return { kind: 'npc', id: RESTOCKER_NPC_ID }
+    case 'e2-field':
+      return null
     default:
       return null
   }
@@ -334,12 +313,7 @@ function resolveDescriptorInCity(
     case 'zone': {
       const zone = findTriggerInCity(city, descriptor.action)
       if (!zone) return null
-      const cx = zone.x + zone.width / 2
-      // Store entrance: pulse on the doorstep (south edge), not zone centroid.
-      if (descriptor.action === 'OPEN_BLUE_STORE') {
-        return { x: cx, y: zone.y + zone.height - 6 }
-      }
-      return { x: cx, y: zone.y + zone.height / 2 }
+      return { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 }
     }
     case 'nearest-untalked-gating':
       return findNearestUntalkedGatingNpc(city, playerX, playerY)

@@ -1,6 +1,4 @@
 import { applyStatusToCombat, type CombatStatusState } from './combatStatus'
-import { STATUS_DEFAULT_TURNS } from './combatTypes'
-import { ENEMY_SHAKE_OUTGOING_MULT } from './moveBalance'
 import { MOVES } from './moveDefinitions'
 import {
   DEFAULT_EQUIPPED_MOVES,
@@ -78,38 +76,11 @@ export function mergeResolveIntoCombatStatus(
 ): CombatStatusState {
   if (blockStatus) return status
   let next = status
-  if (out.shakeApplied) {
-    next = applyStatusToCombat(next, {
-      effect: 'shake',
-      turns: out.shakePotency != null ? STATUS_DEFAULT_TURNS.shake : undefined,
-    })
-    if (out.shakePotency != null) {
-      next = {
-        ...next,
-        enemyShakePotency: Math.max(
-          0.05,
-          ENEMY_SHAKE_OUTGOING_MULT - out.shakePotency,
-        ),
-      }
-    }
-  }
-  if (out.bleedApplied) {
-    next = applyStatusToCombat(next, {
-      effect: 'bleed',
-      turns: out.bleedTurns ?? STATUS_DEFAULT_TURNS.bleed,
-    })
-    if (out.bleedPotencyMult != null) {
-      next = { ...next, enemyBleedPotencyMult: out.bleedPotencyMult }
-    }
-  }
+  if (out.shakeApplied) next = applyStatusToCombat(next, 'shake')
+  if (out.bleedApplied) next = applyStatusToCombat(next, 'bleed')
   if (out.stunApplied) next = applyStatusToCombat(next, 'stun')
   if (out.braced) next = applyStatusToCombat(next, 'brace')
-  if (out.slowApplied) {
-    next = applyStatusToCombat(next, {
-      effect: 'slow',
-      turns: out.slowTurns ?? STATUS_DEFAULT_TURNS.slow,
-    })
-  }
+  if (out.slowApplied) next = applyStatusToCombat(next, 'slow')
   if (out.missApplied) next = applyStatusToCombat(next, 'miss')
   if (out.doubleApplied) next = applyStatusToCombat(next, 'double')
   if (out.reflectApplied) next = applyStatusToCombat(next, 'reflect')
@@ -131,7 +102,6 @@ export function xpGrantsForMove(r: MoveXpContext): { skill: SkillId; amount: num
 }
 
 import type { MoveSkill } from './moveTypes'
-import { crossScaleUiLabel, crossScaleUiParts } from './moveBalance'
 
 const SKILL_MOVE_COLOR_CLASS: Record<MoveSkill, string> = {
   attack: 'battle-screen__move--strike',
@@ -148,8 +118,6 @@ export function getMoveUiMeta(id: PlayerMoveId) {
       label: String(id),
       description: '',
       className: '',
-      scaleLabel: null,
-      scaleParts: null,
     }
   }
   return {
@@ -157,7 +125,5 @@ export function getMoveUiMeta(id: PlayerMoveId) {
     label: m.displayName,
     description: m.uiDescription,
     className: SKILL_MOVE_COLOR_CLASS[m.skill],
-    scaleLabel: crossScaleUiLabel(id),
-    scaleParts: crossScaleUiParts(id),
   }
 }

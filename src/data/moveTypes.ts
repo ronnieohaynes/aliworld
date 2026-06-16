@@ -118,13 +118,6 @@ export type PlayerMoveResolveOut = {
   doubleApplied: boolean
   reflectApplied: boolean
   perfectGuardBonus?: boolean
-  /** Optional status overrides from cross-scale (bleed/slow/shake). */
-  bleedTurns?: number
-  bleedPotencyMult?: number
-  slowTurns?: number
-  shakePotency?: number
-  /** HOLD chip / brace side damage (not incoming). */
-  braceChipDmg?: number
 }
 
 export type MoveDefinition = {

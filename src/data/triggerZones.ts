@@ -6,7 +6,6 @@ export type TriggerAction =
   | 'OPEN_BLUE_STORE_EXIT'
   | 'OPEN_OCEANVIEW_GYM'
   | 'OPEN_OCEANVIEW_GYM_EXIT'
-  | 'OPEN_GYM_LEADERBOARD'
 
 export type TriggerZone = {
   id: string

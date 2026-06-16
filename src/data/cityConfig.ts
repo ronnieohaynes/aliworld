@@ -8,7 +8,6 @@ import {
   SOUTHSIDE_DARKLINE_ZONE,
   SOUTHSIDE_ENTRANCE_ZONE,
   SOUTHSIDE_MAP_SIZE,
-  SOUTHSIDE_STORE_DOOR_X,
 } from './southsideCollision'
 import {
   BLUE_STORE_EXIT_ZONE,
@@ -16,7 +15,6 @@ import {
   BLUE_STORE_INTERIOR_ENTRY,
   BLUE_STORE_INTERIOR_MAP_DRAW_SCALE,
   BLUE_STORE_INTERIOR_MAP_SIZE,
-  scaleBlueStoreInteriorPoint,
   scaleBlueStoreInteriorZone,
 } from './blueStoreInteriorCollision'
 import {
@@ -37,7 +35,6 @@ import {
   scaleFiveGymInteriorZone,
 } from './gymInteriorCollision'
 import { FIVE_GYM1_INTERIOR_NPCS } from './gymNpcs'
-import { BLUE_STORE_INTERIOR_NPCS as BLUE_STORE_INTERIOR_NPCS_NATIVE } from './blueStoreNpcs'
 import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
 /** Player-facing name for the starting district (internal id is `five`). */
@@ -75,17 +72,14 @@ export type CityConfig = {
 }
 
 const HILLCREST_MAP_SRC = publicAsset('Assets/tileset/hillcrest-map.png')
-/** Primary southside art — swap to hillside-market tileset when art lands. */
 const SOUTHSIDE_MAP_SRC = publicAsset('Assets/tileset/southside-map.png')
-/** Walkable fallback if southside-map fails to load (reuse hillcrest until art ships). */
-export const SOUTHSIDE_PLACEHOLDER_MAP_SRC = HILLCREST_MAP_SRC
 const SOUTHSIDE_FOREGROUND_MAP_SRC = publicAsset('Assets/tileset/southside-map-fg.png')
 const BLUE_STORE_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/blue-store-interior-map.png')
 
-/** Spawn on Southside when exiting the store interior (sidewalk south of the side door). */
+/** Spawn on Southside when exiting the store interior (just outside the door). */
 export const SOUTHSIDE_EXTERIOR_RETURN = {
-  x: SOUTHSIDE_STORE_DOOR_X,
-  y: SOUTHSIDE_ENTRANCE_ZONE.y + SOUTHSIDE_ENTRANCE_ZONE.height + 12,
+  x: Math.floor(SOUTHSIDE_ENTRANCE_ZONE.x + SOUTHSIDE_ENTRANCE_ZONE.width / 2),
+  y: Math.floor(SOUTHSIDE_ENTRANCE_ZONE.y + SOUTHSIDE_ENTRANCE_ZONE.height + 12),
 }
 
 const SAN_BRUNO_TRIGGER_ZONES: TriggerZone[] = [
@@ -147,11 +141,6 @@ const FIVE_GYM_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
     ...FIVE_GYM_EXIT_ZONE,
     action: 'OPEN_OCEANVIEW_GYM_EXIT',
   },
-  {
-    id: 'five-gym-leaderboard',
-    ...scaleFiveGymInteriorZone({ x: 130, y: 300, width: 160, height: 120 }),
-    action: 'OPEN_GYM_LEADERBOARD',
-  },
 ]
 
 const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')
@@ -159,11 +148,6 @@ const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')
 const FIVE_GYM_INTERIOR_NPCS = FIVE_GYM1_INTERIOR_NPCS.map((npc) => ({
   ...npc,
   ...scaleFiveGymInteriorPoint(npc),
-}))
-
-const BLUE_STORE_INTERIOR_NPCS = BLUE_STORE_INTERIOR_NPCS_NATIVE.map((npc) => ({
-  ...npc,
-  ...scaleBlueStoreInteriorPoint(npc),
 }))
 
 export const CITY_CONFIGS: Record<CityId, CityConfig> = {
@@ -203,6 +187,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     label: 'southside',
     mapSrc: SOUTHSIDE_MAP_SRC,
     foregroundMapSrc: SOUTHSIDE_FOREGROUND_MAP_SRC,
+    characterScale: 1.25,
     worldWidth: SOUTHSIDE_MAP_SIZE.width,
     worldHeight: SOUTHSIDE_MAP_SIZE.height,
     spawnX: SOUTHSIDE_DARKLINE_ARRIVAL.x,
@@ -218,6 +203,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     id: 'blue-store-interior',
     label: 'blue store',
     mapSrc: BLUE_STORE_INTERIOR_MAP_SRC,
+    characterScale: 1.25,
     mapDrawScale: BLUE_STORE_INTERIOR_MAP_DRAW_SCALE,
     worldWidth: BLUE_STORE_INTERIOR_WORLD_WIDTH,
     worldHeight: BLUE_STORE_INTERIOR_WORLD_HEIGHT,
@@ -226,9 +212,9 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     darklineSpawnX: BLUE_STORE_INTERIOR_ENTRY.x,
     darklineSpawnY: BLUE_STORE_INTERIOR_ENTRY.y,
     collisionZones: BLUE_STORE_INTERIOR_COLLISION_ZONES.map(scaleBlueStoreInteriorZone),
-    occlusionZones: getOcclusionZones('blue-store-interior').map(scaleBlueStoreInteriorZone),
+    occlusionZones: getOcclusionZones('blue-store-interior'),
     triggerZones: BLUE_STORE_INTERIOR_TRIGGER_ZONES,
-    npcs: [...BLUE_STORE_INTERIOR_NPCS],
+    npcs: [],
   },
   'five-gym-interior': {
     id: 'five-gym-interior',

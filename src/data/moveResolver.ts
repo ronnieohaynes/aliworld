@@ -3,10 +3,6 @@ import type { BattleMoveState } from './battleMoveState'
 import {
   BLACKOUT_ARMED_DAMAGE_MULT,
   BLACKOUT_RELEASE_DODGE_MULT,
-  CROSS_SCALE,
-  crossSecondaryBonus,
-  crossSecondaryFlat,
-  crossSecondaryMultiplier,
   DEVILS_CUT_DAMAGE_MULT,
   DEVILS_CUT_LIFESTEAL_BASE,
   DEVILS_CUT_LIFESTEAL_CAP,
@@ -21,8 +17,6 @@ import {
   COUNTERWEIGHT_REFLECT_CHANCE,
   COUNTERWEIGHT_REFLECT_PCT_MAX,
   COUNTERWEIGHT_REFLECT_PCT_MIN,
-  FURY_SWEEP_BLEED_TURNS_MAX,
-  FURY_SWEEP_BLEED_TURNS_MIN,
   FURY_SWEEP_DAMAGE_FLOOR,
   INVINCIBLE_BLOCK_COUNT,
   INVINCIBLE_SACRIFICE_PCT,
@@ -66,8 +60,6 @@ export type ResolveMoveContext = {
   def: number
   /** Speed skill level — scales dodge and initiative. */
   spd: number
-  /** Luck skill level — cross-scale secondary hooks. */
-  luckSkillLevel: number
   enemyAttacks: boolean
   lck: number
   playerHp: number
@@ -127,15 +119,14 @@ function applyDamageProfile(
   ctx: ResolveMoveContext,
   out: PlayerMoveResolveOut,
   enemyAttacks: boolean,
-  opts?: { critChanceBonus?: number; critDamageMultScale?: number; damageMultScale?: number },
 ): void {
-  const { atk, eDmg, lck, attackSkillLevel, battle } = ctx
+  const { atk, eDmg, lck, attackSkillLevel } = ctx
   const earlyScale = earlyStrikeDamageScale(attackSkillLevel)
   const effectiveAtk =
     earlyScale < 1
       ? Math.max(1, Math.floor(atk * (EARLY_STRIKE_ATK_CONTRIB_MULT + (1 - EARLY_STRIKE_ATK_CONTRIB_MULT) * earlyScale)))
       : atk
-  let dmg = Math.floor(effectiveAtk * profile.damageMult * (opts?.damageMultScale ?? 1))
+  let dmg = Math.floor(effectiveAtk * profile.damageMult)
   if (!enemyAttacks && profile.openingBonusMult != null) {
     dmg = Math.floor(dmg * profile.openingBonusMult)
   }
@@ -144,19 +135,13 @@ function applyDamageProfile(
   }
   if (profile.crit) {
     const c = profile.crit
-    const critBase = c.base + (opts?.critChanceBonus ?? 0)
-    if (rollCrit(lck, critBase, c.lckMult, c.extraCritRolls ?? 0)) {
+    if (rollCrit(lck, c.base, c.lckMult, c.extraCritRolls ?? 0)) {
       out.crit = true
-      const critMult = c.damageMult * (opts?.critDamageMultScale ?? 1)
-      dmg = Math.floor(dmg * critMult)
+      dmg = Math.floor(dmg * c.damageMult)
       if (c.onCrit.includes('bleed')) out.bleedApplied = true
     }
   }
   if (profile.damageFloor != null) dmg = Math.max(profile.damageFloor, dmg)
-  if (battle.nextHitAtkBonusMult > 1) {
-    dmg = Math.floor(dmg * battle.nextHitAtkBonusMult)
-    battle.nextHitAtkBonusMult = 1
-  }
   dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
   out.incoming = profile.takeEnemyHit !== false && eDmg > 0 ? eDmg : 0
@@ -168,46 +153,19 @@ function applyFurySweep(
   out: PlayerMoveResolveOut,
   enemyAttacks: boolean,
 ): void {
-  const { atk, eDmg, lck, luckSkillLevel } = ctx
+  const { atk, eDmg, lck } = ctx
   let dmg = Math.floor(atk * profile.damageMult)
   if (!enemyAttacks && profile.openingBonusMult) dmg = Math.floor(dmg * profile.openingBonusMult)
   const c = profile.crit!
   if (rollCrit(lck, c.base, c.lckMult, c.extraCritRolls ?? 0)) {
     out.crit = true
     dmg = Math.floor(dmg * c.damageMult)
-    if (c.bleedOnCritOnly) {
-      out.bleedApplied = true
-      const extraTurns = crossSecondaryFlat(
-        luckSkillLevel,
-        CROSS_SCALE.FURY_BLEED_TURNS_PER_LCK_LVL,
-        CROSS_SCALE.FURY_BLEED_TURNS_CAP,
-      )
-      out.bleedTurns = randomInt(FURY_SWEEP_BLEED_TURNS_MIN, FURY_SWEEP_BLEED_TURNS_MAX) + extraTurns
-      out.bleedPotencyMult = crossSecondaryMultiplier(
-        luckSkillLevel,
-        CROSS_SCALE.FURY_BLEED_POTENCY_PER_LCK_LVL,
-        CROSS_SCALE.FURY_BLEED_POTENCY_CAP,
-      )
-    }
+    if (c.bleedOnCritOnly) out.bleedApplied = true
   }
   dmg = Math.max(profile.damageFloor ?? FURY_SWEEP_DAMAGE_FLOOR, dmg)
   dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
   out.incoming = profile.takeEnemyHit !== false && eDmg > 0 ? eDmg : 0
-}
-
-/** Native skill level for a stolen enemy move (SNAG cross-scale). */
-function stolenMoveNativeSkillLevel(enemyMoveId: EnemyMoveId, ctx: ResolveMoveContext): number {
-  switch (enemyMoveId) {
-    case 'SLIP':
-      return ctx.spd
-    case 'HOLD':
-      return ctx.def
-    case 'WHISPER':
-      return ctx.luckSkillLevel
-    default:
-      return ctx.attackSkillLevel
-  }
 }
 
 /** Enemy strike landing this turn — dodge/brace always key off ctx.eDmg. */
@@ -219,35 +177,21 @@ export function applyStolenEnemyMove(
   enemyMoveId: EnemyMoveId,
   ctx: ResolveMoveContext,
   out: PlayerMoveResolveOut,
-  stolenScale = 1,
 ): void {
   const def = getEnemyMoveDef(enemyMoveId)
   if (!def.isAttacking) {
-    out.playerDmg = jitter(Math.floor(ctx.atk * 0.4 * stolenScale))
+    out.playerDmg = jitter(Math.floor(ctx.atk * 0.4))
     out.incoming = 0
     return
   }
-  let dmg = Math.floor(ctx.atk * def.damageMult * stolenScale)
+  let dmg = Math.floor(ctx.atk * def.damageMult)
   dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
   out.incoming = incomingEnemyHit(ctx) ? ctx.eDmg : 0
 }
 
 function rollPhenomena(ctx: ResolveMoveContext, out: PlayerMoveResolveOut): string {
-  const rollBias = crossSecondaryBonus(
-    ctx.luckSkillLevel,
-    CROSS_SCALE.PHENOMENA_ROLL_BIAS_PER_LCK_LVL,
-    ctx.luckSkillLevel * CROSS_SCALE.PHENOMENA_ROLL_BIAS_PER_LCK_LVL,
-  )
-  const defFloor = crossSecondaryBonus(
-    ctx.def,
-    CROSS_SCALE.PHENOMENA_DEF_FLOOR_PER_DEF_LVL,
-    CROSS_SCALE.PHENOMENA_DEF_FLOOR_CAP,
-  )
-  let roll = Math.floor(Math.random() * 9)
-  if (rollBias > 0 && Math.random() < rollBias) {
-    roll = Math.min(8, roll + 1)
-  }
+  const roll = Math.floor(Math.random() * 9)
   switch (roll) {
     case 0:
       out.bleedApplied = true
@@ -273,7 +217,6 @@ function rollPhenomena(ctx: ResolveMoveContext, out: PlayerMoveResolveOut): stri
     case 7: {
       const mult =
         PHENOMENA_DAMAGE_MULT_MIN +
-        defFloor +
         Math.random() * (PHENOMENA_DAMAGE_MULT_MAX - PHENOMENA_DAMAGE_MULT_MIN)
       out.playerDmg = jitter(Math.floor(ctx.atk * mult))
       out.incoming = incomingEnemyHit(ctx) ? ctx.eDmg : 0
@@ -305,41 +248,13 @@ export function applyMoveBehavior(
   out: PlayerMoveResolveOut,
 ): PostResolveEffects {
   const post: PostResolveEffects = { deathClocks: [], selfDamage: 0, healPlayer: 0 }
-  const {
-    atk,
-    attackSkillLevel,
-    def: defSkillLevel,
-    eDmg,
-    enemyAttacks,
-    lck,
-    luckSkillLevel,
-    spd,
-    battle,
-  } = ctx
+  const { atk, eDmg, enemyAttacks, lck, battle } = ctx
   const behavior = def.behavior
 
   switch (behavior.kind) {
-    case 'damage': {
-      const opts =
-        def.id === 'STRIKE'
-          ? {
-              critChanceBonus: crossSecondaryBonus(
-                luckSkillLevel,
-                CROSS_SCALE.STRIKE_CRIT_CHANCE_PER_LCK_LVL,
-                luckSkillLevel * CROSS_SCALE.STRIKE_CRIT_CHANCE_PER_LCK_LVL,
-              ),
-            }
-          : undefined
-      applyDamageProfile(behavior.profile, ctx, out, enemyAttacks, opts)
-      if (def.id === 'WHISPER') {
-        out.shakePotency = crossSecondaryBonus(
-          spd,
-          CROSS_SCALE.WHISPER_SHAKE_WEAKEN_PER_SPD_LVL,
-          CROSS_SCALE.WHISPER_SHAKE_WEAKEN_CAP,
-        )
-      }
+    case 'damage':
+      applyDamageProfile(behavior.profile, ctx, out, enemyAttacks)
       break
-    }
 
     case 'fury-sweep':
       applyFurySweep(behavior.profile, ctx, out, enemyAttacks)
@@ -347,37 +262,17 @@ export function applyMoveBehavior(
 
     case 'dodge': {
       const d = behavior.profile
-      const slipAtkBonus =
-        def.id === 'SLIP'
-          ? crossSecondaryBonus(
-              attackSkillLevel,
-              CROSS_SCALE.SLIP_COUNTER_ATK_PER_ATK_LVL,
-              CROSS_SCALE.SLIP_COUNTER_ATK_CAP,
-            )
-          : 0
-      const parryReflectScale =
-        def.id === 'PARRY'
-          ? crossSecondaryMultiplier(
-              defSkillLevel,
-              CROSS_SCALE.PARRY_REFLECT_DEF_PER_DEF_LVL,
-              CROSS_SCALE.PARRY_REFLECT_DEF_CAP,
-            )
-          : 1
       if (incomingEnemyHit(ctx)) {
         if (Math.random() < speedDodgeSuccessChance(ctx.spd)) {
           out.dodged = true
           out.incoming = 0
-          const counterScale =
-            1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd) + slipAtkBonus
+          const counterScale = 1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd)
           out.playerDmg = jitter(Math.floor(atk * d.counterMult * counterScale))
           if (Math.random() * 100 < d.stunChance.base + lck * d.stunChance.lckMult) {
             out.stunApplied = true
           }
           if (d.onDodgeReflectPct && ctx.eDmg > 0) {
-            out.playerDmg += Math.max(
-              1,
-              Math.floor(ctx.eDmg * d.onDodgeReflectPct * parryReflectScale),
-            )
+            out.playerDmg += Math.max(1, Math.floor(ctx.eDmg * d.onDodgeReflectPct))
           }
         } else {
           out.dodged = false
@@ -400,20 +295,6 @@ export function applyMoveBehavior(
         : 0
       if (incomingEnemyHit(ctx)) {
         battle.playerPerfectGuard = true
-        if (def.id === 'HOLD') {
-          out.braceChipDmg = crossSecondaryFlat(
-            attackSkillLevel,
-            CROSS_SCALE.HOLD_BRACE_CHIP_PER_ATK_LVL,
-            CROSS_SCALE.HOLD_BRACE_CHIP_CAP,
-          )
-        }
-        if (def.id === 'ANCHOR') {
-          post.healPlayer = crossSecondaryFlat(
-            luckSkillLevel,
-            CROSS_SCALE.ANCHOR_BRACE_HEAL_PER_LCK_LVL,
-            CROSS_SCALE.ANCHOR_BRACE_HEAL_CAP,
-          )
-        }
       }
       if (b.blockStatus) battle.anchorBlocksStatus = true
       break
@@ -422,24 +303,15 @@ export function applyMoveBehavior(
     case 'dark-break': {
       applyDamageProfile(behavior.profile, ctx, out, enemyAttacks)
       battle.enemyAccuracyMult = behavior.accuracyMult
-      const extraTurns = crossSecondaryFlat(
-        spd,
-        CROSS_SCALE.DARK_BREAK_EXTRA_TURNS_PER_SPD_LVL,
-        CROSS_SCALE.DARK_BREAK_EXTRA_TURNS_CAP,
+      battle.enemyAccuracyTurns = randomInt(
+        behavior.accuracyTurns.min,
+        behavior.accuracyTurns.max,
       )
-      battle.enemyAccuracyTurns =
-        randomInt(behavior.accuracyTurns.min, behavior.accuracyTurns.max) + extraTurns
       break
     }
 
     case 'cannon': {
-      applyDamageProfile(behavior.profile, ctx, out, enemyAttacks, {
-        critDamageMultScale: crossSecondaryMultiplier(
-          luckSkillLevel,
-          CROSS_SCALE.CANNON_CRIT_DMG_PER_LCK_LVL,
-          CROSS_SCALE.CANNON_CRIT_DMG_CAP,
-        ),
-      })
+      applyDamageProfile(behavior.profile, ctx, out, enemyAttacks)
       if (out.crit && Math.random() < behavior.defShatterChance) {
         battle.enemyDefShattered = true
       }
@@ -452,12 +324,7 @@ export function applyMoveBehavior(
         out.playerDmg = 0
         out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       } else if (battle.blackoutPhase === 'armed') {
-        const momentum = crossSecondaryMultiplier(
-          spd,
-          CROSS_SCALE.BLACKOUT_MOMENTUM_PER_SPD_LVL,
-          CROSS_SCALE.BLACKOUT_MOMENTUM_CAP,
-        )
-        out.playerDmg = jitter(Math.floor(atk * BLACKOUT_ARMED_DAMAGE_MULT * momentum))
+        out.playerDmg = jitter(Math.floor(atk * BLACKOUT_ARMED_DAMAGE_MULT))
         if (incomingEnemyHit(ctx)) {
           if (Math.random() < speedDodgeSuccessChance(ctx.spd) * BLACKOUT_RELEASE_DODGE_MULT) {
             out.dodged = true
@@ -480,38 +347,17 @@ export function applyMoveBehavior(
       out.playerDmg = jitter(Math.floor(atk * 0.35))
       out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       out.slowApplied = true
-      const extraSlow = crossSecondaryFlat(
-        luckSkillLevel,
-        CROSS_SCALE.GRAVITY_SLOW_TURNS_PER_LCK_LVL,
-        CROSS_SCALE.GRAVITY_SLOW_TURNS_CAP,
-      )
-      out.slowTurns =
-        randomInt(behavior.slowTurns.min, behavior.slowTurns.max) +
-        Math.floor(extraSlow)
       break
     }
 
     case 'refract': {
-      const atkMult = crossSecondaryMultiplier(
-        attackSkillLevel,
-        CROSS_SCALE.REFRACT_ATK_PER_ATK_LVL,
-        CROSS_SCALE.REFRACT_ATK_CAP,
-      )
-      out.playerDmg = Math.max(
-        0,
-        Math.floor(battle.lastEnemyDamage * REFRACT_DAMAGE_MULT * atkMult),
-      )
+      out.playerDmg = Math.max(0, Math.floor(battle.lastEnemyDamage * REFRACT_DAMAGE_MULT))
       out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       break
     }
 
     case 'hyperdrive': {
-      const setupMult = crossSecondaryMultiplier(
-        attackSkillLevel,
-        CROSS_SCALE.HYPERDRIVE_SETUP_ATK_PER_ATK_LVL,
-        CROSS_SCALE.HYPERDRIVE_SETUP_ATK_CAP,
-      )
-      out.playerDmg = jitter(Math.floor(atk * 0.25 * setupMult))
+      out.playerDmg = jitter(Math.floor(atk * 0.25))
       out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       battle.hyperdriveArmed = true
       break
@@ -522,18 +368,10 @@ export function applyMoveBehavior(
       battle.counterweightBlockPct =
         COUNTERWEIGHT_BLOCK_PCT_MIN +
         Math.random() * (COUNTERWEIGHT_BLOCK_PCT_MAX - COUNTERWEIGHT_BLOCK_PCT_MIN)
-      const reflectAtkBonus = crossSecondaryBonus(
-        attackSkillLevel,
-        CROSS_SCALE.COUNTERWEIGHT_REFLECT_ATK_PER_ATK_LVL,
-        CROSS_SCALE.COUNTERWEIGHT_REFLECT_ATK_CAP,
-      )
       if (Math.random() < COUNTERWEIGHT_REFLECT_CHANCE) {
-        battle.counterweightReflectPct = Math.min(
-          1,
+        battle.counterweightReflectPct =
           COUNTERWEIGHT_REFLECT_PCT_MIN +
-            Math.random() * (COUNTERWEIGHT_REFLECT_PCT_MAX - COUNTERWEIGHT_REFLECT_PCT_MIN) +
-            reflectAtkBonus,
-        )
+          Math.random() * (COUNTERWEIGHT_REFLECT_PCT_MAX - COUNTERWEIGHT_REFLECT_PCT_MIN)
       }
       out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
       break
@@ -549,27 +387,15 @@ export function applyMoveBehavior(
     case 'invincible': {
       out.playerDmg = 0
       out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
-      const sacrificeRelief = crossSecondaryBonus(
-        luckSkillLevel,
-        CROSS_SCALE.INVINCIBLE_SACRIFICE_RELIEF_PER_LCK_LVL,
-        CROSS_SCALE.INVINCIBLE_SACRIFICE_RELIEF_CAP,
-      )
-      post.selfDamage = Math.floor(
-        ctx.playerHp * Math.max(0.01, INVINCIBLE_SACRIFICE_PCT - sacrificeRelief),
-      )
+      post.selfDamage = Math.floor(ctx.playerHp * INVINCIBLE_SACRIFICE_PCT)
       battle.playerInvincibleBlocks = INVINCIBLE_BLOCK_COUNT
       battle.oncePerBattleUsed.INVINCIBLE = true
       break
     }
 
     case 'loop': {
-      const loopMult = crossSecondaryMultiplier(
-        attackSkillLevel,
-        CROSS_SCALE.LOOP_REPEAT_ATK_PER_ATK_LVL,
-        CROSS_SCALE.LOOP_REPEAT_ATK_CAP,
-      )
       applyDamageProfile(
-        { damageMult: LOOP_DAMAGE_MULT * loopMult, takeEnemyHit: true },
+        { damageMult: LOOP_DAMAGE_MULT, takeEnemyHit: true },
         ctx,
         out,
         enemyAttacks,
@@ -583,13 +409,7 @@ export function applyMoveBehavior(
       if (pool.length > 0 && ctx.moveSlot != null) {
         const stolen = pool[Math.floor(Math.random() * pool.length)]!
         battle.snagStolen[ctx.moveSlot] = stolen
-        const nativeLvl = stolenMoveNativeSkillLevel(stolen, ctx)
-        const stolenScale = crossSecondaryMultiplier(
-          nativeLvl,
-          CROSS_SCALE.SNAG_STOLEN_PER_NATIVE_LVL,
-          CROSS_SCALE.SNAG_STOLEN_CAP,
-        )
-        applyStolenEnemyMove(stolen, ctx, out, stolenScale)
+        applyStolenEnemyMove(stolen, ctx, out)
       } else {
         out.playerDmg = jitter(Math.floor(atk * 0.3))
         out.incoming = incomingEnemyHit(ctx) ? eDmg : 0
@@ -619,13 +439,7 @@ export function applyMoveBehavior(
     case 'second-wind': {
       const pct = Math.min(
         SECOND_WIND_HEAL_CAP_PCT,
-        SECOND_WIND_HEAL_BASE_PCT +
-          ctx.def * SECOND_WIND_HEAL_PER_DEF_PCT +
-          crossSecondaryBonus(
-            luckSkillLevel,
-            CROSS_SCALE.SECOND_WIND_LCK_HEAL_PER_LVL,
-            CROSS_SCALE.SECOND_WIND_LCK_HEAL_CAP,
-          ),
+        SECOND_WIND_HEAL_BASE_PCT + ctx.def * SECOND_WIND_HEAL_PER_DEF_PCT,
       )
       post.healPlayer = Math.floor(ctx.playerMaxHp * pct)
       out.playerDmg = 0
@@ -640,13 +454,7 @@ export function applyMoveBehavior(
       battle.devilsCutTurns = randomInt(DEVILS_CUT_TURNS_MIN, DEVILS_CUT_TURNS_MAX)
       battle.devilsCutPct = Math.min(
         DEVILS_CUT_LIFESTEAL_CAP,
-        DEVILS_CUT_LIFESTEAL_BASE +
-          ctx.lck * DEVILS_CUT_LIFESTEAL_PER_LCK +
-          crossSecondaryBonus(
-            attackSkillLevel,
-            CROSS_SCALE.DEVILS_CUT_LIFESTEAL_ATK_PER_ATK_LVL,
-            CROSS_SCALE.DEVILS_CUT_LIFESTEAL_ATK_CAP,
-          ),
+        DEVILS_CUT_LIFESTEAL_BASE + ctx.lck * DEVILS_CUT_LIFESTEAL_PER_LCK,
       )
       break
     }

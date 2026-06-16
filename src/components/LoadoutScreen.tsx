@@ -22,8 +22,6 @@ import {
   MOVE_SKILL_LADDERS,
   type PlayerMoveId,
 } from '../data/moves'
-import { MoveScaleTag } from './MoveScaleTag'
-import './MoveScaleTag.css'
 import { deriveBuildName } from '../data/buildName'
 import type { MoveSkill } from '../data/moveTypes'
 import {
@@ -48,8 +46,7 @@ import {
   getSkillStatBonuses,
   MAX_SKILL_LEVEL,
   MAX_PLAYER_LEVEL,
-  cumulativeXpForLevel,
-  skillXpProgressPct,
+  totalXpForLevel,
   sumSkillLevels,
   computePlayerLevel,
 } from '../store/skillStore'
@@ -97,7 +94,6 @@ type MoveLadderEntry = {
   equipped: boolean
   label: string
   description: string
-  scaleParts: ReturnType<typeof getMoveUiMeta>['scaleParts']
   unlockRequirement: string
 }
 
@@ -140,11 +136,11 @@ function buildSkillSections(
   return SKILL_ROWS.map(({ id, label }) => {
     const { level, xp } = skills[id]
     const atMax = level >= MAX_SKILL_LEVEL
-    const floor = cumulativeXpForLevel(level)
-    const ceil = cumulativeXpForLevel(level + 1)
-    const pct = skillXpProgressPct(level, xp)
+    const floor = totalXpForLevel(level)
+    const ceil = totalXpForLevel(level + 1)
+    const pct = atMax ? 100 : Math.round(((xp - floor) / (ceil - floor)) * 100)
     const moves = MOVE_SKILL_LADDERS[id].map((moveId, index) => {
-      const { label: moveLabel, description, scaleParts } = getMoveUiMeta(moveId)
+      const { label: moveLabel, description } = getMoveUiMeta(moveId)
       const def = getMoveDef(moveId)
       return {
         moveId,
@@ -153,7 +149,6 @@ function buildSkillSections(
         equipped: equipped.includes(moveId),
         label: moveLabel,
         description,
-        scaleParts,
         unlockRequirement: `${SKILL_SHORT[id]} ${def.unlockAtSkillLevel}`,
       }
     })
@@ -410,11 +405,11 @@ export function LoadoutScreen({
             {(() => {
               const { level, xp } = skills.hp
               const atMax = level >= MAX_SKILL_LEVEL
-              const floor = cumulativeXpForLevel(level)
-              const ceil = cumulativeXpForLevel(level + 1)
+              const floor = totalXpForLevel(level)
+              const ceil = totalXpForLevel(level + 1)
               const withinLevel = xp - floor
               const needed = ceil - floor
-              const pct = skillXpProgressPct(level, xp)
+              const pct = atMax ? 100 : Math.round((withinLevel / needed) * 100)
               const archetype = getPlayerStoreState().archetype
               const baseHp = ARCHETYPE_STATS[archetype].maxHp
               const totalMaxHp = baseHp + getSkillStatBonuses(skills).maxHp
@@ -511,7 +506,6 @@ export function LoadoutScreen({
                             <span className="loadout-screen__move-rung">rung {move.rung}</span>
                             <span className="loadout-screen__move-name">{move.label}</span>
                             <span className="loadout-screen__move-desc">{move.description}</span>
-                            <MoveScaleTag parts={move.scaleParts} className="loadout-screen__move-scale" />
                             {!move.unlocked && (
                               <span className="loadout-screen__move-lock">
                                 {move.unlockRequirement}
