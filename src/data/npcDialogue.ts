@@ -7,7 +7,10 @@ import { FIVE_GYM1_ID, getGymHeadWins, isGym5ive1Cleared } from '../store/gymSto
 import { fiveGym1DialogueForWins } from './fiveGym1Gauntlet'
 import {
   CLERK_NPC_ID,
+  CROWD_1_NPC_ID,
   isClerkConverted,
+  isCrierSentAhead,
+  isCrowdAddressed,
   isCrierConverted,
   isRestockerDefeated,
   RESTOCKER_NPC_ID,
@@ -42,6 +45,7 @@ function isNpcConverted(npcId: string): boolean {
   if (npcId === TOWN_CRIER_NPC_ID) return isCrierConverted()
   if (npcId === CLERK_NPC_ID) return isClerkConverted()
   if (npcId === RESTOCKER_NPC_ID) return isRestockerDefeated()
+  if (npcId === CROWD_1_NPC_ID) return isCrowdAddressed()
   if (npcId === FIVE_GYM1_ID) return isGym5ive1Cleared()
   return false
 }
@@ -60,7 +64,10 @@ export function resolveNpcDialogueLines(
   } else if (isNpcConverted(npc.id) && npc.linesConverted?.length) {
     raw = npc.linesConverted
   } else {
-    raw = npc.lines
+    raw = [...npc.lines]
+    if (npc.id === CLERK_NPC_ID && isCrierSentAhead() && npc.linesHerald?.length) {
+      raw = [...npc.linesHerald, ...raw]
+    }
   }
   return raw.map((line) => normalizeDialogueLine(line, npc.name))
 }

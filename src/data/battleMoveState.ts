@@ -28,6 +28,8 @@ export type BattleMoveState = {
   counterweightReflectPct: number | null
   /** Set after brace vs an enemy hit; next damage move gets a bonus. */
   playerPerfectGuard: boolean
+  /** BRICK_WALL — multiplier on next player damage after a full nullify. */
+  nextHitAtkBonusMult: number
 }
 
 export function createBattleMoveState(): BattleMoveState {
@@ -51,5 +53,6 @@ export function createBattleMoveState(): BattleMoveState {
     counterweightBlockPct: null,
     counterweightReflectPct: null,
     playerPerfectGuard: false,
+    nextHitAtkBonusMult: 1,
   }
 }

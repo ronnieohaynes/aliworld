@@ -51,7 +51,11 @@ export type CombatStatusState = {
   playerDouble: number
   playerReflect: ReflectBuff | null
   enemyBleed: number
+  /** Bleed chip multiplier while bleeding (1 = default). */
+  enemyBleedPotencyMult: number
   enemyShake: number
+  /** Shake outgoing damage mult while shaken (0 = use default). */
+  enemyShakePotency: number
   enemyStun: number
   /** Enemy acts later/weaker while active (damage mult + initiative). */
   enemySlow: number
@@ -65,7 +69,9 @@ export function createEmptyCombatStatus(): CombatStatusState {
     playerDouble: 0,
     playerReflect: null,
     enemyBleed: 0,
+    enemyBleedPotencyMult: 1,
     enemyShake: 0,
+    enemyShakePotency: 0,
     enemyStun: 0,
     enemySlow: 0,
     enemyMiss: 0,

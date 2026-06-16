@@ -79,6 +79,8 @@ import {
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import { getMoveUiMeta, getMoveDef } from '../data/moves'
+import { MoveScaleTag } from './MoveScaleTag'
+import './MoveScaleTag.css'
 import { track } from '../lib/analytics'
 import type { BattleFeedbackTone } from '../data/battleFeedback'
 import {
@@ -1330,7 +1332,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                 role="group"
                 aria-label="Battle moves"
               >
-                  {battleMoveButtons.map(({ move, label, description, className }, slot) => {
+                  {battleMoveButtons.map(({ move, label, description, className, scaleParts }, slot) => {
                     const stolen = state.battleMove.snagStolen[slot]
                     const displayLabel = stolen
                       ? stolen.replace('_', ' ')
@@ -1365,6 +1367,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
                           )}
                         </span>
                         <span className="battle-screen__move-desc">{description}</span>
+                        {!stolen && <MoveScaleTag parts={scaleParts} />}
                       </button>
                     )
                   })}

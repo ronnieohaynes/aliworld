@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
-import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, type NpcData } from '../data/npcs'
-import { isE2QuestUnlocked } from '../data/quest2Objectives'
+import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, WALKER_E2_CROWD_NPC, type NpcData } from '../data/npcs'
+import { isE2QuestUnlocked, QUEST_2_CLOSING_TEXT } from '../data/quest2Objectives'
 import { E2_ENABLED } from '../store/quest2Store'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import {
@@ -15,7 +15,12 @@ import {
   type CityConfig,
   type CityId,
 } from '../data/cityConfig'
-import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
+import { OCEANVIEW_GYM_ENTRANCE_ZONE } from '../data/gymEntrance'
+import { resolveDoorSpawn, DOOR_SPAWN_OFFSET } from '../data/doorSpawn'
+import { BLUE_STORE_EXIT_ZONE } from '../data/blueStoreInteriorCollision'
+import { FIVE_GYM_EXIT_ZONE } from '../data/gymInteriorCollision'
+import { SOUTHSIDE_ENTRANCE_ZONE } from '../data/southsideCollision'
+import { E2_CLOSING_CRIER_NPC, E2_CLOSING_MOB_NPCS } from '../data/e2ClosingNpcs'
 import {
   FIVE_GYM1_HEAD_NPC,
   FIVE_GYM1_ID,
@@ -69,15 +74,21 @@ import {
 import {
   CLERK_NPC_ID,
   CROWD_2_NPC_ID,
-  getQuest2Snapshot,
+  getQuest2Revision,
   isClerkConverted,
   isCrierConverted,
+  isCrierSentAhead,
   isCrowdAddressed,
+  isE2Complete,
+  isE2ClosingCrowdDismissed,
   isRestockerDefeated,
   RESTOCKER_NPC_ID,
   setClerkConverted,
   setCrierConverted,
+  setCrierSentAhead,
   setCrowdAddressed,
+  setE2ClosingCrowdDismissed,
+  setE2Complete,
   setRestockerDefeated,
   subscribeQuest2Store,
   TOWN_CRIER_NPC_ID,
@@ -97,9 +108,10 @@ import { GameShell } from './GameShell'
 import { BattleScreen } from './BattleScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
+import { GymLeaderboardScreen } from './GymLeaderboardScreen'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
-import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
+import { MenuEntryCover, MENU_TRANSITION_MS, MENU_TRANSITION_MIDPOINT_MS, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { CultTransition, type CultTransitionMode } from './CultTransition'
 import { DarklineScreen } from './DarklineScreen'
@@ -138,7 +150,7 @@ import {
 } from '../store/patchesStore'
 import { getSkillLabels, type SkillId } from '../store/skillStore'
 import { PatchSkillPicker } from './PatchSkillPicker'
-import { signOut } from '../store/authStore'
+import { getAuthState, signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
   StartMenuScreen,
@@ -261,7 +273,10 @@ export function GameScreen() {
   const prevCityRef = useRef<CityId | null>(null)
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
+  const [darklineEnterTransition, setDarklineEnterTransition] = useState(false)
   const [cultDarklinePhase, setCultDarklinePhase] = useState<CultTransitionMode | null>(null)
+  const cultDarklinePhaseRef = useRef<CultTransitionMode | null>(null)
+  cultDarklinePhaseRef.current = cultDarklinePhase
   const darklineExitTargetRef = useRef<CityId | 'close' | null>(null)
   const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
   const [cafeSceneLine, setCafeSceneLine] = useState(0)
@@ -272,6 +287,8 @@ export function GameScreen() {
   const pendingPostE1NarrationRef = useRef(false)
   const pendingGymLossLineRef = useRef(false)
   const pendingGymWelcomeRef = useRef(false)
+  const crierHeraldStartedRef = useRef(false)
+  const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -302,6 +319,7 @@ export function GameScreen() {
   const [showLoadout, setShowLoadout] = useState(false)
   const [bugReportScreenshot, setBugReportScreenshot] = useState<string | null>(null)
   const [showBugReport, setShowBugReport] = useState(false)
+  const [showGymLeaderboard, setShowGymLeaderboard] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -338,8 +356,8 @@ export function GameScreen() {
   )
   const quest2Revision = useSyncExternalStore(
     subscribeQuest2Store,
-    getQuest2Snapshot,
-    getQuest2Snapshot,
+    getQuest2Revision,
+    getQuest2Revision,
   )
   const artifactRevision = useSyncExternalStore(
     subscribeArtifactStore,
@@ -372,7 +390,7 @@ export function GameScreen() {
     if (isE2QuestUnlocked() && POST_E2_DARKLINE_DESTINATION !== POST_E1_DARKLINE_DESTINATION) {
       dest.push(POST_E2_DARKLINE_DESTINATION)
     }
-    if (!isCrierConverted()) {
+    if (!isCrierSentAhead()) {
       return dest.filter((id) => id !== 'southside')
     }
     return dest
@@ -546,7 +564,11 @@ export function GameScreen() {
       }
       if (isE2QuestUnlocked()) {
         if (!isCrowdAddressed()) {
+          npcs = npcs.filter((npc) => npc.id !== WALKER_NPC_ID)
           npcs = [...npcs, CROWD_1_NPC, CROWD_2_NPC]
+          if (isWalkerConverted()) {
+            npcs = [...npcs, WALKER_E2_CROWD_NPC]
+          }
         }
         if (!isCrierConverted()) {
           npcs = [...npcs, TOWN_CRIER_NPC]
@@ -556,8 +578,18 @@ export function GameScreen() {
     }
     if (currentCity === 'southside') {
       let npcs = [...baseCityConfig.npcs]
+      if (isRestockerDefeated() && !isE2Complete() && !isE2ClosingCrowdDismissed()) {
+        npcs = [...npcs, ...E2_CLOSING_MOB_NPCS]
+      }
+      return { ...baseCityConfig, npcs }
+    }
+    if (currentCity === 'blue-store-interior') {
+      let npcs = [...baseCityConfig.npcs]
       if (!isClerkConverted()) {
         npcs = npcs.filter((npc) => npc.id !== RESTOCKER_NPC_ID)
+      }
+      if (isClerkConverted()) {
+        npcs = npcs.filter((npc) => npc.id !== CLERK_NPC_ID)
       }
       return { ...baseCityConfig, npcs }
     }
@@ -678,6 +710,9 @@ export function GameScreen() {
       setOceanviewGymVisited()
       pendingGymWelcomeRef.current = true
     }
+    if (target.cityId === 'southside') {
+      markCityVisited('southside')
+    }
     setCurrentCity(target.cityId)
     playerRef.current?.setPosition(target.x, target.y)
     if (target.facing) {
@@ -700,6 +735,16 @@ export function GameScreen() {
     beginMenuTransition({ kind: 'resume' })
   }, [beginMenuTransition])
 
+  const openGymLeaderboard = useCallback(() => {
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowGymLeaderboard(true)
+  }, [])
+
+  const handleGymLeaderboardClose = useCallback(() => {
+    setShowGymLeaderboard(false)
+  }, [])
+
   const toggleStartMenu = useCallback(() => {
     console.log('[tutorial-start] toggleStartMenu enter', {
       loadoutTutorialStep,
@@ -713,6 +758,7 @@ export function GameScreen() {
       console.log('[tutorial-start] toggleStartMenu guard: menuTransition')
       return
     }
+    if (showGymLeaderboard) return
     if (showStartMenu) {
       console.log('[tutorial-start] toggleStartMenu guard: already open → resume')
       resumeFromPauseMenu()
@@ -738,11 +784,12 @@ export function GameScreen() {
     resumeFromPauseMenu,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
   ])
 
   const handleFannyPack = useCallback(() => {
-    if (menuTransition || worldEntryActive || showStartMenu) return
+    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard) return
     if (showFannyPack) {
       if (menuReturnPending) {
         beginResumeTransition()
@@ -758,6 +805,7 @@ export function GameScreen() {
     menuReturnPending,
     menuTransition,
     showFannyPack,
+    showGymLeaderboard,
     showStartMenu,
     worldEntryActive,
   ])
@@ -774,13 +822,13 @@ export function GameScreen() {
       ) {
         return
       }
-      if (worldEntryActive || showStartMenu) return
+      if (worldEntryActive || showStartMenu || showGymLeaderboard) return
       e.preventDefault()
       handleFannyPack()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleFannyPack, showStartMenu])
+  }, [handleFannyPack, showStartMenu, showGymLeaderboard])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -792,6 +840,11 @@ export function GameScreen() {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement
       ) {
+        return
+      }
+      if (showGymLeaderboard) {
+        e.preventDefault()
+        setShowGymLeaderboard(false)
         return
       }
       if (showLoadout || showFannyPack) {
@@ -833,6 +886,7 @@ export function GameScreen() {
     menuReturnPending,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     menuTransition,
   ])
@@ -897,6 +951,7 @@ export function GameScreen() {
       !showStartMenu &&
       !showLoadout &&
       !showFannyPack &&
+      !showGymLeaderboard &&
       cafeFade !== 'scene'
     )
   }, [
@@ -913,6 +968,7 @@ export function GameScreen() {
     showStartMenu,
     showLoadout,
     showFannyPack,
+    showGymLeaderboard,
     cafeFade,
   ])
 
@@ -947,6 +1003,67 @@ export function GameScreen() {
       onComplete,
     })
   }, [])
+
+  const playCrierHeraldDialogue = useCallback(() => {
+    if (crierHeraldStartedRef.current || isCrierSentAhead()) return
+    crierHeraldStartedRef.current = true
+    beginNpcDialogue(TOWN_CRIER_NPC, {
+      onComplete: () => {
+        setCrierSentAhead()
+      },
+    })
+  }, [beginNpcDialogue])
+
+  const finishE2Episode = useCallback(() => {
+    setE2Complete()
+    e2ClosingPhaseRef.current = 'idle'
+    track('episode_complete', { episode: 'e2' })
+  }, [])
+
+  const runE2ClosingEpisodeCards = useCallback(() => {
+    if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
+    e2ClosingPhaseRef.current = 'cards'
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      episodeName: EPISODE_2_NAME,
+      episodeNumber: 2,
+      type: 'episode_complete',
+      onComplete: () => {
+        showQuestTransition({
+          questName: QUEST_2_CLOSING_TEXT,
+          type: 'quest_complete',
+          onComplete: finishE2Episode,
+        })
+      },
+    })
+  }, [finishE2Episode, showQuestTransition])
+
+  const runE2ClosingMobDialogue = useCallback(() => {
+    if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
+    if (isE2ClosingCrowdDismissed()) {
+      runE2ClosingEpisodeCards()
+      return
+    }
+    e2ClosingPhaseRef.current = 'mob'
+    beginNpcDialogue(E2_CLOSING_CRIER_NPC, {
+      onComplete: () => {
+        setE2ClosingCrowdDismissed()
+        runE2ClosingEpisodeCards()
+      },
+    })
+  }, [beginNpcDialogue, runE2ClosingEpisodeCards])
+
+  const startE2ClosingExitInterior = useCallback(() => {
+    if (isE2Complete()) return
+    e2ClosingPhaseRef.current = 'exit-interior'
+    showNarration(['a crowd is forming outside.'], () => {
+      beginMapTransition(
+        'southside',
+        SOUTHSIDE_EXTERIOR_RETURN.x,
+        SOUTHSIDE_EXTERIOR_RETURN.y,
+      )
+    })
+  }, [beginMapTransition, showNarration])
 
   const showBStaxLines = useCallback((lines: string[], onComplete?: () => void) => {
     setDialogue({
@@ -1011,7 +1128,10 @@ export function GameScreen() {
         'welcome to the first gym. beat the leader in the gauntlet to win prizes.',
       ])
     }
-  }, [showNarration])
+    if (e2ClosingPhaseRef.current === 'exit-interior') {
+      runE2ClosingMobDialogue()
+    }
+  }, [runE2ClosingMobDialogue, showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
     showNarration(["the darkline's open now. take it south."])
@@ -1200,9 +1320,9 @@ export function GameScreen() {
       if (action === 'OPEN_13GALLONS') {
         setShowInterior(true)
       } else if (action === 'OPEN_DARKLINE') {
-        if (cultDarklinePhase) return
+        if (cultDarklinePhase || darklineEnterTransition) return
         if (isMarkDefeated()) {
-          setCultDarklinePhase('enter')
+          setDarklineEnterTransition(true)
           return
         }
         if (!canApproachMark()) {
@@ -1218,40 +1338,58 @@ export function GameScreen() {
       } else if (action === 'OPEN_BLUE_STORE') {
         if (currentCity !== 'southside') return
         if (mapTransitionRef.current) return
-        if (!isCrierConverted()) {
+        if (!isCrierSentAhead()) {
           showNotYetDialogue(CLERK_NPC, 'nobody gets in until the crier moves.')
           return
         }
         {
           const interior = CITY_CONFIGS['blue-store-interior']
-          beginMapTransition(
-            'blue-store-interior',
-            interior.spawnX,
-            interior.spawnY,
+          const spawn = resolveDoorSpawn(
+            BLUE_STORE_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
           )
+          beginMapTransition('blue-store-interior', spawn.x, spawn.y)
         }
       } else if (action === 'OPEN_BLUE_STORE_EXIT') {
         if (currentCity !== 'blue-store-interior') return
         if (mapTransitionRef.current) return
-        beginMapTransition(
-          'southside',
-          SOUTHSIDE_EXTERIOR_RETURN.x,
-          SOUTHSIDE_EXTERIOR_RETURN.y,
-        )
+        {
+          const exterior = CITY_CONFIGS['southside']
+          const spawn = resolveDoorSpawn(
+            SOUTHSIDE_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('southside', spawn.x, spawn.y)
+        }
       } else if (action === 'OPEN_OCEANVIEW_GYM') {
         if (currentCity !== 'five') return
         if (mapTransitionRef.current) return
-        const interior = CITY_CONFIGS['five-gym-interior']
-        beginMapTransition('five-gym-interior', interior.spawnX, interior.spawnY, 'up')
+        {
+          const interior = CITY_CONFIGS['five-gym-interior']
+          const spawn = resolveDoorSpawn(
+            FIVE_GYM_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
+          )
+          beginMapTransition('five-gym-interior', spawn.x, spawn.y, 'up')
+        }
       } else if (action === 'OPEN_OCEANVIEW_GYM_EXIT') {
         if (currentCity !== 'five-gym-interior') return
         if (mapTransitionRef.current) return
-        beginMapTransition(
-          'five',
-          FIVE_GYM_EXTERIOR_RETURN.x,
-          FIVE_GYM_EXTERIOR_RETURN.y,
-          'down',
-        )
+        {
+          const exterior = CITY_CONFIGS['five']
+          const spawn = resolveDoorSpawn(
+            OCEANVIEW_GYM_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('five', spawn.x, spawn.y, 'down')
+        }
+      } else if (action === 'OPEN_GYM_LEADERBOARD') {
+        if (currentCity !== 'five-gym-interior') return
+        openGymLeaderboard()
       }
     },
     [
@@ -1260,6 +1398,7 @@ export function GameScreen() {
       canApproachMark,
       cultDarklinePhase,
       currentCity,
+      openGymLeaderboard,
       showMarkBlockedDialogue,
       showNotYetDialogue,
       startMarkBattle,
@@ -1299,12 +1438,17 @@ export function GameScreen() {
     setCultDarklinePhase('exit')
   }, [])
 
+  const handleDarklineEnterMidpoint = useCallback(() => {
+    setShowDarkline(true)
+  }, [])
+
+  const handleDarklineEnterComplete = useCallback(() => {
+    setDarklineEnterTransition(false)
+  }, [])
+
   const handleCultDarklineMidpoint = useCallback(() => {
-    if (cultDarklinePhase === 'enter') {
-      setShowDarkline(true)
-      return
-    }
-    if (cultDarklinePhase === 'exit') {
+    const phase = cultDarklinePhaseRef.current
+    if (phase === 'exit') {
       setShowDarkline(false)
       const target = darklineExitTargetRef.current
       if (target === 'close') {
@@ -1314,10 +1458,16 @@ export function GameScreen() {
       }
       darklineExitTargetRef.current = null
     }
-  }, [cultDarklinePhase, handleDarklineClose, handleDarklineTravel])
+  }, [handleDarklineClose, handleDarklineTravel])
 
   const handleCultDarklineComplete = useCallback(() => {
+    const phase = cultDarklinePhaseRef.current
     setCultDarklinePhase(null)
+    // Enter: keep darkline open for destination pick. Exit: midpoint already dismissed it.
+    if (phase === 'exit') {
+      setShowDarkline(false)
+      darklineExitTargetRef.current = null
+    }
   }, [])
 
   const completeAdamMp3Handoff = useCallback(() => {
@@ -1401,6 +1551,11 @@ export function GameScreen() {
       return
     }
 
+    if (nearbyId === 'walker-crowd') {
+      beginNpcDialogue(WALKER_E2_CROWD_NPC)
+      return
+    }
+
     if (nearbyId === CROWD_2_NPC_ID) {
       beginNpcDialogue(CROWD_2_NPC)
       return
@@ -1413,7 +1568,9 @@ export function GameScreen() {
 
     if (nearbyId === TOWN_CRIER_NPC_ID) {
       if (isCrierConverted()) {
-        beginNpcDialogue(TOWN_CRIER_NPC)
+        if (!isCrierSentAhead()) {
+          playCrierHeraldDialogue()
+        }
         return
       }
       if (!isCrowdAddressed()) {
@@ -1425,8 +1582,8 @@ export function GameScreen() {
     }
 
     if (nearbyId === CLERK_NPC_ID) {
-      if (currentCity !== 'southside') return
-      if (!isCrierConverted()) {
+      if (currentCity !== 'blue-store-interior') return
+      if (!isCrierSentAhead()) {
         showNotYetDialogue(CLERK_NPC, 'the crier has to go first.')
         return
       }
@@ -1439,6 +1596,7 @@ export function GameScreen() {
     }
 
     if (nearbyId === RESTOCKER_NPC_ID) {
+      if (currentCity !== 'blue-store-interior') return
       if (!isClerkConverted()) {
         showNotYetDialogue(RESTOCKER_NPC, 'get through the clerk first.')
         return
@@ -1470,6 +1628,7 @@ export function GameScreen() {
     showNotYetDialogue,
     startMarkBattle,
     startNpcBattle,
+    playCrierHeraldDialogue,
   ])
 
   const handleInteract = useCallback(() => {
@@ -1489,7 +1648,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout)
+    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard)
       return
     openNearbyNpcDialogue()
   }, [
@@ -1504,6 +1663,7 @@ export function GameScreen() {
     battleNpcId,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     menuTransition,
     worldEntryActive,
@@ -1514,7 +1674,7 @@ export function GameScreen() {
     if (cutsceneFlowActive || questTransitionActive) return
     if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
-    if (worldEntryActive || showStartMenu) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -1562,6 +1722,7 @@ export function GameScreen() {
         showStartMenu ||
         showLoadout ||
         showFannyPack ||
+        showGymLeaderboard ||
         battleNpcId ||
         battleWipePhase ||
         menuTransition
@@ -1584,6 +1745,7 @@ export function GameScreen() {
     menuTransition,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     worldEntryActive,
   ])
@@ -1673,6 +1835,52 @@ export function GameScreen() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isE2QuestUnlocked()) return
+    if (!isCrierConverted() || isCrierSentAhead()) return
+    if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
+      return
+    }
+    playCrierHeraldDialogue()
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    cutsceneFlowActive,
+    dialogue,
+    playCrierHeraldDialogue,
+    quest2Revision,
+    questTransitionActive,
+  ])
+
+  useEffect(() => {
+    if (!isRestockerDefeated() || isE2Complete()) return
+    if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
+      return
+    }
+    if (mapTransitionPending || mapTransition) return
+    if (showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) return
+    if (e2ClosingPhaseRef.current !== 'idle') return
+    if (currentCity === 'blue-store-interior') {
+      startE2ClosingExitInterior()
+    } else if (currentCity === 'southside') {
+      runE2ClosingMobDialogue()
+    }
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    cultDarklinePhase,
+    currentCity,
+    cutsceneFlowActive,
+    dialogue,
+    mapTransition,
+    mapTransitionPending,
+    quest2Revision,
+    questTransitionActive,
+    runE2ClosingMobDialogue,
+    showDarkline,
+    startE2ClosingExitInterior,
+  ])
+
   const handleBattleEntryMidpoint = useCallback(() => {
     setBattleReady(true)
   }, [])
@@ -1750,6 +1958,15 @@ export function GameScreen() {
       }
     }
 
+    if (exit?.result === 'win' && exit.npcId === TOWN_CRIER_NPC_ID && !isCrierSentAhead()) {
+      playCrierHeraldDialogue()
+    }
+
+    if (exit?.result === 'win' && exit.npcId === RESTOCKER_NPC_ID && !isE2Complete()) {
+      startE2ClosingExitInterior()
+      return
+    }
+
     if (exit?.result === 'win' && exit.npcId === WALKER_NPC_ID) {
       if (!isEpisode1TitleCardSeen()) {
         showQuestTransition({
@@ -1766,7 +1983,13 @@ export function GameScreen() {
       }
       startPhase2Tutorial()
     }
-  }, [reportCurrentLocation, showNotYetDialogue, showQuestTransition])
+  }, [
+    playCrierHeraldDialogue,
+    reportCurrentLocation,
+    showNotYetDialogue,
+    showQuestTransition,
+    startE2ClosingExitInterior,
+  ])
 
   const handleWinPayoff = useCallback((npcId: string) => {
     if (isDevSparNpcId(npcId)) return
@@ -1794,7 +2017,6 @@ export function GameScreen() {
     if (npcId === RESTOCKER_NPC_ID) {
       setRestockerDefeated()
       track('npc_converted', { npcId: RESTOCKER_NPC_ID })
-      track('episode_complete', { episode: 'e2' })
     }
     if (npcId === FIVE_GYM1_ID) {
       recordGym5ive1Win()
@@ -1812,9 +2034,6 @@ export function GameScreen() {
         if (battleNpcId === MARK_NPC_ID) {
           showMarkVictoryNarration()
         }
-        if (battleNpcId === RESTOCKER_NPC_ID) {
-          showNarration(["something's wrong in the field.", 'you started it.'])
-        }
       }
       if (result === 'lose' && battleNpcId === FIVE_GYM1_ID) {
         pendingGymLossLineRef.current = true
@@ -1822,7 +2041,7 @@ export function GameScreen() {
       pendingBattleExitRef.current = { result, npcId: battleNpcId }
       setBattleWipePhase('exit')
     },
-    [battleNpcId, showMarkVictoryNarration, showNarration],
+    [battleNpcId, showMarkVictoryNarration],
   )
 
   const handleFannyPackClose = useCallback(() => {
@@ -1842,7 +2061,7 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard) return
     if (showLoadout) {
       handleLoadoutClose()
       return
@@ -1909,6 +2128,9 @@ export function GameScreen() {
           setShowBugReport(true)
           break
         }
+        case 'champions':
+          openGymLeaderboard()
+          break
         case 'new-game':
           break
         case 'sign-out':
@@ -1918,7 +2140,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, resumeFromPauseMenu],
+    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, openGymLeaderboard, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -1957,6 +2179,7 @@ export function GameScreen() {
     !showStartMenu &&
     !showLoadout &&
     !showFannyPack &&
+    !showGymLeaderboard &&
     !showDarkline &&
     !cultDarklinePhase &&
     !showInterior &&
@@ -1964,7 +2187,9 @@ export function GameScreen() {
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
   const showActiveQuestPulse =
-    showQuestPulse || gymHeadPulseDescriptor != null || gymDoorPulseDescriptor != null
+    showQuestPulse ||
+    gymHeadPulseDescriptor != null ||
+    gymDoorPulseDescriptor != null
 
   const isCoarsePointer = useCoarsePointer()
   const showInteractHint =
@@ -2082,14 +2307,16 @@ export function GameScreen() {
                 !!dialogue ||
                 worldEntryActive ||
                 !!battleWipePhase ||
-                !!cultDarklinePhase ||
+                darklineEnterTransition ||
+                cultDarklinePhase === 'enter' ||
+                showDarkline ||
                 !!menuTransition ||
                 !!mapTransition ||
                 mapTransitionPending ||
                 showFannyPack ||
                 showLoadout ||
+                showGymLeaderboard ||
                 showStartMenu ||
-                showDarkline ||
                 cutsceneFlowActive ||
                 questTransitionActive
               }
@@ -2117,6 +2344,15 @@ export function GameScreen() {
               destinations={darklineDestinations}
               inactiveDestinations={darklineInactiveDestinations}
               onBeginExit={handleDarklineBeginExit}
+            />
+          )}
+          {darklineEnterTransition && (
+            <MenuEntryCover
+              fadeIn
+              midpointMs={MENU_TRANSITION_MIDPOINT_MS}
+              totalMs={MENU_TRANSITION_MS * 2}
+              onMidpoint={handleDarklineEnterMidpoint}
+              onComplete={handleDarklineEnterComplete}
             />
           )}
           {cultDarklinePhase && (
@@ -2320,6 +2556,12 @@ export function GameScreen() {
               loadoutTutorialStep={loadoutTutorialStep}
               onLoadoutTutorialNext={advanceLoadoutTutorial}
               onLoadoutTutorialSkip={skipLoadoutTutorial}
+            />
+          )}
+          {showGymLeaderboard && (
+            <GymLeaderboardScreen
+              viewerHandle={getAuthState().profile?.handle ?? null}
+              onClose={handleGymLeaderboardClose}
             />
           )}
       </GameShell>

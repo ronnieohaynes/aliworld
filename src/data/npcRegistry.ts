@@ -1,4 +1,9 @@
 import { publicAsset } from '../utils/publicAsset'
+import {
+  CLERK_IDLE_SPRITE,
+  RESTOCKER_IDLE_SPRITE,
+  TOWN_CRIER_IDLE_SPRITE,
+} from './npcs'
 import { buildDevSpar, isDevSparNpcId } from './devSpar'
 import type { BattleLocationId } from './battleBackgrounds'
 import { computeNpcCombatStats } from './npcCombatStats'
@@ -64,7 +69,6 @@ export type NpcCombatEntry = {
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
-const ADAM_SPRITE = publicAsset('Assets/Characters/npcs/Adam-idle.PNG')
 
 function entry(
   base: Omit<NpcCombatEntry, 'stats'> & { hpScale?: number; fixedHp?: number },
@@ -138,6 +142,25 @@ const MARK: NpcCombatEntry = entry({
   battleSizeMult: 1.04,
 })
 
+/** E2 — town crier at the 5ive; luck-lean rhetorical fight. */
+const TOWN_CRIER: NpcCombatEntry = entry({
+  id: 'town-crier',
+  displayName: 'town crier',
+  level: 3,
+  moves: ['WHISPER', 'STRIKE', 'SLIP', 'WHISPER'],
+  leanSkill: 'luck',
+  telegraphFlavor: {
+    WHISPER: 'spreads the word —',
+    STRIKE: 'points —',
+    SLIP: 'sidesteps —',
+  },
+  losingLine: "...no. no — you're right. you were always right.",
+  winningLine: "the crowd's not buying it.",
+  spriteSrc: TOWN_CRIER_IDLE_SPRITE,
+  battleLocation: 'five',
+  battleSizeMult: 0.98,
+})
+
 /** E2 gate — blue store clerk; attack-lean scrapper. */
 const CLERK: NpcCombatEntry = entry({
   id: 'clerk',
@@ -145,25 +168,41 @@ const CLERK: NpcCombatEntry = entry({
   level: 4,
   moves: ['STRIKE', 'STRIKE', 'WHISPER', 'HAYMAKER'],
   leanSkill: 'attack',
+  telegraphFlavor: {
+    STRIKE: 'swings —',
+    WHISPER: 'lowers his voice —',
+    HAYMAKER: 'commits —',
+  },
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
-  spriteSrc: ADAM_SPRITE,
-  battleLocation: 'five',
+  spriteSrc: CLERK_IDLE_SPRITE,
+  battleLocation: 'hillside',
   battleSizeMult: 1,
 })
 
-/** E2 boss — restocker in the back room; defense wall. */
+/** E2 finale — restocker in the back room; defense wall + restock heals. */
 const RESTOCKER: NpcCombatEntry = entry({
   id: 'restocker',
   displayName: 'restocker',
-  level: 6,
-  moves: ['HOLD', 'HOLD', 'HAYMAKER', 'STRIKE'],
+  level: 9,
+  hpScale: 1.72,
+  moves: ['HOLD', 'HOLD', 'HOLD', 'HAYMAKER', 'STRIKE', 'SLIP', 'LOOP', 'WHISPER'],
   leanSkill: 'defense',
-  losingLine: "it CAN stop...",
-  winningLine: "this floor belongs to me.",
-  spriteSrc: MARK_SPRITE,
-  battleLocation: 'five',
-  battleSizeMult: 1.08,
+  telegraphFlavor: {
+    HOLD: 'restocks —',
+    HAYMAKER: 'heaves —',
+    STRIKE: 'swings —',
+    SLIP: 'feints —',
+    LOOP: 'draws back —',
+    WHISPER: 'murmurs —',
+  },
+  guardCounter: { chance: 0.5, damageMult: 2.4 },
+  enemyGuardPierce: 0.14,
+  losingLine: 'it CAN stop...',
+  winningLine: 'this floor belongs to me.',
+  spriteSrc: RESTOCKER_IDLE_SPRITE,
+  battleLocation: 'hillside',
+  battleSizeMult: 1.12,
 })
 
 /** Oceanview Gym week 1 head — gauntlet rounds built from fiveGym1Gauntlet.ts. */
@@ -192,6 +231,7 @@ const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   jaclyn: JACLYN,
   mark: MARK,
+  'town-crier': TOWN_CRIER,
   clerk: CLERK,
   restocker: RESTOCKER,
 }
@@ -230,7 +270,7 @@ export function chooseMove(
   npcId: string,
   turn: number,
   forced?: EnemyMoveId | null,
-  options?: { walkerHeavyTutorial?: boolean },
+  options?: { walkerHeavyTutorial?: boolean; enemyHpRatio?: number },
 ): EnemyMove {
   const tutorialForced = walkerTutorialForcedMove(
     npcId,
@@ -241,6 +281,15 @@ export function chooseMove(
   if (forced) return forced
   const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
   if (!npc || npc.moves.length === 0) return 'STRIKE'
+
+  if (npcId === 'restocker') {
+    const ratio = options?.enemyHpRatio ?? 1
+    const holdChance = ratio < 0.35 ? 0.78 : ratio < 0.6 ? 0.58 : 0.38
+    if (Math.random() < holdChance) return 'HOLD'
+    const pool = npc.moves.filter((m) => m !== 'HOLD')
+    return pool[Math.floor(Math.random() * pool.length)] ?? 'HOLD'
+  }
+
   const idx = Math.floor(Math.random() * npc.moves.length)
   return npc.moves[idx]!
 }

@@ -12,6 +12,8 @@ export type NpcData = {
   lines: NpcDialogueLine[]
   /** Shown after conversion (walker/jaclyn) or defeat (mark). */
   linesConverted?: NpcDialogueLine[]
+  /** Optional lines prepended when a story prerequisite is met (e.g. herald). */
+  linesHerald?: NpcDialogueLine[]
   /** Optional gate lines before quest prerequisites (mark only). */
   linesBlocked?: NpcDialogueLine[]
   color: string
@@ -47,8 +49,11 @@ const MARK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 const JACLYN_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const WALKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JASON_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
+const CLERK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/clerk-idle.png')
+const RESTOCKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/restocker-idle.png')
+const TOWN_CRIER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/towncrier-idle.png')
 /** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
-export { JASON_IDLE_SPRITE }
+export { JASON_IDLE_SPRITE, TOWN_CRIER_IDLE_SPRITE, CLERK_IDLE_SPRITE, RESTOCKER_IDLE_SPRITE }
 
 /** Quest 1 gating NPC — Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
@@ -226,6 +231,21 @@ export const CROWD_2_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
+/** Quest 2 — returning walker in the e2 crowd (converted; faintly wrong). */
+export const WALKER_E2_CROWD_NPC: NpcData = {
+  id: 'walker-crowd',
+  name: 'walker',
+  x: 760,
+  y: 400,
+  lines: [
+    "i told you. i told all of you. exactly like he said.",
+    "you're late. you should've listened sooner.",
+  ],
+  color: '#7a7a96',
+  spriteSrc: WALKER_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+}
+
 /** Quest 2 — town crier at the 5ive. */
 export const TOWN_CRIER_NPC: NpcData = {
   id: 'town-crier',
@@ -238,49 +258,54 @@ export const TOWN_CRIER_NPC: NpcData = {
     'convince me.',
   ],
   linesConverted: [
-    "...i was wrong. i'll tell them. i'll tell everyone.",
-    'send me ahead.',
+    "...no. no — you're right. you were always right.",
+    "i'll tell them. everyone. they'll listen this time.",
+    'send me ahead. they need to hear it before you arrive.',
   ],
   color: '#c084fc',
-  spriteSrc: JASON_IDLE_SPRITE,
+  spriteSrc: TOWN_CRIER_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2 — blue store clerk (southside). */
+/** Quest 2 — blue store clerk (dialogue/combat template; placement in blueStoreNpcs.ts). */
 export const CLERK_NPC: NpcData = {
   id: 'clerk',
   name: 'clerk',
-  x: 720,
-  y: 480,
+  x: 0,
+  y: 0,
   lines: [
-    'the crier came through here an hour ago.',
     'i run this store.',
     'you want in? you go through me.',
   ],
-  linesConverted: ["the gift... it's priceless."],
+  /** Prepended once the herald has reached southside. */
+  linesHerald: ['the crier came through here an hour ago.'],
+  linesConverted: [
+    "the gift... it's priceless.",
+    'everyone should have one. everyone.',
+  ],
   color: '#4488cc',
-  spriteSrc: ADAM_IDLE_SPRITE,
+  spriteSrc: CLERK_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2 — restocker boss (blue store back room). */
+/** Quest 2 — restocker boss (dialogue/combat template; placement in blueStoreNpcs.ts). */
 export const RESTOCKER_NPC: NpcData = {
   id: 'restocker',
   name: 'restocker',
-  x: 820,
-  y: 520,
+  x: 0,
+  y: 0,
   lines: [
     'who is this dude?',
     "my only job is to fix what's in front of me. let's see you try.",
   ],
   linesConverted: ['it CAN stop...', "he'll know soon enough."],
   color: '#cc4444',
-  spriteSrc: MARK_IDLE_SPRITE,
+  spriteSrc: RESTOCKER_IDLE_SPRITE,
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Southside overworld NPCs (e2). */
-export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = [CLERK_NPC, RESTOCKER_NPC]
+/** Southside overworld — fights live in blue-store-interior. */
+export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = []
 
 /** Mando — renders inside the 13 Gallons interior overlay. */
 export const MANDO_NPC: NpcData = {

@@ -3,6 +3,7 @@ import {
   SKILL_STAT_BONUS_LINEAR_CAP,
   SKILL_STAT_BONUS_TAIL_FACTOR,
 } from '../data/moveBalance'
+import { buildXpCurve } from '../data/skillXpCurve'
 import { xpGrantsForMove, type MoveXpContext } from '../data/moves'
 import type { ResolveResult } from './battleStore'
 
@@ -20,9 +21,31 @@ const SKILL_IDS: SkillId[] = ['attack', 'speed', 'defense', 'luck', 'hp']
 export const MAX_SKILL_LEVEL = 65
 export const MAX_PLAYER_LEVEL = 100
 
+const XP_CURVE = buildXpCurve(MAX_SKILL_LEVEL)
+
+/** XP to advance attack/speed/defense/luck/hp from skill level `n` to `n + 1`. */
+export function xpForSkillLevel(n: number): number {
+  return XP_CURVE.xpForSkillLevel(n)
+}
+
+/** @deprecated Prefer xpForSkillLevel */
+export function xpForLevel(n: number): number {
+  return xpForSkillLevel(n)
+}
+
+/** Total XP required to reach level `n` (level 1 = 0). */
+export function cumulativeXpForLevel(level: number): number {
+  return XP_CURVE.cumulativeXpForLevel(level)
+}
+
+/** @deprecated Prefer cumulativeXpForLevel — kept for existing imports. */
+export function totalXpForLevel(level: number): number {
+  return cumulativeXpForLevel(level)
+}
+
 /** Total XP required to reach max skill level (level 65). */
 export function maxSkillXp(): number {
-  return totalXpForLevel(MAX_SKILL_LEVEL)
+  return XP_CURVE.maxSkillXp
 }
 
 const LEVEL_UP_LINES: Record<SkillId, (level: number) => string> = {
@@ -33,18 +56,51 @@ const LEVEL_UP_LINES: Record<SkillId, (level: number) => string> = {
   hp: (n) => `you can take more. hp lvl ${n}.`,
 }
 
-/** Total XP required to reach level L (level 1 = 0 xp). */
-export function totalXpForLevel(level: number): number {
-  if (level <= 1) return 0
-  return Math.round((50 * level * (level + 1)) / 2)
+function clampSkillProgress(prev: SkillProgress): SkillProgress {
+  const level = Math.min(MAX_SKILL_LEVEL, Math.max(1, Math.floor(prev.level)))
+  const xp = Math.max(0, Math.min(maxSkillXp(), prev.xp))
+  return { level, xp }
 }
 
-export function levelFromXp(xp: number): number {
-  let level = 1
-  while (level < MAX_SKILL_LEVEL && totalXpForLevel(level + 1) <= xp) {
+/** Forward-only level sync — never delevels; used for XP grants and grandfather migration. */
+export function advanceSkillLevelFromXp(prev: SkillProgress): SkillProgress {
+  let { level, xp } = clampSkillProgress(prev)
+  while (level < MAX_SKILL_LEVEL && xp >= cumulativeXpForLevel(level + 1)) {
     level++
   }
-  return level
+  return { level, xp }
+}
+
+/** Derive level from total XP (fresh accounts). Never returns below 1. */
+export function levelFromXp(xp: number): number {
+  return advanceSkillLevelFromXp({ level: 1, xp }).level
+}
+
+/** One-time grandfather: keep stored level, only advance forward under the new curve. */
+export function grandfatherSkillProgress(prev: SkillProgress): SkillProgress {
+  const stored = clampSkillProgress(prev)
+  let { level, xp } = stored
+  while (level < MAX_SKILL_LEVEL && xp >= cumulativeXpForLevel(level + 1)) {
+    level++
+  }
+  return { level: Math.max(stored.level, level), xp }
+}
+
+export function migrateSkillsToXpCurveV2(skills: SkillsState): SkillsState {
+  return SKILL_IDS.reduce<SkillsState>((acc, id) => {
+    acc[id] = grandfatherSkillProgress(skills[id] ?? { level: 1, xp: 0 })
+    return acc
+  }, {} as SkillsState)
+}
+
+/** Progress toward the next skill level (0–100), clamped for grandfather gaps. */
+export function skillXpProgressPct(level: number, xp: number): number {
+  if (level >= MAX_SKILL_LEVEL) return 100
+  const floor = cumulativeXpForLevel(level)
+  const ceil = cumulativeXpForLevel(level + 1)
+  const span = ceil - floor
+  if (span <= 0) return 0
+  return Math.round(Math.max(0, Math.min(100, ((xp - floor) / span) * 100)))
 }
 
 export function sumSkillLevels(skills: SkillsState): number {
@@ -117,7 +173,7 @@ function grantSkillXp(
 
   const xpCap = maxSkillXp()
   const xp = Math.min(xpCap, prev.xp + rounded)
-  const level = levelFromXp(xp)
+  const { level } = advanceSkillLevelFromXp({ ...prev, xp })
   const lines: string[] = []
 
   if (level > prev.level) {
@@ -205,3 +261,5 @@ export function getSkillLabels(): ReadonlyArray<{ id: SkillId; label: string }> 
     label: id === 'hp' ? 'hp' : id,
   }))
 }
+
+export { XP_CURVE as SKILL_XP_CURVE_TABLE }

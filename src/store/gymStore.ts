@@ -24,7 +24,11 @@ export type GymSerialized = {
 }
 
 function emptyGymState(): GymState {
-  return { headWins: {}, clearedHeads: {}, oceanviewGymVisited: false }
+  return {
+    headWins: {},
+    clearedHeads: {},
+    oceanviewGymVisited: false,
+  }
 }
 
 function clampHeadWins(wins: number, max = FIVE_GYM1_WINS_TO_CLEAR): number {

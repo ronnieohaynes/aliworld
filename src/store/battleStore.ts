@@ -5,6 +5,8 @@ import {
   BLACKOUT_INTERRUPTIBLE,
   BLEED_DAMAGE_MAX_HP_PCT,
   braceStatusIncomingMultiplier,
+  CROSS_SCALE,
+  crossSecondaryMultiplier,
 } from '../data/moveBalance'
 import {
   createEmptyCombatStatus,
@@ -252,6 +254,8 @@ export type ResolveResult = {
   guardCountered: boolean
   /** Healing applied this turn (second wind, lifesteal, phenomena). */
   healApplied: number
+  /** HOLD brace chip — small atk-scaled side damage on successful brace. */
+  braceChipDmg?: number
   eMove: UpcomingMove
   pMove: PlayerMove
 }
@@ -391,6 +395,12 @@ function mitigateIncoming(
 
   if (dmg > 0 && battle.playerNextAttackImmune) {
     battle.playerNextAttackImmune = false
+    const skills = getPlayerSkills()
+    battle.nextHitAtkBonusMult = crossSecondaryMultiplier(
+      skills.attack.level,
+      CROSS_SCALE.BRICK_WALL_FOLLOWUP_ATK_PER_ATK_LVL,
+      CROSS_SCALE.BRICK_WALL_FOLLOWUP_ATK_CAP,
+    )
     return 0
   }
   if (dmg > 0 && battle.playerInvincibleBlocks > 0) {
@@ -444,6 +454,7 @@ function buildResolveContext(
     spd: skills.speed.level,
     enemyAttacks: strike.enemyAttacks,
     lck: state.playerStats.lck,
+    luckSkillLevel: skills.luck.level,
     playerHp: state.playerHp,
     playerMaxHp: state.playerStats.maxHp,
     enemyDef: state.npc.stats.def,
@@ -608,11 +619,12 @@ function appendLog(log: string[], line: string): string[] {
   return next
 }
 
-function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove'>): UpcomingMove {
+function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove' | 'enemyHp'>): UpcomingMove {
   if (enemyLosesTurn(state.combatStatus)) return 'STUNNED'
   const forced = state.battleMove.forceEnemyMove
   const pick = chooseMove(state.npc.id, state.turn, forced, {
     walkerHeavyTutorial: isWalkerHeavyTutorialActive(state.npc.id),
+    enemyHpRatio: state.enemyHp / Math.max(1, state.npc.stats.maxHp),
   })
   return pick
 }
@@ -824,18 +836,23 @@ function applyPlayerResolutionPhase(
   let bleedDamage = 0
   let bleedActualHpChange = 0
   if (working.combatStatus.enemyBleed > 0) {
-    let b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT))
+    const potency = working.combatStatus.enemyBleedPotencyMult ?? 1
+    let b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT * potency))
     if (state.runItBackMode) b *= 2
     if (nextEnemyHp > 0) {
-      // Enemy alive — bleed deals real damage
       nextEnemyHp = Math.max(0, nextEnemyHp - b)
       nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
       bleedActualHpChange = b
     } else {
-      // Enemy already dead from attack — bleed fires visually only
       nextLog = appendLog(nextLog, `${lower} bleeds.`)
     }
     bleedDamage = b
+  }
+
+  const braceChip = r.braceChipDmg ?? 0
+  if (r.playerActed && braceChip > 0 && nextEnemyHp > 0) {
+    nextEnemyHp = Math.max(0, nextEnemyHp - braceChip)
+    nextLog = appendLog(nextLog, `brace chip. ${braceChip}.`)
   }
 
   if (nextEnemyHp <= 0) {
@@ -920,7 +937,21 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     turn,
     combatStatus,
     battleMove,
+    enemyHp: state.enemyHp,
   })
+
+  let enemyHp = state.enemyHp
+  let log = state.log
+  if (
+    state.npc.id === 'restocker' &&
+    r.eMove === 'HOLD' &&
+    !r.enemyStunned &&
+    enemyHp < state.npc.stats.maxHp
+  ) {
+    const heal = Math.max(1, Math.floor(state.npc.stats.maxHp * 0.14))
+    enemyHp = Math.min(state.npc.stats.maxHp, enemyHp + heal)
+    log = appendLog(log, `restocker restocks. +${heal}.`)
+  }
 
   return {
     ...state,
@@ -928,6 +959,8 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     upcomingMove,
     combatStatus,
     battleMove,
+    enemyHp,
+    log,
     playerExposedTurns: turnFlags.playerExposedTurns,
     playerSkipTurns: turnFlags.playerSkipTurns,
     deathClocks: tickDeathClocks(state.deathClocks),
@@ -1286,7 +1319,13 @@ export function createInitialBattleState(
   const playerHp = playerStats.maxHp
   const combatStatus = createEmptyCombatStatus()
   const battleMove = createBattleMoveState()
-  const upcomingMove = showTelegraph({ npc, turn: 0, combatStatus, battleMove })
+  const upcomingMove = showTelegraph({
+    npc,
+    turn: 0,
+    combatStatus,
+    battleMove,
+    enemyHp: npc.stats.hp,
+  })
 
   return {
     npc,

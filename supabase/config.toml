@@ -1,2 +1,5 @@
 [functions.analytics-summary]
 verify_jwt = true
+
+[functions.gym-leaderboard]
+verify_jwt = false

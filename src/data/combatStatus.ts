@@ -93,7 +93,9 @@ export function tickCombatStatus(status: CombatStatusState): CombatStatusState {
   const next = { ...status }
 
   if (next.enemyShake > 0) next.enemyShake--
+  if (next.enemyShake <= 0) next.enemyShakePotency = 0
   if (next.enemyBleed > 0) next.enemyBleed--
+  if (next.enemyBleed <= 0) next.enemyBleedPotencyMult = 1
   if (next.enemyStun > 0) next.enemyStun--
   if (next.enemySlow > 0) next.enemySlow--
   if (next.enemyMiss > 0) next.enemyMiss--
@@ -118,7 +120,11 @@ export function enemyLosesTurn(status: CombatStatusState): boolean {
 /** Shake + slow weaken enemy outgoing damage (stack multiplicatively). */
 export function enemyOutgoingDamageMult(status: CombatStatusState): number {
   let mult = 1
-  if (status.enemyShake > 0) mult *= ENEMY_SHAKE_OUTGOING_MULT
+  if (status.enemyShake > 0) {
+    const shakeMult =
+      status.enemyShakePotency > 0 ? status.enemyShakePotency : ENEMY_SHAKE_OUTGOING_MULT
+    mult *= shakeMult
+  }
   if (status.enemySlow > 0) mult *= ENEMY_SLOW_OUTGOING_MULT
   return mult
 }
@@ -163,13 +169,17 @@ export function combatStatusFromLegacy(fields: {
   enemyMiss?: number
   playerDouble?: number
   playerReflect?: ReflectBuff | null
+  enemyBleedPotencyMult?: number
+  enemyShakePotency?: number
 }): CombatStatusState {
   return {
     playerBrace: fields.playerBrace,
     playerDouble: fields.playerDouble ?? 0,
     playerReflect: fields.playerReflect ?? null,
     enemyBleed: fields.enemyBleed,
+    enemyBleedPotencyMult: fields.enemyBleedPotencyMult ?? 1,
     enemyShake: fields.enemyShake,
+    enemyShakePotency: fields.enemyShakePotency ?? 0,
     enemyStun: fields.enemyStun,
     enemySlow: fields.enemySlow ?? 0,
     enemyMiss: fields.enemyMiss ?? 0,
