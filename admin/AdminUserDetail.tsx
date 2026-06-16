@@ -160,6 +160,17 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
                 <span className="admin-detail__value">{detail.level}</span>
               </div>
               <div className="admin-detail__stat">
+                <span className="admin-stat__label">Build</span>
+                <span className="admin-detail__value" style={{ color: detail.build_color }}>
+                  {detail.build_name}
+                </span>
+              </div>
+              <div className="admin-detail__stat">
+                <span className="admin-stat__label">Hours played</span>
+                <span className="admin-detail__value">{detail.hours_played.toFixed(1)}</span>
+                <span className="admin-stat__hint">since {formatJoinedDate(detail.hours_tracking_since)}</span>
+              </div>
+              <div className="admin-detail__stat">
                 <span className="admin-stat__label">Joined</span>
                 <span className="admin-detail__value">{formatJoinedDate(detail.created ?? '')}</span>
               </div>
@@ -180,6 +191,30 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
                 <span className="admin-detail__value">{detail.current_episode}</span>
               </div>
             </div>
+
+            {detail.gym_head_ids.length > 0 ? (
+              <section className="admin-detail__section">
+                <h4>Gym wins (since ship)</h4>
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Gym head</th>
+                        <th className="admin-table__num">Wins</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.gym_head_ids.map((headId) => (
+                        <tr key={headId}>
+                          <td>{headId}</td>
+                          <td className="admin-table__num">{detail.gym_wins[headId] ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : null}
 
             <section className="admin-detail__section">
               <h4>Skills</h4>

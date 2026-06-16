@@ -11,9 +11,10 @@ import {
   fetchAnalyticsSummary,
   fetchCombinedEmails,
   fetchEmailSignups,
+  fetchMilestones,
   fetchRecentEvents,
 } from './analyticsApi'
-import type { AdminTabId, AdminUserRow, AnalyticsSummary, CombinedEmailRow, EmailSignupRow, RecentEventRow } from './types'
+import type { AdminTabId, AdminUserRow, AnalyticsSummary, CombinedEmailRow, EmailSignupRow, MilestonesResponse, RecentEventRow } from './types'
 
 const TABS: { id: AdminTabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -34,6 +35,7 @@ export function AdminDashboard({ adminSecret }: Props) {
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  const [milestones, setMilestones] = useState<MilestonesResponse | null>(null)
 
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
@@ -53,10 +55,16 @@ export function AdminDashboard({ adminSecret }: Props) {
     setSummaryLoading(true)
     setSummaryError(null)
     try {
-      setSummary(await fetchAnalyticsSummary(adminSecret, 30))
+      const [summaryData, milestonesData] = await Promise.all([
+        fetchAnalyticsSummary(adminSecret, 30),
+        fetchMilestones(adminSecret),
+      ])
+      setSummary(summaryData)
+      setMilestones(milestonesData)
     } catch (err) {
       setSummaryError(err instanceof Error ? err.message : 'Failed to load analytics')
       setSummary(null)
+      setMilestones(null)
     } finally {
       setSummaryLoading(false)
     }
@@ -159,7 +167,12 @@ export function AdminDashboard({ adminSecret }: Props) {
       </nav>
 
       {tab === 'overview' ? (
-        <AdminOverviewTab loading={summaryLoading} error={summaryError} summary={summary} />
+        <AdminOverviewTab
+          loading={summaryLoading}
+          error={summaryError}
+          summary={summary}
+          milestones={milestones}
+        />
       ) : null}
 
       {tab === 'users' ? (

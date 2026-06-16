@@ -277,6 +277,28 @@ code {
   letter-spacing: 0.06em;
 }
 
+.admin-table__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-table__sort {
+  all: unset;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.admin-table__sort:hover {
+  color: #f4e8c1;
+}
+
+.admin-users__hint {
+  margin: 0 0 12px;
+}
+
 .admin-footer {
   margin-top: 24px;
   color: #534ab7;

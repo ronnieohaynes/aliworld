@@ -117,6 +117,10 @@ export async function fetchVariantOptions(adminSecret: string): Promise<Midnight
   return analyticsRequest<MidnightVariantOption[]>(adminSecret, 'action=variants')
 }
 
+export async function fetchMilestones(adminSecret: string): Promise<import('./types').MilestonesResponse> {
+  return analyticsRequest(adminSecret, 'action=milestones')
+}
+
 export async function fetchEmailSignups(adminSecret: string): Promise<EmailSignupRow[]> {
   return analyticsRequest<EmailSignupRow[]>(adminSecret, 'action=signups')
 }
@@ -202,11 +206,14 @@ export function downloadCsv(filename: string, header: string, rows: string[][]):
 export function downloadUsersCsv(rows: AdminUserRow[]): void {
   downloadCsv(
     `aliworld-users-${new Date().toISOString().slice(0, 10)}.csv`,
-    'email,handle,level,joined',
+    'email,handle,level,build,hours_played,gym_wins_5ive,joined',
     rows.map((row) => [
       row.email,
       row.handle ?? '',
       String(row.level),
+      row.build_name,
+      String(row.hours_played),
+      String(row.gym_wins['5ive-gym1'] ?? 0),
       row.joined.slice(0, 10),
     ]),
   )
