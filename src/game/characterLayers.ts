@@ -133,8 +133,8 @@ function getFrameInsetTop(direction: Direction, tuning: MidnightVariantRenderTun
   }
 }
 
-/** Fraction of source crop height trimmed from the top (display dw/dh unchanged). */
-export const PLAYER_SOURCE_TOP_TRIM_RATIO = 0.03
+/** Up-facing only: fraction of source crop height trimmed from the top (display dw/dh unchanged). */
+export const PLAYER_UP_FACING_TOP_TRIM_RATIO = 0.03
 
 export function getSourceCrop(
   direction: Direction,
@@ -152,9 +152,11 @@ export function getSourceCrop(
     rowIndex * MIDNIGHT_WALK_FRAME_HEIGHT + rowPad + getFrameInsetTop(direction, tuning),
   )
   let sh = Math.max(1, Math.floor(srcH - tuning.frameInsetBottom))
-  const topTrim = Math.floor(sh * PLAYER_SOURCE_TOP_TRIM_RATIO)
-  sy += topTrim
-  sh = Math.max(1, sh - topTrim)
+  if (direction === 'up') {
+    const topTrim = Math.floor(sh * PLAYER_UP_FACING_TOP_TRIM_RATIO)
+    sy += topTrim
+    sh = Math.max(1, sh - topTrim)
+  }
   return {
     sx: 0,
     sy,
