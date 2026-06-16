@@ -74,8 +74,10 @@ export const FIVE_GYM_AMBIENT_NPCS: readonly NpcData[] = [
   GYM_AMBIENT_RING,
 ]
 
+import { isGymGauntletCombatId } from './gymWeeks'
+
 export function isGymHeadCombatId(npcId: string): boolean {
-  return npcId === FIVE_GYM1_ID
+  return npcId === FIVE_GYM1_ID || isGymGauntletCombatId(npcId)
 }
 
 export const FIVE_GYM1_INTERIOR_NPCS: readonly NpcData[] = [

@@ -335,6 +335,8 @@ type Props = {
   battleRevealed?: boolean
   /** True when this is a "Run it back!" rematch — doubled damage, dramatic pauses. */
   runItBack?: boolean
+  combatXpPolicy?: 'normal' | 'none' | 'fixed-level'
+  battleEndHealing?: 'default' | 'full-on-win'
 }
 
 /**
@@ -423,7 +425,15 @@ function drawEnemyBattleSprite(
   )
 }
 
-export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed = true, runItBack = false }: Props) {
+export function BattleScreen({
+  npcId,
+  onBattleEnd,
+  onWinPayoff,
+  battleRevealed = true,
+  runItBack = false,
+  combatXpPolicy = 'normal',
+  battleEndHealing = 'default',
+}: Props) {
   const battleScreenRef = useRef<HTMLDivElement>(null)
   const playfieldRef = useRef<HTMLDivElement>(null)
   const telegraphRowRef = useRef<HTMLElement>(null)
@@ -464,8 +474,13 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
   const [state, dispatch] = useReducer(
     battleReducer,
-    npcId,
-    (id) => createInitialBattleState(id, { runItBack }),
+    { npcId, runItBack, combatXpPolicy, battleEndHealing },
+    (init) =>
+      createInitialBattleState(init.npcId, {
+        runItBack: init.runItBack,
+        combatXpPolicy: init.combatXpPolicy,
+        battleEndHealing: init.battleEndHealing,
+      }),
   )
 
   // Snapshot player skills at battle start for XP summary
@@ -667,7 +682,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       endHandledRef.current = true
       // Draw heals same as a loss (full HP); run-it-back flag is set by GameScreen
       const healResult = result === 'draw' ? 'lose' : result
-      const healed = applyBattleEndHealing(healResult, state.playerStats.maxHp, state.playerHp)
+      const healed = applyBattleEndHealing(
+        healResult,
+        state.playerStats.maxHp,
+        state.playerHp,
+        state.battleEndHealing,
+      )
       setOverworldPlayerHp(healed)
       onBattleEnd(result, state.turn)
     },

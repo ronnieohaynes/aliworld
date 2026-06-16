@@ -3,8 +3,12 @@ import {
   isMarkDefeated,
   isWalkerConverted,
 } from '../store/quest1Store'
-import { FIVE_GYM1_ID, getGymHeadWins, isGym5ive1Cleared } from '../store/gymStore'
-import { fiveGym1DialogueForWins } from './fiveGym1Gauntlet'
+import {
+  FIVE_GYM1_ID,
+  getActiveGymRun,
+  isCurrentWeeklyGymCleared,
+} from '../store/gymStore'
+import { getCurrentGymWeek } from './gymWeeks'
 import {
   CLERK_NPC_ID,
   CROWD_1_NPC_ID,
@@ -46,8 +50,21 @@ function isNpcConverted(npcId: string): boolean {
   if (npcId === CLERK_NPC_ID) return isClerkConverted()
   if (npcId === RESTOCKER_NPC_ID) return isRestockerDefeated()
   if (npcId === CROWD_1_NPC_ID) return isCrowdAddressed()
-  if (npcId === FIVE_GYM1_ID) return isGym5ive1Cleared()
+  if (npcId === FIVE_GYM1_ID) return isCurrentWeeklyGymCleared()
   return false
+}
+
+function weeklyGymLeaderLine(): string {
+  const week = getCurrentGymWeek()
+  if (week.leader.npcId !== FIVE_GYM1_ID) {
+    return week.leader.dialogue.intro
+  }
+  if (isCurrentWeeklyGymCleared()) return week.leader.dialogue.cleared
+  const run = getActiveGymRun()
+  if (run && !run.practice && run.weekId === week.id) {
+    return week.leader.dialogue.inProgress
+  }
+  return week.leader.dialogue.intro
 }
 
 /** Pick pre/post (or blocked) lines from quest memory — no parallel dialogue state. */
@@ -57,8 +74,7 @@ export function resolveNpcDialogueLines(
 ): ResolvedDialogueLine[] {
   let raw: NpcDialogueLine[]
   if (npc.id === FIVE_GYM1_ID && !options?.blocked) {
-    const text = fiveGym1DialogueForWins(getGymHeadWins(FIVE_GYM1_ID), isGym5ive1Cleared())
-    raw = [text]
+    raw = [weeklyGymLeaderLine()]
   } else if (options?.blocked && npc.linesBlocked?.length) {
     raw = npc.linesBlocked
   } else if (isNpcConverted(npc.id) && npc.linesConverted?.length) {

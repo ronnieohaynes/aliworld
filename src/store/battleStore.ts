@@ -163,6 +163,10 @@ export type BattleState = {
   pendingLevelUpNotification: LevelUpNotification | null
   /** True when this battle is a "Run it back!" rematch — doubled damage, dramatic pauses. */
   runItBackMode: boolean
+  /** When `none`, combat skill XP is skipped entirely for this battle. */
+  combatXpPolicy: 'normal' | 'none' | 'fixed-level'
+  /** Override win healing — gauntlet uses full heal between chained fights. */
+  battleEndHealing: 'default' | 'full-on-win'
 }
 
 export type BattleAction =
@@ -172,6 +176,9 @@ export type BattleAction =
       archetype?: ArchetypeId
       accessories?: AccessoryBonuses[]
       carryHp?: number
+      runItBack?: boolean
+      combatXpPolicy?: 'normal' | 'none' | 'fixed-level'
+      battleEndHealing?: 'default' | 'full-on-win'
     }
   | { type: 'PLAYER_MOVE'; move: PlayerMove; slot?: number }
   | { type: 'RESOLVE_SECOND' }
@@ -975,12 +982,16 @@ function applySkillXpToState(
   r: ResolveResult,
   log: string[],
 ): { state: BattleState; log: string[]; xpBonusEvents: BattleFeedbackEvent[] } {
+  if (state.combatXpPolicy === 'none') {
+    return { state, log, xpBonusEvents: [] }
+  }
   const prevMaxHp = state.playerStats.maxHp
   const timingBonuses = computeTimingBonusGrants(r, state.npc.leanSkill)
   const xpResult = applyCombatSkillXp(r, timingBonuses, {
     enemyLevel: state.npc.level,
     playerLevel: computePlayerLevel(getPlayerSkills()),
     playerHpAfterHit: state.playerHp,
+    forceLevelXpMult: state.combatXpPolicy === 'fixed-level' ? 1 : undefined,
   })
   const skills = getPlayerSkills()
   const playerStats = computePlayerStats(
@@ -1298,6 +1309,8 @@ export function createInitialBattleState(
     accessories?: AccessoryBonuses[]
     carryHp?: number
     runItBack?: boolean
+    combatXpPolicy?: 'normal' | 'none' | 'fixed-level'
+    battleEndHealing?: 'default' | 'full-on-win'
   },
 ): BattleState {
   const npc = isDevSparNpcId(npcId)
@@ -1354,6 +1367,8 @@ export function createInitialBattleState(
     feedbackBleedDamage: 0,
     pendingLevelUpNotification: null,
     runItBackMode: options?.runItBack ?? false,
+    combatXpPolicy: options?.combatXpPolicy ?? 'normal',
+    battleEndHealing: options?.battleEndHealing ?? 'default',
   }
 }
 
@@ -1364,6 +1379,9 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
         archetype: action.archetype,
         accessories: action.accessories,
         carryHp: action.carryHp,
+        runItBack: action.runItBack,
+        combatXpPolicy: action.combatXpPolicy,
+        battleEndHealing: action.battleEndHealing,
       })
 
     case 'PLAYER_MOVE':
@@ -1402,8 +1420,10 @@ export function applyBattleEndHealing(
   result: BattleResult,
   maxHp: number,
   currentHp: number,
+  mode: 'default' | 'full-on-win' = 'default',
 ): number {
   if (result === 'win') {
+    if (mode === 'full-on-win') return maxHp
     return Math.min(maxHp, currentHp + Math.floor(maxHp * 0.25))
   }
   return maxHp

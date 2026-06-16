@@ -15,11 +15,11 @@ import {
   telegraphLineForEnemyMove,
   type UpcomingMove,
 } from './enemyMoves'
-import { FIVE_GYM1_ID, getGymHeadWins } from '../store/gymStore'
 import {
-  fiveGym1RoundIndexForWins,
-  FIVE_GYM1_ROUNDS,
-} from './fiveGym1Gauntlet'
+  findGymWeekForCombatId,
+  isGymGauntletCombatId,
+  type GymFighterConfig,
+} from './gymWeeks'
 
 export type EnemyMove = EnemyMoveId
 export type { UpcomingMove }
@@ -205,26 +205,34 @@ const RESTOCKER: NpcCombatEntry = entry({
   battleSizeMult: 1.12,
 })
 
-/** Oceanview Gym week 1 head — gauntlet rounds built from fiveGym1Gauntlet.ts. */
-function buildFiveGym1CombatEntry(): NpcCombatEntry {
-  const wins = getGymHeadWins(FIVE_GYM1_ID)
-  const round = FIVE_GYM1_ROUNDS[fiveGym1RoundIndexForWins(wins)]!
+function buildGymFighterCombatEntry(fighter: GymFighterConfig): NpcCombatEntry {
   return entry({
-    id: FIVE_GYM1_ID,
-    displayName: 'Jerome',
-    level: round.level,
-    fixedHp: round.fixedHp,
-    moves: [...round.moves],
-    leanSkill: round.leanSkill,
-    telegraphFlavor: round.telegraphFlavor,
-    guardCounter: round.guardCounter,
-    enemyGuardPierce: round.enemyGuardPierce,
+    id: fighter.combatId,
+    displayName: fighter.displayName,
+    level: fighter.level,
+    fixedHp: fighter.fixedHp,
+    moves: [...fighter.moves],
+    leanSkill: fighter.leanSkill,
+    telegraphFlavor: fighter.telegraphFlavor,
+    guardCounter: fighter.guardCounter,
+    enemyGuardPierce: fighter.enemyGuardPierce,
     losingLine: '',
-    spriteSrc: publicAsset('Assets/Characters/npcs/5ive-gym1.png'),
+    spriteSrc: fighter.spriteSrc,
     battleLocation: 'five',
-    battleBg: publicAsset('Assets/battle-bg/5ive-gym.png'),
-    battleSizeMult: 1.02,
+    battleBg: fighter.battleBg,
+    battleSizeMult: fighter.battleSizeMult,
   })
+}
+
+function buildGymGauntletCombatEntry(combatId: string): NpcCombatEntry | undefined {
+  const week = findGymWeekForCombatId(combatId)
+  if (!week) return undefined
+  if (week.leader.combatId === combatId) {
+    return buildGymFighterCombatEntry(week.leader)
+  }
+  const henchman = week.henchmen.find((h) => h.combatId === combatId)
+  if (henchman) return buildGymFighterCombatEntry(henchman)
+  return undefined
 }
 
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
@@ -241,7 +249,9 @@ export function isAttackingMove(move: EnemyMove): boolean {
 }
 
 export function getNpcCombatEntry(npcId: string): NpcCombatEntry | undefined {
-  if (npcId === FIVE_GYM1_ID) return buildFiveGym1CombatEntry()
+  if (isGymGauntletCombatId(npcId)) {
+    return buildGymGauntletCombatEntry(npcId)
+  }
   return NPC_REGISTRY[npcId]
 }
 

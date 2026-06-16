@@ -601,12 +601,13 @@ export type CombatXpResult = {
 export function applyCombatSkillXp(
   r: ResolveResult,
   timingBonuses: TimingBonusGrant[] = [],
-  options?: { enemyLevel?: number; playerLevel?: number; playerHpAfterHit?: number },
+  options?: { enemyLevel?: number; playerLevel?: number; playerHpAfterHit?: number; forceLevelXpMult?: number },
 ): CombatXpResult {
   const prevPlayerLevel = computePlayerLevel(state.skills)
   const playerLevelBefore = options?.playerLevel ?? prevPlayerLevel
   const enemyLevel = options?.enemyLevel ?? playerLevelBefore
-  const levelXpMult = combatXpLevelMultiplier(enemyLevel, playerLevelBefore)
+  const levelXpMult =
+    options?.forceLevelXpMult ?? combatXpLevelMultiplier(enemyLevel, playerLevelBefore)
   const scaleXp = (amount: number) => Math.max(0, Math.round(amount * levelXpMult))
 
   const before = state.skills
