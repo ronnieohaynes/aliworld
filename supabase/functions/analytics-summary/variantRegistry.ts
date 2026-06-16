@@ -16,6 +16,7 @@ export const MIDNIGHT_VARIANT_SHEET = {
   'filipino-m': { folder: 'midnight', file: 'midnight-filipino-m.png' },
   'danny-ali': { folder: 'midnight', file: 'danny-ali.png' },
   'player-riley-m': { folder: 'variants', file: 'player-riley-m.png' },
+  'player-fadi': { folder: 'variants', file: 'player-fadi.png' },
   'cencere-test': { folder: 'variants', file: 'cencere-test.png' },
 } as const
 
