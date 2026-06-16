@@ -56,7 +56,9 @@ import {
   awardMoveXp,
   computePlayerLevel,
   createDefaultSkills,
+  cumulativeXpForLevel,
   grantSkillXpAmount,
+  migrateSkillsToXpCurveV2,
   playerLevelUpLine,
   totalXpForLevel,
   type SkillId,
@@ -76,6 +78,7 @@ type AccountProgression = {
   lastX?: number
   lastY?: number
   midnightVariant?: MidnightVariantId
+  xpCurveV2Migrated?: boolean
 }
 
 type AccountAvatarConfig = {
@@ -90,6 +93,8 @@ type AccountAvatarConfig = {
   lastX?: unknown
   lastY?: unknown
   midnightVariant?: unknown
+  /** Set after one-time XP curve v2 grandfather migration. */
+  xpCurveV2Migrated?: boolean
 }
 
 type LastLocation = {
@@ -103,6 +108,8 @@ let lastLocation: LastLocation | null = null
 
 let accountHydrated = false
 let hydrateInFlight: Promise<void> | null = null
+/** Persisted after one-time XP curve v2 grandfather pass. */
+let xpCurveV2Migrated = false
 
 const VALID_CITY_IDS: readonly CityId[] = [
   'five',
@@ -194,6 +201,7 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<boo
         worldMemory: worldMemorySerialize(),
         artifacts: artifactSerialize(),
         midnightVariant: getMidnightVariant() ?? undefined,
+        ...(xpCurveV2Migrated ? { xpCurveV2Migrated: true } : {}),
         ...(lastLocation
           ? {
               lastCity: lastLocation.city,
@@ -245,6 +253,7 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
       gym: avatarConfig?.gym,
       worldMemory: avatarConfig?.worldMemory,
       artifacts: normalizeArtifacts(avatarConfig?.artifacts),
+      xpCurveV2Migrated: avatarConfig?.xpCurveV2Migrated === true,
       ...(lastCity !== undefined && lastX !== undefined && lastY !== undefined
         ? { lastCity, lastX, lastY }
         : {}),
@@ -399,14 +408,22 @@ export async function hydrateFromAccount(): Promise<void> {
 
   hydrateInFlight = (async () => {
     skipAccountSave = true
+    let shouldPersistXpCurveMigration = false
     try {
       const data = await loadProgressionFromAccount()
 
       if (data) {
+        xpCurveV2Migrated = data.xpCurveV2Migrated === true
+        let skills = data.skills ?? state.skills
+        if (!xpCurveV2Migrated) {
+          skills = migrateSkillsToXpCurveV2(skills)
+          xpCurveV2Migrated = true
+          shouldPersistXpCurveMigration = true
+        }
         state = {
           ...state,
           archetype: data.archetype ?? state.archetype,
-          skills: data.skills ?? state.skills,
+          skills,
           equippedMoves: data.equippedMoves ?? state.equippedMoves,
         }
         trackedBuildName = deriveBuildName(state.skills).name
@@ -439,6 +456,9 @@ export async function hydrateFromAccount(): Promise<void> {
     } finally {
       skipAccountSave = false
       accountHydrated = true
+      if (shouldPersistXpCurveMigration) {
+        persistProgressionToAccount()
+      }
     }
   })()
 
@@ -466,6 +486,7 @@ export function resetProgression(): void {
   lastLocation = null
   accountHydrated = false
   hydrateInFlight = null
+  xpCurveV2Migrated = false
   pendingSaveSnapshot = null
   setAccountSaveStatus('idle')
   state = createDefaultPlayerState()
@@ -541,7 +562,7 @@ export function grantPlayerSkillXp(skill: SkillId, amount: number): string[] {
   return lines
 }
 
-export { totalXpForLevel }
+export { cumulativeXpForLevel, totalXpForLevel }
 
 export function getOverworldPlayerHp(): number | null {
   return state.hp
