@@ -352,12 +352,22 @@ function applyEnemyMoveBehavior(
     }
     case 'dodge': {
       const d = behavior.profile
-      const dodgeChance = 0.3 + (state.npc.stats.spd * 0.02)
+      const spdStat = state.npc.stats.spd
+      const dodgeChance = 0.3 + (spdStat * 0.02)
       if (out.playerActed && out.playerDmg > 0 && Math.random() < Math.min(0.65, dodgeChance)) {
+        const rawPlayerDmg = out.playerDmg
         out.playerDmg = 0
-        const counter = Math.max(1, Math.floor(state.npc.stats.atk * d.counterMult))
-        out.incoming = counter
+        out.dodged = true
+        const counterScale = 1 + (spdStat * 0.015)
+        const counter = Math.max(1, Math.floor(state.npc.stats.atk * d.counterMult * counterScale))
+        let totalCounter = counter
+        if (d.onDodgeReflectPct && rawPlayerDmg > 0) {
+          totalCounter += Math.max(1, Math.floor(rawPlayerDmg * d.onDodgeReflectPct))
+        }
+        out.incoming = totalCounter
         out.enemyAttacks = true
+      } else if (out.playerActed && out.playerDmg > 0) {
+        out.playerDmg = Math.max(1, Math.floor(out.playerDmg * (1 - d.weakMult)))
       }
       break
     }
