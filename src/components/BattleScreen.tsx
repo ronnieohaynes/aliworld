@@ -160,7 +160,7 @@ function animateHpTicks(
 
 const WALKER_HEAVY_TEACH_STEPS = [
   {
-    text: 'that wind-up means a CANNON is coming. it hits hard.',
+    text: 'that wind-up means a FURY SWEEP is coming. it hits hard.',
     target: 'telegraph' as const,
   },
   {
@@ -725,7 +725,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   useEffect(() => {
     if (!walkerHeavyTutorial || battleTutorialBlocking) return
     if (state.phase === 'ended' || walkerHeavyBeat != null) return
-    if (state.upcomingMove !== 'CANNON' || state.turn < 1) return
+    if (state.upcomingMove !== 'FURY_SWEEP' || state.turn < 1) return
     setWalkerHeavyTeachStep(0)
     setWalkerHeavyBeat('teach')
   }, [

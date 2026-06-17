@@ -26,24 +26,24 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 4,
     fixedHp: 60,
-    moves: ['STRIKE', 'PARRY', 'CANNON', 'LOOP'],
+    moves: ['STRIKE', 'PARRY', 'FURY_SWEEP', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
       STRIKE: 'sets a jab —',
       PARRY: 'opens up —',
-      CANNON: 'winds up —',
+      FURY_SWEEP: 'winds up —',
       LOOP: 'draws the loop —',
     },
   },
   {
     level: 7,
     fixedHp: 90,
-    moves: ['STRIKE', 'PARRY', 'PARRY', 'CANNON', 'LOOP'],
+    moves: ['STRIKE', 'PARRY', 'PARRY', 'DARK_BREAK', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
       STRIKE: 'feints, then jabs —',
       PARRY: 'leaves a gap —',
-      CANNON: 'commits heavy —',
+      DARK_BREAK: 'darkens his aim —',
       LOOP: 'spins the loop —',
     },
   },

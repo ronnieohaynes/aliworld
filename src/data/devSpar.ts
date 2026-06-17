@@ -10,6 +10,8 @@ import {
   DEFAULT_ARCHETYPE,
 } from '../store/battleStore'
 import { computePlayerLevel } from '../store/skillStore'
+import { npcMoveUnlockSkills } from './npcCombatStats'
+import { MOVES } from './moveDefinitions'
 import { getPlayerSkills, getPlayerStoreState } from '../store/playerStore'
 import type { SkillsState } from '../store/skillStore'
 
@@ -55,6 +57,17 @@ function sparLeanSkill(skills: SkillsState): LeanSkill {
   return beats[playerType]
 }
 
+function filterDevSparMoves(moves: string[], level: number, lean: LeanSkill): NpcCombatEntry['moves'] {
+  const unlockSkills = npcMoveUnlockSkills(level, lean)
+  const filtered = moves.filter((moveId) => {
+    const def = MOVES[moveId as keyof typeof MOVES]
+    if (!def) return false
+    const skillLevel = unlockSkills[def.skill]?.level ?? 1
+    return skillLevel >= def.unlockAtSkillLevel
+  }) as NpcCombatEntry['moves']
+  return filtered.length > 0 ? filtered : ['STRIKE']
+}
+
 /** Builds a level-matched sparring partner from live player state. */
 export function buildDevSpar(): NpcCombatEntry {
   const player = getPlayerStoreState()
@@ -75,7 +88,7 @@ export function buildDevSpar(): NpcCombatEntry {
     displayName: 'sparring partner',
     level: computePlayerLevel(skills),
     stats: { hp: maxHp, maxHp, atk, def, spd, lck: Math.max(1, Math.round(playerStats.lck * 1.1)) },
-    moves: [...DEV_SPAR_MOVES],
+    moves: filterDevSparMoves([...DEV_SPAR_MOVES], computePlayerLevel(skills), sparLeanSkill(skills)),
     leanSkill: sparLeanSkill(skills),
     losingLine: 'good. again?',
     spriteSrc: DEV_SPAR_SPRITE,

@@ -1,7 +1,7 @@
 import { publicAsset } from '../utils/publicAsset'
 import { buildDevSpar, isDevSparNpcId } from './devSpar'
 import type { BattleLocationId } from './battleBackgrounds'
-import { computeNpcCombatStats } from './npcCombatStats'
+import { computeNpcCombatStats, npcMoveUnlockSkills } from './npcCombatStats'
 import type { LeanSkill } from './skillCounter'
 import type { UpcomingMove } from './enemyMoves'
 import type { PlayerMoveId } from './moveIds'
@@ -65,6 +65,19 @@ const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
 const ADAM_SPRITE = publicAsset('Assets/Characters/npcs/Adam-idle.PNG')
 
+
+function filterMovesForNpcLevel(moves: PlayerMoveId[], level: number, lean: LeanSkill): PlayerMoveId[] {
+  const skills = npcMoveUnlockSkills(level, lean)
+  const filtered = moves.filter((moveId) => {
+    const def = MOVES[moveId]
+    if (!def) return false
+    const skillLevel = skills[def.skill]?.level ?? 1
+    return skillLevel >= def.unlockAtSkillLevel
+  })
+  if (filtered.length > 0) return filtered
+  return ['STRIKE']
+}
+
 function entry(
   base: Omit<NpcCombatEntry, 'stats'> & { hpScale?: number; fixedHp?: number },
 ): NpcCombatEntry {
@@ -74,19 +87,20 @@ function entry(
     stats.hp = fixedHp
     stats.maxHp = fixedHp
   }
-  return { ...rest, stats }
+  const moves = filterMovesForNpcLevel(rest.moves, rest.level, rest.leanSkill)
+  return { ...rest, stats, moves }
 }
 
-/** Tutorial — level 2, teaches brace/dodge vs HAYMAKER. */
+/** Tutorial — level 2, teaches brace/dodge vs heavy. atk=10 → FURY_SWEEP. */
 const WALKER: NpcCombatEntry = entry({
   id: 'walker',
   displayName: 'walker',
   level: 2,
-  moves: ['STRIKE', 'CANNON', 'HOLD'],
+  moves: ['STRIKE', 'FURY_SWEEP', 'HOLD'],
   leanSkill: 'none',
   telegraphFlavor: {
     STRIKE: 'lines up',
-    CANNON: 'winds up —',
+    FURY_SWEEP: 'winds up —',
     HOLD: 'plants his feet —',
   },
   losingLine: 'i get it now. tell me where to go.',
@@ -96,17 +110,17 @@ const WALKER: NpcCombatEntry = entry({
   battleSizeMult: 1.02,
 })
 
-/** Status check — speed lean, slip + telegraphed heavy. */
+/** Status check — speed lean, slip + telegraphed heavy. spd=15 → PARRY. */
 const JACLYN: NpcCombatEntry = entry({
   id: 'jaclyn',
   displayName: 'jaclyn',
   level: 3,
-  moves: ['SLIP', 'STRIKE', 'CANNON', 'WHISPER'],
+  moves: ['SLIP', 'STRIKE', 'FURY_SWEEP', 'WHISPER'],
   leanSkill: 'speed',
   telegraphFlavor: {
     SLIP: 'feints —',
     STRIKE: 'cuts in —',
-    CANNON: 'commits —',
+    FURY_SWEEP: 'commits —',
     WHISPER: 'murmurs —',
   },
   losingLine: "...oh. you're right. of course you're right.",
@@ -116,16 +130,17 @@ const JACLYN: NpcCombatEntry = entry({
   battleSizeMult: 0.92,
 })
 
-/** Boss wall — defense lean, full kit + telegraphed heavy. */
+/** Boss wall — defense lean, full kit. def=25 → SECOND_WIND, ANCHOR. */
 const MARK: NpcCombatEntry = entry({
   id: 'mark',
   displayName: 'mark',
   level: 5,
-  moves: ['HOLD', 'HOLD', 'CANNON', 'STRIKE', 'SLIP', 'WHISPER'],
+  moves: ['HOLD', 'ANCHOR', 'DARK_BREAK', 'STRIKE', 'SLIP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
     HOLD: 'roots in —',
-    CANNON: 'draws back —',
+    ANCHOR: 'digs in —',
+    DARK_BREAK: 'draws back —',
     STRIKE: 'swings —',
     SLIP: 'feints —',
     WHISPER: 'murmurs —',
@@ -137,12 +152,12 @@ const MARK: NpcCombatEntry = entry({
   battleSizeMult: 1.04,
 })
 
-/** E2 gate — blue store clerk; attack-lean scrapper. */
+/** E2 gate — blue store clerk; attack-lean scrapper. atk=20 → FURY_SWEEP. */
 const CLERK: NpcCombatEntry = entry({
   id: 'clerk',
   displayName: 'clerk',
   level: 4,
-  moves: ['STRIKE', 'STRIKE', 'WHISPER', 'CANNON'],
+  moves: ['STRIKE', 'STRIKE', 'WHISPER', 'FURY_SWEEP'],
   leanSkill: 'attack',
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
@@ -151,12 +166,12 @@ const CLERK: NpcCombatEntry = entry({
   battleSizeMult: 1,
 })
 
-/** E2 boss — restocker in the back room; defense wall. */
+/** E2 boss — restocker in the back room; defense wall. def=30 → SECOND_WIND, ANCHOR. */
 const RESTOCKER: NpcCombatEntry = entry({
   id: 'restocker',
   displayName: 'restocker',
   level: 6,
-  moves: ['HOLD', 'HOLD', 'CANNON', 'STRIKE'],
+  moves: ['HOLD', 'ANCHOR', 'DARK_BREAK', 'STRIKE'],
   leanSkill: 'defense',
   losingLine: "it CAN stop...",
   winningLine: "this floor belongs to me.",
@@ -221,14 +236,14 @@ export function getAllNpcCombatIds(): string[] {
   return Object.keys(NPC_REGISTRY)
 }
 
-/** Scripted CANNON on turn 2 for the walker tutorial fight. */
+/** Scripted FURY_SWEEP on turn 2 for the walker tutorial fight. */
 export function walkerTutorialForcedMove(
   npcId: string,
   turn: number,
   walkerHeavyTutorialActive: boolean,
 ): PlayerMoveId | null {
   if (!walkerHeavyTutorialActive || npcId !== 'walker') return null
-  if (turn === 2) return 'CANNON'
+  if (turn === 2) return 'FURY_SWEEP'
   return null
 }
 
