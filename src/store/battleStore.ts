@@ -249,6 +249,10 @@ export type ResolveResult = {
   damageAvoided: number
   /** Next strike boosted after a successful brace (perfect guard). */
   perfectGuardBonus: boolean
+  /** Enemy dodged the player's attack (SLIP/PARRY). */
+  enemyDodged: boolean
+  /** Enemy braced against the player's attack (HOLD/ANCHOR). */
+  enemyBraced: boolean
   /** Enemy riposte after player attacked into HOLD. */
   guardCountered: boolean
   /** Healing applied this turn (second wind, lifesteal, phenomena). */
@@ -284,6 +288,8 @@ function emptyResolveResult(
     damageBlocked: 0,
     damageAvoided: 0,
     perfectGuardBonus: false,
+    enemyDodged: false,
+    enemyBraced: false,
     guardCountered: false,
     healApplied: 0,
     eMove,
@@ -346,6 +352,7 @@ function applyEnemyMoveBehavior(
   switch (behavior.kind) {
     case 'brace': {
       if (out.playerActed && out.playerDmg > 0) {
+        out.enemyBraced = true
         out.playerDmg = Math.max(1, Math.floor(out.playerDmg * behavior.profile.incomingMult))
       }
       break
@@ -357,7 +364,7 @@ function applyEnemyMoveBehavior(
       if (out.playerActed && out.playerDmg > 0 && Math.random() < Math.min(0.65, dodgeChance)) {
         const rawPlayerDmg = out.playerDmg
         out.playerDmg = 0
-        out.dodged = true
+        out.enemyDodged = true
         const counterScale = 1 + (spdStat * 0.015)
         const counter = Math.max(1, Math.floor(state.npc.stats.atk * d.counterMult * counterScale))
         let totalCounter = counter

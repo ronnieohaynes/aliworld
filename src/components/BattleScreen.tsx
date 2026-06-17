@@ -588,6 +588,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   /** Null = no animation. Otherwise the skill type that determines animation style. */
   const [playerAtkFx, setPlayerAtkFx] = useState<'attack' | 'speed' | 'defense' | 'luck' | null>(null)
   const [playerDodgeFx, setPlayerDodgeFx] = useState(false)
+  const [enemyDodgeFx, setEnemyDodgeFx] = useState(false)
   const [enemyCritFx, setEnemyCritFx] = useState(false)
   const [floaters, setFloaters] = useState<BattleFloater[]>([])
   const [knockoutPopup, setKnockoutPopup] = useState<'win' | 'lose' | null>(null)
@@ -922,11 +923,17 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     const playerImpact = lunge + 540 + playerPhaseDelay  // when player's strike lands
     const enemyImpact = lunge + 540                       // when enemy's strike lands (phase 1)
 
-    if (events.some((e) => e.kind === 'dodged')) {
+    if (events.some((e) => e.kind === 'dodged' && e.target === 'player')) {
       window.setTimeout(() => {
         setPlayerDodgeFx(true)
         window.setTimeout(() => setPlayerDodgeFx(false), 420)
       }, enemyImpact)
+    }
+    if (events.some((e) => e.kind === 'dodged' && e.target === 'enemy')) {
+      window.setTimeout(() => {
+        setEnemyDodgeFx(true)
+        window.setTimeout(() => setEnemyDodgeFx(false), 420)
+      }, playerImpact)
     }
     const CRIT_EXTRA_MS = 500
     // Status effects wait for the hit-flash animation to fully finish before appearing.
@@ -1060,6 +1067,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     playerHitFx,
     playerAtkFx,
     playerDodgeFx,
+    enemyDodgeFx,
     enemyCritFx,
     clampBattleScrollDrift,
   ])
@@ -1228,7 +1236,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
               {/* Enemy sprite — animates independently */}
               <div
-                className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
+                className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}${enemyDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
                 style={{ top: enemyPlacement.drawY + 5 }}
               >
                 <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
