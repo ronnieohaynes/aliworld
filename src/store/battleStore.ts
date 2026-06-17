@@ -6,6 +6,7 @@ import {
   BLEED_DAMAGE_MAX_HP_PCT,
   braceStatusIncomingMultiplier,
   ENEMY_WHISPER_PLAYER_WEAKEN_MULT,
+  LOOP_DAMAGE_MULT,
 } from '../data/moveBalance'
 import { MOVES } from '../data/moveDefinitions'
 import {
@@ -375,6 +376,18 @@ function applyEnemyMoveBehavior(
         out.enemyAttacks = true
       } else if (out.playerActed && out.playerDmg > 0) {
         out.playerDmg = Math.max(1, Math.floor(out.playerDmg * (1 - d.weakMult)))
+      }
+      break
+    }
+    case 'loop': {
+      const loopDmg = Math.max(1, Math.floor(state.npc.stats.atk * LOOP_DAMAGE_MULT))
+      out.incoming += loopDmg
+      out.enemyAttacks = true
+      const lastPlayer = state.playerMoveHistory.length > 0
+        ? state.playerMoveHistory[state.playerMoveHistory.length - 1]!
+        : null
+      if (lastPlayer) {
+        state.battleMove.forcePlayerMove = lastPlayer
       }
       break
     }
@@ -952,6 +965,7 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
   }
 
   battleMove.forceEnemyMove = null
+  battleMove.forcePlayerMove = null
 
   let turnFlags = {
     playerExposedTurns: state.playerExposedTurns,
@@ -1069,6 +1083,11 @@ function applySkillXpToState(
 }
 
 function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number): BattleState {
+  const forcedPlayer = state.battleMove.forcePlayerMove
+  if (forcedPlayer) {
+    pMove = forcedPlayer
+    slot = undefined
+  }
   let working = processTurnStart(state)
   const eMove = state.upcomingMove !== 'STUNNED' ? state.upcomingMove as PlayerMoveId : null
   working = {
