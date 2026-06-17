@@ -257,7 +257,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       profile: {
         counterMult: PARRY_DODGE_COUNTER_MULT,
         weakMult: PARRY_DODGE_WEAK_MULT,
-        stunChance: { base: 8, lckMult: 1 },
+        stunChance: { base: 22, lckMult: 2.5 },
         onDodgeReflectPct: PARRY_ON_DODGE_REFLECT_PCT,
       },
     },
