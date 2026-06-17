@@ -594,7 +594,6 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const [knockoutPopup, setKnockoutPopup] = useState<'win' | 'lose' | null>(null)
   const [narrationVisible, setNarrationVisible] = useState(false)
   const [loseNarrationVisible, setLoseNarrationVisible] = useState(false)
-  const enemyDodgedThisTurnRef = useRef(false)
 
   const clampBattleScrollDrift = useCallback(() => {
     for (const el of [
@@ -835,8 +834,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     // stagger the second floater by 500ms so they never overlap.
     const STAGGER_MS = enemyDelta > 0 && playerDelta > 0 ? 500 : 0
 
-    const wasEnemyDodge = enemyDodgedThisTurnRef.current
-    enemyDodgedThisTurnRef.current = false
+    const wasEnemyDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
 
     if (enemyDelta > 0 && !wasEnemyDodge) {
       const skill = lastPlayerMoveSkillRef.current
@@ -898,10 +896,14 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       setPlayerAtkFx(skill)
       window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
 
-      // Phase 2: enemy dodge flash happens via feedback event useEffect
+      // Phase 2: enemy dodge flash (at lunge impact)
+      window.setTimeout(() => {
+        setEnemyDodgeFx(true)
+        window.setTimeout(() => setEnemyDodgeFx(false), DODGE_DURATION)
+      }, PLAYER_LUNGE_MS)
 
       // Phase 3: after dodge finishes, enemy counter-lunges
-      const counterStart = PLAYER_LUNGE_MS + DAMAGE_DELAY_MS + DODGE_DURATION
+      const counterStart = PLAYER_LUNGE_MS + DODGE_DURATION
       window.setTimeout(() => {
         setEnemyAtkFx(true)
         window.setTimeout(() => setEnemyAtkFx(false), COUNTER_LUNGE_MS)
@@ -948,7 +950,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
 
     prevEnemyHpRef.current = state.enemyHp
     prevPlayerHpRef.current = state.playerHp
-  }, [state.enemyHp, state.playerHp, state.feedbackBleedDamage, clampBattleScrollDrift])
+  }, [state.enemyHp, state.playerHp, state.feedbackBleedDamage, state.feedbackEvents, clampBattleScrollDrift])
 
   useEffect(() => {
     if (state.feedbackSeq === prevFeedbackSeqRef.current) return
@@ -972,14 +974,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         window.setTimeout(() => setPlayerDodgeFx(false), 420)
       }, enemyImpact)
     }
-    const enemyDodgedEvent = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
-    enemyDodgedThisTurnRef.current = enemyDodgedEvent
-    if (enemyDodgedEvent) {
-      window.setTimeout(() => {
-        setEnemyDodgeFx(true)
-        window.setTimeout(() => setEnemyDodgeFx(false), 420)
-      }, playerImpact)
-    }
+    // Enemy dodge flash is handled in the HP-change useEffect's dodge sequence
     const CRIT_EXTRA_MS = 500
     // Status effects wait for the hit-flash animation to fully finish before appearing.
     // Hit flash starts at +40ms (HIT_FLASH_MS) and runs for 840ms (HIT_MS), ending at
