@@ -111,7 +111,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   FURY_SWEEP: def({
     id: 'FURY_SWEEP',
     displayName: 'FURY SWEEP',
-    skill: 'attack',
+    skill: 'speed',
     ladderRung: 2,
     cost: { kind: 'none' },
     behavior: {
@@ -132,7 +132,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
+      { skill: 'speed', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
     ],
     uiDescription: 'wild sweep. crit applies bleed — chip each turn.',
     uiClassName: 'battle-screen__move--fury-sweep',
@@ -249,7 +249,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   PARRY: def({
     id: 'PARRY',
     displayName: 'PARRY',
-    skill: 'speed',
+    skill: 'attack',
     ladderRung: 2,
     cost: { kind: 'none' },
     behavior: {
@@ -263,9 +263,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'speed', amount: speedDodgeMoveXp },
+      { skill: 'attack', amount: speedDodgeMoveXp },
     ],
-    uiDescription: 'deflect and sting. tiny reflect on dodge.',
+    uiDescription: 'read and punish. counter-hit with reflect.',
     uiClassName: 'battle-screen__move--parry',
     playerLogLine: (r) =>
       r.dodged
