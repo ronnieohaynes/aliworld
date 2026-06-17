@@ -5,6 +5,13 @@ import {
   BLACKOUT_INTERRUPTIBLE,
   BLEED_DAMAGE_MAX_HP_PCT,
   braceStatusIncomingMultiplier,
+  ENEMY_HOLD_BRACE_MULT,
+  ENEMY_SLIP_DODGE_CHANCE,
+  ENEMY_SLIP_COUNTER_MULT,
+  ENEMY_WHISPER_WEAKEN_TURNS,
+  ENEMY_BAIT_COUNTER_MULT,
+  ENEMY_BAIT_PLAYER_DMG_MULT,
+  ENEMY_WHISPER_PLAYER_WEAKEN_MULT,
 } from '../data/moveBalance'
 import {
   createEmptyCombatStatus,
@@ -336,6 +343,43 @@ function applyNpcGuardCounter(
   out.enemyAttacks = true
 }
 
+function applyEnemyMoveBehavior(
+  state: BattleState,
+  out: ResolveResult,
+  actualMove: EnemyMoveId,
+): void {
+  switch (actualMove) {
+    case 'HOLD': {
+      if (out.playerActed && out.playerDmg > 0) {
+        out.playerDmg = Math.max(1, Math.floor(out.playerDmg * ENEMY_HOLD_BRACE_MULT))
+      }
+      break
+    }
+    case 'SLIP': {
+      if (out.playerActed && out.playerDmg > 0 && Math.random() < ENEMY_SLIP_DODGE_CHANCE) {
+        out.playerDmg = 0
+        const counter = Math.max(1, Math.floor(state.npc.stats.atk * ENEMY_SLIP_COUNTER_MULT))
+        out.incoming = counter
+        out.enemyAttacks = true
+      }
+      break
+    }
+    case 'WHISPER': {
+      state.combatStatus.playerWeaken = ENEMY_WHISPER_WEAKEN_TURNS
+      break
+    }
+    case 'BAIT': {
+      if (out.playerActed && isPlayerAggressiveMove(out.pMove)) {
+        const counter = Math.max(1, Math.floor(state.npc.stats.atk * ENEMY_BAIT_COUNTER_MULT))
+        out.playerDmg = Math.max(0, Math.floor(out.playerDmg * ENEMY_BAIT_PLAYER_DMG_MULT))
+        out.incoming = Math.max(out.incoming, counter)
+        out.enemyAttacks = true
+      }
+      break
+    }
+  }
+}
+
 function applyEnemyGuardPierce(
   state: BattleState,
   out: ResolveResult,
@@ -517,6 +561,11 @@ function resolvePlayerMoveBody(
     ),
   )
 
+  if (state.combatStatus.playerWeaken > 0 && out.playerDmg > 0) {
+    out.playerDmg = Math.max(1, Math.floor(out.playerDmg * ENEMY_WHISPER_PLAYER_WEAKEN_MULT))
+  }
+
+  applyEnemyMoveBehavior(state, out, actualMove)
   applyNpcGuardCounter(state, out, actualMove)
 
   out.incoming = mitigateIncoming(

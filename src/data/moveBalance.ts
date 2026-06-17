@@ -92,6 +92,21 @@ export const ENEMY_AI_TIER1_LEVEL = 3
 export const ENEMY_AI_TIER2_LEVEL = 5
 export const ENEMY_AI_TIER3_LEVEL = 8
 
+/** Enemy HOLD — brace reduces incoming player damage by this fraction. */
+export const ENEMY_HOLD_BRACE_MULT = 0.35
+/** Enemy SLIP — base dodge chance (before speed scaling). */
+export const ENEMY_SLIP_DODGE_CHANCE = 0.45
+/** Enemy SLIP — counter damage as fraction of enemy ATK on successful dodge. */
+export const ENEMY_SLIP_COUNTER_MULT = 0.5
+/** Enemy WHISPER — player outgoing damage multiplier while weakened. */
+export const ENEMY_WHISPER_PLAYER_WEAKEN_MULT = 0.6
+/** Enemy WHISPER — duration in turns. */
+export const ENEMY_WHISPER_WEAKEN_TURNS = 2
+/** Enemy BAIT — counter damage multiplier on enemy ATK when player attacks into it. */
+export const ENEMY_BAIT_COUNTER_MULT = 1.2
+/** Enemy BAIT — player damage reduction when trapped. */
+export const ENEMY_BAIT_PLAYER_DMG_MULT = 0.15
+
 /** Combat XP scales with enemy level vs player level (clamp). */
 export const XP_LEVEL_GAP_PER_LEVEL = 0.15
 export const XP_LEVEL_MULT_MIN = 0.6
