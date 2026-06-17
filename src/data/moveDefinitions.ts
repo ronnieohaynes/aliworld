@@ -91,7 +91,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
         damageMult: 1.3,
         openingBonusMult: 1.5,
         takeEnemyHit: true,
-        crit: { base: 6, lckMult: 2, damageMult: 1.6, onCrit: ['bleed'] },
+        crit: { base: 6, lckMult: 2, damageMult: 1.6, onCrit: [] },
       },
     },
     onResolve: [],
@@ -111,7 +111,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   FURY_SWEEP: def({
     id: 'FURY_SWEEP',
     displayName: 'FURY SWEEP',
-    skill: 'attack',
+    skill: 'speed',
     ladderRung: 2,
     cost: { kind: 'none' },
     behavior: {
@@ -132,7 +132,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
+      { skill: 'speed', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
     ],
     uiDescription: 'wild sweep. crit applies bleed — chip each turn.',
     uiClassName: 'battle-screen__move--fury-sweep',
@@ -249,7 +249,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   PARRY: def({
     id: 'PARRY',
     displayName: 'PARRY',
-    skill: 'speed',
+    skill: 'attack',
     ladderRung: 2,
     cost: { kind: 'none' },
     behavior: {
@@ -257,15 +257,15 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       profile: {
         counterMult: PARRY_DODGE_COUNTER_MULT,
         weakMult: PARRY_DODGE_WEAK_MULT,
-        stunChance: { base: 8, lckMult: 1 },
+        stunChance: { base: 22, lckMult: 2.5 },
         onDodgeReflectPct: PARRY_ON_DODGE_REFLECT_PCT,
       },
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'speed', amount: speedDodgeMoveXp },
+      { skill: 'attack', amount: speedDodgeMoveXp },
     ],
-    uiDescription: 'deflect and sting. tiny reflect on dodge.',
+    uiDescription: 'read and punish. counter-hit with reflect.',
     uiClassName: 'battle-screen__move--parry',
     playerLogLine: (r) =>
       r.dodged
@@ -357,7 +357,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: {
       kind: 'brace',
-      profile: { incomingMult: 0.3, blockStatus: true },
+      profile: { incomingMult: 0.22, blockStatus: true },
     },
     onResolve: ['brace'],
     xpGrants: [

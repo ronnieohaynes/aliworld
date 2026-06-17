@@ -50,6 +50,8 @@ export type CombatStatusState = {
   /** Next successful player hit strikes twice (damage applied twice). */
   playerDouble: number
   playerReflect: ReflectBuff | null
+  /** Player's outgoing damage reduced while active (enemy WHISPER). */
+  playerWeaken: number
   enemyBleed: number
   enemyShake: number
   enemyStun: number
@@ -64,6 +66,7 @@ export function createEmptyCombatStatus(): CombatStatusState {
     playerBrace: 0,
     playerDouble: 0,
     playerReflect: null,
+    playerWeaken: 0,
     enemyBleed: 0,
     enemyShake: 0,
     enemyStun: 0,

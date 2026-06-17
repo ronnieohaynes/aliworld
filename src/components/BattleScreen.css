@@ -792,6 +792,15 @@
   top: 34%;
 }
 
+/* Dodged: enemy dodges player's attack — top-left */
+.battle-screen__floater--enemy.battle-screen__floater--kind-dodged {
+  top: 12%; left: 8%;
+}
+/* Blocked: enemy braces player's attack — top-left offset */
+.battle-screen__floater--enemy.battle-screen__floater--kind-blocked {
+  top: 18%; left: 8%;
+}
+
 /* --- PLAYER side (bottom half) --- */
 /* Damage number: bottom-left */
 .battle-screen__floater--player.battle-screen__floater--kind-damage {

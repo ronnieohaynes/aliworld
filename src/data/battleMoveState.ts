@@ -1,4 +1,3 @@
-import type { EnemyMoveId } from './enemyMoves'
 import type { PlayerMoveId } from './moveIds'
 
 export type BlackoutPhase = 'idle' | 'loading' | 'armed' | 'recharging'
@@ -14,11 +13,11 @@ export type BattleMoveState = {
   enemyAccuracyMult: number
   enemyAccuracyTurns: number
   enemyDefShattered: boolean
-  forceEnemyMove: EnemyMoveId | null
-  lastEnemyMove: EnemyMoveId | null
+  forceEnemyMove: PlayerMoveId | null
+  lastEnemyMove: PlayerMoveId | null
   lastEnemyDamage: number
   /** SNAG: stolen enemy move per slot (replaces SNAG in that slot). */
-  snagStolen: Partial<Record<number, EnemyMoveId>>
+  snagStolen: Partial<Record<number, PlayerMoveId>>
   oncePerBattleUsed: Partial<Record<PlayerMoveId, boolean>>
   /** DEVIL'S CUT — turns remaining where player hits heal. */
   devilsCutTurns: number

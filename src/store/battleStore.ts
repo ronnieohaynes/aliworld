@@ -5,7 +5,10 @@ import {
   BLACKOUT_INTERRUPTIBLE,
   BLEED_DAMAGE_MAX_HP_PCT,
   braceStatusIncomingMultiplier,
+  ENEMY_WHISPER_PLAYER_WEAKEN_MULT,
+  LOOP_DAMAGE_MULT,
 } from '../data/moveBalance'
+import { MOVES } from '../data/moveDefinitions'
 import {
   createEmptyCombatStatus,
   enemyLosesTurn,
@@ -23,18 +26,14 @@ import {
   tickDeathClocks,
 } from '../data/combatSystems'
 import type { DeathClock } from '../data/combatTypes'
-import {
-  getEnemyMoveDef,
-  type EnemyMoveId,
-  type UpcomingMove,
-} from '../data/enemyMoves'
+import type { UpcomingMove } from '../data/enemyMoves'
+import type { PlayerMoveId } from '../data/moveIds'
 import {
   applyPlayerMoveFromDef,
   applyStolenEnemyMove,
   getMoveDef,
   mergeResolveIntoCombatStatus,
   playerLogLineForMove,
-  type PlayerMoveId,
 } from '../data/moves'
 import {
   chooseMove,
@@ -68,7 +67,7 @@ export type PlayerMove = PlayerMoveId
 export type ArchetypeId = 'lck' | 'atk' | 'def' | 'spd'
 export type BattlePhase = 'player' | 'busy' | 'ended'
 export type BattleResult = 'win' | 'lose' | 'draw'
-export type { UpcomingMove } from '../data/enemyMoves'
+export type { UpcomingMove }
 export type { SkillLevelUp }
 
 export type LevelUpNotification = {
@@ -161,6 +160,9 @@ export type BattleState = {
   pendingLevelUpNotification: LevelUpNotification | null
   /** True when this battle is a "Run it back!" rematch — doubled damage, dramatic pauses. */
   runItBackMode: boolean
+  /** Move history for this fight — used by enemy AI pattern learning. */
+  playerMoveHistory: PlayerMoveId[]
+  enemyMoveHistory: PlayerMoveId[]
 }
 
 export type BattleAction =
@@ -248,6 +250,10 @@ export type ResolveResult = {
   damageAvoided: number
   /** Next strike boosted after a successful brace (perfect guard). */
   perfectGuardBonus: boolean
+  /** Enemy dodged the player's attack (SLIP/PARRY). */
+  enemyDodged: boolean
+  /** Enemy braced against the player's attack (HOLD/ANCHOR). */
+  enemyBraced: boolean
   /** Enemy riposte after player attacked into HOLD. */
   guardCountered: boolean
   /** Healing applied this turn (second wind, lifesteal, phenomena). */
@@ -283,6 +289,8 @@ function emptyResolveResult(
     damageBlocked: 0,
     damageAvoided: 0,
     perfectGuardBonus: false,
+    enemyDodged: false,
+    enemyBraced: false,
     guardCountered: false,
     healApplied: 0,
     eMove,
@@ -319,7 +327,7 @@ function isPlayerAggressiveMove(pMove: PlayerMove): boolean {
 function applyNpcGuardCounter(
   state: BattleState,
   out: ResolveResult,
-  actualMove: EnemyMoveId,
+  actualMove: PlayerMoveId,
 ): void {
   const counter = state.npc.guardCounter
   if (!counter || actualMove !== 'HOLD') return
@@ -331,6 +339,59 @@ function applyNpcGuardCounter(
   out.playerDmg = Math.max(0, Math.floor(out.playerDmg * 0.1))
   out.incoming = Math.max(out.incoming, riposte)
   out.enemyAttacks = true
+}
+
+function applyEnemyMoveBehavior(
+  state: BattleState,
+  out: ResolveResult,
+  actualMove: PlayerMoveId,
+): void {
+  const moveDef = MOVES[actualMove]
+  if (!moveDef) return
+  const behavior = moveDef.behavior
+
+  switch (behavior.kind) {
+    case 'brace': {
+      if (out.playerActed && out.playerDmg > 0) {
+        out.enemyBraced = true
+        out.playerDmg = Math.max(1, Math.floor(out.playerDmg * behavior.profile.incomingMult))
+      }
+      break
+    }
+    case 'dodge': {
+      const d = behavior.profile
+      const spdStat = state.npc.stats.spd
+      const dodgeChance = 0.3 + (spdStat * 0.02)
+      if (out.playerActed && out.playerDmg > 0 && Math.random() < Math.min(0.65, dodgeChance)) {
+        const rawPlayerDmg = out.playerDmg
+        out.playerDmg = 0
+        out.enemyDodged = true
+        const counterScale = 1 + (spdStat * 0.015)
+        const counter = Math.max(1, Math.floor(state.npc.stats.atk * d.counterMult * counterScale))
+        let totalCounter = counter
+        if (d.onDodgeReflectPct && rawPlayerDmg > 0) {
+          totalCounter += Math.max(1, Math.floor(rawPlayerDmg * d.onDodgeReflectPct))
+        }
+        out.incoming = totalCounter
+        out.enemyAttacks = true
+      } else if (out.playerActed && out.playerDmg > 0) {
+        out.playerDmg = Math.max(1, Math.floor(out.playerDmg * (1 - d.weakMult)))
+      }
+      break
+    }
+    case 'loop': {
+      const loopDmg = Math.max(1, Math.floor(state.npc.stats.atk * LOOP_DAMAGE_MULT))
+      out.incoming += loopDmg
+      out.enemyAttacks = true
+      break
+    }
+    case 'damage': {
+      if (behavior.profile.damageMult < 0.6) {
+        state.combatStatus.playerWeaken = 2
+      }
+      break
+    }
+  }
 }
 
 function applyEnemyGuardPierce(
@@ -514,6 +575,11 @@ function resolvePlayerMoveBody(
     ),
   )
 
+  if (state.combatStatus.playerWeaken > 0 && out.playerDmg > 0) {
+    out.playerDmg = Math.max(1, Math.floor(out.playerDmg * ENEMY_WHISPER_PLAYER_WEAKEN_MULT))
+  }
+
+  applyEnemyMoveBehavior(state, out, actualMove)
   applyNpcGuardCounter(state, out, actualMove)
 
   out.incoming = mitigateIncoming(
@@ -608,11 +674,22 @@ function appendLog(log: string[], line: string): string[] {
   return next
 }
 
-function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove'>): UpcomingMove {
+function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove' | 'playerHp' | 'enemyHp' | 'enemyMaxHp' | 'playerStats' | 'playerMoveHistory' | 'enemyMoveHistory' | 'playerExposedTurns'>): UpcomingMove {
   if (enemyLosesTurn(state.combatStatus)) return 'STUNNED'
   const forced = state.battleMove.forceEnemyMove
   const pick = chooseMove(state.npc.id, state.turn, forced, {
     walkerHeavyTutorial: isWalkerHeavyTutorialActive(state.npc.id),
+    npcLevel: state.npc.level,
+    npcMoves: state.npc.moves,
+    playerHpPct: state.playerHp / state.playerStats.maxHp,
+    enemyHpPct: state.enemyHp / (state.npc.stats.maxHp || 1),
+    playerIsExposed: state.playerExposedTurns > 0,
+    playerIsBracing: state.combatStatus.playerBrace > 0,
+    enemyIsSlowed: state.combatStatus.enemySlow > 0,
+    enemyIsShaken: state.combatStatus.enemyShake > 0,
+    enemyIsBleeding: state.combatStatus.enemyBleed > 0,
+    lastPlayerMove: state.playerMoveHistory.length > 0 ? state.playerMoveHistory[state.playerMoveHistory.length - 1]! : null,
+    lastEnemyMove: state.enemyMoveHistory.length > 0 ? state.enemyMoveHistory[state.enemyMoveHistory.length - 1]! : null,
   })
   return pick
 }
@@ -625,7 +702,8 @@ function isPlayerCounterMove(pMove: PlayerMove): boolean {
 /** True if the enemy's chosen move is its speed "counter" move. */
 function isEnemyCounterMove(eMove: UpcomingMove): boolean {
   if (eMove === 'STUNNED') return false
-  return getEnemyMoveDef(eMove as EnemyMoveId).skillType === 'speed'
+  const def = MOVES[eMove as PlayerMoveId]
+  return def?.behavior.kind === 'dodge'
 }
 
 function enemyActsFirstInResolution(state: BattleState, r?: ResolveResult): boolean {
@@ -712,7 +790,7 @@ function applyEnemyResolutionPhase(
     if (r.guardCountered && split.damageToPlayer > 0) {
       nextLog = appendLog(nextLog, `${lower} counters. ${split.damageToPlayer}.`)
     } else if (r.playerActed && split.damageToPlayer > 0 && r.eMove !== 'STUNNED') {
-      const moveName = getEnemyMoveDef(r.eMove as EnemyMoveId).displayName
+      const moveName = MOVES[r.eMove as PlayerMoveId]?.displayName ?? r.eMove
       nextLog = appendLog(
         nextLog,
         `${lower}'s ${moveName} — ${split.damageToPlayer}.`,
@@ -920,6 +998,13 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     turn,
     combatStatus,
     battleMove,
+    playerHp: state.playerHp,
+    enemyHp: state.enemyHp,
+    enemyMaxHp: state.enemyMaxHp,
+    playerStats: state.playerStats,
+    playerMoveHistory: state.playerMoveHistory,
+    enemyMoveHistory: state.enemyMoveHistory,
+    playerExposedTurns: turnFlags.playerExposedTurns,
   })
 
   return {
@@ -992,6 +1077,14 @@ function applySkillXpToState(
 
 function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number): BattleState {
   let working = processTurnStart(state)
+  const eMove = state.upcomingMove !== 'STUNNED' ? state.upcomingMove as PlayerMoveId : null
+  working = {
+    ...working,
+    playerMoveHistory: [...working.playerMoveHistory, pMove as PlayerMoveId],
+    enemyMoveHistory: eMove
+      ? [...working.enemyMoveHistory, eMove]
+      : [...working.enemyMoveHistory],
+  }
 
   const consumed = consumeTurnFlag({
     playerExposedTurns: working.playerExposedTurns,
@@ -1015,6 +1108,18 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   // Apply run-it-back damage doubling before any phase resolution.
   let r = resolved.out
   if (working.runItBackMode) {
+    r = {
+      ...r,
+      playerDmg: Math.round(r.playerDmg * 2),
+      incoming: Math.round(r.incoming * 2),
+      rawIncoming: Math.round(r.rawIncoming * 2),
+    }
+  }
+
+  // LOOP: both sides attack twice — double both damage outputs.
+  const playerUsedLoop = pMove === 'LOOP'
+  const enemyUsedLoop = eMove === 'LOOP'
+  if (playerUsedLoop || enemyUsedLoop) {
     r = {
       ...r,
       playerDmg: Math.round(r.playerDmg * 2),
@@ -1286,7 +1391,13 @@ export function createInitialBattleState(
   const playerHp = playerStats.maxHp
   const combatStatus = createEmptyCombatStatus()
   const battleMove = createBattleMoveState()
-  const upcomingMove = showTelegraph({ npc, turn: 0, combatStatus, battleMove })
+  const playerMoveHistory: PlayerMoveId[] = []
+  const enemyMoveHistory: PlayerMoveId[] = []
+  const upcomingMove = showTelegraph({
+    npc, turn: 0, combatStatus, battleMove,
+    playerHp, enemyHp: npc.stats.hp, enemyMaxHp: npc.stats.maxHp,
+    playerStats, playerMoveHistory, enemyMoveHistory, playerExposedTurns: 0,
+  })
 
   return {
     npc,
@@ -1315,6 +1426,8 @@ export function createInitialBattleState(
     feedbackBleedDamage: 0,
     pendingLevelUpNotification: null,
     runItBackMode: options?.runItBack ?? false,
+    playerMoveHistory,
+    enemyMoveHistory,
   }
 }
 
@@ -1357,7 +1470,7 @@ export {
 } from '../data/combatSystems'
 export type { DeathClock, StatusEffectId, MoveCost } from '../data/combatTypes'
 export { applyStatusToCombat, createEmptyCombatStatus } from '../data/combatStatus'
-export { ENEMY_MOVES, getEnemyMoveDef } from '../data/enemyMoves'
+export { MOVES as ENEMY_MOVES } from '../data/moveDefinitions'
 
 export function applyBattleEndHealing(
   result: BattleResult,

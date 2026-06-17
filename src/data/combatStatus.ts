@@ -99,6 +99,7 @@ export function tickCombatStatus(status: CombatStatusState): CombatStatusState {
   if (next.enemyMiss > 0) next.enemyMiss--
   if (next.playerBrace > 0) next.playerBrace--
   if (next.playerDouble > 0) next.playerDouble--
+  if (next.playerWeaken > 0) next.playerWeaken--
   if (next.playerReflect && next.playerReflect.turns > 0) {
     const turns = next.playerReflect.turns - 1
     next.playerReflect = turns > 0 ? { ...next.playerReflect, turns } : null
@@ -150,6 +151,7 @@ export function getPlayerStatusLabels(status: CombatStatusState): string[] {
   if (status.playerBrace > 0) parts.push('braced')
   if (status.playerDouble > 0) parts.push('doubled')
   if (status.playerReflect) parts.push('reflecting')
+  if (status.playerWeaken > 0) parts.push('weakened')
   return parts
 }
 
@@ -168,6 +170,7 @@ export function combatStatusFromLegacy(fields: {
     playerBrace: fields.playerBrace,
     playerDouble: fields.playerDouble ?? 0,
     playerReflect: fields.playerReflect ?? null,
+    playerWeaken: 0,
     enemyBleed: fields.enemyBleed,
     enemyShake: fields.enemyShake,
     enemyStun: fields.enemyStun,
