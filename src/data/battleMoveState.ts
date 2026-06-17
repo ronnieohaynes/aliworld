@@ -14,7 +14,6 @@ export type BattleMoveState = {
   enemyAccuracyTurns: number
   enemyDefShattered: boolean
   forceEnemyMove: PlayerMoveId | null
-  forcePlayerMove: PlayerMoveId | null
   lastEnemyMove: PlayerMoveId | null
   lastEnemyDamage: number
   /** SNAG: stolen enemy move per slot (replaces SNAG in that slot). */
@@ -42,7 +41,6 @@ export function createBattleMoveState(): BattleMoveState {
     enemyAccuracyTurns: 0,
     enemyDefShattered: false,
     forceEnemyMove: null,
-    forcePlayerMove: null,
     lastEnemyMove: null,
     lastEnemyDamage: 0,
     snagStolen: {},

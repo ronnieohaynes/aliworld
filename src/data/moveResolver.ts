@@ -405,7 +405,6 @@ export function applyMoveBehavior(
         out,
         enemyAttacks,
       )
-      if (battle.lastEnemyMove) battle.forceEnemyMove = battle.lastEnemyMove
       break
     }
 

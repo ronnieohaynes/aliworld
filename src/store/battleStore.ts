@@ -383,12 +383,6 @@ function applyEnemyMoveBehavior(
       const loopDmg = Math.max(1, Math.floor(state.npc.stats.atk * LOOP_DAMAGE_MULT))
       out.incoming += loopDmg
       out.enemyAttacks = true
-      const lastPlayer = state.playerMoveHistory.length > 0
-        ? state.playerMoveHistory[state.playerMoveHistory.length - 1]!
-        : null
-      if (lastPlayer) {
-        state.battleMove.forcePlayerMove = lastPlayer
-      }
       break
     }
     case 'damage': {
@@ -965,7 +959,6 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
   }
 
   battleMove.forceEnemyMove = null
-  battleMove.forcePlayerMove = null
 
   let turnFlags = {
     playerExposedTurns: state.playerExposedTurns,
@@ -1083,11 +1076,6 @@ function applySkillXpToState(
 }
 
 function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number): BattleState {
-  const forcedPlayer = state.battleMove.forcePlayerMove
-  if (forcedPlayer) {
-    pMove = forcedPlayer
-    slot = undefined
-  }
   let working = processTurnStart(state)
   const eMove = state.upcomingMove !== 'STUNNED' ? state.upcomingMove as PlayerMoveId : null
   working = {
@@ -1120,6 +1108,18 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
   // Apply run-it-back damage doubling before any phase resolution.
   let r = resolved.out
   if (working.runItBackMode) {
+    r = {
+      ...r,
+      playerDmg: Math.round(r.playerDmg * 2),
+      incoming: Math.round(r.incoming * 2),
+      rawIncoming: Math.round(r.rawIncoming * 2),
+    }
+  }
+
+  // LOOP: both sides attack twice — double both damage outputs.
+  const playerUsedLoop = pMove === 'LOOP'
+  const enemyUsedLoop = eMove === 'LOOP'
+  if (playerUsedLoop || enemyUsedLoop) {
     r = {
       ...r,
       playerDmg: Math.round(r.playerDmg * 2),
