@@ -12,12 +12,13 @@ const NPC_BASE_STATS = {
   atk: 4,
   def: 2,
   spd: 4,
+  lck: 3,
 } as const
 
 /** Extra max HP per NPC level (on top of skill HP bonus). */
 const NPC_HP_PER_LEVEL = 5
 
-function npcSkillsForLevel(level: number, lean: LeanSkill): SkillsState {
+export function npcSkillsForLevel(level: number, lean: LeanSkill): SkillsState {
   const skills = createDefaultSkills()
   const primary: keyof SkillsState =
     lean === 'none' ? 'attack' : lean
@@ -26,6 +27,22 @@ function npcSkillsForLevel(level: number, lean: LeanSkill): SkillsState {
   const secondary = Math.max(1, level - 1)
   for (const id of ['attack', 'speed', 'defense', 'luck'] as const) {
     if (id !== primary) skills[id].level = secondary
+  }
+  return skills
+}
+
+/** NPC effective skill levels for move unlock gating — scaled higher than
+ *  raw combat level since NPCs are experienced fighters. */
+const NPC_MOVE_UNLOCK_SCALE = 5
+
+export function npcMoveUnlockSkills(level: number, lean: LeanSkill): SkillsState {
+  const skills = createDefaultSkills()
+  const primary: keyof SkillsState =
+    lean === 'none' ? 'attack' : lean
+  skills[primary].level = Math.min(65, level * NPC_MOVE_UNLOCK_SCALE)
+  skills.hp.level = Math.min(65, level * NPC_MOVE_UNLOCK_SCALE)
+  for (const id of ['attack', 'speed', 'defense', 'luck'] as const) {
+    if (id !== primary) skills[id].level = Math.max(1, Math.min(65, (level - 1) * NPC_MOVE_UNLOCK_SCALE))
   }
   return skills
 }
@@ -48,5 +65,6 @@ export function computeNpcCombatStats(
     atk: NPC_BASE_STATS.atk + bonus.atk,
     def: NPC_BASE_STATS.def + bonus.def,
     spd: NPC_BASE_STATS.spd + bonus.spd,
+    lck: NPC_BASE_STATS.lck + bonus.lck,
   }
 }

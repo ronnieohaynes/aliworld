@@ -37,8 +37,8 @@ export const MOVE_SKILL_LADDERS: Record<
   'attack' | 'speed' | 'defense' | 'luck',
   readonly PlayerMoveId[]
 > = {
-  attack: ['STRIKE', 'FURY_SWEEP', 'DARK_BREAK', 'CANNON', 'BLACKOUT'],
-  speed: ['SLIP', 'PARRY', 'GRAVITY_SHIFT', 'REFRACT', 'HYPERDRIVE'],
+  attack: ['STRIKE', 'PARRY', 'DARK_BREAK', 'CANNON', 'BLACKOUT'],
+  speed: ['SLIP', 'FURY_SWEEP', 'GRAVITY_SHIFT', 'REFRACT', 'HYPERDRIVE'],
   defense: ['HOLD', 'ANCHOR', 'SECOND_WIND', 'COUNTERWEIGHT', 'BRICK_WALL', 'INVINCIBLE'],
   luck: ['WHISPER', 'LOOP', 'DEVILS_CUT', 'SNAG', 'PHENOMENA', 'SEALED_FATE'],
 }

@@ -79,6 +79,7 @@ import {
 } from '../store/playerStore'
 import { type SkillId, type SkillsState } from '../store/skillStore'
 import { deriveBuildLoopType, deriveBuildName } from '../data/buildName'
+import { recordEncounter } from '../store/enemyMemoryStore'
 import {
   isBattleTutorialSeen,
   setBattleTutorialSeen,
@@ -95,7 +96,8 @@ import {
   leanSkillAccentColor,
 } from '../data/skillCounter'
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
-import { enemyMoveSkillColor, getEnemyMoveDef, type EnemyMoveId } from '../data/enemyMoves'
+import type { PlayerMoveId } from '../data/moveIds'
+import { MOVES } from '../data/moveDefinitions'
 import {
   STATUS_EFFECT_HINTS,
   STATUS_EFFECT_LEGEND,
@@ -108,6 +110,28 @@ import {
 } from './BattleTutorialOverlay'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
+
+const SKILL_TYPE_COLOR: Record<string, string> = {
+  attack: '#cc4444',
+  speed: '#44cc66',
+  defense: '#4488cc',
+  luck: '#c084fc',
+}
+
+function moveSkillColor(moveId: PlayerMoveId): string {
+  const def = MOVES[moveId]
+  if (def) return SKILL_TYPE_COLOR[def.skill] ?? '#e8c878'
+  return '#e8c878'
+}
+
+function isHeavyPlayerMove(moveId: PlayerMoveId): boolean {
+  const def = MOVES[moveId]
+  if (!def) return false
+  const b = def.behavior
+  if (b.kind === 'cannon' || b.kind === 'blackout' || b.kind === 'sealed-fate') return true
+  if ('profile' in b && b.profile && 'damageMult' in b.profile) return b.profile.damageMult >= 1.6
+  return false
+}
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
@@ -145,7 +169,7 @@ function animateHpTicks(
 
 const WALKER_HEAVY_TEACH_STEPS = [
   {
-    text: 'that wind-up means a HAYMAKER is coming. it hits hard.',
+    text: 'that wind-up means a FURY SWEEP is coming. it hits hard.',
     target: 'telegraph' as const,
   },
   {
@@ -648,6 +672,7 @@ export function BattleScreen({
 
   const prevEnemyHpRef = useRef(state.enemyHp)
   const prevPlayerHpRef = useRef(state.playerHp)
+  const lastHpDeltasRef = useRef({ enemyDelta: 0, playerDelta: 0 })
   const prevFeedbackSeqRef = useRef(state.feedbackSeq)
   const winMatchupCalloutRef = useRef(false)
   /** Skill of the last player move, used to pick the attack animation variant. */
@@ -679,6 +704,7 @@ export function BattleScreen({
   /** Null = no animation. Otherwise the skill type that determines animation style. */
   const [playerAtkFx, setPlayerAtkFx] = useState<'attack' | 'speed' | 'defense' | 'luck' | null>(null)
   const [playerDodgeFx, setPlayerDodgeFx] = useState(false)
+  const [enemyDodgeFx, setEnemyDodgeFx] = useState(false)
   const [enemyCritFx, setEnemyCritFx] = useState(false)
   const [floaters, setFloaters] = useState<BattleFloater[]>([])
   const [knockoutPopup, setKnockoutPopup] = useState<'win' | 'lose' | null>(null)
@@ -753,18 +779,36 @@ export function BattleScreen({
     winPayoffCommittedRef.current = true
     onWinPayoff?.(npcId)
   }, [state.phase, state.result, npcId, onWinPayoff])
+
+  const encounterRecordedRef = useRef(false)
+  useEffect(() => {
+    if (state.phase !== 'ended' || !state.result) return
+    if (encounterRecordedRef.current) return
+    if (state.result === 'win' || state.result === 'lose') {
+      encounterRecordedRef.current = true
+      recordEncounter(
+        npcId,
+        state.playerMoveHistory,
+        state.enemyMoveHistory,
+        state.result === 'win',
+      )
+    }
+  }, [state.phase, state.result, npcId, state.playerMoveHistory, state.enemyMoveHistory])
+
+  useEffect(() => {
+    encounterRecordedRef.current = false
+  }, [npcId])
   const logLines = displayedLog.slice(-2)
   const telegraphDisplay = getTelegraphDisplay(state)
   const leanAccent = leanSkillAccentColor(state.npc.leanSkill)
   const telegraphMoveColor =
     state.upcomingMove !== 'STUNNED'
-      ? enemyMoveSkillColor(state.upcomingMove as EnemyMoveId)
+      ? moveSkillColor(state.upcomingMove as PlayerMoveId)
       : leanAccent
   const heavyTelegraph =
     state.upcomingMove !== 'STUNNED' &&
     state.phase !== 'ended' &&
-    (telegraphDisplay?.heavy ??
-      getEnemyMoveDef(state.upcomingMove as EnemyMoveId).damageMult >= 1.6)
+    (telegraphDisplay?.heavy ?? isHeavyPlayerMove(state.upcomingMove as PlayerMoveId))
   const walkerHeavyBlocking =
     walkerHeavyTutorial &&
     (walkerHeavyBeat === 'teach' || walkerHeavyBeat === 'confirm')
@@ -817,7 +861,7 @@ export function BattleScreen({
   useEffect(() => {
     if (!walkerHeavyTutorial || battleTutorialBlocking) return
     if (state.phase === 'ended' || walkerHeavyBeat != null) return
-    if (state.upcomingMove !== 'HAYMAKER' || state.turn < 1) return
+    if (state.upcomingMove !== 'FURY_SWEEP' || state.turn < 1) return
     setWalkerHeavyTeachStep(0)
     setWalkerHeavyBeat('teach')
   }, [
@@ -975,32 +1019,56 @@ export function BattleScreen({
   useEffect(() => {
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp
     const playerDelta = prevPlayerHpRef.current - state.playerHp
-    // Capture pre-update HP now, the refs get overwritten to the new values
-    // before these animations run (they're scheduled via setTimeout).
+    // Capture pre-update HP now; refs get overwritten before scheduled animations run.
     const fromEnemyHp = prevEnemyHpRef.current
     const fromPlayerHp = prevPlayerHpRef.current
-    // When both sides take damage simultaneously (reflect, bleed, etc.),
-    // stagger the second floater by 500ms so they never overlap.
-    const STAGGER_MS = enemyDelta > 0 && playerDelta > 0 ? 500 : 0
 
-    if (enemyDelta > 0) {
-      const skill = lastPlayerMoveSkillRef.current
-      const LUNGE_MS = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
-      const HIT_FLASH_MS = 40
-      const DAMAGE_DELAY_MS = 540
-      const HIT_MS = 840
-      const BLEED_DAMAGE_DELAY_MS = 2000
+    const wasEnemyDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const enemyActedFirst = state.feedbackEnemyActedFirst
+
+    const skill = lastPlayerMoveSkillRef.current
+    const PLAYER_LUNGE_MS = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+    const ENEMY_LUNGE_MS = 760
+    const HIT_FLASH_MS = 40
+    const DAMAGE_DELAY_MS = 540
+    const HIT_MS = 840
+    const BLEED_DAMAGE_DELAY_MS = 2000
+
+    const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
+    const attackDelta = Math.max(0, enemyDelta - bleedDelta)
+    const afterAttackHp = fromEnemyHp - attackDelta
+    const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
+    const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
+
+    // Duration of one side's full attack sequence (lunge → hit → damage settled)
+    const playerPhaseLen = PLAYER_LUNGE_MS + DAMAGE_DELAY_MS
+    const enemyPhaseLen = ENEMY_LUNGE_MS + DAMAGE_DELAY_MS
+
+    // Determine sequencing: first attacker animates, then second attacker starts after
+    let playerPhaseStart = 0
+    let enemyPhaseStart = 0
+    if (playerDealsDirectDamage && enemyDealsDamage) {
+      if (enemyActedFirst) {
+        enemyPhaseStart = 0
+        playerPhaseStart = enemyPhaseLen
+      } else {
+        playerPhaseStart = 0
+        enemyPhaseStart = playerPhaseLen
+      }
+    }
+
+    // --- Player attacks enemy (direct damage, not dodge) ---
+    if (playerDealsDirectDamage) {
+      const t = playerPhaseStart
       const id = Date.now() + Math.random()
-      // Bleed damage has its own feedback floater, only show the direct attack portion here.
-      const bleedDelta = Math.min(state.feedbackBleedDamage, enemyDelta)
-      const attackDelta = Math.max(0, enemyDelta - bleedDelta)
-      const afterAttackHp = fromEnemyHp - attackDelta
-      setPlayerAtkFx(skill)
-      window.setTimeout(() => setPlayerAtkFx(null), LUNGE_MS)
+      window.setTimeout(() => {
+        setPlayerAtkFx(skill)
+        window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
+      }, t)
       window.setTimeout(() => {
         setEnemyHitFx(true)
         window.setTimeout(() => setEnemyHitFx(false), HIT_MS)
-      }, LUNGE_MS + HIT_FLASH_MS)
+      }, t + PLAYER_LUNGE_MS + HIT_FLASH_MS)
       window.setTimeout(() => {
         animateHpTicks(setDisplayedEnemyHp, fromEnemyHp, afterAttackHp)
         if (attackDelta > 0) {
@@ -1010,36 +1078,33 @@ export function BattleScreen({
           ])
           window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
         }
-      }, LUNGE_MS + DAMAGE_DELAY_MS)
-      // Bleed's HP tick lands alongside its floater, after both attacks land
-      // this turn, plus the bleed delay.
-      if (bleedDelta > 0) {
-        const enemyActedFirst = state.feedbackEnemyActedFirst
-        const playerPhaseDelay = enemyActedFirst ? BATTLE_MOVE_GAP_MS : 0
-        const playerImpact = LUNGE_MS + DAMAGE_DELAY_MS + playerPhaseDelay
-        const enemyImpact = LUNGE_MS + DAMAGE_DELAY_MS
-        const bleedHpDelay = Math.max(playerImpact, enemyImpact) + BLEED_DAMAGE_DELAY_MS
-        window.setTimeout(() => {
-          animateHpTicks(setDisplayedEnemyHp, afterAttackHp, state.enemyHp)
-        }, bleedHpDelay)
-      }
+      }, t + PLAYER_LUNGE_MS + DAMAGE_DELAY_MS)
       clampBattleScrollDrift()
     }
-    if (playerDelta > 0) {
-      const LUNGE_MS = 760
-      const HIT_FLASH_MS = 40
-      const DAMAGE_DELAY_MS = 540 + STAGGER_MS
-      const HIT_MS = 840
+
+    // --- Enemy dodged → counter sequence ---
+    if (playerDelta > 0 && wasEnemyDodge) {
+      const DODGE_DURATION = 420
+      const COUNTER_LUNGE_MS = 760
       const id = Date.now() + Math.random()
-      const enemyActedFirst = state.feedbackEnemyActedFirst
-      if (!enemyActedFirst) {
+
+      setPlayerAtkFx(skill)
+      window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
+
+      window.setTimeout(() => {
+        setEnemyDodgeFx(true)
+        window.setTimeout(() => setEnemyDodgeFx(false), DODGE_DURATION)
+      }, PLAYER_LUNGE_MS)
+
+      const counterStart = PLAYER_LUNGE_MS + DODGE_DURATION
+      window.setTimeout(() => {
         setEnemyAtkFx(true)
-        window.setTimeout(() => setEnemyAtkFx(false), LUNGE_MS)
-      }
+        window.setTimeout(() => setEnemyAtkFx(false), COUNTER_LUNGE_MS)
+      }, counterStart)
       window.setTimeout(() => {
         setPlayerHitFx(true)
         window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
-      }, LUNGE_MS + HIT_FLASH_MS + STAGGER_MS)
+      }, counterStart + COUNTER_LUNGE_MS + HIT_FLASH_MS)
       window.setTimeout(() => {
         animateHpTicks(setDisplayedPlayerHp, fromPlayerHp, state.playerHp)
         setFloaters((f) => [
@@ -1047,17 +1112,59 @@ export function BattleScreen({
           { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
         ])
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
-      }, LUNGE_MS + DAMAGE_DELAY_MS)
+      }, counterStart + COUNTER_LUNGE_MS + DAMAGE_DELAY_MS)
       clampBattleScrollDrift()
+    } else if (enemyDealsDamage) {
+      // --- Enemy attacks player (normal) ---
+      const t = enemyPhaseStart
+      const id = Date.now() + Math.random()
+      window.setTimeout(() => {
+        setEnemyAtkFx(true)
+        window.setTimeout(() => setEnemyAtkFx(false), ENEMY_LUNGE_MS)
+      }, t)
+      window.setTimeout(() => {
+        setPlayerHitFx(true)
+        window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
+      }, t + ENEMY_LUNGE_MS + HIT_FLASH_MS)
+      window.setTimeout(() => {
+        animateHpTicks(setDisplayedPlayerHp, fromPlayerHp, state.playerHp)
+        setFloaters((f) => [
+          ...f,
+          { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+        ])
+        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      }, t + ENEMY_LUNGE_MS + DAMAGE_DELAY_MS)
+      clampBattleScrollDrift()
+    }
+
+    // --- Bleed ticks: only the bleeding character animates ---
+    if (bleedDelta > 0) {
+      const bothAttacked = playerDealsDirectDamage && enemyDealsDamage
+      const lastPhaseEnd = bothAttacked
+        ? Math.max(playerPhaseStart + playerPhaseLen, enemyPhaseStart + enemyPhaseLen)
+        : playerDealsDirectDamage
+          ? playerPhaseStart + playerPhaseLen
+          : enemyDealsDamage
+            ? enemyPhaseStart + enemyPhaseLen
+            : 0
+      const bleedDelay = lastPhaseEnd + BLEED_DAMAGE_DELAY_MS
+      window.setTimeout(() => {
+        setEnemyHitFx(true)
+        window.setTimeout(() => setEnemyHitFx(false), HIT_MS)
+      }, bleedDelay)
+      window.setTimeout(() => {
+        animateHpTicks(setDisplayedEnemyHp, afterAttackHp, state.enemyHp)
+      }, bleedDelay + HIT_FLASH_MS)
     }
 
     // Healing or no-damage change: sync displayed HP immediately
     if (enemyDelta <= 0) setDisplayedEnemyHp(state.enemyHp)
-    if (playerDelta <= 0) setDisplayedPlayerHp(state.playerHp)
+    if (playerDelta <= 0 && !wasEnemyDodge) setDisplayedPlayerHp(state.playerHp)
 
+    lastHpDeltasRef.current = { enemyDelta, playerDelta }
     prevEnemyHpRef.current = state.enemyHp
     prevPlayerHpRef.current = state.playerHp
-  }, [state.enemyHp, state.playerHp, state.feedbackBleedDamage, clampBattleScrollDrift])
+  }, [state.enemyHp, state.playerHp, state.feedbackBleedDamage, state.feedbackEvents, clampBattleScrollDrift])
 
   useEffect(() => {
     if (state.feedbackSeq === prevFeedbackSeqRef.current) return
@@ -1067,20 +1174,43 @@ export function BattleScreen({
     if (events.length === 0) return
 
     const skill = lastPlayerMoveSkillRef.current
-    const lunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
-    // When the enemy acts first, the player's attack lands in phase 2 (after BATTLE_MOVE_GAP_MS).
-    // Enemy-targeting floaters must be offset by that gap so they align with the hit.
+    const playerLunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+    const enemyLunge = 760
+    const DAMAGE_DELAY_MS = 540
     const enemyActedFirst = state.feedbackEnemyActedFirst
-    const playerPhaseDelay = enemyActedFirst ? BATTLE_MOVE_GAP_MS : 0
-    const playerImpact = lunge + 540 + playerPhaseDelay  // when player's strike lands
-    const enemyImpact = lunge + 540                       // when enemy's strike lands (phase 1)
 
-    if (events.some((e) => e.kind === 'dodged') && !enemyActedFirst) {
+    const { enemyDelta, playerDelta } = lastHpDeltasRef.current
+    const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
+    const attackDelta = Math.max(0, enemyDelta - bleedDelta)
+    const wasEnemyDodge = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
+    const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
+
+    const playerPhaseLen = playerLunge + DAMAGE_DELAY_MS
+    const enemyPhaseLen = enemyLunge + DAMAGE_DELAY_MS
+
+    let playerPhaseStart = 0
+    let enemyPhaseStart = 0
+    if (playerDealsDirectDamage && enemyDealsDamage) {
+      if (enemyActedFirst) {
+        enemyPhaseStart = 0
+        playerPhaseStart = enemyPhaseLen
+      } else {
+        playerPhaseStart = 0
+        enemyPhaseStart = playerPhaseLen
+      }
+    }
+
+    const playerImpact = playerPhaseStart + playerLunge + DAMAGE_DELAY_MS
+    const enemyImpact = enemyPhaseStart + enemyLunge + DAMAGE_DELAY_MS
+
+    if (events.some((e) => e.kind === 'dodged' && e.target === 'player') && !enemyActedFirst) {
       window.setTimeout(() => {
         setPlayerDodgeFx(true)
         window.setTimeout(() => setPlayerDodgeFx(false), 420)
       }, enemyImpact)
     }
+    // Enemy dodge flash is handled in the HP-change useEffect's dodge sequence
     const CRIT_EXTRA_MS = 500
     // Status effects wait for the hit-flash animation to fully finish before appearing.
     // Hit flash starts at +40ms (HIT_FLASH_MS) and runs for 840ms (HIT_MS), ending at
@@ -1146,11 +1276,29 @@ export function BattleScreen({
     }
 
     const skill = lastPlayerMoveSkillRef.current
-    const lunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+    const pLunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+    const eLunge = 760
+    const DMG_DELAY = 540
     const enemyActedFirst = state.feedbackEnemyActedFirst
-    const playerPhaseDelay = enemyActedFirst ? BATTLE_MOVE_GAP_MS : 0
-    const playerImpact = lunge + 540 + playerPhaseDelay
-    const enemyImpact = lunge + 540
+
+    const { enemyDelta: eDelta, playerDelta: pDelta } = lastHpDeltasRef.current
+    const bDelta = Math.min(state.feedbackBleedDamage, Math.max(0, eDelta))
+    const aDelta = Math.max(0, eDelta - bDelta)
+    const eDodge = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const pDirect = aDelta > 0 && !eDodge
+    const eDirect = pDelta > 0 && !eDodge
+
+    const pPhaseLen = pLunge + DMG_DELAY
+    const ePhaseLen = eLunge + DMG_DELAY
+    let pStart = 0
+    let eStart = 0
+    if (pDirect && eDirect) {
+      if (enemyActedFirst) { eStart = 0; pStart = ePhaseLen }
+      else { pStart = 0; eStart = pPhaseLen }
+    }
+    const playerImpact = pStart + pLunge + DMG_DELAY
+    const enemyImpact = eStart + eLunge + DMG_DELAY
+
     const CRIT_EXTRA_MS = 500
     const STATUS_SETTLE_MS = 380
     const BLEED_DAMAGE_DELAY_MS = 2000
@@ -1189,7 +1337,7 @@ export function BattleScreen({
       const { r, enemyFirst } = state.pendingResolve
       const moveName = enemyFirst
         ? r.eMove !== 'STUNNED'
-          ? getEnemyMoveDef(r.eMove as EnemyMoveId).displayName
+          ? MOVES[r.eMove as PlayerMoveId]?.displayName ?? r.eMove
           : null
         : getMoveDef(r.pMove).displayName
       setTurnAnnounce(moveName)
@@ -1213,6 +1361,7 @@ export function BattleScreen({
     playerHitFx,
     playerAtkFx,
     playerDodgeFx,
+    enemyDodgeFx,
     enemyCritFx,
     clampBattleScrollDrift,
   ])
@@ -1421,7 +1570,7 @@ export function BattleScreen({
 
               {/* Enemy sprite, animates independently */}
               <div
-                className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
+                className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}${enemyDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
                 style={{
                   top: enemyPlacement.drawY + 5,
                   transform: `translateX(${BATTLE_FIGHTER_NUDGE_X}px)`,

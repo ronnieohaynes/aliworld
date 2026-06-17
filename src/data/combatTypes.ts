@@ -57,6 +57,8 @@ export type CombatStatusState = {
   playerStun: number
   playerSlow: number
   playerMiss: number
+  /** Player's outgoing damage reduced while active (enemy WHISPER). */
+  playerWeaken: number
   enemyBrace: number
   enemyDouble: number
   enemyReflect: ReflectBuff | null
@@ -85,6 +87,7 @@ export function createEmptyCombatStatus(): CombatStatusState {
     playerStun: 0,
     playerSlow: 0,
     playerMiss: 0,
+    playerWeaken: 0,
     enemyBrace: 0,
     enemyDouble: 0,
     enemyReflect: null,
