@@ -594,6 +594,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const [knockoutPopup, setKnockoutPopup] = useState<'win' | 'lose' | null>(null)
   const [narrationVisible, setNarrationVisible] = useState(false)
   const [loseNarrationVisible, setLoseNarrationVisible] = useState(false)
+  const enemyDodgedThisTurnRef = useRef(false)
 
   const clampBattleScrollDrift = useCallback(() => {
     for (const el of [
@@ -834,7 +835,10 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     // stagger the second floater by 500ms so they never overlap.
     const STAGGER_MS = enemyDelta > 0 && playerDelta > 0 ? 500 : 0
 
-    if (enemyDelta > 0) {
+    const wasEnemyDodge = enemyDodgedThisTurnRef.current
+    enemyDodgedThisTurnRef.current = false
+
+    if (enemyDelta > 0 && !wasEnemyDodge) {
       const skill = lastPlayerMoveSkillRef.current
       const LUNGE_MS = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
       const HIT_FLASH_MS = 40
@@ -876,7 +880,46 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       }
       clampBattleScrollDrift()
     }
-    if (playerDelta > 0) {
+    if (playerDelta > 0 && wasEnemyDodge) {
+      // Enemy dodged → counter sequence:
+      // 1. Player lunge (attack whiffs)
+      // 2. Enemy dodge flash (at lunge impact)
+      // 3. Enemy counter-lunge → player hit flash + damage
+      const skill = lastPlayerMoveSkillRef.current
+      const PLAYER_LUNGE_MS = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
+      const DODGE_DURATION = 420
+      const COUNTER_LUNGE_MS = 760
+      const HIT_FLASH_MS = 40
+      const DAMAGE_DELAY_MS = 540
+      const HIT_MS = 840
+      const id = Date.now() + Math.random()
+
+      // Phase 1: player attack lunge (whiffs)
+      setPlayerAtkFx(skill)
+      window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
+
+      // Phase 2: enemy dodge flash happens via feedback event useEffect
+
+      // Phase 3: after dodge finishes, enemy counter-lunges
+      const counterStart = PLAYER_LUNGE_MS + DAMAGE_DELAY_MS + DODGE_DURATION
+      window.setTimeout(() => {
+        setEnemyAtkFx(true)
+        window.setTimeout(() => setEnemyAtkFx(false), COUNTER_LUNGE_MS)
+      }, counterStart)
+      window.setTimeout(() => {
+        setPlayerHitFx(true)
+        window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
+      }, counterStart + COUNTER_LUNGE_MS + HIT_FLASH_MS)
+      window.setTimeout(() => {
+        animateHpTicks(setDisplayedPlayerHp, fromPlayerHp, state.playerHp)
+        setFloaters((f) => [
+          ...f,
+          { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+        ])
+        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+      }, counterStart + COUNTER_LUNGE_MS + DAMAGE_DELAY_MS)
+      clampBattleScrollDrift()
+    } else if (playerDelta > 0 && !wasEnemyDodge) {
       const LUNGE_MS = 760
       const HIT_FLASH_MS = 40
       const DAMAGE_DELAY_MS = 540 + STAGGER_MS
@@ -929,7 +972,9 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
         window.setTimeout(() => setPlayerDodgeFx(false), 420)
       }, enemyImpact)
     }
-    if (events.some((e) => e.kind === 'dodged' && e.target === 'enemy')) {
+    const enemyDodgedEvent = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    enemyDodgedThisTurnRef.current = enemyDodgedEvent
+    if (enemyDodgedEvent) {
       window.setTimeout(() => {
         setEnemyDodgeFx(true)
         window.setTimeout(() => setEnemyDodgeFx(false), 420)
