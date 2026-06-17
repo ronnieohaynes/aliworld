@@ -45,7 +45,6 @@ import {
 } from '../data/npcRegistry'
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
 import { buildDevSpar, isDevSparNpcId } from '../data/devSpar'
-import { recordEncounter } from './enemyMemoryStore'
 import { deriveBuildLoopType } from '../data/buildName'
 import {
   appendBattleFeedback,
