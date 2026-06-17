@@ -15,6 +15,8 @@ import {
   fiveGym1RoundIndexForWins,
   FIVE_GYM1_ROUNDS,
 } from './fiveGym1Gauntlet'
+import { chooseMoveAI, type BattleContext } from './enemyAI'
+import { getNpcMemory } from '../store/enemyMemoryStore'
 
 export type EnemyMove = EnemyMoveId
 export type { UpcomingMove }
@@ -225,12 +227,27 @@ export function walkerTutorialForcedMove(
   return null
 }
 
-/** Picks from the NPC move pool (enemy move ids are data-driven in enemyMoves.ts). */
+export type ChooseMoveOptions = {
+  walkerHeavyTutorial?: boolean
+  npcLevel?: number
+  npcMoves?: EnemyMoveId[]
+  playerHpPct?: number
+  enemyHpPct?: number
+  playerIsExposed?: boolean
+  playerIsBracing?: boolean
+  enemyIsSlowed?: boolean
+  enemyIsShaken?: boolean
+  enemyIsBleeding?: boolean
+  lastPlayerMove?: string | null
+  lastEnemyMove?: EnemyMoveId | null
+}
+
+/** Picks from the NPC move pool — level-scaled AI with cross-fight pattern learning. */
 export function chooseMove(
   npcId: string,
   turn: number,
   forced?: EnemyMoveId | null,
-  options?: { walkerHeavyTutorial?: boolean },
+  options?: ChooseMoveOptions,
 ): EnemyMove {
   const tutorialForced = walkerTutorialForcedMove(
     npcId,
@@ -241,8 +258,22 @@ export function chooseMove(
   if (forced) return forced
   const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
   if (!npc || npc.moves.length === 0) return 'STRIKE'
-  const idx = Math.floor(Math.random() * npc.moves.length)
-  return npc.moves[idx]!
+
+  const ctx: BattleContext = {
+    turn,
+    playerHpPct: options?.playerHpPct ?? 1,
+    enemyHpPct: options?.enemyHpPct ?? 1,
+    playerIsExposed: options?.playerIsExposed ?? false,
+    playerIsBracing: options?.playerIsBracing ?? false,
+    enemyIsSlowed: options?.enemyIsSlowed ?? false,
+    enemyIsShaken: options?.enemyIsShaken ?? false,
+    enemyIsBleeding: options?.enemyIsBleeding ?? false,
+    lastPlayerMove: options?.lastPlayerMove ?? null,
+    lastEnemyMove: options?.lastEnemyMove ?? null,
+  }
+
+  const memory = getNpcMemory(npcId)
+  return chooseMoveAI(npcId, npc.level, npc.moves as EnemyMoveId[], ctx, memory)
 }
 
 export function telegraphFor(npcId: string, move: EnemyMove): string {

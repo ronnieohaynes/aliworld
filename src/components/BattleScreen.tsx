@@ -72,6 +72,7 @@ import {
   getPlayerSkills,
 } from '../store/playerStore'
 import { deriveBuildLoopType, deriveBuildName } from '../data/buildName'
+import { recordEncounter } from '../store/enemyMemoryStore'
 import {
   isBattleTutorialSeen,
   setBattleTutorialSeen,
@@ -640,6 +641,25 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
     winPayoffCommittedRef.current = true
     onWinPayoff?.(npcId)
   }, [state.phase, state.result, npcId, onWinPayoff])
+
+  const encounterRecordedRef = useRef(false)
+  useEffect(() => {
+    if (state.phase !== 'ended' || !state.result) return
+    if (encounterRecordedRef.current) return
+    if (state.result === 'win' || state.result === 'lose') {
+      encounterRecordedRef.current = true
+      recordEncounter(
+        npcId,
+        state.playerMoveHistory,
+        state.enemyMoveHistory,
+        state.result === 'win',
+      )
+    }
+  }, [state.phase, state.result, npcId, state.playerMoveHistory, state.enemyMoveHistory])
+
+  useEffect(() => {
+    encounterRecordedRef.current = false
+  }, [npcId])
   const logLines = displayedLog.slice(-2)
   const telegraphDisplay = getTelegraphDisplay(state)
   const leanAccent = leanSkillAccentColor(state.npc.leanSkill)

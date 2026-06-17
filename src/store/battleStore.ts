@@ -45,6 +45,7 @@ import {
 } from '../data/npcRegistry'
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
 import { buildDevSpar, isDevSparNpcId } from '../data/devSpar'
+import { recordEncounter } from './enemyMemoryStore'
 import { deriveBuildLoopType } from '../data/buildName'
 import {
   appendBattleFeedback,
@@ -161,6 +162,9 @@ export type BattleState = {
   pendingLevelUpNotification: LevelUpNotification | null
   /** True when this battle is a "Run it back!" rematch — doubled damage, dramatic pauses. */
   runItBackMode: boolean
+  /** Move history for this fight — used by enemy AI pattern learning. */
+  playerMoveHistory: PlayerMoveId[]
+  enemyMoveHistory: EnemyMoveId[]
 }
 
 export type BattleAction =
@@ -608,11 +612,22 @@ function appendLog(log: string[], line: string): string[] {
   return next
 }
 
-function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove'>): UpcomingMove {
+function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove' | 'playerHp' | 'enemyHp' | 'enemyMaxHp' | 'playerStats' | 'playerMoveHistory' | 'enemyMoveHistory' | 'playerExposedTurns'>): UpcomingMove {
   if (enemyLosesTurn(state.combatStatus)) return 'STUNNED'
   const forced = state.battleMove.forceEnemyMove
   const pick = chooseMove(state.npc.id, state.turn, forced, {
     walkerHeavyTutorial: isWalkerHeavyTutorialActive(state.npc.id),
+    npcLevel: state.npc.level,
+    npcMoves: state.npc.moves as EnemyMoveId[],
+    playerHpPct: state.playerHp / state.playerStats.maxHp,
+    enemyHpPct: state.enemyHp / (state.npc.stats.maxHp || 1),
+    playerIsExposed: state.playerExposedTurns > 0,
+    playerIsBracing: state.combatStatus.playerBrace > 0,
+    enemyIsSlowed: state.combatStatus.enemySlow > 0,
+    enemyIsShaken: state.combatStatus.enemyShake > 0,
+    enemyIsBleeding: state.combatStatus.enemyBleed > 0,
+    lastPlayerMove: state.playerMoveHistory.length > 0 ? state.playerMoveHistory[state.playerMoveHistory.length - 1]! : null,
+    lastEnemyMove: state.enemyMoveHistory.length > 0 ? state.enemyMoveHistory[state.enemyMoveHistory.length - 1]! : null,
   })
   return pick
 }
@@ -920,6 +935,13 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     turn,
     combatStatus,
     battleMove,
+    playerHp: state.playerHp,
+    enemyHp: state.enemyHp,
+    enemyMaxHp: state.enemyMaxHp,
+    playerStats: state.playerStats,
+    playerMoveHistory: state.playerMoveHistory,
+    enemyMoveHistory: state.enemyMoveHistory,
+    playerExposedTurns: turnFlags.playerExposedTurns,
   })
 
   return {
@@ -992,6 +1014,14 @@ function applySkillXpToState(
 
 function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number): BattleState {
   let working = processTurnStart(state)
+  const eMove = state.upcomingMove !== 'STUNNED' ? state.upcomingMove as EnemyMoveId : null
+  working = {
+    ...working,
+    playerMoveHistory: [...working.playerMoveHistory, pMove as PlayerMoveId],
+    enemyMoveHistory: eMove
+      ? [...working.enemyMoveHistory, eMove]
+      : [...working.enemyMoveHistory],
+  }
 
   const consumed = consumeTurnFlag({
     playerExposedTurns: working.playerExposedTurns,
@@ -1286,7 +1316,13 @@ export function createInitialBattleState(
   const playerHp = playerStats.maxHp
   const combatStatus = createEmptyCombatStatus()
   const battleMove = createBattleMoveState()
-  const upcomingMove = showTelegraph({ npc, turn: 0, combatStatus, battleMove })
+  const playerMoveHistory: PlayerMoveId[] = []
+  const enemyMoveHistory: EnemyMoveId[] = []
+  const upcomingMove = showTelegraph({
+    npc, turn: 0, combatStatus, battleMove,
+    playerHp, enemyHp: npc.stats.hp, enemyMaxHp: npc.stats.maxHp,
+    playerStats, playerMoveHistory, enemyMoveHistory, playerExposedTurns: 0,
+  })
 
   return {
     npc,
@@ -1315,6 +1351,8 @@ export function createInitialBattleState(
     feedbackBleedDamage: 0,
     pendingLevelUpNotification: null,
     runItBackMode: options?.runItBack ?? false,
+    playerMoveHistory,
+    enemyMoveHistory,
   }
 }
 

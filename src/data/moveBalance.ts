@@ -87,6 +87,11 @@ export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
 /** Shared enemy LOOP / HAYMAKER strike multiplier — telegraphed heavies. */
 export const ENEMY_LOOP_STRIKE_MULT = 2
 
+/** Enemy AI tier thresholds — level at which enemies gain smarter move selection. */
+export const ENEMY_AI_TIER1_LEVEL = 3
+export const ENEMY_AI_TIER2_LEVEL = 5
+export const ENEMY_AI_TIER3_LEVEL = 8
+
 /** Combat XP scales with enemy level vs player level (clamp). */
 export const XP_LEVEL_GAP_PER_LEVEL = 0.15
 export const XP_LEVEL_MULT_MIN = 0.6
