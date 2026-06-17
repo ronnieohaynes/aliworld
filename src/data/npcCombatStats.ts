@@ -12,6 +12,7 @@ const NPC_BASE_STATS = {
   atk: 4,
   def: 2,
   spd: 4,
+  lck: 3,
 } as const
 
 /** Extra max HP per NPC level (on top of skill HP bonus). */
@@ -48,5 +49,6 @@ export function computeNpcCombatStats(
     atk: NPC_BASE_STATS.atk + bonus.atk,
     def: NPC_BASE_STATS.def + bonus.def,
     spd: NPC_BASE_STATS.spd + bonus.spd,
+    lck: NPC_BASE_STATS.lck + bonus.lck,
   }
 }

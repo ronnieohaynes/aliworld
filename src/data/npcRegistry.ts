@@ -3,13 +3,9 @@ import { buildDevSpar, isDevSparNpcId } from './devSpar'
 import type { BattleLocationId } from './battleBackgrounds'
 import { computeNpcCombatStats } from './npcCombatStats'
 import type { LeanSkill } from './skillCounter'
-import {
-  type EnemyMoveId,
-  getEnemyMoveDef,
-  isAttackingEnemyMove,
-  telegraphLineForEnemyMove,
-  type UpcomingMove,
-} from './enemyMoves'
+import type { UpcomingMove } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
+import { MOVES } from './moveDefinitions'
 import { FIVE_GYM1_ID, getGymHeadWins } from '../store/gymStore'
 import {
   fiveGym1RoundIndexForWins,
@@ -18,7 +14,7 @@ import {
 import { chooseMoveAI, type BattleContext } from './enemyAI'
 import { getNpcMemory } from '../store/enemyMemoryStore'
 
-export type EnemyMove = EnemyMoveId
+export type EnemyMove = PlayerMoveId
 export type { UpcomingMove }
 
 export type CombatStats = {
@@ -27,10 +23,11 @@ export type CombatStats = {
   atk: number
   def: number
   spd: number
+  lck: number
 }
 
 /** Per-NPC flavor fragment before the move name in telegraph (commit 2). */
-export type NpcTelegraphFlavor = Partial<Record<EnemyMoveId, string>>
+export type NpcTelegraphFlavor = Partial<Record<PlayerMoveId, string>>
 
 export type NpcGuardCounter = {
   /** Chance to riposte when player attacks into HOLD (0–1). */
@@ -43,7 +40,7 @@ export type NpcCombatEntry = {
   displayName: string
   level: number
   stats: CombatStats
-  moves: EnemyMove[]
+  moves: PlayerMoveId[]
   leanSkill: LeanSkill
   losingLine: string
   /** Line shown when the NPC wins (player loses). Empty = no narration. */
@@ -85,11 +82,11 @@ const WALKER: NpcCombatEntry = entry({
   id: 'walker',
   displayName: 'walker',
   level: 2,
-  moves: ['STRIKE', 'HAYMAKER', 'HOLD'],
+  moves: ['STRIKE', 'CANNON', 'HOLD'],
   leanSkill: 'none',
   telegraphFlavor: {
     STRIKE: 'lines up',
-    HAYMAKER: 'winds up —',
+    CANNON: 'winds up —',
     HOLD: 'plants his feet —',
   },
   losingLine: 'i get it now. tell me where to go.',
@@ -104,12 +101,12 @@ const JACLYN: NpcCombatEntry = entry({
   id: 'jaclyn',
   displayName: 'jaclyn',
   level: 3,
-  moves: ['SLIP', 'STRIKE', 'HAYMAKER', 'WHISPER'],
+  moves: ['SLIP', 'STRIKE', 'CANNON', 'WHISPER'],
   leanSkill: 'speed',
   telegraphFlavor: {
     SLIP: 'feints —',
     STRIKE: 'cuts in —',
-    HAYMAKER: 'commits —',
+    CANNON: 'commits —',
     WHISPER: 'murmurs —',
   },
   losingLine: "...oh. you're right. of course you're right.",
@@ -124,11 +121,11 @@ const MARK: NpcCombatEntry = entry({
   id: 'mark',
   displayName: 'mark',
   level: 5,
-  moves: ['HOLD', 'HOLD', 'HAYMAKER', 'STRIKE', 'SLIP', 'WHISPER'],
+  moves: ['HOLD', 'HOLD', 'CANNON', 'STRIKE', 'SLIP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
     HOLD: 'roots in —',
-    HAYMAKER: 'draws back —',
+    CANNON: 'draws back —',
     STRIKE: 'swings —',
     SLIP: 'feints —',
     WHISPER: 'murmurs —',
@@ -145,7 +142,7 @@ const CLERK: NpcCombatEntry = entry({
   id: 'clerk',
   displayName: 'clerk',
   level: 4,
-  moves: ['STRIKE', 'STRIKE', 'WHISPER', 'HAYMAKER'],
+  moves: ['STRIKE', 'STRIKE', 'WHISPER', 'CANNON'],
   leanSkill: 'attack',
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
@@ -159,7 +156,7 @@ const RESTOCKER: NpcCombatEntry = entry({
   id: 'restocker',
   displayName: 'restocker',
   level: 6,
-  moves: ['HOLD', 'HOLD', 'HAYMAKER', 'STRIKE'],
+  moves: ['HOLD', 'HOLD', 'CANNON', 'STRIKE'],
   leanSkill: 'defense',
   losingLine: "it CAN stop...",
   winningLine: "this floor belongs to me.",
@@ -198,8 +195,16 @@ const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   restocker: RESTOCKER,
 }
 
+const ATTACKING_BEHAVIOR_KINDS = new Set([
+  'damage', 'fury-sweep', 'dark-break', 'cannon', 'blackout', 'loop',
+  'gravity-shift', 'refract', 'hyperdrive', 'devils-cut', 'phenomena',
+  'sealed-fate', 'snag',
+])
+
 export function isAttackingMove(move: EnemyMove): boolean {
-  return isAttackingEnemyMove(move)
+  const def = MOVES[move]
+  if (!def) return false
+  return ATTACKING_BEHAVIOR_KINDS.has(def.behavior.kind)
 }
 
 export function getNpcCombatEntry(npcId: string): NpcCombatEntry | undefined {
@@ -216,21 +221,21 @@ export function getAllNpcCombatIds(): string[] {
   return Object.keys(NPC_REGISTRY)
 }
 
-/** Scripted HAYMAKER on turn 2 for the walker tutorial fight. */
+/** Scripted CANNON on turn 2 for the walker tutorial fight. */
 export function walkerTutorialForcedMove(
   npcId: string,
   turn: number,
   walkerHeavyTutorialActive: boolean,
-): EnemyMoveId | null {
+): PlayerMoveId | null {
   if (!walkerHeavyTutorialActive || npcId !== 'walker') return null
-  if (turn === 2) return 'HAYMAKER'
+  if (turn === 2) return 'CANNON'
   return null
 }
 
 export type ChooseMoveOptions = {
   walkerHeavyTutorial?: boolean
   npcLevel?: number
-  npcMoves?: EnemyMoveId[]
+  npcMoves?: PlayerMoveId[]
   playerHpPct?: number
   enemyHpPct?: number
   playerIsExposed?: boolean
@@ -239,14 +244,14 @@ export type ChooseMoveOptions = {
   enemyIsShaken?: boolean
   enemyIsBleeding?: boolean
   lastPlayerMove?: string | null
-  lastEnemyMove?: EnemyMoveId | null
+  lastEnemyMove?: PlayerMoveId | null
 }
 
 /** Picks from the NPC move pool — level-scaled AI with cross-fight pattern learning. */
 export function chooseMove(
   npcId: string,
   turn: number,
-  forced?: EnemyMoveId | null,
+  forced?: PlayerMoveId | null,
   options?: ChooseMoveOptions,
 ): EnemyMove {
   const tutorialForced = walkerTutorialForcedMove(
@@ -273,14 +278,25 @@ export function chooseMove(
   }
 
   const memory = getNpcMemory(npcId)
-  return chooseMoveAI(npcId, npc.level, npc.moves as EnemyMoveId[], ctx, memory)
+  return chooseMoveAI(npcId, npc.level, npc.moves, ctx, memory)
+}
+
+const HEAVY_BEHAVIOR_KINDS = new Set(['cannon', 'blackout', 'sealed-fate'])
+
+function isHeavyMove(moveId: PlayerMoveId): boolean {
+  const def = MOVES[moveId]
+  if (!def) return false
+  if (HEAVY_BEHAVIOR_KINDS.has(def.behavior.kind)) return true
+  if (def.behavior.kind === 'damage' && def.behavior.profile.damageMult >= 1.6) return true
+  return false
 }
 
 export function telegraphFor(npcId: string, move: EnemyMove): string {
   const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
   const flavor = npc?.telegraphFlavor?.[move]
   if (flavor) return flavor
-  return telegraphLineForEnemyMove(move)
+  const def = MOVES[move]
+  return def ? `prepares ${def.displayName}.` : 'readies.'
 }
 
 export type TelegraphDisplay = {
@@ -299,10 +315,11 @@ export function formatTelegraphDisplay(
   if (enemyStunned || upcomingMove === 'STUNNED') {
     return { prefix: `${lower} is reeling.`, moveName: '', suffix: '', heavy: false }
   }
-  const moveId = upcomingMove as EnemyMoveId
-  const moveDef = getEnemyMoveDef(moveId)
+  const moveId = upcomingMove as PlayerMoveId
+  const moveDef = MOVES[moveId]
+  if (!moveDef) return null
   const moveName = moveDef.displayName
-  const heavy = moveDef.damageMult >= 1.6
+  const heavy = isHeavyMove(moveId)
   const flavor = npc.telegraphFlavor?.[moveId]
   if (flavor) {
     const trimmed = flavor.trim()
@@ -321,11 +338,10 @@ export function formatTelegraphDisplay(
       heavy,
     }
   }
-  const generic = telegraphLineForEnemyMove(moveId)
   return {
-    prefix: `${lower} ${generic.replace(/\.$/, '')} — `,
+    prefix: `${lower} prepares — `,
     moveName,
-    suffix: '.',
+    suffix: heavy ? ' incoming.' : '.',
     heavy,
   }
 }
@@ -339,9 +355,6 @@ export function formatTelegraph(
   if (enemyStunned || upcomingMove === 'STUNNED') {
     return `${lower} is reeling.`
   }
-  const line = telegraphFor('', upcomingMove)
+  const line = telegraphFor('', upcomingMove as PlayerMoveId)
   return line ? `${lower}: ${line}` : ''
 }
-
-/** Re-export for snag / steal mechanics — full enemy move vocabulary. */
-export { ENEMY_MOVE_IDS, ENEMY_MOVES, getEnemyMoveDef } from './enemyMoves'

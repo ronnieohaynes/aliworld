@@ -87,7 +87,8 @@ import {
   leanSkillAccentColor,
 } from '../data/skillCounter'
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
-import { enemyMoveSkillColor, getEnemyMoveDef, type EnemyMoveId } from '../data/enemyMoves'
+import type { PlayerMoveId } from '../data/moveIds'
+import { MOVES } from '../data/moveDefinitions'
 import {
   STATUS_EFFECT_HINTS,
   STATUS_EFFECT_LEGEND,
@@ -100,6 +101,28 @@ import {
 } from './BattleTutorialOverlay'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
+
+const SKILL_TYPE_COLOR: Record<string, string> = {
+  attack: '#cc4444',
+  speed: '#44cc66',
+  defense: '#4488cc',
+  luck: '#c084fc',
+}
+
+function moveSkillColor(moveId: PlayerMoveId): string {
+  const def = MOVES[moveId]
+  if (def) return SKILL_TYPE_COLOR[def.skill] ?? '#e8c878'
+  return '#e8c878'
+}
+
+function isHeavyPlayerMove(moveId: PlayerMoveId): boolean {
+  const def = MOVES[moveId]
+  if (!def) return false
+  const b = def.behavior
+  if (b.kind === 'cannon' || b.kind === 'blackout' || b.kind === 'sealed-fate') return true
+  if ('profile' in b && b.profile && 'damageMult' in b.profile) return b.profile.damageMult >= 1.6
+  return false
+}
 
 const MARK_SPRITE_SRC = publicAsset('Assets/Characters/npcs/mark-idle.png')
 
@@ -137,7 +160,7 @@ function animateHpTicks(
 
 const WALKER_HEAVY_TEACH_STEPS = [
   {
-    text: 'that wind-up means a HAYMAKER is coming. it hits hard.',
+    text: 'that wind-up means a CANNON is coming. it hits hard.',
     target: 'telegraph' as const,
   },
   {
@@ -665,13 +688,12 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   const leanAccent = leanSkillAccentColor(state.npc.leanSkill)
   const telegraphMoveColor =
     state.upcomingMove !== 'STUNNED'
-      ? enemyMoveSkillColor(state.upcomingMove as EnemyMoveId)
+      ? moveSkillColor(state.upcomingMove as PlayerMoveId)
       : leanAccent
   const heavyTelegraph =
     state.upcomingMove !== 'STUNNED' &&
     state.phase !== 'ended' &&
-    (telegraphDisplay?.heavy ??
-      getEnemyMoveDef(state.upcomingMove as EnemyMoveId).damageMult >= 1.6)
+    (telegraphDisplay?.heavy ?? isHeavyPlayerMove(state.upcomingMove as PlayerMoveId))
   const walkerHeavyBlocking =
     walkerHeavyTutorial &&
     (walkerHeavyBeat === 'teach' || walkerHeavyBeat === 'confirm')
@@ -703,7 +725,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
   useEffect(() => {
     if (!walkerHeavyTutorial || battleTutorialBlocking) return
     if (state.phase === 'ended' || walkerHeavyBeat != null) return
-    if (state.upcomingMove !== 'HAYMAKER' || state.turn < 1) return
+    if (state.upcomingMove !== 'CANNON' || state.turn < 1) return
     setWalkerHeavyTeachStep(0)
     setWalkerHeavyBeat('teach')
   }, [
@@ -1014,7 +1036,7 @@ export function BattleScreen({ npcId, onBattleEnd, onWinPayoff, battleRevealed =
       const { r, enemyFirst } = state.pendingResolve
       const moveName = enemyFirst
         ? r.eMove !== 'STUNNED'
-          ? getEnemyMoveDef(r.eMove as EnemyMoveId).displayName
+          ? MOVES[r.eMove as PlayerMoveId]?.displayName ?? r.eMove
           : null
         : getMoveDef(r.pMove).displayName
       setTurnAnnounce(moveName)

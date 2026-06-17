@@ -41,8 +41,8 @@ import {
   speedDodgeSuccessChance,
 } from './moveBalance'
 import { scheduleDeathClock } from './combatSystems'
-import type { EnemyMoveId } from './enemyMoves'
-import { getEnemyMoveDef } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
+import { MOVES } from './moveDefinitions'
 import type {
   MoveDefinition,
   MoveDamageProfile,
@@ -66,7 +66,7 @@ export type ResolveMoveContext = {
   playerMaxHp: number
   enemyDef: number
   battle: BattleMoveState
-  npcMovePool: EnemyMoveId[]
+  npcMovePool: PlayerMoveId[]
   moveSlot?: number
 }
 
@@ -174,17 +174,22 @@ function incomingEnemyHit(ctx: ResolveMoveContext): boolean {
 }
 
 export function applyStolenEnemyMove(
-  enemyMoveId: EnemyMoveId,
+  enemyMoveId: PlayerMoveId,
   ctx: ResolveMoveContext,
   out: PlayerMoveResolveOut,
 ): void {
-  const def = getEnemyMoveDef(enemyMoveId)
-  if (!def.isAttacking) {
+  const moveDef = MOVES[enemyMoveId]
+  if (!moveDef) {
     out.playerDmg = jitter(Math.floor(ctx.atk * 0.4))
     out.incoming = 0
     return
   }
-  let dmg = Math.floor(ctx.atk * def.damageMult)
+  const behavior = moveDef.behavior
+  let damageMult = 1
+  if ('profile' in behavior && behavior.profile && 'damageMult' in behavior.profile) {
+    damageMult = behavior.profile.damageMult
+  }
+  let dmg = Math.floor(ctx.atk * damageMult)
   dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
   out.incoming = incomingEnemyHit(ctx) ? ctx.eDmg : 0

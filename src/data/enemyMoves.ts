@@ -13,7 +13,9 @@ export const ENEMY_MOVE_IDS = [
 ] as const
 export type EnemyMoveId = (typeof ENEMY_MOVE_IDS)[number]
 
-export type UpcomingMove = EnemyMoveId | 'STUNNED'
+import type { PlayerMoveId } from './moveIds'
+
+export type UpcomingMove = PlayerMoveId | 'STUNNED'
 
 export type EnemyMoveSkillType = 'attack' | 'speed' | 'defense' | 'luck' | 'neutral'
 

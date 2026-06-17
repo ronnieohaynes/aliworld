@@ -1,4 +1,4 @@
-import type { EnemyMoveId } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
 import type { NpcMemory } from '../store/enemyMemoryStore'
 import { getPlayerMoveFrequencies } from '../store/enemyMemoryStore'
 import { ENEMY_AI_TIER1_LEVEL, ENEMY_AI_TIER2_LEVEL, ENEMY_AI_TIER3_LEVEL } from './moveBalance'
@@ -22,10 +22,10 @@ export type BattleContext = {
   enemyIsShaken: boolean
   enemyIsBleeding: boolean
   lastPlayerMove: string | null
-  lastEnemyMove: EnemyMoveId | null
+  lastEnemyMove: PlayerMoveId | null
 }
 
-type MoveWeight = { move: EnemyMoveId; weight: number }
+type MoveWeight = { move: PlayerMoveId; weight: number }
 
 function aiTierForLevel(level: number): number {
   if (level < ENEMY_AI_TIER1_LEVEL) return 0
@@ -34,44 +34,44 @@ function aiTierForLevel(level: number): number {
   return 3
 }
 
-const COUNTER_MAP: Record<string, EnemyMoveId[]> = {
+const COUNTER_MAP: Record<string, PlayerMoveId[]> = {
   STRIKE: ['SLIP', 'HOLD'],
   FURY_SWEEP: ['HOLD', 'SLIP'],
-  DARK_BREAK: ['STRIKE', 'HAYMAKER'],
+  DARK_BREAK: ['STRIKE', 'CANNON'],
   CANNON: ['HOLD', 'SLIP'],
-  BLACKOUT: ['STRIKE', 'HAYMAKER'],
-  SLIP: ['BAIT', 'WHISPER'],
-  PARRY: ['BAIT', 'WHISPER'],
-  HOLD: ['WHISPER', 'BAIT'],
-  ANCHOR: ['WHISPER', 'BAIT'],
-  SECOND_WIND: ['HAYMAKER', 'LOOP'],
-  COUNTERWEIGHT: ['BAIT', 'WHISPER'],
-  BRICK_WALL: ['BAIT', 'WHISPER'],
-  INVINCIBLE: ['BAIT', 'WHISPER'],
-  WHISPER: ['STRIKE', 'HAYMAKER'],
+  BLACKOUT: ['STRIKE', 'CANNON'],
+  SLIP: ['PARRY', 'WHISPER'],
+  PARRY: ['PARRY', 'WHISPER'],
+  HOLD: ['WHISPER', 'PARRY'],
+  ANCHOR: ['WHISPER', 'PARRY'],
+  SECOND_WIND: ['CANNON', 'LOOP'],
+  COUNTERWEIGHT: ['PARRY', 'WHISPER'],
+  BRICK_WALL: ['PARRY', 'WHISPER'],
+  INVINCIBLE: ['PARRY', 'WHISPER'],
+  WHISPER: ['STRIKE', 'CANNON'],
   LOOP: ['HOLD', 'SLIP'],
-  DEVILS_CUT: ['HAYMAKER', 'LOOP'],
-  SNAG: ['STRIKE', 'HAYMAKER'],
+  DEVILS_CUT: ['CANNON', 'LOOP'],
+  SNAG: ['STRIKE', 'CANNON'],
   PHENOMENA: ['HOLD', 'STRIKE'],
-  SEALED_FATE: ['HAYMAKER', 'LOOP'],
-  GRAVITY_SHIFT: ['STRIKE', 'HAYMAKER'],
-  REFRACT: ['HOLD', 'BAIT'],
-  HYPERDRIVE: ['STRIKE', 'HAYMAKER'],
+  SEALED_FATE: ['CANNON', 'LOOP'],
+  GRAVITY_SHIFT: ['STRIKE', 'CANNON'],
+  REFRACT: ['HOLD', 'PARRY'],
+  HYPERDRIVE: ['STRIKE', 'CANNON'],
 }
 
-function buildBaseWeights(moves: EnemyMoveId[]): MoveWeight[] {
+function buildBaseWeights(moves: PlayerMoveId[]): MoveWeight[] {
   return moves.map((move) => ({ move, weight: 1 }))
 }
 
 function applyTier1Weights(weights: MoveWeight[], ctx: BattleContext): void {
   for (const w of weights) {
-    if (ctx.playerIsExposed && (w.move === 'HAYMAKER' || w.move === 'LOOP')) {
+    if (ctx.playerIsExposed && (w.move === 'CANNON' || w.move === 'LOOP')) {
       w.weight *= 2.5
     }
     if (ctx.enemyHpPct < 0.3 && w.move === 'HOLD') {
       w.weight *= 2
     }
-    if (ctx.turn === 1 && (w.move === 'STRIKE' || w.move === 'HAYMAKER')) {
+    if (ctx.turn === 1 && (w.move === 'STRIKE' || w.move === 'CANNON')) {
       w.weight *= 1.5
     }
   }
@@ -81,16 +81,16 @@ function applyTier2Weights(weights: MoveWeight[], ctx: BattleContext): void {
   applyTier1Weights(weights, ctx)
 
   for (const w of weights) {
-    if (ctx.playerHpPct < 0.25 && (w.move === 'HAYMAKER' || w.move === 'LOOP')) {
+    if (ctx.playerHpPct < 0.25 && (w.move === 'CANNON' || w.move === 'LOOP')) {
       w.weight *= 2
     }
-    if (ctx.playerIsBracing && w.move === 'BAIT') {
+    if (ctx.playerIsBracing && w.move === 'PARRY') {
       w.weight *= 3
     }
     if (ctx.playerIsBracing && (w.move === 'WHISPER')) {
       w.weight *= 2
     }
-    if (ctx.playerIsBracing && (w.move === 'STRIKE' || w.move === 'HAYMAKER')) {
+    if (ctx.playerIsBracing && (w.move === 'STRIKE' || w.move === 'CANNON')) {
       w.weight *= 0.3
     }
     if (ctx.enemyIsSlowed && w.move === 'HOLD') {
@@ -108,7 +108,7 @@ function applyTier2Weights(weights: MoveWeight[], ctx: BattleContext): void {
 function applyPatternLearning(
   weights: MoveWeight[],
   npcId: string,
-  availableMoves: EnemyMoveId[],
+  availableMoves: PlayerMoveId[],
   learnStrength: number,
 ): void {
   const freqs = getPlayerMoveFrequencies(npcId)
@@ -133,7 +133,7 @@ function applyPatternLearning(
 function applyLastMoveCounter(
   weights: MoveWeight[],
   ctx: BattleContext,
-  availableMoves: EnemyMoveId[],
+  availableMoves: PlayerMoveId[],
   strength: number,
 ): void {
   if (!ctx.lastPlayerMove) return
@@ -147,7 +147,7 @@ function applyLastMoveCounter(
   }
 }
 
-function selectWeighted(weights: MoveWeight[]): EnemyMoveId {
+function selectWeighted(weights: MoveWeight[]): PlayerMoveId {
   const total = weights.reduce((s, w) => s + w.weight, 0)
   let roll = Math.random() * total
   for (const w of weights) {
@@ -160,10 +160,10 @@ function selectWeighted(weights: MoveWeight[]): EnemyMoveId {
 export function chooseMoveAI(
   npcId: string,
   level: number,
-  moves: EnemyMoveId[],
+  moves: PlayerMoveId[],
   ctx: BattleContext,
   memory: NpcMemory,
-): EnemyMoveId {
+): PlayerMoveId {
   if (moves.length === 0) return 'STRIKE'
   if (moves.length === 1) return moves[0]!
 

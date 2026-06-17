@@ -1,12 +1,11 @@
 import type { PlayerMoveId } from '../data/moveIds'
-import type { EnemyMoveId } from '../data/enemyMoves'
 
 const STORAGE_KEY = 'aliworld:enemy-memory:v1'
 const MAX_HISTORY = 40
 
 export type EncounterRecord = {
   playerMoves: PlayerMoveId[]
-  enemyMoves: EnemyMoveId[]
+  enemyMoves: PlayerMoveId[]
   playerWon: boolean
 }
 
@@ -40,7 +39,7 @@ export function getNpcMemory(npcId: string): NpcMemory {
 export function recordEncounter(
   npcId: string,
   playerMoves: PlayerMoveId[],
-  enemyMoves: EnemyMoveId[],
+  enemyMoves: PlayerMoveId[],
   playerWon: boolean,
 ): void {
   const state = load()

@@ -18,7 +18,7 @@ export const DEV_SPAR_NPC_ID = 'dev-spar'
 const DEV_SPAR_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 
 /** HARD sparring moveset — strike, brace, feint, telegraphed heavy. */
-const DEV_SPAR_MOVES = ['STRIKE', 'HOLD', 'SLIP', 'HAYMAKER'] as const
+const DEV_SPAR_MOVES = ['STRIKE', 'HOLD', 'SLIP', 'CANNON'] as const
 
 const HP_MULT = 1.2
 const ATK_MULT = 1.2
@@ -74,7 +74,7 @@ export function buildDevSpar(): NpcCombatEntry {
     id: DEV_SPAR_NPC_ID,
     displayName: 'sparring partner',
     level: computePlayerLevel(skills),
-    stats: { hp: maxHp, maxHp, atk, def, spd },
+    stats: { hp: maxHp, maxHp, atk, def, spd, lck: Math.max(1, Math.round(playerStats.lck * 1.1)) },
     moves: [...DEV_SPAR_MOVES],
     leanSkill: sparLeanSkill(skills),
     losingLine: 'good. again?',
