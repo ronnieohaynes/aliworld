@@ -357,7 +357,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     cost: { kind: 'none' },
     behavior: {
       kind: 'brace',
-      profile: { incomingMult: 0.3, blockStatus: true },
+      profile: { incomingMult: 0.22, blockStatus: true },
     },
     onResolve: ['brace'],
     xpGrants: [

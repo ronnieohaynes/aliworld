@@ -16,16 +16,16 @@ export const FURY_SWEEP_DAMAGE_FLOOR = 6
 export const FURY_SWEEP_CRIT_MULT = 1.2
 export const FURY_SWEEP_CRIT_BASE = 8
 export const FURY_SWEEP_CRIT_LCK_MULT = 2
-export const FURY_SWEEP_DAMAGE_MULT = 1.15
+export const FURY_SWEEP_DAMAGE_MULT = 1.35
 export const FURY_SWEEP_BLEED_TURNS_MIN = 2
 export const FURY_SWEEP_BLEED_TURNS_MAX = 5
 
-export const DARK_BREAK_DAMAGE_MULT = 0.45
+export const DARK_BREAK_DAMAGE_MULT = 1.4
 export const DARK_BREAK_ACCURACY_MULT = 0.5
 export const DARK_BREAK_ACCURACY_TURNS_MIN = 2
 export const DARK_BREAK_ACCURACY_TURNS_MAX = 3
 
-export const CANNON_DAMAGE_MULT = 1.1
+export const CANNON_DAMAGE_MULT = 1.5
 export const CANNON_CRIT_BASE = 28
 export const CANNON_CRIT_LCK_MULT = 2.5
 export const CANNON_CRIT_MULT = 1.5
@@ -41,12 +41,12 @@ export const SECOND_WIND_HEAL_CAP_PCT = 0.4
 
 export const DEVILS_CUT_TURNS_MIN = 2
 export const DEVILS_CUT_TURNS_MAX = 3
-export const DEVILS_CUT_DAMAGE_MULT = 0.42
+export const DEVILS_CUT_DAMAGE_MULT = 0.6
 export const DEVILS_CUT_LIFESTEAL_BASE = 0.1
 export const DEVILS_CUT_LIFESTEAL_PER_LCK = 0.0035
 export const DEVILS_CUT_LIFESTEAL_CAP = 0.2
 
-export const PARRY_DODGE_COUNTER_MULT = 0.72
+export const PARRY_DODGE_COUNTER_MULT = 0.8
 export const PARRY_DODGE_WEAK_MULT = 0.35
 export const PARRY_ON_DODGE_REFLECT_PCT = 0.02
 
@@ -69,7 +69,7 @@ export const SEALED_FATE_DAMAGE_MULT = 3
 export const SEALED_FATE_HIT_CHANCE = 0.99
 export const SEALED_FATE_MISS_SELF_DAMAGE_PCT = 0.8
 
-export const PHENOMENA_DAMAGE_MULT_MIN = 0.35
+export const PHENOMENA_DAMAGE_MULT_MIN = 0.65
 export const PHENOMENA_DAMAGE_MULT_MAX = 1.25
 export const PHENOMENA_HEAL_PCT_MIN = 0.08
 export const PHENOMENA_HEAL_PCT_MAX = 0.22
