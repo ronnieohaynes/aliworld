@@ -91,7 +91,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
         damageMult: 1.3,
         openingBonusMult: 1.5,
         takeEnemyHit: true,
-        crit: { base: 6, lckMult: 2, damageMult: 1.6, onCrit: ['bleed'] },
+        crit: { base: 6, lckMult: 2, damageMult: 1.6, onCrit: [] },
       },
     },
     onResolve: [],
