@@ -46,13 +46,15 @@ export function IdentityCardPreview({ previewUrl, blob, onClose }: Props) {
             close
           </button>
         </header>
-        <div className="identity-card-preview__frame">
-          <img
-            className="identity-card-preview__img"
-            src={previewUrl}
-            alt="ALIWORLD identity card preview"
-            draggable={false}
-          />
+        <div className="identity-card-preview__body">
+          <div className="identity-card-preview__frame">
+            <img
+              className="identity-card-preview__img"
+              src={previewUrl}
+              alt="ALIWORLD identity card preview"
+              draggable={false}
+            />
+          </div>
         </div>
         <div className="identity-card-preview__actions">
           <button type="button" className="identity-card-preview__share" onClick={handleShare}>

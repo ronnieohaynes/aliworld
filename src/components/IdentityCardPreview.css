@@ -5,7 +5,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
   box-sizing: border-box;
 }
 
@@ -23,19 +27,23 @@
   position: relative;
   z-index: 1;
   width: min(100%, 360px);
-  max-height: 92vh;
+  max-height: calc(
+    100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px 12px 16px;
+  gap: 10px;
+  padding: 12px 12px max(14px, env(safe-area-inset-bottom));
   border: 1px solid #2a2a3e;
   border-radius: 8px;
   background: #0a0a12;
   box-shadow: 0 0 40px rgba(127, 119, 221, 0.15);
   pointer-events: auto;
+  overflow: hidden;
 }
 
 .identity-card-preview__header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -63,28 +71,35 @@
   font-size: 11px;
   text-transform: lowercase;
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.identity-card-preview__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .identity-card-preview__frame {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
   border-radius: 6px;
   border: 1px solid #2a2a3e;
   background: #06060c;
+  overflow: hidden;
 }
 
 .identity-card-preview__img {
   display: block;
   width: 100%;
   height: auto;
-  max-height: min(68vh, 640px);
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
 .identity-card-preview__actions {
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -102,6 +117,7 @@
   letter-spacing: 0.06em;
   text-transform: lowercase;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .identity-card-preview__share {
@@ -117,4 +133,18 @@
 .identity-card-preview__share:active,
 .identity-card-preview__save:active {
   transform: scale(0.98);
+}
+
+@media (max-width: 720px) {
+  .identity-card-preview {
+    align-items: flex-end;
+  }
+
+  .identity-card-preview__panel {
+    width: 100%;
+    max-height: calc(
+      100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
+    border-radius: 12px 12px 0 0;
+  }
 }

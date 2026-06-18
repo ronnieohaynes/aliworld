@@ -46,7 +46,11 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 6px 6px 8px;
+  padding:
+    max(6px, env(safe-area-inset-top))
+    max(6px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(6px, env(safe-area-inset-left));
   background: #0a0a12;
   pointer-events: none;
 }
@@ -92,7 +96,8 @@
   overflow-y: auto;
   pointer-events: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 16px;
+  overscroll-behavior: contain;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 .loadout-screen__hero {
@@ -165,6 +170,7 @@
   letter-spacing: 0.08em;
   text-transform: lowercase;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .loadout-screen__share-card:disabled {
