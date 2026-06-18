@@ -66,6 +66,8 @@ export type NpcCombatEntry = {
   battleBg?: string
   /** Scales enemy visible body height in battle (default 1). */
   battleSizeMult?: number
+  /** Midnight variant sheet — battle draws down-facing frame (ghost / player-style sheets). */
+  midnightVariantId?: string
 }
 
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')

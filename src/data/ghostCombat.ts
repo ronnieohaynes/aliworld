@@ -2,7 +2,6 @@ import { deriveBuildName, deriveBuildLoopType, type BuildLoopSkill } from './bui
 import { enemyMovesForBuild } from './ghostArchetypeMoves'
 import { leanSkillFromSnapshot } from './ghostMoveAi'
 import type { MidnightVariantId } from './midnightVariants'
-import { getMidnightWalkSrc } from './midnightVariants'
 import type { NpcCombatEntry } from './npcRegistry'
 import {
   AUTHORED_CHAMPION,
@@ -154,7 +153,7 @@ export function buildGhostCombatEntry(snapshot: GhostSnapshot): NpcCombatEntry {
     leanSkill: snapshot.leanSkill,
     losingLine: snapshot.champion ? '...impossible.' : 'good run.',
     winningLine: snapshot.champion ? 'the ceiling holds.' : 'ghost wins.',
-    spriteSrc: getMidnightWalkSrc(snapshot.variantId),
+    midnightVariantId: snapshot.variantId,
     battleLocation: 'five_gym',
     battleSizeMult: snapshot.champion ? 1.08 : 1,
     ...(snapshot.champion

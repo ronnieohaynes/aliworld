@@ -391,6 +391,23 @@ function drawPlayerBattleSprite(
   drawSheetFrame(ctx, sheet, 'up', getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
 }
 
+function drawMidnightVariantEnemyBattleSprite(
+  canvas: HTMLCanvasElement,
+  sheet: SpriteSheet,
+  tuning: ReturnType<typeof getMidnightVariantRenderTuning>,
+): void {
+  const ctx = canvas.getContext('2d', { alpha: true })
+  if (!ctx) return
+
+  const dw = BATTLE_ENEMY_SOURCE_W
+  const dh = BATTLE_ENEMY_SOURCE_H
+  canvas.width = dw
+  canvas.height = dh
+  ctx.clearRect(0, 0, dw, dh)
+  // Ghost / variant enemies at top face down toward the player (same sheet rules as player battle).
+  drawSheetFrame(ctx, sheet, 'down', getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
+}
+
 function drawEnemyBattleSprite(
   canvas: HTMLCanvasElement,
   spriteImg: HTMLImageElement,
@@ -1113,10 +1130,45 @@ export function BattleScreen({
     const canvas = enemyWrapRef.current?.querySelector('canvas')
     if (!canvas) return
 
+    const variantId = state.npc.midnightVariantId
+    const label = state.npc.displayName.toLowerCase()
+
+    if (variantId) {
+      const walkSrc = getMidnightWalkSrc(variantId)
+      const tuning = getMidnightVariantRenderTuning(variantId)
+
+      void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
+        if (cancelled || !sheet?.loaded) return
+
+        drawMidnightVariantEnemyBattleSprite(canvas, sheet, tuning)
+        const bounds = measureCanvasVisibleBounds(
+          canvas,
+          `enemy:${walkSrc}`,
+          label,
+        )
+        const scaledEnemyH = stageHeight > 0 ? Math.floor(stageHeight * 0.33) : BATTLE_TARGET_VISIBLE_H
+        const enemyTarget = Math.floor(scaledEnemyH * (state.npc.battleSizeMult ?? 1))
+        const enemyFeetY = stageHeight > 0 ? Math.floor(stageHeight * 0.37) : BATTLE_ENEMY_FEET.y
+        const placement = layoutSpriteAtFeet(
+          bounds,
+          BATTLE_ENEMY_SOURCE_W,
+          BATTLE_ENEMY_SOURCE_H,
+          BATTLE_ENEMY_FEET.x,
+          enemyFeetY,
+          enemyTarget,
+        )
+        setEnemyPlacement(placement)
+        setEnemyLayoutReady(true)
+      })
+
+      return () => {
+        cancelled = true
+      }
+    }
+
     const spriteSrc = state.npc.spriteSrc ?? MARK_SPRITE_SRC
     const spriteColumns = 4
     const frameCol = 2
-    const label = state.npc.displayName.toLowerCase()
 
     void (async () => {
       const img = new Image()
@@ -1158,7 +1210,7 @@ export function BattleScreen({
     return () => {
       cancelled = true
     }
-  }, [state.npc.spriteSrc, state.npc.displayName, state.npc.battleSizeMult, stageHeight])
+  }, [state.npc.midnightVariantId, state.npc.spriteSrc, state.npc.displayName, state.npc.battleSizeMult, stageHeight])
 
   return (
     <div
