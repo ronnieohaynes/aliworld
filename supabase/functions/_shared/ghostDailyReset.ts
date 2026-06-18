@@ -25,3 +25,4 @@ export function levelInGhostBand(level: number, band: { min: number; max: number
 export const PASSIVE_XP_DAILY_CAP = 120
 export const PASSIVE_XP_PER_GHOST_WIN = 8
 export const DAILY_SET_SIZE = 3
+export const GHOST_DAILY_XP_BATTLE_CAP = 3

@@ -829,6 +829,11 @@ function applyPlayerResolutionPhase(
 
   working = { ...working, combatStatus }
 
+  const winLocked = nextEnemyHp <= 0
+  if (winLocked) {
+    nextLog = appendLog(nextLog, `${lower} is finished.`)
+  }
+
   let xpBonusEvents: BattleFeedbackEvent[] = []
   if (r.playerActed) {
     const afterXp = applySkillXpToState(
@@ -840,6 +845,20 @@ function applyPlayerResolutionPhase(
     nextLog = afterXp.log
     nextPlayerHp = working.playerHp
     xpBonusEvents = afterXp.xpBonusEvents
+  }
+
+  if (winLocked) {
+    return {
+      enemyHp: nextEnemyHp,
+      playerHp: nextPlayerHp,
+      log: nextLog,
+      working,
+      ended: true,
+      result: 'win',
+      bleedDamage: 0,
+      bleedActualHpChange: 0,
+      xpBonusEvents,
+    }
   }
 
   let bleedDamage = 0
@@ -862,21 +881,6 @@ function applyPlayerResolutionPhase(
   if (r.playerActed && braceChip > 0 && nextEnemyHp > 0) {
     nextEnemyHp = Math.max(0, nextEnemyHp - braceChip)
     nextLog = appendLog(nextLog, `brace chip. ${braceChip}.`)
-  }
-
-  if (nextEnemyHp <= 0) {
-    nextLog = appendLog(nextLog, `${lower} is finished.`)
-    return {
-      enemyHp: nextEnemyHp,
-      playerHp: nextPlayerHp,
-      log: nextLog,
-      working,
-      ended: true,
-      result: 'win',
-      bleedDamage,
-      bleedActualHpChange,
-      xpBonusEvents,
-    }
   }
 
   return {

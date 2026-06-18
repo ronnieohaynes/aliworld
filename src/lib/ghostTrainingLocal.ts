@@ -3,7 +3,12 @@
  * Uses seeded ghosts only; no async cross-player loop until server sync works.
  */
 
-import { currentGhostDayKey, ghostLevelBand } from '../data/ghostDailyReset'
+import {
+  currentGhostDayKey,
+  ghostLevelBand,
+  DAILY_GHOST_SET_SIZE,
+  GHOST_DAILY_XP_BATTLE_CAP,
+} from '../data/ghostDailyReset'
 import { ghostCombatId, snapshotFromSeeded, type GhostSnapshot } from '../data/ghostCombat'
 import { AUTHORED_CHAMPION, getSeededGhost, seededGhostsInBand, type SeededGhostDef } from '../data/seededGhosts'
 import { computePlayerLevel } from '../store/skillStore'
@@ -16,6 +21,7 @@ type OfflineState = {
   dayKey: string
   opponentIds: string[]
   dailyCompleted: number[]
+  dailyGhostAttempts: Record<string, number>
   dailyStreak: number
   bestDailyStreak: number
   explainerSeen: boolean
@@ -47,6 +53,7 @@ function loadOfflineState(dayKey: string): OfflineState {
         dayKey,
         opponentIds: [],
         dailyCompleted: [],
+        dailyGhostAttempts: {},
         dailyStreak: 0,
         bestDailyStreak: 0,
         explainerSeen: false,
@@ -61,6 +68,7 @@ function loadOfflineState(dayKey: string): OfflineState {
         dayKey,
         opponentIds: [],
         dailyCompleted: [],
+        dailyGhostAttempts: {},
         dailyStreak: 0,
         bestDailyStreak: parsed.bestDailyStreak ?? 0,
         explainerSeen: parsed.explainerSeen ?? false,
@@ -73,6 +81,10 @@ function loadOfflineState(dayKey: string): OfflineState {
       dayKey,
       opponentIds: Array.isArray(parsed.opponentIds) ? parsed.opponentIds : [],
       dailyCompleted: Array.isArray(parsed.dailyCompleted) ? parsed.dailyCompleted : [],
+      dailyGhostAttempts:
+        parsed.dailyGhostAttempts && typeof parsed.dailyGhostAttempts === 'object'
+          ? (parsed.dailyGhostAttempts as Record<string, number>)
+          : {},
       dailyStreak: parsed.dailyStreak ?? 0,
       bestDailyStreak: parsed.bestDailyStreak ?? 0,
       explainerSeen: parsed.explainerSeen ?? false,
@@ -85,6 +97,7 @@ function loadOfflineState(dayKey: string): OfflineState {
       dayKey,
       opponentIds: [],
       dailyCompleted: [],
+      dailyGhostAttempts: {},
       dailyStreak: 0,
       bestDailyStreak: 0,
       explainerSeen: false,
@@ -173,6 +186,8 @@ export function buildLocalGhostTrainingSync(): GhostTrainingSyncResponse {
     snapshots,
     champion: snapshotToPayload(championSnap),
     dailyCompleted: state.dailyCompleted,
+    dailyGhostAttempts: state.dailyGhostAttempts,
+    perGhostDailyCap: GHOST_DAILY_XP_BATTLE_CAP,
     dailyStreak: state.dailyStreak,
     bestDailyStreak: state.bestDailyStreak,
     championAttemptedToday: state.championAttemptedDayKey === dayKey,
@@ -188,22 +203,23 @@ export function buildLocalGhostTrainingSync(): GhostTrainingSyncResponse {
 }
 
 export function recordLocalGhostMatch(payload: {
+  combatId: string
   won: boolean
   flawless: boolean
   isChampion: boolean
   dailySlot?: number
-}): { dailyCompleted: number[] } {
+}): { dailyCompleted: number[]; dailyGhostAttempts: Record<string, number>; xpEligible: boolean } {
   const dayKey = currentGhostDayKey()
   const state = loadOfflineState(dayKey)
   const stats = { ...state.stats }
 
-  stats.ghostsFoughtTotal += 1
-  if (payload.won) stats.ghostWins += 1
-  else stats.ghostLosses += 1
-  if (payload.won && payload.flawless) stats.flawlessWins += 1
-
   let dailyCompleted = [...state.dailyCompleted]
+  const dailyGhostAttempts = { ...state.dailyGhostAttempts }
   if (payload.isChampion) {
+    stats.ghostsFoughtTotal += 1
+    if (payload.won) stats.ghostWins += 1
+    else stats.ghostLosses += 1
+    if (payload.won && payload.flawless) stats.flawlessWins += 1
     stats.championAttempts += 1
     if (payload.won) stats.championWins += 1
     saveOfflineState({
@@ -212,10 +228,25 @@ export function recordLocalGhostMatch(payload: {
       championAttemptedDayKey: dayKey,
       championClearedDayKey: payload.won ? dayKey : state.championClearedDayKey,
     })
-    return { dailyCompleted }
+    return { dailyCompleted, dailyGhostAttempts, xpEligible: true }
   }
 
-  if (payload.won && payload.dailySlot != null && !dailyCompleted.includes(payload.dailySlot)) {
+  const priorAttempts = Math.max(0, Number(dailyGhostAttempts[payload.combatId] ?? 0))
+  const xpEligible = priorAttempts < GHOST_DAILY_XP_BATTLE_CAP
+  if (xpEligible) {
+    dailyGhostAttempts[payload.combatId] = priorAttempts + 1
+    stats.ghostsFoughtTotal += 1
+    if (payload.won) stats.ghostWins += 1
+    else stats.ghostLosses += 1
+    if (payload.won && payload.flawless) stats.flawlessWins += 1
+  }
+
+  if (
+    xpEligible &&
+    payload.won &&
+    payload.dailySlot != null &&
+    !dailyCompleted.includes(payload.dailySlot)
+  ) {
     dailyCompleted.push(payload.dailySlot)
   }
 
@@ -223,7 +254,7 @@ export function recordLocalGhostMatch(payload: {
   let bestDailyStreak = state.bestDailyStreak
   let dailySetsCompleted = stats.dailySetsCompleted
 
-  if (dailyCompleted.length >= 3 && state.dailyCompleted.length < 3) {
+  if (dailyCompleted.length >= DAILY_GHOST_SET_SIZE && state.dailyCompleted.length < DAILY_GHOST_SET_SIZE) {
     dailySetsCompleted += 1
     dailyStreak += 1
     bestDailyStreak = Math.max(bestDailyStreak, dailyStreak)
@@ -232,12 +263,13 @@ export function recordLocalGhostMatch(payload: {
   saveOfflineState({
     ...state,
     dailyCompleted,
+    dailyGhostAttempts,
     dailyStreak,
     bestDailyStreak,
     stats: { ...stats, dailySetsCompleted },
   })
 
-  return { dailyCompleted }
+  return { dailyCompleted, dailyGhostAttempts, xpEligible }
 }
 
 export function markLocalExplainerSeen(): void {

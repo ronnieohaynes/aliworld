@@ -23,3 +23,9 @@ export function ghostLevelBand(level: number): { min: number; max: number } {
 export function levelInGhostBand(level: number, band: { min: number; max: number }): boolean {
   return level >= band.min && level <= band.max
 }
+
+/** Daily ghost set count presented to players. */
+export const DAILY_GHOST_SET_SIZE = 3
+
+/** Per-ghost daily cap for XP-paying battles. */
+export const GHOST_DAILY_XP_BATTLE_CAP = 3

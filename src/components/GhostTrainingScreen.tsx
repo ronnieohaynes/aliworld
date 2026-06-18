@@ -101,7 +101,8 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
 
             {!ready.explainerSeen && (
               <div className="ghost-training__explainer">
-                three build-flavored ghosts each day, band-matched to your level. your snapshot
+                three build-flavored ghosts each day, band-matched to your level. each ghost has up to
+                three xp-paying battles per day. your snapshot
                 fights in other players&apos; sets. phase B (equipped-move piloting) ships later.
                 <button
                   type="button"
@@ -128,43 +129,50 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
               </p>
             )}
 
-            {dailyDone ? (
-              <p className="ghost-training__notice">daily set complete. resets at shared reset time.</p>
-            ) : (
-              <ul className="ghost-training__list">
-                {ready.opponents.map((ref) => {
-                  const snap = snapshotForOpponent(ready.snapshots, ref)
-                  const done = ready.dailyCompleted.includes(ref.slot)
-                  return (
-                    <li
-                      key={ref.combatId}
-                      className={`ghost-training__opponent${done ? ' ghost-training__opponent--done' : ''}`}
-                    >
-                      <div className="ghost-training__opponent-info">
-                        {snap && (
-                          <LeaderboardVariantSprite variantId={snap.variantId} width={40} height={48} />
-                        )}
-                        <span className="ghost-training__opponent-name">
-                          {snap?.displayName ?? ref.id}
-                        </span>
-                        <span className="ghost-training__opponent-meta">
-                          lv {snap?.level ?? '?'} · {snap?.buildName ?? 'unknown build'}
-                          {snap?.source === 'seed' ? ' · seed' : ''}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="ghost-training__fight-btn"
-                        disabled={done}
-                        onClick={() => handleFight(ref)}
-                      >
-                        {done ? 'done' : 'fight'}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+            {dailyDone && (
+              <p className="ghost-training__notice">daily clears complete. you can still rematch until each cap is used.</p>
             )}
+            <ul className="ghost-training__list">
+              {ready.opponents.map((ref) => {
+                const snap = snapshotForOpponent(ready.snapshots, ref)
+                const done = ready.dailyCompleted.includes(ref.slot)
+                const attempts = Math.max(0, Number(ready.dailyGhostAttempts[ref.combatId] ?? 0))
+                const capped = attempts >= ready.perGhostDailyCap
+                const attemptsLeft = Math.max(0, ready.perGhostDailyCap - attempts)
+                return (
+                  <li
+                    key={ref.combatId}
+                    className={`ghost-training__opponent${done ? ' ghost-training__opponent--done' : ''}`}
+                  >
+                    <div className="ghost-training__opponent-info">
+                      {snap && (
+                        <LeaderboardVariantSprite variantId={snap.variantId} width={40} height={48} />
+                      )}
+                      <span className="ghost-training__opponent-name">
+                        {snap?.displayName ?? ref.id}
+                      </span>
+                      <span className="ghost-training__opponent-meta">
+                        lv {snap?.level ?? '?'} · {snap?.buildName ?? 'unknown build'}
+                        {snap?.source === 'seed' ? ' · seed' : ''}
+                        {done ? ' · cleared' : ''}
+                      </span>
+                      <span className="ghost-training__opponent-meta">
+                        xp fights: {attempts}/{ready.perGhostDailyCap}
+                        {!capped ? ` · ${attemptsLeft} left` : ' · cap reached'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="ghost-training__fight-btn"
+                      disabled={capped}
+                      onClick={() => handleFight(ref)}
+                    >
+                      {capped ? 'capped' : done ? 'rematch' : 'fight'}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
 
             <div className="ghost-training__champion">
               <p className="ghost-training__champion-label">challenge the champion (opt-in)</p>

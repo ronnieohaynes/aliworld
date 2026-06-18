@@ -31,6 +31,8 @@ export type GhostTrainingSyncResponse = {
   snapshots: GhostSnapshotPayload[]
   champion: GhostSnapshotPayload
   dailyCompleted: number[]
+  dailyGhostAttempts: Record<string, number>
+  perGhostDailyCap: number
   dailyStreak: number
   bestDailyStreak: number
   championAttemptedToday: boolean
@@ -67,6 +69,8 @@ export type GhostRecordMatchRequest = {
 export type GhostRecordMatchResponse = {
   ok: boolean
   dailyCompleted: number[]
+  dailyGhostAttempts?: Record<string, number>
+  xpEligible?: boolean
   championBadgeGranted?: boolean
   fighterPassiveXp?: number
 }

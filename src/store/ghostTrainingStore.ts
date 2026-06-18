@@ -171,6 +171,7 @@ export async function completeGhostBattle(
 
   if (offline) {
     const res = recordLocalGhostMatch({
+      combatId: pending.combatId,
       won: result === 'win',
       flawless,
       isChampion: pending.isChampion,
@@ -182,6 +183,7 @@ export async function completeGhostBattle(
         data: {
           ...uiState.data,
           dailyCompleted: res.dailyCompleted,
+          dailyGhostAttempts: res.dailyGhostAttempts,
           championClearedToday: pending.isChampion && result === 'win'
             ? true
             : uiState.data.championClearedToday,
@@ -204,7 +206,7 @@ export async function completeGhostBattle(
       dailySlot: pending.dailySlot,
     })
 
-    if (res.fighterPassiveXp && res.fighterPassiveXp > 0) {
+    if (res.xpEligible && res.fighterPassiveXp && res.fighterPassiveXp > 0) {
       applyPassiveGhostXp(res.fighterPassiveXp)
     }
 
@@ -215,6 +217,7 @@ export async function completeGhostBattle(
         data: {
           ...uiState.data,
           dailyCompleted: completed,
+          dailyGhostAttempts: res.dailyGhostAttempts ?? uiState.data.dailyGhostAttempts,
           championClearedToday: pending.isChampion && result === 'win'
             ? true
             : uiState.data.championClearedToday,

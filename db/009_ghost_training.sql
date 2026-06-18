@@ -26,6 +26,7 @@ create table if not exists public.aw_ghost_training_state (
   day_key text not null default '',
   daily_opponents jsonb not null default '[]'::jsonb,
   daily_completed jsonb not null default '[]'::jsonb,
+  daily_ghost_attempts jsonb not null default '{}'::jsonb,
   daily_streak integer not null default 0,
   best_daily_streak integer not null default 0,
   champion_attempted_day_key text,

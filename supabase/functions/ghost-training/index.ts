@@ -7,6 +7,7 @@ import {
   PASSIVE_XP_DAILY_CAP,
   PASSIVE_XP_PER_GHOST_WIN,
   DAILY_SET_SIZE,
+  GHOST_DAILY_XP_BATTLE_CAP,
 } from '../_shared/ghostDailyReset.ts'
 import {
   buildNameFromSkills,
@@ -343,6 +344,7 @@ async function handleSync(supabase: SupabaseClient, userId: string): Promise<Res
         day_key: dayKey,
         daily_opponents: opponents,
         daily_completed: state.day_key === dayKey ? state.daily_completed : [],
+        daily_ghost_attempts: state.day_key === dayKey ? state.daily_ghost_attempts : {},
         daily_streak: state.day_key === dayKey ? state.daily_streak : resetStreak,
         used_seed_fallback: usedSeedFallback,
         champion_attempted_day_key: state.day_key === dayKey ? state.champion_attempted_day_key : null,
@@ -374,6 +376,11 @@ async function handleSync(supabase: SupabaseClient, userId: string): Promise<Res
     snapshots,
     champion,
     dailyCompleted: state.daily_completed ?? [],
+    dailyGhostAttempts:
+      state.daily_ghost_attempts && typeof state.daily_ghost_attempts === 'object'
+        ? state.daily_ghost_attempts
+        : {},
+    perGhostDailyCap: GHOST_DAILY_XP_BATTLE_CAP,
     dailyStreak: Number(state.daily_streak ?? 0),
     bestDailyStreak: Number(state.best_daily_streak ?? 0),
     championAttemptedToday: state.champion_attempted_day_key === dayKey,
@@ -514,29 +521,52 @@ async function handleRecordMatch(
 
   const state = await ensureTrainingState(supabase, userId)
   const completed = Array.isArray(state.daily_completed) ? [...(state.daily_completed as number[])] : []
+  const dailyGhostAttempts =
+    state.daily_ghost_attempts && typeof state.daily_ghost_attempts === 'object'
+      ? { ...(state.daily_ghost_attempts as Record<string, number>) }
+      : {}
 
   const updates: Record<string, unknown> = {
     user_id: userId,
-    ghosts_fought_total: Number(state.ghosts_fought_total ?? 0) + 1,
-    ghost_wins: Number(state.ghost_wins ?? 0) + (won ? 1 : 0),
-    ghost_losses: Number(state.ghost_losses ?? 0) + (won ? 0 : 1),
-    flawless_wins: Number(state.flawless_wins ?? 0) + (won && flawless ? 1 : 0),
     updated_at: new Date().toISOString(),
   }
+  let xpEligible = true
 
   if (isChampion) {
+    updates.ghosts_fought_total = Number(state.ghosts_fought_total ?? 0) + 1
+    updates.ghost_wins = Number(state.ghost_wins ?? 0) + (won ? 1 : 0)
+    updates.ghost_losses = Number(state.ghost_losses ?? 0) + (won ? 0 : 1)
+    updates.flawless_wins = Number(state.flawless_wins ?? 0) + (won && flawless ? 1 : 0)
     updates.champion_attempts = Number(state.champion_attempts ?? 0) + 1
     updates.champion_attempted_day_key = dayKey
     if (won) {
       updates.champion_wins = Number(state.champion_wins ?? 0) + 1
       updates.champion_cleared_day_key = dayKey
     }
-  } else if (dailySlot != null && won && !completed.includes(dailySlot)) {
-    completed.push(dailySlot)
-    updates.daily_completed = completed
+  } else {
+    const priorAttempts = Math.max(0, Number(dailyGhostAttempts[combatId] ?? 0))
+    xpEligible = priorAttempts < GHOST_DAILY_XP_BATTLE_CAP
+    if (xpEligible) {
+      dailyGhostAttempts[combatId] = priorAttempts + 1
+      updates.daily_ghost_attempts = dailyGhostAttempts
+      updates.ghosts_fought_total = Number(state.ghosts_fought_total ?? 0) + 1
+      updates.ghost_wins = Number(state.ghost_wins ?? 0) + (won ? 1 : 0)
+      updates.ghost_losses = Number(state.ghost_losses ?? 0) + (won ? 0 : 1)
+      updates.flawless_wins = Number(state.flawless_wins ?? 0) + (won && flawless ? 1 : 0)
+
+      if (dailySlot != null && won && !completed.includes(dailySlot)) {
+        completed.push(dailySlot)
+        updates.daily_completed = completed
+      }
+    }
   }
 
-  if (!isChampion && completed.length >= DAILY_SET_SIZE && (state.daily_completed as unknown[] | undefined)?.length !== DAILY_SET_SIZE) {
+  if (
+    !isChampion &&
+    xpEligible &&
+    completed.length >= DAILY_SET_SIZE &&
+    (state.daily_completed as unknown[] | undefined)?.length !== DAILY_SET_SIZE
+  ) {
     updates.daily_sets_completed = Number(state.daily_sets_completed ?? 0) + 1
     const streak = Number(state.daily_streak ?? 0) + 1
     updates.daily_streak = streak
@@ -556,7 +586,7 @@ async function handleRecordMatch(
 
   // Fighter passive XP on daily wins (tiny, capped)
   let fighterPassiveXp = 0
-  if (won && !isChampion) {
+  if (won && !isChampion && xpEligible) {
     const passiveDay = state.passive_xp_day_key === dayKey ? Number(state.passive_xp_today ?? 0) : 0
     const grant = Math.min(12, PASSIVE_XP_DAILY_CAP - passiveDay)
     if (grant > 0) {
@@ -572,6 +602,8 @@ async function handleRecordMatch(
   return jsonResponse({
     ok: true,
     dailyCompleted: completed,
+    dailyGhostAttempts,
+    xpEligible,
     championBadgeGranted,
     fighterPassiveXp,
   })
