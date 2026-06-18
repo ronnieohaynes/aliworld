@@ -374,10 +374,16 @@ function StageBackground({ enemySrc, playerSrc }: { enemySrc: string; playerSrc:
   )
 }
 
-function drawPlayerBattleSprite(
+function battlePlayerTargetVisibleH(stageHeight: number): number {
+  const scaledTargetH = stageHeight > 0 ? Math.floor(stageHeight * 0.33) : BATTLE_TARGET_VISIBLE_H
+  return Math.floor(scaledTargetH * BATTLE_PLAYER_VISIBLE_MULT)
+}
+
+function drawMidnightVariantBattleSprite(
   canvas: HTMLCanvasElement,
   sheet: SpriteSheet,
   tuning: ReturnType<typeof getMidnightVariantRenderTuning>,
+  direction: 'up' | 'down',
 ): void {
   const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) return
@@ -387,25 +393,15 @@ function drawPlayerBattleSprite(
   canvas.width = dw
   canvas.height = dh
   ctx.clearRect(0, 0, dw, dh)
-  // Player faces up (toward enemy at top) in battle
-  drawSheetFrame(ctx, sheet, 'up', getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
+  drawSheetFrame(ctx, sheet, direction, getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
 }
 
-function drawMidnightVariantEnemyBattleSprite(
+function drawPlayerBattleSprite(
   canvas: HTMLCanvasElement,
   sheet: SpriteSheet,
   tuning: ReturnType<typeof getMidnightVariantRenderTuning>,
 ): void {
-  const ctx = canvas.getContext('2d', { alpha: true })
-  if (!ctx) return
-
-  const dw = BATTLE_ENEMY_SOURCE_W
-  const dh = BATTLE_ENEMY_SOURCE_H
-  canvas.width = dw
-  canvas.height = dh
-  ctx.clearRect(0, 0, dw, dh)
-  // Ghost / variant enemies at top face down toward the player (same sheet rules as player battle).
-  drawSheetFrame(ctx, sheet, 'down', getIdleFrameIndex(), 0, tuning.feetOffset, dw, dh, 1, tuning)
+  drawMidnightVariantBattleSprite(canvas, sheet, tuning, 'up')
 }
 
 function drawEnemyBattleSprite(
@@ -1104,8 +1100,7 @@ export function BattleScreen({
         `player:${walkSrc}`,
         'player',
       )
-      const scaledTargetH = stageHeight > 0 ? Math.floor(stageHeight * 0.33) : BATTLE_TARGET_VISIBLE_H
-      const playerTarget = Math.floor(scaledTargetH * BATTLE_PLAYER_VISIBLE_MULT)
+      const playerTarget = battlePlayerTargetVisibleH(stageHeight)
       const playerFeetY = stageHeight > 0 ? Math.floor(stageHeight * 0.95) : BATTLE_PLAYER_FEET.y
       const placement = layoutSpriteAtFeet(
         bounds,
@@ -1140,22 +1135,21 @@ export function BattleScreen({
       void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
         if (cancelled || !sheet?.loaded) return
 
-        drawMidnightVariantEnemyBattleSprite(canvas, sheet, tuning)
+        drawMidnightVariantBattleSprite(canvas, sheet, tuning, 'down')
         const bounds = measureCanvasVisibleBounds(
           canvas,
           `enemy:${walkSrc}`,
           label,
         )
-        const scaledEnemyH = stageHeight > 0 ? Math.floor(stageHeight * 0.33) : BATTLE_TARGET_VISIBLE_H
-        const enemyTarget = Math.floor(scaledEnemyH * (state.npc.battleSizeMult ?? 1))
+        const ghostTarget = battlePlayerTargetVisibleH(stageHeight)
         const enemyFeetY = stageHeight > 0 ? Math.floor(stageHeight * 0.37) : BATTLE_ENEMY_FEET.y
         const placement = layoutSpriteAtFeet(
           bounds,
-          BATTLE_ENEMY_SOURCE_W,
-          BATTLE_ENEMY_SOURCE_H,
+          BATTLE_PLAYER_SOURCE_W,
+          BATTLE_PLAYER_SOURCE_H,
           BATTLE_ENEMY_FEET.x,
           enemyFeetY,
-          enemyTarget,
+          ghostTarget,
         )
         setEnemyPlacement(placement)
         setEnemyLayoutReady(true)
@@ -1268,8 +1262,8 @@ export function BattleScreen({
                 <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
                   <canvas
                     className="battle-screen__enemy-sprite-canvas"
-                    width={BATTLE_ENEMY_SOURCE_W}
-                    height={BATTLE_ENEMY_SOURCE_H}
+                    width={state.npc.midnightVariantId ? BATTLE_PLAYER_SOURCE_W : BATTLE_ENEMY_SOURCE_W}
+                    height={state.npc.midnightVariantId ? BATTLE_PLAYER_SOURCE_H : BATTLE_ENEMY_SOURCE_H}
                     style={{
                       width: enemyPlacement.displayWidth,
                       height: enemyPlacement.displayHeight,
