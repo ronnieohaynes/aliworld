@@ -318,7 +318,7 @@ export function GameScreen() {
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
   const pendingGymWelcomeRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
-  const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'cards'>('idle')
+  const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'return-five' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -452,13 +452,17 @@ export function GameScreen() {
   const gymDoorPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
     void quest1Revision
+    void quest2Revision
     if (currentCity !== 'five') return null
+    if (E2_ENABLED && isE2QuestUnlocked() && !isOceanviewGymVisited()) {
+      return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
+    }
     if (!E2_ENABLED && isE1ArcComplete(buildQuestObjectiveContext())) {
       if (isCurrentWeeklyGymCleared() || isOceanviewGymVisited()) return null
       return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
     }
     return null
-  }, [currentCity, gymRevision, quest1Revision])
+  }, [currentCity, gymRevision, quest1Revision, quest2Revision])
 
   const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
@@ -633,14 +637,15 @@ export function GameScreen() {
         npcs = npcs.filter((npc) => npc.id !== MARK_NPC_ID)
       }
       if (isE2QuestUnlocked()) {
-        if (!isCrowdAddressed()) {
+        const e2StreetActive = isOceanviewGymVisited()
+        if (e2StreetActive && !isCrowdAddressed()) {
           npcs = npcs.filter((npc) => npc.id !== WALKER_NPC_ID)
           npcs = [...npcs, CROWD_1_NPC, CROWD_2_NPC]
           if (isWalkerConverted()) {
             npcs = [...npcs, WALKER_E2_CROWD_NPC]
           }
         }
-        if (!isCrierConverted()) {
+        if (e2StreetActive && !isCrierSentAhead()) {
           npcs = [...npcs, TOWN_CRIER_NPC]
         }
       }
@@ -664,7 +669,7 @@ export function GameScreen() {
       return { ...baseCityConfig, npcs }
     }
     return baseCityConfig
-  }, [baseCityConfig, currentCity, markDefeated, quest2Revision])
+  }, [baseCityConfig, currentCity, markDefeated, quest1Revision, quest2Revision, gymRevision])
 
   const canOpenStartMenu = useCallback(() => {
     const tutorialMenuException = allowsStartMenuDuringLoadoutTutorial(loadoutTutorialStep)
@@ -725,6 +730,12 @@ export function GameScreen() {
     setMapTransition(null)
     setMapTransitionReady(false)
     setMapTransitionPending(false)
+    if (
+      e2ClosingPhaseRef.current === 'exit-interior' ||
+      e2ClosingPhaseRef.current === 'return-five'
+    ) {
+      e2ClosingPhaseRef.current = 'idle'
+    }
   }, [])
 
   const showConnectionToast = useCallback((message: string) => {
@@ -772,6 +783,46 @@ export function GameScreen() {
       showConnectionToast,
     ],
   )
+
+  const tryBeginE2ClosingMapTransition = useCallback(
+    (
+      cityId: CityId,
+      x: number,
+      y: number,
+      phase: 'exit-interior' | 'return-five',
+      facing?: MapTransitionTarget['facing'],
+      attempt = 0,
+    ) => {
+      if (mapTransitionRef.current || mapTransitionPending) {
+        if (attempt < 120) {
+          window.requestAnimationFrame(() =>
+            tryBeginE2ClosingMapTransition(cityId, x, y, phase, facing, attempt + 1),
+          )
+        } else {
+          console.error('[e2 closing] map transition timed out while', phase)
+          e2ClosingPhaseRef.current = 'idle'
+        }
+        return
+      }
+      e2ClosingPhaseRef.current = phase
+      beginMapTransition(cityId, x, y, facing)
+    },
+    [beginMapTransition, mapTransitionPending],
+  )
+
+  const queueE2ClosingSouthsideExit = useCallback(() => {
+    tryBeginE2ClosingMapTransition(
+      'southside',
+      SOUTHSIDE_EXTERIOR_RETURN.x,
+      SOUTHSIDE_EXTERIOR_RETURN.y,
+      'exit-interior',
+    )
+  }, [tryBeginE2ClosingMapTransition])
+
+  const queueE2ClosingReturnFive = useCallback(() => {
+    const fiveCfg = CITY_CONFIGS.five
+    tryBeginE2ClosingMapTransition('five', fiveCfg.spawnX, fiveCfg.spawnY, 'return-five', 'down')
+  }, [tryBeginE2ClosingMapTransition])
 
   const handleMapTransitionMidpoint = useCallback(() => {
     const target = mapTransitionRef.current
@@ -1171,9 +1222,10 @@ export function GameScreen() {
     beginNpcDialogue(TOWN_CRIER_NPC, {
       onComplete: () => {
         setCrierSentAhead()
+        showNarration(['DARKLINE — SOUTHSIDE UNLOCKED.'])
       },
     })
-  }, [beginNpcDialogue])
+  }, [beginNpcDialogue, showNarration])
 
   const finishE2Episode = useCallback(() => {
     setE2Complete()
@@ -1202,29 +1254,32 @@ export function GameScreen() {
   const runE2ClosingMobDialogue = useCallback(() => {
     if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
     if (isE2ClosingCrowdDismissed()) {
-      runE2ClosingEpisodeCards()
+      queueE2ClosingReturnFive()
       return
     }
     e2ClosingPhaseRef.current = 'mob'
     beginNpcDialogue(E2_CLOSING_CRIER_NPC, {
       onComplete: () => {
         setE2ClosingCrowdDismissed()
-        runE2ClosingEpisodeCards()
+        queueE2ClosingReturnFive()
       },
     })
-  }, [beginNpcDialogue, runE2ClosingEpisodeCards])
+  }, [beginNpcDialogue, queueE2ClosingReturnFive])
 
   const startE2ClosingExitInterior = useCallback(() => {
     if (isE2Complete()) return
-    e2ClosingPhaseRef.current = 'exit-interior'
-    showNarration(['a crowd is forming outside.'], () => {
-      beginMapTransition(
-        'southside',
-        SOUTHSIDE_EXTERIOR_RETURN.x,
-        SOUTHSIDE_EXTERIOR_RETURN.y,
-      )
-    })
-  }, [beginMapTransition, showNarration])
+    if (e2ClosingPhaseRef.current !== 'idle' && e2ClosingPhaseRef.current !== 'exit-interior') {
+      return
+    }
+    if (e2ClosingPhaseRef.current === 'idle') {
+      e2ClosingPhaseRef.current = 'exit-interior'
+      showNarration(['a crowd is forming outside.'], () => {
+        queueE2ClosingSouthsideExit()
+      })
+      return
+    }
+    queueE2ClosingSouthsideExit()
+  }, [queueE2ClosingSouthsideExit, showNarration])
 
   const showBStaxLines = useCallback((lines: string[], onComplete?: () => void) => {
     setDialogue({
@@ -1291,27 +1346,37 @@ export function GameScreen() {
     }
     if (e2ClosingPhaseRef.current === 'exit-interior') {
       runE2ClosingMobDialogue()
+      return
     }
-  }, [runE2ClosingMobDialogue, showNarration])
+    if (e2ClosingPhaseRef.current === 'return-five') {
+      runE2ClosingEpisodeCards()
+    }
+  }, [runE2ClosingEpisodeCards, runE2ClosingMobDialogue, showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
     showNarration(["the darkline's open now. take it south."])
   }, [showNarration])
 
   const finishCafeScene = useCallback(() => {
-    setCafeSceneSeen()
-    track('episode_complete', { episode: 'e1' })
+    if (!isCafeSceneSeen()) {
+      setCafeSceneSeen()
+      track('episode_complete', { episode: 'e1' })
+    }
     setCafeFade('out')
   }, [])
 
   const runCafeVideoHandoffOnce = useCallback(() => {
     if (cafeVideoHandoffStartedRef.current) {
-      pendingPostE1NarrationRef.current = true
+      pendingPostE1NarrationRef.current = false
       finishCafeScene()
       return
     }
     cafeVideoHandoffStartedRef.current = true
     setCutsceneQuestHelperHidden(false)
+    if (!isCafeSceneSeen()) {
+      setCafeSceneSeen()
+      track('episode_complete', { episode: 'e1' })
+    }
     setCurrentCity('five')
     markCityVisited('five')
     const fiveCfg = CITY_CONFIGS.five
@@ -1333,7 +1398,7 @@ export function GameScreen() {
       onComplete: () => {
         setEpisodeWorldReveal('visible')
         pendingPostE1NarrationRef.current = true
-        finishCafeScene()
+        setCafeFade('out')
       },
     })
   }, [finishCafeScene, showQuestTransition])
@@ -1413,7 +1478,7 @@ export function GameScreen() {
         setCafeFade('none')
         if (pendingPostE1NarrationRef.current) {
           pendingPostE1NarrationRef.current = false
-          showNarration(["word is there's a gym opening in the 5ive. get your weight up."])
+          showNarration(["the gym's open in the 5ive. visit it and get your weight up."])
         }
       }, 400)
       return () => window.clearTimeout(t)
@@ -1745,16 +1810,28 @@ export function GameScreen() {
     }
 
     if (nearbyId === 'walker-crowd') {
+      if (!isOceanviewGymVisited()) {
+        showNotYetDialogue(WALKER_E2_CROWD_NPC, 'visit the gym first.')
+        return
+      }
       beginNpcDialogue(WALKER_E2_CROWD_NPC)
       return
     }
 
     if (nearbyId === CROWD_2_NPC_ID) {
+      if (!isOceanviewGymVisited()) {
+        showNotYetDialogue(CROWD_2_NPC, 'visit the gym first.')
+        return
+      }
       beginNpcDialogue(CROWD_2_NPC)
       return
     }
 
     if (nearbyId === CROWD_1_NPC.id) {
+      if (!isOceanviewGymVisited()) {
+        showNotYetDialogue(CROWD_1_NPC, 'visit the gym first.')
+        return
+      }
       beginNpcDialogue(CROWD_1_NPC)
       return
     }
@@ -2034,6 +2111,7 @@ export function GameScreen() {
   useEffect(() => {
     if (!isE2QuestUnlocked()) return
     if (!isCrierConverted() || isCrierSentAhead()) return
+    if (crierHeraldStartedRef.current) return
     if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
       return
     }
@@ -2053,12 +2131,38 @@ export function GameScreen() {
     if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
       return
     }
-    if (mapTransitionPending || mapTransition) return
-    if (showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) return
-    if (e2ClosingPhaseRef.current !== 'idle') return
+    if (mapTransition || showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) {
+      return
+    }
+
+    const phase = e2ClosingPhaseRef.current
+
+    if (
+      phase === 'exit-interior' &&
+      currentCity === 'blue-store-interior' &&
+      !mapTransitionPending &&
+      !mapTransition
+    ) {
+      queueE2ClosingSouthsideExit()
+      return
+    }
+
+    if (
+      phase === 'return-five' &&
+      currentCity === 'southside' &&
+      !mapTransitionPending &&
+      !mapTransition
+    ) {
+      queueE2ClosingReturnFive()
+      return
+    }
+
+    if (phase !== 'idle' && phase !== 'mob') return
+    if (mapTransitionPending) return
+
     if (currentCity === 'blue-store-interior') {
       startE2ClosingExitInterior()
-    } else if (currentCity === 'southside') {
+    } else if (currentCity === 'southside' && phase === 'idle') {
       runE2ClosingMobDialogue()
     }
   }, [
@@ -2068,10 +2172,13 @@ export function GameScreen() {
     currentCity,
     cutsceneFlowActive,
     dialogue,
+    darklineEnterTransition,
     mapTransition,
     mapTransitionPending,
     quest2Revision,
     questTransitionActive,
+    queueE2ClosingReturnFive,
+    queueE2ClosingSouthsideExit,
     runE2ClosingMobDialogue,
     showDarkline,
     startE2ClosingExitInterior,

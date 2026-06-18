@@ -1,12 +1,16 @@
 import { publicAsset } from '../utils/publicAsset'
-import { TOWN_CRIER_IDLE_SPRITE } from './npcs'
-import type { NpcData } from './npcs'
+import {
+  CLERK_NPC,
+  CROWD_1_NPC,
+  CROWD_2_NPC,
+  TOWN_CRIER_IDLE_SPRITE,
+  WALKER_E2_CROWD_NPC,
+  type NpcData,
+} from './npcs'
 
-const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const NPC4_SPRITE = publicAsset('Assets/Characters/npcs/npc4-idle-sheet.png')
-const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 
-/** Post-restocker crowd, blue store sidewalk (southside exterior). */
+/** Post-restocker crowd on the southside sidewalk — leave east/west walk space from the store door. */
 export const E2_CLOSING_CRIER_NPC: NpcData = {
   id: 'e2-closing-crier',
   name: 'town crier',
@@ -23,23 +27,44 @@ export const E2_CLOSING_CRIER_NPC: NpcData = {
   blocksMovement: false,
 }
 
-const E2_CLOSING_MOB_1: NpcData = {
-  id: 'e2-mob-1',
-  name: 'crowd',
-  x: 580,
-  y: 848,
-  lines: [],
-  color: '#9696b0',
-  spriteSrc: NPC2_SPRITE,
-  spriteLayout: 'horizontal-bbox',
+const E2_CLOSING_CROWD_1: NpcData = {
+  ...CROWD_1_NPC,
+  id: 'e2-closing-crowd1',
+  x: 520,
+  y: 852,
   blocksMovement: false,
 }
 
-const E2_CLOSING_MOB_2: NpcData = {
-  id: 'e2-mob-2',
-  name: 'crowd',
+const E2_CLOSING_CROWD_2: NpcData = {
+  ...CROWD_2_NPC,
+  id: 'e2-closing-crowd2',
+  x: 580,
+  y: 862,
+  blocksMovement: false,
+}
+
+const E2_CLOSING_WALKER: NpcData = {
+  ...WALKER_E2_CROWD_NPC,
+  id: 'e2-closing-walker',
+  x: 760,
+  y: 818,
+  blocksMovement: false,
+}
+
+const E2_CLOSING_CLERK: NpcData = {
+  ...CLERK_NPC,
+  id: 'e2-closing-clerk',
   x: 712,
-  y: 842,
+  y: 848,
+  fixedFacing: 'down',
+  blocksMovement: false,
+}
+
+const E2_CLOSING_MOB_1: NpcData = {
+  id: 'e2-mob-1',
+  name: 'crowd',
+  x: 860,
+  y: 838,
   lines: [],
   color: '#9696b0',
   spriteSrc: NPC4_SPRITE,
@@ -47,21 +72,11 @@ const E2_CLOSING_MOB_2: NpcData = {
   blocksMovement: false,
 }
 
-const E2_CLOSING_MOB_3: NpcData = {
-  id: 'e2-mob-3',
-  name: 'crowd',
-  x: 760,
-  y: 818,
-  lines: [],
-  color: '#7a7a96',
-  spriteSrc: WALKER_SPRITE,
-  spriteLayout: 'horizontal-bbox',
-  blocksMovement: false,
-}
-
 export const E2_CLOSING_MOB_NPCS: readonly NpcData[] = [
   E2_CLOSING_CRIER_NPC,
+  E2_CLOSING_CROWD_1,
+  E2_CLOSING_CROWD_2,
+  E2_CLOSING_WALKER,
+  E2_CLOSING_CLERK,
   E2_CLOSING_MOB_1,
-  E2_CLOSING_MOB_2,
-  E2_CLOSING_MOB_3,
 ]

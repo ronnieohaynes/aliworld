@@ -14,9 +14,12 @@ import {
   isRestockerDefeated,
 } from '../store/quest2Store'
 import { getWorldMemorySnapshot } from '../store/worldMemory'
+import { isOceanviewGymVisited } from '../store/gymStore'
 
 export type Quest2ObjectiveContext = {
   e2Active: boolean
+  /** First visit to the 5ive gym (weekly gauntlet door). */
+  gymVisited: boolean
   crowdAddressed: boolean
   crierConverted: boolean
   crierSentAhead: boolean
@@ -34,6 +37,7 @@ export function buildQuest2ObjectiveContext(): Quest2ObjectiveContext {
   const world = getWorldMemorySnapshot()
   return {
     e2Active: isE2QuestUnlocked(),
+    gymVisited: isOceanviewGymVisited(),
     crowdAddressed: isCrowdAddressed(),
     crierConverted: isCrierConverted(),
     crierSentAhead: isCrierSentAhead(),
@@ -47,6 +51,11 @@ export function buildQuest2ObjectiveContext(): Quest2ObjectiveContext {
 export const QUEST_2_CLOSING_TEXT = 'episode 3, coming soon.'
 
 export const QUEST_2_STEPS: readonly QuestObjectiveStep[] = [
+  {
+    id: 'e2-gym',
+    isComplete: (ctx) => !ctx.e2Active || ctx.gymVisited,
+    getText: () => 'visit the gym in the 5ive.',
+  },
   {
     id: 'e2-crowd',
     isComplete: (ctx) => !ctx.e2Active || ctx.crowdAddressed,

@@ -261,6 +261,8 @@ export function getQuestPulseTargetDescriptor(
       return { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'cafe':
       return { kind: 'zone', action: 'OPEN_ONE_LOVE_CAFE' }
+    case 'e2-gym':
+      return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
     case 'e2-crowd':
       return ctx.crowdAddressed ? null : { kind: 'npc', id: CROWD_2_NPC_ID }
     case 'e2-crier':
