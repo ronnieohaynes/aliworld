@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   downloadIdentityCardPng,
   shareIdentityCardPng,
@@ -31,7 +32,7 @@ export function IdentityCardPreview({ previewUrl, blob, onClose }: Props) {
     downloadIdentityCardPng(blob)
   }, [blob])
 
-  return (
+  return createPortal(
     <div className="identity-card-preview" role="dialog" aria-modal="true" aria-label="Share card">
       <button
         type="button"
@@ -65,6 +66,7 @@ export function IdentityCardPreview({ previewUrl, blob, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
