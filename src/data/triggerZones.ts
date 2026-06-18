@@ -7,6 +7,9 @@ export type TriggerAction =
   | 'OPEN_OCEANVIEW_GYM'
   | 'OPEN_OCEANVIEW_GYM_EXIT'
   | 'OPEN_GYM_LEADERBOARD'
+  | 'OPEN_THEATER'
+  | 'OPEN_THEATER_EXIT'
+  | 'OPEN_THEATER_SCREEN'
 
 export type TriggerZone = {
   id: string
@@ -23,6 +26,8 @@ const MAP_TRANSITION_ACTIONS = new Set<TriggerAction>([
   'OPEN_BLUE_STORE_EXIT',
   'OPEN_OCEANVIEW_GYM',
   'OPEN_OCEANVIEW_GYM_EXIT',
+  'OPEN_THEATER',
+  'OPEN_THEATER_EXIT',
 ])
 
 export function isMapTransitionTrigger(action: TriggerAction): boolean {

@@ -37,6 +37,17 @@ import {
   scaleFiveGymInteriorZone,
 } from './gymInteriorCollision'
 import { FIVE_GYM1_INTERIOR_NPCS } from './gymNpcs'
+import { THEATER_ENTRANCE_ZONE } from './theaterEntrance'
+import {
+  THEATER_EXIT_ZONE,
+  THEATER_INTERIOR_COLLISION_ZONES,
+  THEATER_INTERIOR_ENTRY,
+  THEATER_INTERIOR_MAP_DRAW_SCALE,
+  THEATER_INTERIOR_WORLD_HEIGHT,
+  THEATER_INTERIOR_WORLD_WIDTH,
+  scaleTheaterInteriorZone,
+} from './theaterInteriorCollision'
+import { THEATER_ENABLED } from './theaterPremieres'
 import { BLUE_STORE_INTERIOR_NPCS as BLUE_STORE_INTERIOR_NPCS_NATIVE } from './blueStoreNpcs'
 import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
@@ -49,6 +60,7 @@ export type CityId =
   | 'southside'
   | 'blue-store-interior'
   | 'five-gym-interior'
+  | 'theater-interior'
 
 export type CityConfig = {
   id: CityId
@@ -154,6 +166,25 @@ const FIVE_GYM_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
   },
 ]
 
+const THEATER_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
+  {
+    id: 'theater-interior-exit',
+    ...THEATER_EXIT_ZONE,
+    action: 'OPEN_THEATER_EXIT',
+  },
+  {
+    id: 'theater-interior-screen',
+    ...scaleTheaterInteriorZone({ x: 420, y: 280, width: 380, height: 220 }),
+    action: 'OPEN_THEATER_SCREEN',
+  },
+]
+
+const FIVE_TRIGGER_ZONES: TriggerZone[] = [
+  ...TRIGGER_ZONES,
+  OCEANVIEW_GYM_ENTRANCE_ZONE,
+  ...(THEATER_ENABLED ? [THEATER_ENTRANCE_ZONE] : []),
+]
+
 const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')
 
 const FIVE_GYM_INTERIOR_NPCS = FIVE_GYM1_INTERIOR_NPCS.map((npc) => ({
@@ -180,7 +211,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     collisionMapId: 'five',
     collisionZones: getCollisionZones('five'),
     occlusionZones: getOcclusionZones('five'),
-    triggerZones: [...TRIGGER_ZONES, OCEANVIEW_GYM_ENTRANCE_ZONE],
+    triggerZones: FIVE_TRIGGER_ZONES,
     npcs: [...FIVE_OVERWORLD_NPCS],
   },
   'san-bruno': {
@@ -245,6 +276,22 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     occlusionZones: getOcclusionZones('five-gym-interior').map(scaleFiveGymInteriorZone),
     triggerZones: FIVE_GYM_INTERIOR_TRIGGER_ZONES,
     npcs: [...FIVE_GYM_INTERIOR_NPCS],
+  },
+  'theater-interior': {
+    id: 'theater-interior',
+    label: 'danny theater',
+    mapSrc: FIVE_GYM_INTERIOR_MAP_SRC,
+    mapDrawScale: THEATER_INTERIOR_MAP_DRAW_SCALE,
+    worldWidth: THEATER_INTERIOR_WORLD_WIDTH,
+    worldHeight: THEATER_INTERIOR_WORLD_HEIGHT,
+    spawnX: THEATER_INTERIOR_ENTRY.x,
+    spawnY: THEATER_INTERIOR_ENTRY.y,
+    darklineSpawnX: THEATER_INTERIOR_ENTRY.x,
+    darklineSpawnY: THEATER_INTERIOR_ENTRY.y,
+    collisionZones: THEATER_INTERIOR_COLLISION_ZONES,
+    occlusionZones: [],
+    triggerZones: THEATER_INTERIOR_TRIGGER_ZONES,
+    npcs: [],
   },
 }
 

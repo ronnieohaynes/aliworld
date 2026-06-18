@@ -59,8 +59,23 @@ export function trackTheaterOpen(): void {
   track('theater_open')
 }
 
+/** @deprecated use trackLibraryPlay */
 export function trackTheaterVideoPlay(videoId: string): void {
-  track('theater_video_play', { videoId })
+  track('library_play', { videoId })
+}
+
+export function trackPremiereAttend(
+  premiereId: string,
+  props?: { rewardXp?: number; skinGranted?: string; offline?: boolean },
+): void {
+  track('premiere_attend', { premiereId, ...props })
+}
+
+export function trackLibraryPlay(
+  videoId: string,
+  props?: { libraryId?: string; title?: string; featured?: boolean },
+): void {
+  track('library_play', { videoId, ...props })
 }
 
 export function trackShareAction(what: string): void {

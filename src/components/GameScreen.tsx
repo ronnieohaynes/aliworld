@@ -19,6 +19,12 @@ import { OCEANVIEW_GYM_ENTRANCE_ZONE } from '../data/gymEntrance'
 import { resolveDoorSpawn, DOOR_SPAWN_OFFSET } from '../data/doorSpawn'
 import { BLUE_STORE_EXIT_ZONE } from '../data/blueStoreInteriorCollision'
 import { FIVE_GYM_EXIT_ZONE } from '../data/gymInteriorCollision'
+import {
+  THEATER_EXIT_ZONE,
+} from '../data/theaterInteriorCollision'
+import { THEATER_ENTRANCE_ZONE } from '../data/theaterEntrance'
+import { THEATER_ENABLED } from '../data/theaterPremieres'
+import { refreshTheaterAttendance } from '../store/theaterStore'
 import { SOUTHSIDE_ENTRANCE_ZONE } from '../data/southsideCollision'
 import { E2_CLOSING_CRIER_NPC, E2_CLOSING_MOB_NPCS } from '../data/e2ClosingNpcs'
 import {
@@ -129,6 +135,7 @@ import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { GymLeaderboardScreen } from './GymLeaderboardScreen'
 import { GhostTrainingScreen } from './GhostTrainingScreen'
+import { TheaterScreen } from './TheaterScreen'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
 import { MenuEntryCover, MENU_TRANSITION_MS, MENU_TRANSITION_MIDPOINT_MS, type MenuTransitionTarget } from './MenuEntryCover'
@@ -308,6 +315,7 @@ export function GameScreen() {
   const pendingGymLossLineRef = useRef(false)
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
   const pendingGymWelcomeRef = useRef(false)
+  const pendingTheaterOpenRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
   const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
@@ -343,6 +351,7 @@ export function GameScreen() {
   const [showBugReport, setShowBugReport] = useState(false)
   const [showGymLeaderboard, setShowGymLeaderboard] = useState(false)
   const [showGhostTraining, setShowGhostTraining] = useState(false)
+  const [showTheater, setShowTheater] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -769,6 +778,9 @@ export function GameScreen() {
       setOceanviewGymVisited()
       pendingGymWelcomeRef.current = true
     }
+    if (target.cityId === 'theater-interior') {
+      pendingTheaterOpenRef.current = true
+    }
     if (target.cityId === 'southside') {
       markCityVisited('southside')
     }
@@ -814,6 +826,18 @@ export function GameScreen() {
     setShowGhostTraining(false)
   }, [])
 
+  const openTheater = useCallback(() => {
+    if (!THEATER_ENABLED) return
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowTheater(true)
+    void refreshTheaterAttendance()
+  }, [])
+
+  const handleTheaterClose = useCallback(() => {
+    setShowTheater(false)
+  }, [])
+
   const toggleStartMenu = useCallback(() => {
     console.log('[tutorial-start] toggleStartMenu enter', {
       loadoutTutorialStep,
@@ -827,7 +851,7 @@ export function GameScreen() {
       console.log('[tutorial-start] toggleStartMenu guard: menuTransition')
       return
     }
-    if (showGymLeaderboard || showGhostTraining) return
+    if (showGymLeaderboard || showGhostTraining || showTheater) return
     if (showStartMenu) {
       console.log('[tutorial-start] toggleStartMenu guard: already open → resume')
       resumeFromPauseMenu()
@@ -855,11 +879,12 @@ export function GameScreen() {
     showLoadout,
     showGymLeaderboard,
     showGhostTraining,
+    showTheater,
     showStartMenu,
   ])
 
   const handleFannyPack = useCallback(() => {
-    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
+    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
     if (showFannyPack) {
       if (menuReturnPending) {
         beginResumeTransition()
@@ -892,13 +917,13 @@ export function GameScreen() {
       ) {
         return
       }
-      if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
+      if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
       e.preventDefault()
       handleFannyPack()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleFannyPack, showStartMenu, showGymLeaderboard, showGhostTraining])
+  }, [handleFannyPack, showStartMenu, showGymLeaderboard, showGhostTraining, showTheater])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -912,9 +937,11 @@ export function GameScreen() {
       ) {
         return
       }
-      if (showGymLeaderboard || showGhostTraining) {
+      if (showGymLeaderboard || showGhostTraining || showTheater) {
         e.preventDefault()
         setShowGymLeaderboard(false)
+        setShowGhostTraining(false)
+        setShowTheater(false)
         return
       }
       if (showLoadout || showFannyPack) {
@@ -957,6 +984,8 @@ export function GameScreen() {
     showFannyPack,
     showLoadout,
     showGymLeaderboard,
+    showGhostTraining,
+    showTheater,
     showStartMenu,
     menuTransition,
   ])
@@ -1048,6 +1077,7 @@ export function GameScreen() {
       !showFannyPack &&
       !showGymLeaderboard &&
       !showGhostTraining &&
+      !showTheater &&
       cafeFade !== 'scene'
     )
   }, [
@@ -1066,6 +1096,7 @@ export function GameScreen() {
     showFannyPack,
     showGymLeaderboard,
     showGhostTraining,
+    showTheater,
     cafeFade,
   ])
 
@@ -1240,10 +1271,14 @@ export function GameScreen() {
         'one run. four fights, three henchmen, then the leader. full heal between each. one loss sends you back to the start.',
       ])
     }
+    if (pendingTheaterOpenRef.current) {
+      pendingTheaterOpenRef.current = false
+      openTheater()
+    }
     if (e2ClosingPhaseRef.current === 'exit-interior') {
       runE2ClosingMobDialogue()
     }
-  }, [runE2ClosingMobDialogue, showNarration])
+  }, [openTheater, runE2ClosingMobDialogue, showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
     showNarration(["the darkline's open now. take it south."])
@@ -1502,6 +1537,36 @@ export function GameScreen() {
       } else if (action === 'OPEN_GYM_LEADERBOARD') {
         if (currentCity !== 'five-gym-interior') return
         openGymLeaderboard()
+      } else if (action === 'OPEN_THEATER') {
+        if (!THEATER_ENABLED) return
+        if (currentCity !== 'five') return
+        if (mapTransitionRef.current) return
+        {
+          const interior = CITY_CONFIGS['theater-interior']
+          const spawn = resolveDoorSpawn(
+            THEATER_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
+          )
+          beginMapTransition('theater-interior', spawn.x, spawn.y, 'up')
+        }
+      } else if (action === 'OPEN_THEATER_EXIT') {
+        if (currentCity !== 'theater-interior') return
+        if (mapTransitionRef.current) return
+        setShowTheater(false)
+        {
+          const exterior = CITY_CONFIGS.five
+          const spawn = resolveDoorSpawn(
+            THEATER_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('five', spawn.x, spawn.y, 'down')
+        }
+      } else if (action === 'OPEN_THEATER_SCREEN') {
+        if (!THEATER_ENABLED) return
+        if (currentCity !== 'theater-interior') return
+        openTheater()
       }
     },
     [
@@ -1511,6 +1576,7 @@ export function GameScreen() {
       cultDarklinePhase,
       currentCity,
       openGymLeaderboard,
+      openTheater,
       showMarkBlockedDialogue,
       showNotYetDialogue,
       startMarkBattle,
@@ -1760,7 +1826,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard || showGhostTraining)
+    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard || showGhostTraining || showTheater)
       return
     openNearbyNpcDialogue()
   }, [
@@ -1786,7 +1852,7 @@ export function GameScreen() {
     if (cutsceneFlowActive || questTransitionActive) return
     if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
-    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -1836,6 +1902,7 @@ export function GameScreen() {
         showFannyPack ||
         showGymLeaderboard ||
         showGhostTraining ||
+        showTheater ||
         battleNpcId ||
         battleWipePhase ||
         menuTransition
@@ -2217,7 +2284,7 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
     if (showLoadout) {
       handleLoadoutClose()
       return
@@ -2340,6 +2407,7 @@ export function GameScreen() {
     !showFannyPack &&
     !showGymLeaderboard &&
     !showGhostTraining &&
+    !showTheater &&
     !showDarkline &&
     !cultDarklinePhase &&
     !showInterior &&
@@ -2421,6 +2489,8 @@ export function GameScreen() {
         >
           <div
             className={`game-screen-play__world${
+              currentCity === 'theater-interior' ? ' game-screen-play__world--theater' : ''
+            }${
               episodeWorldReveal === 'hidden' || episodeWorldReveal === 'fade-in-pending'
                 ? ' game-screen-play__world--episode-hidden'
                 : ''
@@ -2477,6 +2547,7 @@ export function GameScreen() {
                 showLoadout ||
                 showGymLeaderboard ||
                 showGhostTraining ||
+                showTheater ||
                 showStartMenu ||
                 cutsceneFlowActive ||
                 questTransitionActive
@@ -2788,6 +2859,7 @@ export function GameScreen() {
               onFight={startGhostTrainingBattle}
             />
           )}
+          {showTheater && <TheaterScreen onClose={handleTheaterClose} />}
       </GameShell>
     </div>
   )
