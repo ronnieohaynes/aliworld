@@ -52,6 +52,8 @@ export type GhostTrainingSyncResponse = {
   }
   passiveXpToday: number
   passiveXpCap: number
+  /** True when served from client fallback (edge fn not deployed). */
+  offline?: boolean
 }
 
 export type GhostRecordMatchRequest = {
@@ -92,18 +94,37 @@ async function authHeaders(): Promise<HeadersInit> {
 }
 
 async function post<T>(body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(endpoint(), {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify(body),
-  })
+  let res: Response
+  try {
+    res = await fetch(endpoint(), {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.toLowerCase().includes('fetch')) {
+      throw new Error(
+        'Ghost training server unreachable. Deploy the ghost-training edge function and run db/009_ghost_training.sql.',
+      )
+    }
+    throw err
+  }
   if (!res.ok) {
     let message = `Ghost training request failed (${res.status})`
     try {
-      const errBody = (await res.json()) as { error?: string }
+      const errBody = (await res.json()) as { error?: string; message?: string }
       if (errBody.error) message = errBody.error
+      else if (errBody.message) message = errBody.message
+      if (res.status === 404) {
+        message =
+          'Ghost training edge function not deployed. Run: supabase functions deploy ghost-training'
+      }
     } catch {
-      // ignore
+      if (res.status === 404) {
+        message =
+          'Ghost training edge function not deployed. Run: supabase functions deploy ghost-training'
+      }
     }
     throw new Error(message)
   }

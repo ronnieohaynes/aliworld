@@ -116,7 +116,9 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
 
             {ready.usedSeedFallback && (
               <p className="ghost-training__notice">
-                thin pool today — seeded ghosts filling the set.
+                {ready.offline
+                  ? 'offline mode — seeded ghosts only until ghost-training edge fn is deployed.'
+                  : 'thin pool today — seeded ghosts filling the set.'}
               </p>
             )}
 

@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.gym-week-reward]
 verify_jwt = true
+
+[functions.ghost-training]
+verify_jwt = true

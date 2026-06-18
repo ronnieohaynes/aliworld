@@ -1,4 +1,9 @@
 import {
+  buildLocalGhostTrainingSync,
+  markLocalExplainerSeen,
+  recordLocalGhostMatch,
+} from '../lib/ghostTrainingLocal'
+import {
   dismissGhostNews,
   markGhostExplainerSeen,
   recordGhostMatch,
@@ -109,13 +114,13 @@ export async function refreshGhostTraining(): Promise<GhostTrainingSyncResponse 
     uiState = { kind: 'ready', data }
     emit()
     return data
-  } catch (err) {
-    uiState = {
-      kind: 'error',
-      message: err instanceof Error ? err.message : 'Could not load ghost training.',
-    }
+  } catch {
+    const local = buildLocalGhostTrainingSync()
+    cacheSnapshots(local)
+    saveLocal({ lastSyncDayKey: local.dayKey })
+    uiState = { kind: 'ready', data: local }
     emit()
-    return null
+    return local
   }
 }
 
@@ -162,6 +167,34 @@ export async function completeGhostBattle(
   if (!pending || result === 'draw') return
 
   const flawless = result === 'win' && (options?.playerHpRatio ?? 0) >= 0.99
+  const offline = uiState.kind === 'ready' && uiState.data.offline === true
+
+  if (offline) {
+    const res = recordLocalGhostMatch({
+      won: result === 'win',
+      flawless,
+      isChampion: pending.isChampion,
+      dailySlot: pending.dailySlot,
+    })
+    if (uiState.kind === 'ready') {
+      uiState = {
+        kind: 'ready',
+        data: {
+          ...uiState.data,
+          dailyCompleted: res.dailyCompleted,
+          championClearedToday: pending.isChampion && result === 'win'
+            ? true
+            : uiState.data.championClearedToday,
+          championAttemptedToday: pending.isChampion
+            ? true
+            : uiState.data.championAttemptedToday,
+        },
+      }
+      emit()
+    }
+    return
+  }
+
   try {
     const res = await recordGhostMatch({
       combatId: pending.combatId,
@@ -217,6 +250,12 @@ export async function dismissGhostTrainingNews(): Promise<void> {
 }
 
 export async function acknowledgeGhostExplainer(): Promise<void> {
+  if (uiState.kind === 'ready' && uiState.data.offline) {
+    markLocalExplainerSeen()
+    uiState = { kind: 'ready', data: { ...uiState.data, explainerSeen: true } }
+    emit()
+    return
+  }
   try {
     await markGhostExplainerSeen()
     if (uiState.kind === 'ready') {
