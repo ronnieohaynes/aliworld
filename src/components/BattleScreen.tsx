@@ -28,9 +28,13 @@ import { isGymGauntletCombatId } from '../data/gymWeeks'
 import { isGhostCombatId } from '../data/ghostCombat'
 import {
   BATTLE_ENEMY_FEET,
+  BATTLE_ENEMY_PLATE_OFFSET_X,
+  BATTLE_FIGHTER_NUDGE_X,
   BATTLE_ENEMY_SOURCE_H,
   BATTLE_ENEMY_SOURCE_W,
   BATTLE_PLAYER_FEET,
+  BATTLE_PLAYER_PLATE_OFFSET_X,
+  BATTLE_PLAYER_PLATE_OFFSET_Y,
   BATTLE_PLAYER_SOURCE_H,
   BATTLE_PLAYER_SOURCE_W,
   BATTLE_PLAYER_VISIBLE_MULT,
@@ -467,6 +471,9 @@ export function BattleScreen({
   const telegraphRowRef = useRef<HTMLElement>(null)
   const movesRef = useRef<HTMLDivElement>(null)
   const playerStatusRef = useRef<HTMLDivElement>(null)
+  const enemyPlateAnchorRef = useRef<HTMLDivElement>(null)
+  const enemyPlateRef = useRef<HTMLDivElement>(null)
+  const playerPlateAnchorRef = useRef<HTMLDivElement>(null)
   const playerPlateRef = useRef<HTMLDivElement>(null)
   const xpBarRef = useRef<HTMLDivElement>(null)
   const statusLegendRef = useRef<HTMLParagraphElement>(null)
@@ -816,9 +823,9 @@ export function BattleScreen({
   )
 
   const handleNarrationContinue = useCallback(() => {
-    if (!showWinNarration) return
-    finishBattle('win')
-  }, [finishBattle, showWinNarration])
+    setNarrationVisible(false)
+    setKnockoutPopup('win')
+  }, [])
 
   const handleLoseNarrationContinue = useCallback(() => {
     setLoseNarrationVisible(false)
@@ -844,6 +851,7 @@ export function BattleScreen({
   useEffect(() => {
     if (state.phase !== 'ended') return
     if (state.result === 'draw') return  // handled by draw effect above
+    if (state.pendingLevelUpNotification) return
     const hasNarration = payoffNpc.losingLine.trim().length > 0
     if (state.result === 'lose') {
       const hasWinNarration = (payoffNpc.winningLine ?? '').trim().length > 0
@@ -862,8 +870,7 @@ export function BattleScreen({
       const timer = window.setTimeout(() => setKnockoutPopup('win'), KNOCKOUT_POPUP_DELAY_MS)
       return () => window.clearTimeout(timer)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.phase, state.result])
+  }, [state.phase, state.result, state.pendingLevelUpNotification, payoffNpc.losingLine, payoffNpc.winningLine])
 
   useEffect(() => {
     winMatchupCalloutRef.current = false
@@ -1287,8 +1294,15 @@ export function BattleScreen({
 
               {/* ── Enemy at top of arena ── */}
               {/* Enemy plate, fixed anchor, never animates */}
-              <div className="battle-screen__plate-anchor battle-screen__plate-anchor--enemy" style={{ top: enemyPlacement.visibleDrawY + 5 }}>
-                <div className="battle-screen__sprite-plate">
+              <div
+                ref={enemyPlateAnchorRef}
+                className="battle-screen__plate-anchor battle-screen__plate-anchor--enemy"
+                style={{
+                  top: enemyPlacement.visibleDrawY + 5,
+                  transform: `translateX(${BATTLE_ENEMY_PLATE_OFFSET_X + BATTLE_FIGHTER_NUDGE_X}px)`,
+                }}
+              >
+                <div ref={enemyPlateRef} className="battle-screen__sprite-plate">
                   <span className="battle-screen__plate-name">
                     {state.npc.displayName.toUpperCase()}
                     {state.npc.level > 0 ? (
@@ -1316,7 +1330,10 @@ export function BattleScreen({
               {/* Enemy sprite, animates independently */}
               <div
                 className={`battle-screen__fighter battle-screen__fighter--enemy${enemyHitFx ? ' battle-screen__fighter--hit' : ''}${enemyAtkFx ? ' battle-screen__fighter--enemy-attack' : ''}${enemyCritFx ? ' battle-screen__fighter--crit' : ''}`}
-                style={{ top: enemyPlacement.drawY + 5 }}
+                style={{
+                  top: enemyPlacement.drawY + 5,
+                  transform: `translateX(${BATTLE_FIGHTER_NUDGE_X}px)`,
+                }}
               >
                 <div ref={enemyWrapRef} className="battle-screen__enemy-sprite-wrap">
                   <canvas
@@ -1383,7 +1400,14 @@ export function BattleScreen({
 
 
               {/* Player plate, fixed anchor, never animates */}
-              <div className="battle-screen__plate-anchor battle-screen__plate-anchor--player" style={{ top: playerPlacement.visibleDrawY }}>
+              <div
+                ref={playerPlateAnchorRef}
+                className="battle-screen__plate-anchor battle-screen__plate-anchor--player battle-screen__plate-anchor--anchored"
+                style={{
+                  top: playerPlacement.visibleDrawY + BATTLE_PLAYER_PLATE_OFFSET_Y,
+                  left: playerPlacement.feetX + BATTLE_PLAYER_PLATE_OFFSET_X,
+                }}
+              >
                 <div ref={playerPlateRef} className="battle-screen__sprite-plate">
                   <span className="battle-screen__plate-name">
                     {playerHandle.toUpperCase()}
@@ -1414,8 +1438,8 @@ export function BattleScreen({
 
               {/* Player sprite, animates independently */}
               <div
-                className={`battle-screen__fighter battle-screen__fighter--player${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ` battle-screen__fighter--atk-${playerAtkFx}` : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
-                style={{ top: playerPlacement.drawY }}
+                className={`battle-screen__fighter battle-screen__fighter--player battle-screen__fighter--anchored${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ` battle-screen__fighter--atk-${playerAtkFx}` : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
+                style={{ top: playerPlacement.drawY, left: playerPlacement.x }}
               >
                 <canvas
                   ref={playerCanvasRef}
@@ -1444,6 +1468,10 @@ export function BattleScreen({
                 stageRef={stageRef}
                 enemyRef={enemyWrapRef}
                 playerRef={playerCanvasRef}
+                enemyPlateAnchorRef={enemyPlateAnchorRef}
+                enemyPlateRef={enemyPlateRef}
+                playerPlateAnchorRef={playerPlateAnchorRef}
+                playerPlateRef={playerPlateRef}
                 enemyPlacement={enemyPlacement}
                 playerPlacement={playerPlacement}
               />

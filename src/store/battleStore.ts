@@ -883,6 +883,21 @@ function applyPlayerResolutionPhase(
     nextLog = appendLog(nextLog, `brace chip. ${braceChip}.`)
   }
 
+  if (nextEnemyHp <= 0) {
+    nextLog = appendLog(nextLog, `${lower} is finished.`)
+    return {
+      enemyHp: nextEnemyHp,
+      playerHp: nextPlayerHp,
+      log: nextLog,
+      working,
+      ended: true,
+      result: 'win',
+      bleedDamage,
+      bleedActualHpChange,
+      xpBonusEvents,
+    }
+  }
+
   return {
     enemyHp: nextEnemyHp,
     playerHp: nextPlayerHp,
@@ -1406,7 +1421,11 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
       return { ...state, phase: 'ended', result: action.result }
 
     case 'DISMISS_LEVEL_UP':
-      return { ...state, pendingLevelUpNotification: null, phase: 'player' }
+      return {
+        ...state,
+        pendingLevelUpNotification: null,
+        phase: state.phase === 'ended' ? 'ended' : 'player',
+      }
 
     default:
       return state

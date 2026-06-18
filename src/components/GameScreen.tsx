@@ -2743,7 +2743,7 @@ export function GameScreen() {
                 : undefined
             }
           >
-          {showDebug && (
+          {showDebug && !battleNpcId && !battleWipePhase && (
             <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
               {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
             </pre>
@@ -2767,10 +2767,11 @@ export function GameScreen() {
               {touchTalkLabel}
             </button>
           )}
-          <GameCanvas debugHudId={showDebug ? GAME_DEBUG_HUD_ID : undefined}>
+          <GameCanvas debugHudId={showDebug && !battleNpcId && !battleWipePhase ? GAME_DEBUG_HUD_ID : undefined}>
             <Player
               ref={playerRef}
               cityConfig={cityConfig}
+              suppressDebugOverlay={!!battleNpcId || !!battleWipePhase}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
               dialogueActive={

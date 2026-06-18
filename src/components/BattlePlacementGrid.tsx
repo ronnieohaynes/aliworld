@@ -19,11 +19,26 @@ export type SpritePlacementMetrics = {
   facing: string
 }
 
+export type PlatePlacementMetrics = {
+  x: number
+  y: number
+  width: number
+  height: number
+  bottom: number
+  centerX: number
+  anchorX: number
+  anchorY: number
+  visibleDrawY: number
+  feetX: number
+}
+
 export type BattlePlacementMetrics = {
   stageWidth: number
   stageHeight: number
   enemy: SpritePlacementMetrics | null
   player: SpritePlacementMetrics | null
+  enemyPlate: PlatePlacementMetrics | null
+  playerPlate: PlatePlacementMetrics | null
 }
 
 function measureSprite(
@@ -49,20 +64,67 @@ function measureSprite(
   }
 }
 
+function measurePlate(
+  stageRect: DOMRect,
+  anchorEl: HTMLElement | null,
+  plateEl: HTMLElement | null,
+  placement: BattleSpritePlacement,
+): PlatePlacementMetrics | null {
+  if (!plateEl) return null
+
+  const plateRect = plateEl.getBoundingClientRect()
+  const x = Math.floor(plateRect.left - stageRect.left)
+  const y = Math.floor(plateRect.top - stageRect.top)
+  const width = Math.floor(plateRect.width)
+  const height = Math.floor(plateRect.height)
+
+  let anchorX = placement.feetX
+  let anchorY = placement.visibleDrawY
+  if (anchorEl) {
+    const anchorRect = anchorEl.getBoundingClientRect()
+    anchorX = Math.floor(anchorRect.left - stageRect.left + anchorRect.width / 2)
+    anchorY = Math.floor(anchorRect.bottom - stageRect.top)
+  }
+
+  return {
+    x,
+    y,
+    width,
+    height,
+    bottom: Math.floor(y + height),
+    centerX: Math.floor(x + width / 2),
+    anchorX,
+    anchorY,
+    visibleDrawY: placement.visibleDrawY,
+    feetX: placement.feetX,
+  }
+}
+
 type Props = {
   stageRef: RefObject<HTMLElement | null>
   enemyRef: RefObject<HTMLElement | null>
   playerRef: RefObject<HTMLElement | null>
+  enemyPlateAnchorRef: RefObject<HTMLElement | null>
+  enemyPlateRef: RefObject<HTMLElement | null>
+  playerPlateAnchorRef: RefObject<HTMLElement | null>
+  playerPlateRef: RefObject<HTMLElement | null>
   enemyPlacement: BattleSpritePlacement
   playerPlacement: BattleSpritePlacement
+  /** Sprite x/feet/drawY readout boxes (grid lines still show). */
+  showSpriteStats?: boolean
 }
 
 export function BattlePlacementGrid({
   stageRef,
   enemyRef,
   playerRef,
+  enemyPlateAnchorRef,
+  enemyPlateRef,
+  playerPlateAnchorRef,
+  playerPlateRef,
   enemyPlacement,
   playerPlacement,
+  showSpriteStats = true,
 }: Props) {
   const [metrics, setMetrics] = useState<BattlePlacementMetrics | null>(null)
 
@@ -79,8 +141,30 @@ export function BattlePlacementGrid({
       stageHeight,
       enemy: measureSprite(stageRect, enemyRef.current, enemyPlacement),
       player: measureSprite(stageRect, playerRef.current, playerPlacement),
+      enemyPlate: measurePlate(
+        stageRect,
+        enemyPlateAnchorRef.current,
+        enemyPlateRef.current,
+        enemyPlacement,
+      ),
+      playerPlate: measurePlate(
+        stageRect,
+        playerPlateAnchorRef.current,
+        playerPlateRef.current,
+        playerPlacement,
+      ),
     })
-  }, [stageRef, enemyRef, playerRef, enemyPlacement, playerPlacement])
+  }, [
+    stageRef,
+    enemyRef,
+    playerRef,
+    enemyPlateAnchorRef,
+    enemyPlateRef,
+    playerPlateAnchorRef,
+    playerPlateRef,
+    enemyPlacement,
+    playerPlacement,
+  ])
 
   useLayoutEffect(() => {
     measure()
@@ -93,6 +177,10 @@ export function BattlePlacementGrid({
 
     if (enemyRef.current) observer.observe(enemyRef.current)
     if (playerRef.current) observer.observe(playerRef.current)
+    if (enemyPlateAnchorRef.current) observer.observe(enemyPlateAnchorRef.current)
+    if (enemyPlateRef.current) observer.observe(enemyPlateRef.current)
+    if (playerPlateAnchorRef.current) observer.observe(playerPlateAnchorRef.current)
+    if (playerPlateRef.current) observer.observe(playerPlateRef.current)
 
     window.addEventListener('resize', measure)
 
@@ -100,11 +188,20 @@ export function BattlePlacementGrid({
       observer.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [measure, stageRef, enemyRef, playerRef])
+  }, [
+    measure,
+    stageRef,
+    enemyRef,
+    playerRef,
+    enemyPlateAnchorRef,
+    enemyPlateRef,
+    playerPlateAnchorRef,
+    playerPlateRef,
+  ])
 
   if (!metrics) return null
 
-  const { stageWidth, stageHeight, enemy, player } = metrics
+  const { stageWidth, stageHeight, enemy, player, enemyPlate, playerPlate } = metrics
   const midX = Math.floor(stageWidth / 2)
   const midY = Math.floor(stageHeight / 2)
 
@@ -190,8 +287,14 @@ export function BattlePlacementGrid({
         </span>
       ))}
 
-      {enemy && <SpriteLabel name="enemy" metrics={enemy} />}
-      {player && <SpriteLabel name="player" metrics={player} />}
+      {showSpriteStats && enemy ? <SpriteLabel name="enemy" metrics={enemy} /> : null}
+      {showSpriteStats && player ? <SpriteLabel name="player" metrics={player} /> : null}
+      {showSpriteStats && enemyPlate ? (
+        <PlateLabel name="enemy-plate" metrics={enemyPlate} side="left" />
+      ) : null}
+      {showSpriteStats && playerPlate ? (
+        <PlateLabel name="player-plate" metrics={playerPlate} side="left" />
+      ) : null}
     </div>
   )
 }
@@ -209,7 +312,7 @@ function SpriteLabel({
     <div
       className={`battle-placement-grid__sprite battle-placement-grid__sprite--${name}`}
       style={{
-        left: Math.floor(x),
+        left: Math.floor(x + width + 6),
         top: Math.floor(Math.max(0, drawY - 52)),
       }}
     >
@@ -226,6 +329,44 @@ function SpriteLabel({
         {width}×{displayHeight}
       </span>
       <span>facing: {facing}</span>
+    </div>
+  )
+}
+
+function PlateLabel({
+  name,
+  metrics,
+  side = 'right',
+}: {
+  name: string
+  metrics: PlatePlacementMetrics
+  side?: 'left' | 'right'
+}) {
+  const { x, y, width, height, bottom, centerX, anchorX, anchorY, visibleDrawY, feetX } = metrics
+
+  return (
+    <div
+      className={`battle-placement-grid__plate battle-placement-grid__plate--${name}`}
+      style={{
+        left: side === 'left' ? Math.floor(x - 6) : Math.floor(x + width + 6),
+        top: Math.floor(Math.max(0, y - 8)),
+        transform: side === 'left' ? 'translateX(-100%)' : undefined,
+      }}
+    >
+      <span>{name}</span>
+      <span>
+        anchor:{anchorX},{anchorY}
+      </span>
+      <span>visibleDrawY:{visibleDrawY}</span>
+      <span>feetX:{feetX}</span>
+      <span>
+        card:{x},{y}
+      </span>
+      <span>
+        {width}×{height}
+      </span>
+      <span>centerX:{centerX}</span>
+      <span>bottom:{bottom}</span>
     </div>
   )
 }

@@ -823,6 +823,8 @@ type PlayerProps = {
   dialogueNpcId?: string | null
   questPulseDescriptor?: QuestPulseTargetDescriptor | null
   showQuestPulse?: boolean
+  /** Hide dev collision/coordinate HUD while battle overlays are up. */
+  suppressDebugOverlay?: boolean
 }
 
 export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
@@ -834,11 +836,15 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     dialogueNpcId,
     questPulseDescriptor = null,
     showQuestPulse = false,
+    suppressDebugOverlay = false,
   },
   ref,
 ) {
   const { canvas, ctx, width, height, registerLoop, unregisterLoop, setDebugHud } =
     useGameCanvas()
+  const suppressDebugOverlayRef = useRef(suppressDebugOverlay)
+  suppressDebugOverlayRef.current = suppressDebugOverlay
+
   const onTriggerRef = useRef(onTrigger)
   const onTriggerExitRef = useRef(onTriggerExit)
   const activeTriggerIds = useRef(new Set<string>())
@@ -1458,7 +1464,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         cfg.mapDrawScale ?? 1,
       )
 
-      if (isDevModeEnabled() && showCollisionDebug.current) {
+      if (isDevModeEnabled() && showCollisionDebug.current && !suppressDebugOverlayRef.current) {
         drawCollisionZonesDebug(ctx, getMapCollisionZones(cfg), cfg.npcs)
         drawOcclusionZonesDebug(ctx, cfg.occlusionZones)
         drawTransitionZonesDebug(ctx, cfg.triggerZones)
@@ -1719,7 +1725,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         )
       }
 
-      const devMode = isDevModeEnabled()
+      const devMode = isDevModeEnabled() && !suppressDebugOverlayRef.current
       if (devMode && showCoordinateOverlay.current) {
         drawCoordinateGrid(ctx, zoom, focus.x, focus.y, width, height, cfg.worldWidth, cfg.worldHeight)
         drawMidnightCrosshair(ctx, worldX, worldY, zoom)

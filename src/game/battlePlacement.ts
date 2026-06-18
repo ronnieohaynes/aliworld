@@ -9,11 +9,23 @@ import type { VisibleBounds } from './spriteBounds'
 /** Battle enemy source canvas scale vs overworld NPC display. */
 export const BATTLE_SPRITE_SCALE = 1.2
 
+/** Horizontal nudge for battle fighters (negative = left). */
+export const BATTLE_FIGHTER_NUDGE_X = -5
+
 /** Screen point where every enemy's feet land (bottom-center of visible sprite). */
 export const BATTLE_ENEMY_FEET = { x: 68, y: 221 } as const
 
+/** Horizontal nudge for the enemy status plate (positive = right). */
+export const BATTLE_ENEMY_PLATE_OFFSET_X = 3
+
 /** Screen point where the player's feet land (bottom-center of visible sprite). */
-export const BATTLE_PLAYER_FEET = { x: 288, y: 224 } as const
+export const BATTLE_PLAYER_FEET = { x: 165 + BATTLE_FIGHTER_NUDGE_X, y: 224 } as const
+
+/** Vertical nudge for the player status plate (negative = up). */
+export const BATTLE_PLAYER_PLATE_OFFSET_Y = -35
+
+/** Horizontal nudge for the player status plate (positive = right). */
+export const BATTLE_PLAYER_PLATE_OFFSET_X = 3
 
 /** @deprecated Use BATTLE_ENEMY_FEET.y */
 export const BATTLE_GROUND_Y = BATTLE_ENEMY_FEET.y
