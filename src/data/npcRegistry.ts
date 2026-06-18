@@ -5,6 +5,8 @@ import {
   TOWN_CRIER_IDLE_SPRITE,
 } from './npcs'
 import { buildDevSpar, isDevSparNpcId } from './devSpar'
+import { isGhostCombatId, resolveGhostCombatEntry } from './ghostCombat'
+import { chooseGhostMove } from './ghostMoveAi'
 import type { BattleLocationId } from './battleBackgrounds'
 import { computeNpcCombatStats } from './npcCombatStats'
 import type { LeanSkill } from './skillCounter'
@@ -176,7 +178,7 @@ const CLERK: NpcCombatEntry = entry({
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
   spriteSrc: CLERK_IDLE_SPRITE,
-  battleLocation: 'hillside',
+  battleLocation: 'blue_store',
   battleSizeMult: 1,
 })
 
@@ -201,7 +203,7 @@ const RESTOCKER: NpcCombatEntry = entry({
   losingLine: 'it CAN stop...',
   winningLine: 'this floor belongs to me.',
   spriteSrc: RESTOCKER_IDLE_SPRITE,
-  battleLocation: 'hillside',
+  battleLocation: 'blue_store',
   battleSizeMult: 1.12,
 })
 
@@ -249,6 +251,9 @@ export function isAttackingMove(move: EnemyMove): boolean {
 }
 
 export function getNpcCombatEntry(npcId: string): NpcCombatEntry | undefined {
+  if (isGhostCombatId(npcId)) {
+    return resolveGhostCombatEntry(npcId)
+  }
   if (isGymGauntletCombatId(npcId)) {
     return buildGymGauntletCombatEntry(npcId)
   }
@@ -280,7 +285,7 @@ export function chooseMove(
   npcId: string,
   turn: number,
   forced?: EnemyMoveId | null,
-  options?: { walkerHeavyTutorial?: boolean; enemyHpRatio?: number },
+  options?: { walkerHeavyTutorial?: boolean; enemyHpRatio?: number; lastEnemyMove?: EnemyMoveId | null },
 ): EnemyMove {
   const tutorialForced = walkerTutorialForcedMove(
     npcId,
@@ -289,8 +294,20 @@ export function chooseMove(
   )
   if (tutorialForced) return tutorialForced
   if (forced) return forced
-  const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
+  const npc = isDevSparNpcId(npcId)
+    ? buildDevSpar()
+    : isGhostCombatId(npcId)
+      ? resolveGhostCombatEntry(npcId)
+      : getNpcCombatEntry(npcId)
   if (!npc || npc.moves.length === 0) return 'STRIKE'
+
+  if (isGhostCombatId(npcId)) {
+    return chooseGhostMove(npc.moves, {
+      enemyHpRatio: options?.enemyHpRatio ?? 1,
+      lastMove: options?.lastEnemyMove ?? null,
+      leanSkill: npc.leanSkill,
+    })
+  }
 
   if (npcId === 'restocker') {
     const ratio = options?.enemyHpRatio ?? 1
@@ -305,7 +322,11 @@ export function chooseMove(
 }
 
 export function telegraphFor(npcId: string, move: EnemyMove): string {
-  const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
+  const npc = isDevSparNpcId(npcId)
+    ? buildDevSpar()
+    : isGhostCombatId(npcId)
+      ? resolveGhostCombatEntry(npcId)
+      : getNpcCombatEntry(npcId)
   const flavor = npc?.telegraphFlavor?.[move]
   if (flavor) return flavor
   return telegraphLineForEnemyMove(move)

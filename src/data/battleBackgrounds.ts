@@ -1,7 +1,7 @@
 import { publicAsset } from '../utils/publicAsset'
 
 /** Location key for battle backdrop art (`public/Assets/battle-bg/`). */
-export type BattleLocationId = 'five' | 'san_bruno' | 'hillside' | 'five_gym'
+export type BattleLocationId = 'five' | 'san_bruno' | 'hillside' | 'five_gym' | 'blue_store'
 
 const BATTLE_BG_DIR = publicAsset('Assets/battle-bg')
 
@@ -10,6 +10,7 @@ export const BATTLE_BACKGROUND_SRC: Record<BattleLocationId, string> = {
   san_bruno: `${BATTLE_BG_DIR}/san-bruno.png`,
   hillside: `${BATTLE_BG_DIR}/hillside.png`,
   five_gym: `${BATTLE_BG_DIR}/5ive-gym.png`,
+  blue_store: `${BATTLE_BG_DIR}/blue-store.png`,
 }
 
 export const DEFAULT_BATTLE_LOCATION: BattleLocationId = 'five'

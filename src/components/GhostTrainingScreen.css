@@ -1,0 +1,172 @@
+.ghost-training {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel, monospace);
+}
+
+.ghost-training__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.ghost-training__panel {
+  position: relative;
+  width: min(520px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #0d1117;
+  border: 2px solid #3d5a80;
+  padding: 1.25rem 1.5rem 1.5rem;
+  color: #e6edf3;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.ghost-training__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ghost-training__title {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: #89b4fa;
+}
+
+.ghost-training__close {
+  background: transparent;
+  border: 1px solid #3d5a80;
+  color: #e6edf3;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+  font: inherit;
+  text-transform: lowercase;
+}
+
+.ghost-training__close:hover {
+  border-color: #89b4fa;
+}
+
+.ghost-training__news {
+  background: #161b22;
+  border-left: 3px solid #a6e3a1;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.ghost-training__notice {
+  font-size: 0.8rem;
+  color: #a6adc8;
+  margin-bottom: 0.75rem;
+}
+
+.ghost-training__explainer {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  color: #cdd6f4;
+}
+
+.ghost-training__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ghost-training__opponent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: #161b22;
+  border: 1px solid #30363d;
+}
+
+.ghost-training__opponent--done {
+  opacity: 0.55;
+}
+
+.ghost-training__opponent-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ghost-training__opponent-name {
+  font-size: 0.95rem;
+  text-transform: lowercase;
+}
+
+.ghost-training__opponent-meta {
+  font-size: 0.75rem;
+  color: #a6adc8;
+}
+
+.ghost-training__fight-btn {
+  flex-shrink: 0;
+  background: #1e3a5f;
+  border: 1px solid #3d5a80;
+  color: #e6edf3;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font: inherit;
+  text-transform: lowercase;
+}
+
+.ghost-training__fight-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghost-training__fight-btn:not(:disabled):hover {
+  border-color: #89b4fa;
+}
+
+.ghost-training__champion {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #3d5a80;
+}
+
+.ghost-training__champion-label {
+  font-size: 0.75rem;
+  color: #f38ba8;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+
+.ghost-training__status {
+  font-size: 0.85rem;
+  color: #a6adc8;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.ghost-training__footer {
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  color: #6c7086;
+  text-align: center;
+}
+
+.ghost-training__streak {
+  font-size: 0.8rem;
+  color: #fab387;
+  margin-bottom: 0.75rem;
+}

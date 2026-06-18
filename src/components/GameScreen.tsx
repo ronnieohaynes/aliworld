@@ -51,6 +51,9 @@ import {
 import { claimGymWeekReward } from '../lib/gymWeekRewardApi'
 import { refreshPlayerGrants } from '../store/grantsStore'
 import { resolveGymBattleOptions, restartWeeklyGymRun, startWeeklyGymRun } from '../lib/weeklyGymBattle'
+import { resolveGhostBattleOptions } from '../lib/ghostTrainingBattle'
+import { isGhostCombatId } from '../data/ghostCombat'
+import { completeGhostBattle, refreshGhostTraining } from '../store/ghostTrainingStore'
 import {
   buildQuestObjectiveContext,
   isE1ArcComplete,
@@ -125,6 +128,7 @@ import { BattleScreen } from './BattleScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { GymLeaderboardScreen } from './GymLeaderboardScreen'
+import { GhostTrainingScreen } from './GhostTrainingScreen'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
 import { MenuEntryCover, MENU_TRANSITION_MS, MENU_TRANSITION_MIDPOINT_MS, type MenuTransitionTarget } from './MenuEntryCover'
@@ -323,6 +327,7 @@ export function GameScreen() {
   const pendingBattleExitRef = useRef<{
     result: 'win' | 'lose' | 'draw'
     npcId: string | null
+    playerHpRatio?: number
   } | null>(null)
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
   const interactBtnRef = useRef<HTMLButtonElement>(null)
@@ -337,6 +342,7 @@ export function GameScreen() {
   const [bugReportScreenshot, setBugReportScreenshot] = useState<string | null>(null)
   const [showBugReport, setShowBugReport] = useState(false)
   const [showGymLeaderboard, setShowGymLeaderboard] = useState(false)
+  const [showGhostTraining, setShowGhostTraining] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -469,6 +475,8 @@ export function GameScreen() {
     if (!battleNpcId) {
       return { combatXpPolicy: 'normal' as const, battleEndHealing: 'default' as const }
     }
+    const ghostOpts = resolveGhostBattleOptions(battleNpcId)
+    if (ghostOpts) return ghostOpts
     return resolveGymBattleOptions(battleNpcId)
   }, [battleNpcId])
 
@@ -491,6 +499,18 @@ export function GameScreen() {
     },
     [currentCity],
   )
+
+  useEffect(() => {
+    if (!E2_ENABLED) return
+    let cancelled = false
+    void whenAccountHydrated().then(() => {
+      if (cancelled) return
+      void refreshGhostTraining()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -784,6 +804,16 @@ export function GameScreen() {
     setShowGymLeaderboard(false)
   }, [])
 
+  const openGhostTraining = useCallback(() => {
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowGhostTraining(true)
+  }, [])
+
+  const handleGhostTrainingClose = useCallback(() => {
+    setShowGhostTraining(false)
+  }, [])
+
   const toggleStartMenu = useCallback(() => {
     console.log('[tutorial-start] toggleStartMenu enter', {
       loadoutTutorialStep,
@@ -797,7 +827,7 @@ export function GameScreen() {
       console.log('[tutorial-start] toggleStartMenu guard: menuTransition')
       return
     }
-    if (showGymLeaderboard) return
+    if (showGymLeaderboard || showGhostTraining) return
     if (showStartMenu) {
       console.log('[tutorial-start] toggleStartMenu guard: already open → resume')
       resumeFromPauseMenu()
@@ -824,11 +854,12 @@ export function GameScreen() {
     showFannyPack,
     showLoadout,
     showGymLeaderboard,
+    showGhostTraining,
     showStartMenu,
   ])
 
   const handleFannyPack = useCallback(() => {
-    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard) return
+    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
     if (showFannyPack) {
       if (menuReturnPending) {
         beginResumeTransition()
@@ -861,13 +892,13 @@ export function GameScreen() {
       ) {
         return
       }
-      if (worldEntryActive || showStartMenu || showGymLeaderboard) return
+      if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
       e.preventDefault()
       handleFannyPack()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleFannyPack, showStartMenu, showGymLeaderboard])
+  }, [handleFannyPack, showStartMenu, showGymLeaderboard, showGhostTraining])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -881,7 +912,7 @@ export function GameScreen() {
       ) {
         return
       }
-      if (showGymLeaderboard) {
+      if (showGymLeaderboard || showGhostTraining) {
         e.preventDefault()
         setShowGymLeaderboard(false)
         return
@@ -954,6 +985,14 @@ export function GameScreen() {
     setBattleWipePhase('enter')
   }, [battleNpcId, battleWipePhase])
 
+  const startGhostTrainingBattle = useCallback(
+    (combatId: string) => {
+      setShowGhostTraining(false)
+      startNpcBattle(combatId)
+    },
+    [startNpcBattle],
+  )
+
   const startGymGauntletBattle = useCallback(
     (weekId: string, practice: boolean) => {
       const combatId = startWeeklyGymRun(weekId, practice)
@@ -1008,6 +1047,7 @@ export function GameScreen() {
       !showLoadout &&
       !showFannyPack &&
       !showGymLeaderboard &&
+      !showGhostTraining &&
       cafeFade !== 'scene'
     )
   }, [
@@ -1025,6 +1065,7 @@ export function GameScreen() {
     showLoadout,
     showFannyPack,
     showGymLeaderboard,
+    showGhostTraining,
     cafeFade,
   ])
 
@@ -1719,7 +1760,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard)
+    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard || showGhostTraining)
       return
     openNearbyNpcDialogue()
   }, [
@@ -1745,7 +1786,7 @@ export function GameScreen() {
     if (cutsceneFlowActive || questTransitionActive) return
     if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
-    if (worldEntryActive || showStartMenu || showGymLeaderboard) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -1794,6 +1835,7 @@ export function GameScreen() {
         showLoadout ||
         showFannyPack ||
         showGymLeaderboard ||
+        showGhostTraining ||
         battleNpcId ||
         battleWipePhase ||
         menuTransition
@@ -2018,6 +2060,10 @@ export function GameScreen() {
     setBattleWipePhase(null)
     reportCurrentLocation()
 
+    if (exit?.npcId && isGhostCombatId(exit.npcId)) {
+      void completeGhostBattle(exit.result, { playerHpRatio: exit.playerHpRatio })
+    }
+
     if (pendingGymLossLineRef.current) {
       pendingGymLossLineRef.current = false
       const lossLine = getCurrentGymWeek().leader.dialogue.loss
@@ -2123,11 +2169,12 @@ export function GameScreen() {
   }, [])
 
   const handleBattleEnd = useCallback(
-    (result: 'win' | 'lose' | 'draw', turns: number) => {
+    (result: 'win' | 'lose' | 'draw', turns: number, playerHpRatio?: number) => {
       const safeTurns = Number.isFinite(turns) && turns >= 0 ? turns : 0
       const isDevSpar = battleNpcId != null && isDevSparNpcId(battleNpcId)
+      const isGhost = battleNpcId != null && isGhostCombatId(battleNpcId)
       if (battleNpcId && !isDevSpar) {
-        track('battle_end', { enemyId: battleNpcId, result, turns: safeTurns })
+        track('battle_end', { enemyId: battleNpcId, result, turns: safeTurns, ghost: isGhost })
       }
       if (result === 'win' && !isDevSpar) {
         if (battleNpcId === MARK_NPC_ID) {
@@ -2147,7 +2194,7 @@ export function GameScreen() {
           }
         }
       }
-      pendingBattleExitRef.current = { result, npcId: battleNpcId }
+      pendingBattleExitRef.current = { result, npcId: battleNpcId, playerHpRatio }
       setBattleWipePhase('exit')
     },
     [battleNpcId, showMarkVictoryNarration],
@@ -2170,7 +2217,7 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu || showGymLeaderboard) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining) return
     if (showLoadout) {
       handleLoadoutClose()
       return
@@ -2240,6 +2287,9 @@ export function GameScreen() {
         case 'champions':
           openGymLeaderboard()
           break
+        case 'ghost-training':
+          openGhostTraining()
+          break
         case 'new-game':
           break
         case 'sign-out':
@@ -2249,7 +2299,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, openGymLeaderboard, resumeFromPauseMenu],
+    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, openGhostTraining, openGymLeaderboard, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -2289,6 +2339,7 @@ export function GameScreen() {
     !showLoadout &&
     !showFannyPack &&
     !showGymLeaderboard &&
+    !showGhostTraining &&
     !showDarkline &&
     !cultDarklinePhase &&
     !showInterior &&
@@ -2425,6 +2476,7 @@ export function GameScreen() {
                 showFannyPack ||
                 showLoadout ||
                 showGymLeaderboard ||
+                showGhostTraining ||
                 showStartMenu ||
                 cutsceneFlowActive ||
                 questTransitionActive
@@ -2728,6 +2780,12 @@ export function GameScreen() {
             <GymLeaderboardScreen
               viewerHandle={getAuthState().profile?.handle ?? null}
               onClose={handleGymLeaderboardClose}
+            />
+          )}
+          {showGhostTraining && (
+            <GhostTrainingScreen
+              onClose={handleGhostTrainingClose}
+              onFight={startGhostTrainingBattle}
             />
           )}
       </GameShell>

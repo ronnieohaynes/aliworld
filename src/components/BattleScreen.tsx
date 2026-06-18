@@ -11,9 +11,9 @@ import type { NpcCombatEntry } from '../data/npcRegistry'
 import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
 import {
   getBattleBgForLocation,
+  resolveBattleBackgroundSrc,
 } from '../data/battleBackgrounds'
 import {
-  battleLocationToHometownId,
   getHometownDef,
 } from '../data/hometowns'
 import {
@@ -328,7 +328,7 @@ function LevelUpOverlay({
 
 type Props = {
   npcId: string
-  onBattleEnd: (result: 'win' | 'lose' | 'draw', turns: number) => void
+  onBattleEnd: (result: 'win' | 'lose' | 'draw', turns: number, playerHpRatio?: number) => void
   /** Commits conversion flags the moment the player wins, before exit narration ends. */
   onWinPayoff?: (npcId: string) => void
   /** True once enter wipe has lifted and the battle is visible. */
@@ -615,9 +615,7 @@ export function BattleScreen({
   const playerHometownDef = getHometownDef(playerHometownId)
   const playerBattleBgSrc = getBattleBgForLocation(playerHometownDef.battleLocationId)
 
-  const enemyHometownId = battleLocationToHometownId(state.npc.battleLocation)
-  const enemyHometownDef = getHometownDef(enemyHometownId)
-  const enemyBattleBgSrc = getBattleBgForLocation(enemyHometownDef.battleLocationId)
+  const enemyBattleBgSrc = resolveBattleBackgroundSrc(state.npc)
   const payoffNpc = winPayoffNpc ?? state.npc
   const showWinNarration =
     state.phase === 'ended' &&
@@ -689,7 +687,11 @@ export function BattleScreen({
         state.battleEndHealing,
       )
       setOverworldPlayerHp(healed)
-      onBattleEnd(result, state.turn)
+      onBattleEnd(
+        result,
+        state.turn,
+        state.playerHp / Math.max(1, state.playerStats.maxHp),
+      )
     },
     [onBattleEnd, state.playerHp, state.playerStats.maxHp, state.turn],
   )

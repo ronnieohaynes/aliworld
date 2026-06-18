@@ -47,6 +47,7 @@ import {
 } from '../data/npcRegistry'
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
 import { buildDevSpar, isDevSparNpcId } from '../data/devSpar'
+import { isGhostCombatId, resolveGhostCombatEntry } from '../data/ghostCombat'
 import { deriveBuildLoopType } from '../data/buildName'
 import {
   appendBattleFeedback,
@@ -632,6 +633,7 @@ function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' 
   const pick = chooseMove(state.npc.id, state.turn, forced, {
     walkerHeavyTutorial: isWalkerHeavyTutorialActive(state.npc.id),
     enemyHpRatio: state.enemyHp / Math.max(1, state.npc.stats.maxHp),
+    lastEnemyMove: state.battleMove.lastEnemyMove,
   })
   return pick
 }
@@ -1315,7 +1317,9 @@ export function createInitialBattleState(
 ): BattleState {
   const npc = isDevSparNpcId(npcId)
     ? buildDevSpar()
-    : (() => {
+    : isGhostCombatId(npcId)
+      ? resolveGhostCombatEntry(npcId)
+      : (() => {
         const resolvedId = getNpcCombatEntry(npcId) ? npcId : 'walker'
         const entry = getNpcCombatEntry(resolvedId)
         if (!entry) {
