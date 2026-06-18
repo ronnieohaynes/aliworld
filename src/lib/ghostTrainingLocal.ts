@@ -8,6 +8,11 @@ import {
   ghostLevelBand,
   DAILY_GHOST_SET_SIZE,
   GHOST_DAILY_XP_BATTLE_CAP,
+  GHOST_FULL_PRIZE_XP,
+  GHOST_GRIND_XP,
+  GHOST_CHAMPION_BONUS_XP,
+  ghostFightTierForAttempt,
+  type GhostFightTier,
 } from '../data/ghostDailyReset'
 import { ghostCombatId, snapshotFromSeeded, type GhostSnapshot } from '../data/ghostCombat'
 import { AUTHORED_CHAMPION, getSeededGhost, seededGhostsInBand, type SeededGhostDef } from '../data/seededGhosts'
@@ -208,41 +213,60 @@ export function recordLocalGhostMatch(payload: {
   flawless: boolean
   isChampion: boolean
   dailySlot?: number
-}): { dailyCompleted: number[]; dailyGhostAttempts: Record<string, number>; xpEligible: boolean } {
+}): {
+  dailyCompleted: number[]
+  dailyGhostAttempts: Record<string, number>
+  xpEligible: boolean
+  fightTier: GhostFightTier | null
+  fighterPassiveXp: number
+} {
   const dayKey = currentGhostDayKey()
   const state = loadOfflineState(dayKey)
   const stats = { ...state.stats }
 
   let dailyCompleted = [...state.dailyCompleted]
   const dailyGhostAttempts = { ...state.dailyGhostAttempts }
+  const priorAttempts = payload.isChampion
+    ? 0
+    : Math.max(0, Number(dailyGhostAttempts[payload.combatId] ?? 0))
+  const fightTier = ghostFightTierForAttempt(priorAttempts, payload.isChampion)
+  const xpEligible = fightTier != null
+  const attemptNumber = payload.isChampion ? 1 : priorAttempts + 1
+  let fighterPassiveXp = 0
+
   if (payload.isChampion) {
     stats.ghostsFoughtTotal += 1
     if (payload.won) stats.ghostWins += 1
     else stats.ghostLosses += 1
     if (payload.won && payload.flawless) stats.flawlessWins += 1
     stats.championAttempts += 1
-    if (payload.won) stats.championWins += 1
+    if (payload.won) {
+      stats.championWins += 1
+      fighterPassiveXp = GHOST_CHAMPION_BONUS_XP
+    }
     saveOfflineState({
       ...state,
       stats,
       championAttemptedDayKey: dayKey,
       championClearedDayKey: payload.won ? dayKey : state.championClearedDayKey,
     })
-    return { dailyCompleted, dailyGhostAttempts, xpEligible: true }
+    return { dailyCompleted, dailyGhostAttempts, xpEligible, fightTier, fighterPassiveXp }
   }
 
-  const priorAttempts = Math.max(0, Number(dailyGhostAttempts[payload.combatId] ?? 0))
-  const xpEligible = priorAttempts < GHOST_DAILY_XP_BATTLE_CAP
   if (xpEligible) {
-    dailyGhostAttempts[payload.combatId] = priorAttempts + 1
+    dailyGhostAttempts[payload.combatId] = attemptNumber
     stats.ghostsFoughtTotal += 1
     if (payload.won) stats.ghostWins += 1
     else stats.ghostLosses += 1
     if (payload.won && payload.flawless) stats.flawlessWins += 1
+    if (payload.won) {
+      fighterPassiveXp = fightTier === 'full' ? GHOST_FULL_PRIZE_XP : GHOST_GRIND_XP
+    }
   }
 
   if (
     xpEligible &&
+    fightTier === 'full' &&
     payload.won &&
     payload.dailySlot != null &&
     !dailyCompleted.includes(payload.dailySlot)
@@ -269,7 +293,7 @@ export function recordLocalGhostMatch(payload: {
     stats: { ...stats, dailySetsCompleted },
   })
 
-  return { dailyCompleted, dailyGhostAttempts, xpEligible }
+  return { dailyCompleted, dailyGhostAttempts, xpEligible, fightTier, fighterPassiveXp }
 }
 
 export function markLocalExplainerSeen(): void {

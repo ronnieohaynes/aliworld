@@ -1,4 +1,4 @@
-import { GHOST_DAILY_XP_BATTLE_CAP } from '../data/ghostDailyReset'
+import { GHOST_DAILY_XP_BATTLE_CAP, type GhostFightTier } from '../data/ghostDailyReset'
 import { supabase } from './supabaseClient'
 
 export type GhostOpponentRef = {
@@ -72,6 +72,8 @@ export type GhostRecordMatchResponse = {
   dailyCompleted: number[]
   dailyGhostAttempts?: Record<string, number>
   xpEligible?: boolean
+  fightTier?: GhostFightTier | null
+  attemptNumber?: number
   championBadgeGranted?: boolean
   fighterPassiveXp?: number
 }

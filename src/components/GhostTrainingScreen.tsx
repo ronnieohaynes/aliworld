@@ -9,6 +9,7 @@ import {
   refreshGhostTraining,
   subscribeGhostTrainingStore,
 } from '../store/ghostTrainingStore'
+import { ghostFightTierForAttempt } from '../data/ghostDailyReset'
 import type { GhostOpponentRef, GhostSnapshotPayload } from '../lib/ghostTrainingApi'
 import './GhostTrainingScreen.css'
 
@@ -50,8 +51,14 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
   }, [ready])
 
   const handleFight = useCallback(
-    (ref: GhostOpponentRef) => {
-      const combatId = beginGhostBattle(ref)
+    (ref: GhostOpponentRef, priorAttempts: number) => {
+      const fightTier = ghostFightTierForAttempt(priorAttempts, false)
+      if (!fightTier) return
+      const combatId = beginGhostBattle({
+        ...ref,
+        fightTier,
+        attemptNumber: priorAttempts + 1,
+      })
       onFight(combatId)
     },
     [onFight],
@@ -60,7 +67,7 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
   const handleChampion = useCallback(() => {
     if (!ready) return
     const combatId = cacheChampionForBattle(ready.champion)
-    beginGhostBattle({ combatId, isChampion: true })
+    beginGhostBattle({ combatId, isChampion: true, fightTier: 'champion', attemptNumber: 1 })
     onFight(combatId)
   }, [onFight, ready])
 
@@ -101,9 +108,9 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
 
             {!ready.explainerSeen && (
               <div className="ghost-training__explainer">
-                three build-flavored ghosts each day, band-matched to your level. each ghost has up to
-                three xp-paying battles per day. your snapshot
-                fights in other players&apos; sets. phase B (equipped-move piloting) ships later.
+                three band-matched ghosts each day. your first win on each ghost is the full
+                prize (xp + progress). two grind rematches pay lesser xp only — no bonus, no
+                progress. three fights per ghost per day, then capped.
                 <button
                   type="button"
                   className="ghost-training__fight-btn"
@@ -130,7 +137,9 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
             )}
 
             {dailyDone && (
-              <p className="ghost-training__notice">daily clears complete. you can still rematch until each cap is used.</p>
+              <p className="ghost-training__notice">
+                all three cleared for progress. grind rematches still pay lesser xp until each cap.
+              </p>
             )}
             <ul className="ghost-training__list">
               {ready.opponents.map((ref) => {
@@ -140,6 +149,7 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
                 const cap = ready.perGhostDailyCap > 0 ? ready.perGhostDailyCap : 3
                 const capped = attempts >= cap
                 const attemptsLeft = Math.max(0, cap - attempts)
+                const isBonusFight = attempts === 0
                 return (
                   <li
                     key={ref.combatId}
@@ -155,10 +165,13 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
                       <span className="ghost-training__opponent-meta">
                         lv {snap?.level ?? '?'} · {snap?.buildName ?? 'unknown build'}
                         {snap?.source === 'seed' ? ' · seed' : ''}
+                      </span>
+                      <span className="ghost-training__opponent-meta">
+                        {isBonusFight ? 'bonus fight · full prize' : `grind ${attempts + 1} · lesser xp`}
                         {done ? ' · cleared' : ''}
                       </span>
                       <span className="ghost-training__opponent-meta">
-                        xp fights: {attempts}/{cap}
+                        fights today: {attempts}/{cap}
                         {!capped ? ` · ${attemptsLeft} left` : ' · cap reached'}
                       </span>
                     </div>
@@ -166,9 +179,9 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
                       type="button"
                       className="ghost-training__fight-btn"
                       disabled={capped}
-                      onClick={() => handleFight(ref)}
+                      onClick={() => handleFight(ref, attempts)}
                     >
-                      {capped ? 'capped' : done ? 'rematch' : 'fight'}
+                      {capped ? 'capped' : isBonusFight ? 'fight' : 'grind'}
                     </button>
                   </li>
                 )

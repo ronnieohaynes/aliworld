@@ -1,3 +1,4 @@
+import type { GhostFightTier } from '../data/ghostDailyReset'
 import {
   buildLocalGhostTrainingSync,
   markLocalExplainerSeen,
@@ -35,6 +36,8 @@ type PendingBattle = {
   combatId: string
   dailySlot?: number
   isChampion: boolean
+  fightTier: GhostFightTier
+  attemptNumber: number
 }
 
 type GhostTrainingLocal = {
@@ -139,13 +142,27 @@ export function triggerGhostHarvest(): void {
   })
 }
 
-export function beginGhostBattle(ref: GhostOpponentRef | { combatId: string; isChampion: boolean; slot?: number }): string {
+export function beginGhostBattle(
+  ref: GhostOpponentRef | { combatId: string; isChampion: boolean; slot?: number; fightTier?: GhostFightTier; attemptNumber?: number },
+): string {
   const combatId = ref.combatId
   const isChampion = 'isChampion' in ref ? ref.isChampion : false
+  const fightTier =
+    'fightTier' in ref && ref.fightTier
+      ? ref.fightTier
+      : isChampion
+        ? 'champion'
+        : 'full'
+  const attemptNumber =
+    'attemptNumber' in ref && typeof ref.attemptNumber === 'number'
+      ? ref.attemptNumber
+      : 1
   const pending: PendingBattle = {
     combatId,
     dailySlot: 'slot' in ref ? ref.slot : undefined,
     isChampion,
+    fightTier,
+    attemptNumber,
   }
   saveLocal({ pendingBattle: pending })
   return combatId
@@ -162,10 +179,10 @@ export function clearPendingGhostBattle(): void {
 export async function completeGhostBattle(
   result: 'win' | 'lose' | 'draw',
   options?: { playerHpRatio?: number },
-): Promise<void> {
+): Promise<{ fightTier: GhostFightTier | null; fighterPassiveXp: number; progressAwarded: boolean } | null> {
   const pending = getPendingGhostBattle()
   clearPendingGhostBattle()
-  if (!pending || result === 'draw') return
+  if (!pending || result === 'draw') return null
 
   const flawless = result === 'win' && (options?.playerHpRatio ?? 0) >= 0.99
   const offline = uiState.kind === 'ready' && uiState.data.offline === true
@@ -195,7 +212,14 @@ export async function completeGhostBattle(
       }
       emit()
     }
-    return
+    if (res.fighterPassiveXp > 0) {
+      applyPassiveGhostXp(res.fighterPassiveXp)
+    }
+    return {
+      fightTier: res.fightTier,
+      fighterPassiveXp: res.fighterPassiveXp,
+      progressAwarded: res.fightTier === 'full' && result === 'win',
+    }
   }
 
   try {
@@ -231,8 +255,14 @@ export async function completeGhostBattle(
     }
 
     void refreshGhostTraining()
+    return {
+      fightTier: res.fightTier ?? pending.fightTier,
+      fighterPassiveXp: res.fighterPassiveXp ?? 0,
+      progressAwarded: res.fightTier === 'full' && result === 'win',
+    }
   } catch {
     // match logging is best-effort; don't block battle exit
+    return null
   }
 }
 

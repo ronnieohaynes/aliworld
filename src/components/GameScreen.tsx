@@ -2273,7 +2273,18 @@ export function GameScreen() {
     reportCurrentLocation()
 
     if (exit?.npcId && isGhostCombatId(exit.npcId)) {
-      void completeGhostBattle(exit.result, { playerHpRatio: exit.playerHpRatio })
+      void completeGhostBattle(exit.result, { playerHpRatio: exit.playerHpRatio }).then((res) => {
+        if (!res || exit.result !== 'win') return
+        if (res.fightTier === 'full' && res.progressAwarded) {
+          showNarration([
+            `ghost cleared. +${res.fighterPassiveXp} bonus xp — full prize.`,
+          ])
+        } else if (res.fightTier === 'grind' && res.fighterPassiveXp > 0) {
+          showNarration([`grind win. +${res.fighterPassiveXp} training xp.`])
+        } else if (res.fightTier === 'champion' && res.fighterPassiveXp > 0) {
+          showNarration([`champion down. +${res.fighterPassiveXp} bonus xp.`])
+        }
+      })
     }
 
     if (pendingGymLossLineRef.current) {

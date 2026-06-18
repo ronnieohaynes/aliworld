@@ -8,6 +8,10 @@ import {
   PASSIVE_XP_PER_GHOST_WIN,
   DAILY_SET_SIZE,
   GHOST_DAILY_XP_BATTLE_CAP,
+  GHOST_FULL_PRIZE_XP,
+  GHOST_GRIND_XP,
+  GHOST_CHAMPION_BONUS_XP,
+  ghostFightTierForAttempt,
 } from '../_shared/ghostDailyReset.ts'
 import {
   buildNameFromSkills,
@@ -243,11 +247,11 @@ async function buildDailySet(
     }
   }
 
-  // Last resort: any seeds in adjacent levels
+  // Thin pool: widen slightly before repeating anyone already in the set.
   if (opponents.length < DAILY_SET_SIZE) {
     usedSeedFallback = true
     const usedIds = new Set(opponents.map((o) => o.id))
-    const extras = seededInBand(Math.max(1, band.min - 5), band.max + 5).filter((s) => !usedIds.has(s.id))
+    const extras = seededInBand(Math.max(1, band.min - 2), band.max + 2).filter((s) => !usedIds.has(s.id))
     for (const seed of extras) {
       if (opponents.length >= DAILY_SET_SIZE) break
       opponents.push({
@@ -491,6 +495,20 @@ async function handleRecordMatch(
 
   let ghostOwnerId: string | null = source === 'real' ? opponentId : null
 
+  const state = await ensureTrainingState(supabase, userId)
+  const completed = Array.isArray(state.daily_completed) ? [...(state.daily_completed as number[])] : []
+  const dailyGhostAttempts =
+    state.daily_ghost_attempts && typeof state.daily_ghost_attempts === 'object'
+      ? { ...(state.daily_ghost_attempts as Record<string, number>) }
+      : {}
+
+  const priorAttempts = isChampion
+    ? 0
+    : Math.max(0, Number(dailyGhostAttempts[combatId] ?? 0))
+  const fightTier = ghostFightTierForAttempt(priorAttempts, isChampion)
+  const xpEligible = fightTier != null
+  const attemptNumber = isChampion ? 1 : priorAttempts + 1
+
   await supabase.from('aw_ghost_matches').insert({
     fighter_user_id: userId,
     opponent_source: isChampion ? 'champion' : source,
@@ -504,33 +522,10 @@ async function handleRecordMatch(
     day_key: dayKey,
   })
 
-  await supabase.from('aw_events').insert({
-    user_id: userId,
-    event_type: 'ghost_match',
-    metadata: {
-      combatId,
-      won,
-      flawless,
-      isChampion,
-      dailySlot,
-      opponentSource: source,
-      opponentId,
-      ghostOwnerId,
-    },
-  })
-
-  const state = await ensureTrainingState(supabase, userId)
-  const completed = Array.isArray(state.daily_completed) ? [...(state.daily_completed as number[])] : []
-  const dailyGhostAttempts =
-    state.daily_ghost_attempts && typeof state.daily_ghost_attempts === 'object'
-      ? { ...(state.daily_ghost_attempts as Record<string, number>) }
-      : {}
-
   const updates: Record<string, unknown> = {
     user_id: userId,
     updated_at: new Date().toISOString(),
   }
-  let xpEligible = true
 
   if (isChampion) {
     updates.ghosts_fought_total = Number(state.ghosts_fought_total ?? 0) + 1
@@ -553,23 +548,58 @@ async function handleRecordMatch(
         metadata: { dayKey, combatId, opponentId, flawless },
       })
     }
-  } else {
-    const priorAttempts = Math.max(0, Number(dailyGhostAttempts[combatId] ?? 0))
-    xpEligible = priorAttempts < GHOST_DAILY_XP_BATTLE_CAP
-    if (xpEligible) {
-      dailyGhostAttempts[combatId] = priorAttempts + 1
-      updates.daily_ghost_attempts = dailyGhostAttempts
-      updates.ghosts_fought_total = Number(state.ghosts_fought_total ?? 0) + 1
-      updates.ghost_wins = Number(state.ghost_wins ?? 0) + (won ? 1 : 0)
-      updates.ghost_losses = Number(state.ghost_losses ?? 0) + (won ? 0 : 1)
-      updates.flawless_wins = Number(state.flawless_wins ?? 0) + (won && flawless ? 1 : 0)
+  } else if (xpEligible) {
+    dailyGhostAttempts[combatId] = attemptNumber
+    updates.daily_ghost_attempts = dailyGhostAttempts
+    updates.ghosts_fought_total = Number(state.ghosts_fought_total ?? 0) + 1
+    updates.ghost_wins = Number(state.ghost_wins ?? 0) + (won ? 1 : 0)
+    updates.ghost_losses = Number(state.ghost_losses ?? 0) + (won ? 0 : 1)
+    updates.flawless_wins = Number(state.flawless_wins ?? 0) + (won && flawless ? 1 : 0)
 
-      if (dailySlot != null && won && !completed.includes(dailySlot)) {
-        completed.push(dailySlot)
-        updates.daily_completed = completed
-      }
+    if (fightTier === 'full' && dailySlot != null && won && !completed.includes(dailySlot)) {
+      completed.push(dailySlot)
+      updates.daily_completed = completed
     }
   }
+
+  let fighterPassiveXp = 0
+  if (won && xpEligible) {
+    const passiveDay = state.passive_xp_day_key === dayKey ? Number(state.passive_xp_today ?? 0) : 0
+    if (isChampion) {
+      fighterPassiveXp = Math.min(GHOST_CHAMPION_BONUS_XP, PASSIVE_XP_DAILY_CAP - passiveDay)
+    } else if (fightTier === 'full') {
+      fighterPassiveXp = Math.min(GHOST_FULL_PRIZE_XP, PASSIVE_XP_DAILY_CAP - passiveDay)
+    } else if (fightTier === 'grind') {
+      fighterPassiveXp = Math.min(GHOST_GRIND_XP, PASSIVE_XP_DAILY_CAP - passiveDay)
+    }
+    if (fighterPassiveXp > 0) {
+      await supabase.from('aw_ghost_training_state').upsert({
+        user_id: userId,
+        passive_xp_day_key: dayKey,
+        passive_xp_today: passiveDay + fighterPassiveXp,
+      }, { onConflict: 'user_id' })
+    }
+  }
+
+  await supabase.from('aw_events').insert({
+    user_id: userId,
+    event_type: 'ghost_match',
+    metadata: {
+      combatId,
+      won,
+      flawless,
+      isChampion,
+      dailySlot,
+      opponentSource: source,
+      opponentId,
+      ghostOwnerId,
+      fightTier,
+      attemptNumber,
+      fullPrizeWin: fightTier === 'full' && won,
+      xpGranted: fighterPassiveXp,
+      progressAwarded: fightTier === 'full' && won && dailySlot != null,
+    },
+  })
 
   if (
     !isChampion &&
@@ -599,26 +629,13 @@ async function handleRecordMatch(
     championBadgeGranted = await grantChampionBadge(supabase, userId)
   }
 
-  // Fighter passive XP on daily wins (tiny, capped)
-  let fighterPassiveXp = 0
-  if (won && !isChampion && xpEligible) {
-    const passiveDay = state.passive_xp_day_key === dayKey ? Number(state.passive_xp_today ?? 0) : 0
-    const grant = Math.min(12, PASSIVE_XP_DAILY_CAP - passiveDay)
-    if (grant > 0) {
-      fighterPassiveXp = grant
-      await supabase.from('aw_ghost_training_state').upsert({
-        user_id: userId,
-        passive_xp_day_key: dayKey,
-        passive_xp_today: passiveDay + grant,
-      }, { onConflict: 'user_id' })
-    }
-  }
-
   return jsonResponse({
     ok: true,
     dailyCompleted: completed,
     dailyGhostAttempts,
     xpEligible,
+    fightTier,
+    attemptNumber,
     championBadgeGranted,
     fighterPassiveXp,
   })
