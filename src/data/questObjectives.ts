@@ -205,11 +205,18 @@ export function resolvePrimaryQuestObjective(
           return { questId: quest2.id, stepId: step.id, text: step.getText(q2Ctx) }
         }
       }
-      if (q2Ctx.restockerDefeated) {
+      if (q2Ctx.restockerDefeated && !q2Ctx.e2ClosingCrowdDismissed) {
         return {
           questId: quest2.id,
           stepId: 'e2-closing-pending',
           text: 'step outside.',
+        }
+      }
+      if (q2Ctx.restockerDefeated && q2Ctx.e2ClosingCrowdDismissed) {
+        return {
+          questId: quest2.id,
+          stepId: 'e2-closing',
+          text: QUEST_2_CLOSING_TEXT,
         }
       }
     }

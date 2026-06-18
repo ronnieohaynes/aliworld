@@ -10,6 +10,7 @@ import {
   isCrierConverted,
   isCrierSentAhead,
   isCrowdAddressed,
+  isE2ClosingCrowdDismissed,
   isE2Complete,
   isRestockerDefeated,
 } from '../store/quest2Store'
@@ -26,6 +27,7 @@ export type Quest2ObjectiveContext = {
   inSouthside: boolean
   clerkConverted: boolean
   restockerDefeated: boolean
+  e2ClosingCrowdDismissed: boolean
   e2Complete: boolean
 }
 
@@ -44,6 +46,7 @@ export function buildQuest2ObjectiveContext(): Quest2ObjectiveContext {
     inSouthside: world.citiesVisited.includes('southside'),
     clerkConverted: isClerkConverted(),
     restockerDefeated: isRestockerDefeated(),
+    e2ClosingCrowdDismissed: isE2ClosingCrowdDismissed(),
     e2Complete: isE2Complete(),
   }
 }
@@ -95,6 +98,6 @@ export function getQuest2ActiveStepId(ctx: QuestObjectiveContext): string | null
   for (const step of QUEST_2_STEPS) {
     if (!step.isComplete(ctx)) return step.id
   }
-  if (ctx.restockerDefeated) return 'e2-closing-pending'
+  if (ctx.restockerDefeated && !ctx.e2ClosingCrowdDismissed) return 'e2-closing-pending'
   return null
 }

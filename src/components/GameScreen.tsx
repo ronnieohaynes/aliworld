@@ -1228,13 +1228,26 @@ export function GameScreen() {
   }, [beginNpcDialogue, showNarration])
 
   const finishE2Episode = useCallback(() => {
+    if (isE2Complete()) return
     setE2Complete()
     e2ClosingPhaseRef.current = 'idle'
+    mapTransitionRef.current = null
+    setMapTransition(null)
+    setMapTransitionReady(false)
+    setMapTransitionPending(false)
+    setQuestTransitionActive(false)
+    setDialogue(null)
     track('episode_complete', { episode: 'e2' })
   }, [])
 
   const runE2ClosingEpisodeCards = useCallback(() => {
-    if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
+    if (isE2Complete()) return
+    if (e2ClosingPhaseRef.current === 'cards') {
+      if (!questTransitionActive) {
+        finishE2Episode()
+      }
+      return
+    }
     e2ClosingPhaseRef.current = 'cards'
     showQuestTransition({
       questName: PRELUDE_QUEST_NAME,
@@ -1242,14 +1255,16 @@ export function GameScreen() {
       episodeNumber: 2,
       type: 'episode_complete',
       onComplete: () => {
-        showQuestTransition({
-          questName: QUEST_2_CLOSING_TEXT,
-          type: 'quest_complete',
-          onComplete: finishE2Episode,
+        window.requestAnimationFrame(() => {
+          showQuestTransition({
+            questName: QUEST_2_CLOSING_TEXT,
+            type: 'quest_complete',
+            onComplete: finishE2Episode,
+          })
         })
       },
     })
-  }, [finishE2Episode, showQuestTransition])
+  }, [finishE2Episode, questTransitionActive, showQuestTransition])
 
   const runE2ClosingMobDialogue = useCallback(() => {
     if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
@@ -2128,7 +2143,25 @@ export function GameScreen() {
 
   useEffect(() => {
     if (!isRestockerDefeated() || isE2Complete()) return
-    if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
+    if (cutsceneFlowActive || battleNpcId || battleWipePhase) return
+
+    if (
+      isE2ClosingCrowdDismissed() &&
+      currentCity === 'five' &&
+      !dialogue &&
+      !mapTransition &&
+      !mapTransitionPending &&
+      !showDarkline &&
+      !cultDarklinePhase &&
+      !darklineEnterTransition
+    ) {
+      if (!questTransitionActive) {
+        runE2ClosingEpisodeCards()
+      }
+      return
+    }
+
+    if (cutsceneFlowActive || questTransitionActive || dialogue) {
       return
     }
     if (mapTransition || showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) {
@@ -2148,7 +2181,7 @@ export function GameScreen() {
     }
 
     if (
-      phase === 'return-five' &&
+      (phase === 'return-five' || isE2ClosingCrowdDismissed()) &&
       currentCity === 'southside' &&
       !mapTransitionPending &&
       !mapTransition
@@ -2162,7 +2195,7 @@ export function GameScreen() {
 
     if (currentCity === 'blue-store-interior') {
       startE2ClosingExitInterior()
-    } else if (currentCity === 'southside' && phase === 'idle') {
+    } else if (currentCity === 'southside' && phase === 'idle' && !isE2ClosingCrowdDismissed()) {
       runE2ClosingMobDialogue()
     }
   }, [
@@ -2179,6 +2212,7 @@ export function GameScreen() {
     questTransitionActive,
     queueE2ClosingReturnFive,
     queueE2ClosingSouthsideExit,
+    runE2ClosingEpisodeCards,
     runE2ClosingMobDialogue,
     showDarkline,
     startE2ClosingExitInterior,
