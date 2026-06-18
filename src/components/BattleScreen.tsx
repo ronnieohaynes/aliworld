@@ -24,6 +24,8 @@ import { publicAsset } from '../utils/publicAsset'
 import { drawSheetFrame, getIdleFrameIndex, loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
 import { isDevSparNpcId } from '../data/devSpar'
+import { isGymGauntletCombatId } from '../data/gymWeeks'
+import { isGhostCombatId } from '../data/ghostCombat'
 import {
   BATTLE_ENEMY_FEET,
   BATTLE_ENEMY_SOURCE_H,
@@ -81,7 +83,7 @@ import {
 import { getMoveUiMeta, getMoveDef } from '../data/moves'
 import { MoveScaleTag } from './MoveScaleTag'
 import './MoveScaleTag.css'
-import { track } from '../lib/analytics'
+import { trackProgressEvent } from '../lib/analytics'
 import type { BattleFeedbackTone } from '../data/battleFeedback'
 import {
   getPlayerCounterRelation,
@@ -328,7 +330,12 @@ function LevelUpOverlay({
 
 type Props = {
   npcId: string
-  onBattleEnd: (result: 'win' | 'lose' | 'draw', turns: number, playerHpRatio?: number) => void
+  onBattleEnd: (
+    result: 'win' | 'lose' | 'draw',
+    turns: number,
+    playerHpRatio?: number,
+    telemetry?: BattleEndTelemetry,
+  ) => void
   /** Commits conversion flags the moment the player wins, before exit narration ends. */
   onWinPayoff?: (npcId: string) => void
   /** True once enter wipe has lifted and the battle is visible. */
@@ -337,6 +344,14 @@ type Props = {
   runItBack?: boolean
   combatXpPolicy?: 'normal' | 'none' | 'fixed-level'
   battleEndHealing?: 'default' | 'full-on-win'
+}
+
+export type BattleEndTelemetry = {
+  maxHp: number
+  hpRemaining: number
+  damageTaken: number
+  countersLanded: number
+  movesUsed: PlayerMove[]
 }
 
 /**
@@ -519,7 +534,14 @@ export function BattleScreen({
 
   useEffect(() => {
     if (!isDevSparNpcId(npcId)) {
-      track('battle_start', { enemyId: npcId })
+      const isGhost = isGhostCombatId(npcId)
+      const isGym = isGymGauntletCombatId(npcId)
+      trackProgressEvent('battle_start', {
+        enemyId: npcId,
+        opponentType: isGhost ? 'ghost' : isGym ? 'gym' : 'world',
+        ghost: isGhost,
+        gym: isGym,
+      })
     }
   }, [npcId])
 
@@ -686,6 +708,11 @@ export function BattleScreen({
   const inputBlocked = battleTutorialBlocking || walkerHeavyBlocking || showWinNarration
 
   const [drawPopup, setDrawPopup] = useState(false)
+  const lastHpRef = useRef(state.playerStats.maxHp)
+  const damageTakenRef = useRef(0)
+  const countersLandedRef = useRef(0)
+  const movesUsedRef = useRef<PlayerMove[]>([])
+  const feedbackSeenRef = useRef(0)
 
   const finishBattle = useCallback(
     (result: 'win' | 'lose' | 'draw') => {
@@ -704,6 +731,13 @@ export function BattleScreen({
         result,
         state.turn,
         state.playerHp / Math.max(1, state.playerStats.maxHp),
+        {
+          maxHp: state.playerStats.maxHp,
+          hpRemaining: state.playerHp,
+          damageTaken: damageTakenRef.current,
+          countersLanded: countersLandedRef.current,
+          movesUsed: [...movesUsedRef.current],
+        },
       )
     },
     [onBattleEnd, state.playerHp, state.playerStats.maxHp, state.turn],
@@ -733,6 +767,30 @@ export function BattleScreen({
   ])
 
   useEffect(() => {
+    damageTakenRef.current = 0
+    countersLandedRef.current = 0
+    movesUsedRef.current = []
+    feedbackSeenRef.current = 0
+    lastHpRef.current = state.playerStats.maxHp
+  }, [npcId, state.playerStats.maxHp])
+
+  useEffect(() => {
+    if (state.playerHp < lastHpRef.current) {
+      damageTakenRef.current += lastHpRef.current - state.playerHp
+    }
+    lastHpRef.current = state.playerHp
+  }, [state.playerHp])
+
+  useEffect(() => {
+    if (state.feedbackEvents.length <= feedbackSeenRef.current) return
+    const newEvents = state.feedbackEvents.slice(feedbackSeenRef.current)
+    countersLandedRef.current += newEvents.filter(
+      (event) => event.kind === 'counter' && event.target === 'enemy',
+    ).length
+    feedbackSeenRef.current = state.feedbackEvents.length
+  }, [state.feedbackEvents, state.feedbackSeq])
+
+  useEffect(() => {
     if (walkerHeavyBeat !== 'acting') return
     const readBeat = state.feedbackEvents.some((e) =>
       e.text.toLowerCase().includes('read the telegraph'),
@@ -751,6 +809,7 @@ export function BattleScreen({
       if (skill === 'attack' || skill === 'speed' || skill === 'defense' || skill === 'luck') {
         lastPlayerMoveSkillRef.current = skill
       }
+      movesUsedRef.current.push(move)
       dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
     [inputBlocked, walkerHeavyBeat, state.phase],

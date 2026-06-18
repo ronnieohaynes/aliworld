@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { isNetworkAuthError, toFriendlyAuthError } from '../utils/authErrors'
 import { getPasswordResetRedirectUrl, isPasswordRecoveryUrl } from '../utils/authRoutes'
-import { track } from '../lib/analytics'
+import { trackProgressEvent } from '../lib/analytics'
 import { resetCharacterForSignOut } from './characterStore'
 import { resetCosmeticsEquipForSignOut } from './cosmeticsStore'
 import { refreshPlayerGrants, resetGrantsStore } from './grantsStore'
@@ -95,7 +95,7 @@ function handleSignedIn(session: Session | null, recoveryPending: boolean): void
 }
 
 function handleSignedOut(): void {
-  track('logout')
+  trackProgressEvent('logout')
   setState({
     session: null,
     status: 'signed-out',
@@ -124,7 +124,7 @@ supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
     const recovery = isPasswordRecoveryUrl() && session != null
     handleSignedIn(session, recovery)
     if (event === 'SIGNED_IN' && !recovery) {
-      track('login_success')
+      trackProgressEvent('login_success')
     }
     return
   }
@@ -159,7 +159,7 @@ export async function signUp(email: string, password: string): Promise<AuthResul
   try {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) return { error: wrapAuthError(error.message) }
-    track('signup_success')
+    trackProgressEvent('signup_success')
     if (!data.session) return { needsEmailConfirmation: true }
     return {}
   } catch (err) {

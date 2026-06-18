@@ -24,7 +24,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
     setClearing(true)
     try {
       const { cleared } = await clearAnalyticsEvents(adminSecret)
-      showToast(`cleared ${cleared.toLocaleString()} analytics events.`)
+      showToast(`cleared ${cleared.toLocaleString()} raw analytics events (durable progress kept).`)
       setClearOpen(false)
       setClearText('')
       onEventsCleared()

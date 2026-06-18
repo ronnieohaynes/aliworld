@@ -539,9 +539,19 @@ async function handleRecordMatch(
     updates.flawless_wins = Number(state.flawless_wins ?? 0) + (won && flawless ? 1 : 0)
     updates.champion_attempts = Number(state.champion_attempts ?? 0) + 1
     updates.champion_attempted_day_key = dayKey
+    await supabase.from('aw_events').insert({
+      user_id: userId,
+      event_type: 'ghost_champion_attempt',
+      metadata: { dayKey, won, combatId, opponentId },
+    })
     if (won) {
       updates.champion_wins = Number(state.champion_wins ?? 0) + 1
       updates.champion_cleared_day_key = dayKey
+      await supabase.from('aw_events').insert({
+        user_id: userId,
+        event_type: 'ghost_champion_win',
+        metadata: { dayKey, combatId, opponentId, flawless },
+      })
     }
   } else {
     const priorAttempts = Math.max(0, Number(dailyGhostAttempts[combatId] ?? 0))
@@ -571,6 +581,11 @@ async function handleRecordMatch(
     const streak = Number(state.daily_streak ?? 0) + 1
     updates.daily_streak = streak
     updates.best_daily_streak = Math.max(Number(state.best_daily_streak ?? 0), streak)
+    await supabase.from('aw_events').insert({
+      user_id: userId,
+      event_type: 'ghost_daily_set_complete',
+      metadata: { dayKey, completedSlots: completed.length },
+    })
   }
 
   await supabase.from('aw_ghost_training_state').upsert(updates, { onConflict: 'user_id' })

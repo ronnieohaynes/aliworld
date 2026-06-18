@@ -655,7 +655,11 @@ async function handleClearEventsAction(supabase: SupabaseClient): Promise<Respon
 
   if (deleteError) return jsonResponse({ error: deleteError.message }, 500)
 
-  return jsonResponse({ cleared: count ?? 0 })
+  return jsonResponse({
+    cleared: count ?? 0,
+    scope: 'aw_events_only',
+    durableProgressUnaffected: ['aw_lifetime_progress', 'aw_lifetime_daily_activity', 'aw_ghost_training_state', 'aw_grants'],
+  })
 }
 
 async function handleOrphansSweepAction(supabase: SupabaseClient): Promise<Response> {

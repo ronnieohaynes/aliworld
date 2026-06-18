@@ -130,7 +130,7 @@ import {
 } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
-import { BattleScreen } from './BattleScreen'
+import { BattleScreen, type BattleEndTelemetry } from './BattleScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
 import { GymLeaderboardScreen } from './GymLeaderboardScreen'
@@ -152,7 +152,7 @@ import {
   subscribeCharacterStore,
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
-import { track } from '../lib/analytics'
+import { trackProgressEvent } from '../lib/analytics'
 import type { PlayCutsceneOptions } from '../lib/playCutscene'
 import { preloadYouTubeIframeApi } from '../lib/youtubeIframeApi'
 import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
@@ -337,7 +337,9 @@ export function GameScreen() {
     result: 'win' | 'lose' | 'draw'
     npcId: string | null
     playerHpRatio?: number
+    telemetry?: BattleEndTelemetry
   } | null>(null)
+  const gymRunDamageTakenRef = useRef(0)
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
   const interactBtnRef = useRef<HTMLButtonElement>(null)
   const scriptBtnRef = useRef<HTMLButtonElement>(null)
@@ -575,7 +577,7 @@ export function GameScreen() {
     if (!locationReady) return
     if (prevCityRef.current === currentCity) return
     if (prevCityRef.current !== null) {
-      track('city_enter', { city: currentCity })
+      trackProgressEvent('city_enter', { city: currentCity })
     }
     prevCityRef.current = currentCity
   }, [currentCity, locationReady])
@@ -1093,6 +1095,11 @@ export function GameScreen() {
     (weekId: string, practice: boolean) => {
       const combatId = startWeeklyGymRun(weekId, practice)
       if (!combatId) return
+      gymRunDamageTakenRef.current = 0
+      trackProgressEvent('gym_run_start', {
+        weekId,
+        practice,
+      })
       setGymTrainerChoiceOpen(false)
       startNpcBattle(combatId)
     },
@@ -1237,7 +1244,8 @@ export function GameScreen() {
     setMapTransitionPending(false)
     setQuestTransitionActive(false)
     setDialogue(null)
-    track('episode_complete', { episode: 'e2' })
+    trackProgressEvent('quest_complete', { questId: 'e2-closing' })
+    trackProgressEvent('episode_complete', { episode: 'e2' })
   }, [])
 
   const runE2ClosingEpisodeCards = useCallback(() => {
@@ -1376,7 +1384,8 @@ export function GameScreen() {
   const finishCafeScene = useCallback(() => {
     if (!isCafeSceneSeen()) {
       setCafeSceneSeen()
-      track('episode_complete', { episode: 'e1' })
+      trackProgressEvent('quest_complete', { questId: 'e1-cafe' })
+      trackProgressEvent('episode_complete', { episode: 'e1' })
     }
     setCafeFade('out')
   }, [])
@@ -1391,7 +1400,8 @@ export function GameScreen() {
     setCutsceneQuestHelperHidden(false)
     if (!isCafeSceneSeen()) {
       setCafeSceneSeen()
-      track('episode_complete', { episode: 'e1' })
+      trackProgressEvent('quest_complete', { questId: 'e1-cafe' })
+      trackProgressEvent('episode_complete', { episode: 'e1' })
     }
     setCurrentCity('five')
     markCityVisited('five')
@@ -1767,7 +1777,7 @@ export function GameScreen() {
         if (onComplete) onComplete()
         if (prev.npc.id === CROWD_2_NPC_ID && isE2QuestUnlocked() && !isCrowdAddressed()) {
           setCrowdAddressed()
-          track('npc_converted', { npcId: CROWD_2_NPC_ID })
+          trackProgressEvent('npc_converted', { npcId: CROWD_2_NPC_ID })
         }
         return null
       }
@@ -2284,6 +2294,20 @@ export function GameScreen() {
 
       const clearResult = recordWeeklyGymClear()
       if (clearResult) {
+        trackProgressEvent('gym_run_end', {
+          outcome: 'clear',
+          weekId: clearResult.weekId,
+          practice: false,
+          streak: clearResult.streak,
+          noLoss: true,
+          cleanRun: gymRunDamageTakenRef.current <= 0,
+          damageTaken: gymRunDamageTakenRef.current,
+        })
+        trackProgressEvent('gym_week_clear', {
+          weekId: clearResult.weekId,
+          streak: clearResult.streak,
+          cleanRun: gymRunDamageTakenRef.current <= 0,
+        })
         void claimGymWeekReward({
           weekId: clearResult.weekId,
           streak: clearResult.streak,
@@ -2295,8 +2319,21 @@ export function GameScreen() {
         showNarration(
           [`week ${clearResult.weekId} cleared. xp and badge on the board, come back next week.`],
         )
+        gymRunDamageTakenRef.current = 0
       } else if (getActiveGymRun()?.practice) {
+        const activePracticeRun = getActiveGymRun()
+        if (activePracticeRun) {
+          trackProgressEvent('gym_run_end', {
+            outcome: 'clear',
+            weekId: activePracticeRun.weekId,
+            practice: true,
+            noLoss: true,
+            cleanRun: gymRunDamageTakenRef.current <= 0,
+            damageTaken: gymRunDamageTakenRef.current,
+          })
+        }
         clearActiveGymRun()
+        gymRunDamageTakenRef.current = 0
         showNarration(['practice run complete. no rewards — full gauntlet again anytime.'])
       }
     }
@@ -2346,47 +2383,104 @@ export function GameScreen() {
     if (isDevSparNpcId(npcId)) return
     if (npcId === WALKER_NPC_ID) {
       setWalkerConverted()
-      track('npc_converted', { npcId: WALKER_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: WALKER_NPC_ID })
     }
     if (npcId === JACLYN_NPC_ID) {
       setJaclynConverted()
-      track('npc_converted', { npcId: JACLYN_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: JACLYN_NPC_ID })
     }
     if (npcId === MARK_NPC_ID) {
       setMarkDefeated()
       collectArtifact('subway-pass')
-      track('npc_converted', { npcId: MARK_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: MARK_NPC_ID })
     }
     if (npcId === TOWN_CRIER_NPC_ID) {
       setCrierConverted()
-      track('npc_converted', { npcId: TOWN_CRIER_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: TOWN_CRIER_NPC_ID })
     }
     if (npcId === CLERK_NPC_ID) {
       setClerkConverted()
-      track('npc_converted', { npcId: CLERK_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: CLERK_NPC_ID })
     }
     if (npcId === RESTOCKER_NPC_ID) {
       setRestockerDefeated()
-      track('npc_converted', { npcId: RESTOCKER_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: RESTOCKER_NPC_ID })
     }
   }, [])
 
   const handleBattleEnd = useCallback(
-    (result: 'win' | 'lose' | 'draw', turns: number, playerHpRatio?: number) => {
+    (
+      result: 'win' | 'lose' | 'draw',
+      turns: number,
+      playerHpRatio?: number,
+      telemetry?: BattleEndTelemetry,
+    ) => {
       const safeTurns = Number.isFinite(turns) && turns >= 0 ? turns : 0
       const isDevSpar = battleNpcId != null && isDevSparNpcId(battleNpcId)
       const isGhost = battleNpcId != null && isGhostCombatId(battleNpcId)
+      const isGym = battleNpcId != null && isGymGauntletCombatId(battleNpcId)
+      const storyNpcIds = new Set([
+        WALKER_NPC_ID,
+        JACLYN_NPC_ID,
+        MARK_NPC_ID,
+        TOWN_CRIER_NPC_ID,
+        CLERK_NPC_ID,
+        RESTOCKER_NPC_ID,
+      ])
+      const isStoryFight = battleNpcId != null && storyNpcIds.has(battleNpcId)
+      const opponentType = isGhost ? 'ghost' : isGym ? 'gym' : isStoryFight ? 'story' : 'world'
+      const damageTaken = Math.max(0, Math.floor(telemetry?.damageTaken ?? 0))
+      const countersLanded = Math.max(0, Math.floor(telemetry?.countersLanded ?? 0))
+      const movesUsed = Array.isArray(telemetry?.movesUsed) ? telemetry?.movesUsed ?? [] : []
+      const hpRemaining = Math.max(0, Math.floor(telemetry?.hpRemaining ?? 0))
+      const maxHp = Math.max(1, Math.floor(telemetry?.maxHp ?? 1))
+      const computedHpRatio = hpRemaining / maxHp
+      const finalHpRatio = typeof playerHpRatio === 'number' ? playerHpRatio : computedHpRatio
+      const flawless = result === 'win' && damageTaken <= 0
       if (battleNpcId && !isDevSpar) {
-        track('battle_end', { enemyId: battleNpcId, result, turns: safeTurns, ghost: isGhost })
+        trackProgressEvent('battle_end', {
+          enemyId: battleNpcId,
+          result,
+          turns: safeTurns,
+          opponentType,
+          ghost: isGhost,
+          gym: isGym,
+          story: isStoryFight,
+          hpRemaining,
+          maxHp,
+          playerHpRatio: finalHpRatio,
+          damageTaken,
+          countersLanded,
+          movesUsed,
+          flawless,
+          noHit: damageTaken <= 0,
+          moveCount: movesUsed.length,
+        })
       }
       if (result === 'win' && !isDevSpar) {
         if (battleNpcId === MARK_NPC_ID) {
           showMarkVictoryNarration()
         }
       }
+      if (isGym && telemetry) {
+        gymRunDamageTakenRef.current += damageTaken
+      }
       if (result === 'lose' && battleNpcId && isGymGauntletCombatId(battleNpcId)) {
+        const activeRun = getActiveGymRun()
+        if (activeRun) {
+          trackProgressEvent('gym_run_end', {
+            outcome: 'loss',
+            weekId: activeRun.weekId,
+            practice: activeRun.practice,
+            failedAtFightIndex: activeRun.fightIndex,
+            damageTaken: gymRunDamageTakenRef.current,
+            noLoss: false,
+            cleanRun: gymRunDamageTakenRef.current <= 0,
+          })
+        }
         pendingGymLossLineRef.current = true
         resetGymRunOnLoss()
+        gymRunDamageTakenRef.current = 0
       }
       if (result === 'win' && battleNpcId && isGymGauntletCombatId(battleNpcId)) {
         const advanced = advanceGymRunAfterWin()
@@ -2397,7 +2491,7 @@ export function GameScreen() {
           }
         }
       }
-      pendingBattleExitRef.current = { result, npcId: battleNpcId, playerHpRatio }
+      pendingBattleExitRef.current = { result, npcId: battleNpcId, playerHpRatio, telemetry }
       setBattleWipePhase('exit')
     },
     [battleNpcId, showMarkVictoryNarration],

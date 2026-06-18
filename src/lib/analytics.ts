@@ -22,6 +22,17 @@ export function track(event: string, props?: Record<string, unknown>): void {
   void sendEvent(event, props)
 }
 
+/**
+ * Progress-critical analytics helper. Use for events that should feed retroactive
+ * badges/seals so they can be derived from history later.
+ */
+export function trackProgressEvent(event: string, props?: Record<string, unknown>): void {
+  track(event, {
+    progress_tracking: true,
+    ...props,
+  })
+}
+
 async function sendEvent(event: string, props?: Record<string, unknown>): Promise<void> {
   try {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return
@@ -31,6 +42,8 @@ async function sendEvent(event: string, props?: Record<string, unknown>): Promis
     } = await supabase.auth.getSession()
 
     const metadata = {
+      event_schema: 'v2',
+      client_ts: new Date().toISOString(),
       session_id: sessionId,
       ...props,
     }

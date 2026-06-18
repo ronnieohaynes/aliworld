@@ -1,6 +1,7 @@
 /**
  * World memory, bosses cleared and cities visited.
  */
+import { trackProgressEvent } from '../lib/analytics'
 
 const STORAGE_KEY = 'aliworld:world-memory:v1'
 
@@ -75,6 +76,10 @@ export function markBossCleared(bossId: string): void {
   state = { ...state, bossesCleared: [...state.bossesCleared, bossId] }
   saveWorldMemoryToStorage()
   emit()
+  trackProgressEvent('world_memory_flag', {
+    category: 'bossesCleared',
+    value: bossId,
+  })
 }
 
 export function markCityVisited(cityId: string): void {
@@ -83,6 +88,10 @@ export function markCityVisited(cityId: string): void {
   state = { ...state, citiesVisited: [...state.citiesVisited, id] }
   saveWorldMemoryToStorage()
   emit()
+  trackProgressEvent('world_memory_flag', {
+    category: 'citiesVisited',
+    value: id,
+  })
 }
 
 export function serialize(): WorldMemoryState {

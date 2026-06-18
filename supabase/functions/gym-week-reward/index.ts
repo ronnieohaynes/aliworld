@@ -151,6 +151,18 @@ Deno.serve(async (req) => {
       if (result.inserted) streakBadges.push(result.value)
     }
 
+    await supabase.from('aw_events').insert({
+      user_id: user.id,
+      event_type: 'gym_reward_claimed',
+      metadata: {
+        weekId,
+        streak,
+        badgeValue,
+        weekBadgeGranted: weekGrant.inserted,
+        streakBadges,
+      },
+    })
+
     return jsonResponse({
       granted: weekGrant.inserted || streakBadges.length > 0,
       badgeValue,

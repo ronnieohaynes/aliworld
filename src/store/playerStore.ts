@@ -9,7 +9,7 @@ import { deriveBuildName } from '../data/buildName'
 import type { BattleFeedbackEvent } from '../data/battleFeedback'
 import type { TimingBonusGrant } from '../data/timingBonusXp'
 import { combatXpLevelMultiplier } from '../data/moveBalance'
-import { track } from '../lib/analytics'
+import { trackProgressEvent } from '../lib/analytics'
 import { PLAYER_LEVEL_MILESTONES } from '../lib/analyticsConstants'
 import { isDevModeEnabled, subscribeDevMode } from '../lib/devMode'
 import { supabase } from '../lib/supabaseClient'
@@ -285,14 +285,14 @@ function trackBuildNameIfChanged(skills: SkillsState): void {
   const next = deriveBuildName(skills).name
   if (next === trackedBuildName) return
   trackedBuildName = next
-  track('build_name_changed', { buildName: next })
+  trackProgressEvent('build_name_changed', { buildName: next })
 }
 
 function trackSkillLevelUps(before: SkillsState, after: SkillsState): void {
   const combatSkills: SkillId[] = ['attack', 'speed', 'defense', 'luck']
   for (const skill of combatSkills) {
     if (after[skill].level > before[skill].level) {
-      track('skill_levelup', { skill, level: after[skill].level })
+      trackProgressEvent('skill_levelup', { skill, level: after[skill].level })
     }
   }
 }
@@ -303,7 +303,7 @@ function trackPlayerLevelMilestones(before: SkillsState, after: SkillsState): vo
   if (next <= prev) return
   for (const threshold of PLAYER_LEVEL_MILESTONES) {
     if (prev < threshold && next >= threshold) {
-      track('player_level_milestone', { level: threshold })
+      trackProgressEvent('player_level_milestone', { level: threshold })
     }
   }
 }
@@ -547,7 +547,7 @@ export function setEquippedMove(slot: 0 | 1 | 2 | 3, moveId: PlayerMoveId): void
   ]
   slots[slot] = moveId
   state = { ...state, equippedMoves: slots }
-  track('move_equipped', { slot, moveId })
+  trackProgressEvent('move_equipped', { slot, moveId })
   emit()
 }
 
