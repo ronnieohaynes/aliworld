@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { getTheaterViewingBackgroundSrc } from '../data/battleBackgrounds'
 import {
   PREMIERE_ATTEND_THRESHOLD_SEC,
   THEATER_LIBRARY,
@@ -232,44 +233,17 @@ export function TheaterScreen({ onClose }: Props) {
     activeYoutubeId ?? featuredPremiere?.youtubeId ?? THEATER_LIBRARY[0]?.youtubeId
 
   return (
-    <div className="theater" role="dialog" aria-label="Danny theater">
-      <div className="theater__backdrop" onClick={onClose} aria-hidden />
-      <div className="theater__panel">
-        <header className="theater__header">
-          <div>
-            <p className="theater__eyebrow">aliworld · danny&apos;s theater</p>
-            <h1 className="theater__title">now showing</h1>
-            <p className="theater__sub">premieres · library · youtube</p>
-          </div>
-          <div className="theater__header-actions">
-            <button type="button" className="theater__btn" onClick={onClose}>
-              close
-            </button>
-          </div>
-        </header>
+    <div className="theater" role="dialog" aria-label="Danny theater viewing">
+      <div className="theater__venue-frame">
+        <img
+          className="theater__venue-bg"
+          src={getTheaterViewingBackgroundSrc()}
+          alt=""
+          draggable={false}
+        />
 
-        {!explainerSeen ? (
-          <p className="theater__explainer">
-            live premieres drop four times a day across timezones. watch during a slot to earn xp
-            and event skins — once per drop. between slots, pick anything from the library.
-            <button type="button" className="theater__btn theater__btn--accent" onClick={handleDismissExplainer}>
-              got it
-            </button>
-          </p>
-        ) : null}
-
-        {rewardToast ? <p className="theater__reward-toast">{rewardToast}</p> : null}
-
-        <p
-          className={`theater__status-card${
-            schedule.kind === 'live' ? ' theater__status-card--live' : ''
-          }${alreadyAttendedLive ? ' theater__status-card--attended' : ''}`}
-        >
-          {statusLine}
-        </p>
-
-        {embedSrc ? (
-          <div className="theater__screen-wrap">
+        <div className="theater__screen-slot">
+          {embedSrc ? (
             <iframe
               className="theater__screen"
               src={embedSrc}
@@ -277,92 +251,133 @@ export function TheaterScreen({ onClose }: Props) {
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />
-          </div>
-        ) : (
-          <div className="theater__screen-wrap" aria-hidden />
-        )}
-
-        {featuredPremiere && schedule.kind !== 'live' && screen.kind === 'idle' ? (
-          <button type="button" className="theater__btn theater__btn--accent" onClick={handleWatchFeatured}>
-            watch featured · {featuredPremiere.title}
-          </button>
-        ) : null}
-
-        <div className="theater__links">
-          {outboundYoutubeId ? (
-            <a
-              className="theater__btn theater__btn--accent"
-              href={youtubeWatchUrl(outboundYoutubeId)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackExternalLinkClick(`youtube:watch:${outboundYoutubeId}`)}
-            >
-              watch full on youtube
-            </a>
           ) : null}
-          <a
-            className="theater__btn"
-            href={youtubeSubscribeUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackExternalLinkClick('youtube:subscribe')}
-          >
-            subscribe
-          </a>
         </div>
 
-        {featuredPremiere ? (
-          <>
-            <h2 className="theater__section-title">
-              {schedule.kind === 'live' ? 'now premiering' : 'featured drop'}
-            </h2>
+        <div className="theater__hud">
+          <header className="theater__header">
+            <div>
+              <p className="theater__eyebrow">aliworld · danny&apos;s theater</p>
+              <h1 className="theater__title">now showing</h1>
+              <p className="theater__sub">premieres · library · youtube</p>
+            </div>
+            <div className="theater__header-actions">
+              <button type="button" className="theater__btn" onClick={onClose}>
+                leave seats
+              </button>
+            </div>
+          </header>
+
+          {!explainerSeen ? (
+            <p className="theater__explainer">
+              live premieres drop four times a day across timezones. watch during a slot to earn xp
+              and event skins — once per drop. between slots, pick anything from the library.
+              <button
+                type="button"
+                className="theater__btn theater__btn--accent"
+                onClick={handleDismissExplainer}
+              >
+                got it
+              </button>
+            </p>
+          ) : null}
+
+          {rewardToast ? <p className="theater__reward-toast">{rewardToast}</p> : null}
+
+          <p
+            className={`theater__status-card${
+              schedule.kind === 'live' ? ' theater__status-card--live' : ''
+            }${alreadyAttendedLive ? ' theater__status-card--attended' : ''}`}
+          >
+            {statusLine}
+          </p>
+
+          {featuredPremiere && schedule.kind !== 'live' && screen.kind === 'idle' ? (
             <button
               type="button"
-              className={`theater__library-item${
-                screen.kind !== 'idle' &&
-                ((screen.kind === 'premiere' && screen.premiereId === featuredPremiere.id) ||
-                  (screen.kind === 'library' && screen.libraryId === featuredPremiere.id))
-                  ? ' theater__library-item--active'
-                  : ''
-              }`}
+              className="theater__btn theater__btn--accent"
               onClick={handleWatchFeatured}
             >
-              <img
-                className="theater__thumb"
-                src={youtubeThumbnailUrl(featuredPremiere.youtubeId)}
-                alt=""
-                loading="lazy"
-              />
-              <span className="theater__library-label">
-                {featuredPremiere.title}
-                {attendedIds.includes(featuredPremiere.id) ? ' · attended' : ''}
-              </span>
+              watch featured · {featuredPremiere.title}
             </button>
-          </>
-        ) : null}
+          ) : null}
 
-        <h2 className="theater__section-title">library</h2>
-        <div className="theater__library">
-          {THEATER_LIBRARY.map((video) => (
-            <button
-              key={video.id}
-              type="button"
-              className={`theater__library-item${
-                screen.kind === 'library' && screen.libraryId === video.id
-                  ? ' theater__library-item--active'
-                  : ''
-              }`}
-              onClick={() => handleLibraryPick(video.id, video.youtubeId, video.title)}
+          <div className="theater__links">
+            {outboundYoutubeId ? (
+              <a
+                className="theater__btn theater__btn--accent"
+                href={youtubeWatchUrl(outboundYoutubeId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackExternalLinkClick(`youtube:watch:${outboundYoutubeId}`)}
+              >
+                watch full on youtube
+              </a>
+            ) : null}
+            <a
+              className="theater__btn"
+              href={youtubeSubscribeUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackExternalLinkClick('youtube:subscribe')}
             >
-              <img
-                className="theater__thumb"
-                src={youtubeThumbnailUrl(video.youtubeId)}
-                alt=""
-                loading="lazy"
-              />
-              <span className="theater__library-label">{video.title}</span>
-            </button>
-          ))}
+              subscribe
+            </a>
+          </div>
+
+          {featuredPremiere ? (
+            <>
+              <h2 className="theater__section-title">
+                {schedule.kind === 'live' ? 'now premiering' : 'featured drop'}
+              </h2>
+              <button
+                type="button"
+                className={`theater__library-item${
+                  screen.kind !== 'idle' &&
+                  ((screen.kind === 'premiere' && screen.premiereId === featuredPremiere.id) ||
+                    (screen.kind === 'library' && screen.libraryId === featuredPremiere.id))
+                    ? ' theater__library-item--active'
+                    : ''
+                }`}
+                onClick={handleWatchFeatured}
+              >
+                <img
+                  className="theater__thumb"
+                  src={youtubeThumbnailUrl(featuredPremiere.youtubeId)}
+                  alt=""
+                  loading="lazy"
+                />
+                <span className="theater__library-label">
+                  {featuredPremiere.title}
+                  {attendedIds.includes(featuredPremiere.id) ? ' · attended' : ''}
+                </span>
+              </button>
+            </>
+          ) : null}
+
+          <h2 className="theater__section-title">library</h2>
+          <div className="theater__library">
+            {THEATER_LIBRARY.map((video) => (
+              <button
+                key={video.id}
+                type="button"
+                className={`theater__library-item${
+                  screen.kind === 'library' && screen.libraryId === video.id
+                    ? ' theater__library-item--active'
+                    : ''
+                }`}
+                onClick={() => handleLibraryPick(video.id, video.youtubeId, video.title)}
+              >
+                <img
+                  className="theater__thumb"
+                  src={youtubeThumbnailUrl(video.youtubeId)}
+                  alt=""
+                  loading="lazy"
+                />
+                <span className="theater__library-label">{video.title}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

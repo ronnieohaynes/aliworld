@@ -1,7 +1,7 @@
 import { publicAsset } from '../utils/publicAsset'
 
 /** Location key for battle backdrop art (`public/Assets/battle-bg/`). */
-export type BattleLocationId = 'five' | 'san_bruno' | 'hillside' | 'five_gym' | 'blue_store'
+export type BattleLocationId = 'five' | 'san_bruno' | 'hillside' | 'five_gym' | 'blue_store' | 'theater'
 
 const BATTLE_BG_DIR = publicAsset('Assets/battle-bg')
 
@@ -11,6 +11,7 @@ export const BATTLE_BACKGROUND_SRC: Record<BattleLocationId, string> = {
   hillside: `${BATTLE_BG_DIR}/hillside.png`,
   five_gym: `${BATTLE_BG_DIR}/5ive-gym.png`,
   blue_store: `${BATTLE_BG_DIR}/blue-store.png`,
+  theater: `${BATTLE_BG_DIR}/theater.png`,
 }
 
 export const DEFAULT_BATTLE_LOCATION: BattleLocationId = 'five'
@@ -34,4 +35,9 @@ export function resolveBattleBackgroundSrc(entry: {
  */
 export function getBattleBgForLocation(locationId: BattleLocationId): string {
   return BATTLE_BACKGROUND_SRC[locationId] ?? BATTLE_BACKGROUND_SRC[DEFAULT_BATTLE_LOCATION]
+}
+
+/** Immersive theater viewing section (seats + screen, no overworld sprite). */
+export function getTheaterViewingBackgroundSrc(): string {
+  return BATTLE_BACKGROUND_SRC.theater
 }

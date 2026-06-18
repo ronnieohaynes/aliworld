@@ -74,6 +74,7 @@ export function battleLocationToHometownId(locationId: BattleLocationId): Hometo
     hillside: 'hillside',
     five_gym: 'five_gym',
     blue_store: 'blue_store',
+    theater: 'five',
   }
   return map[locationId] ?? DEFAULT_HOMETOWN_ID
 }

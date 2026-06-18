@@ -45,6 +45,7 @@ import {
   THEATER_INTERIOR_MAP_DRAW_SCALE,
   THEATER_INTERIOR_WORLD_HEIGHT,
   THEATER_INTERIOR_WORLD_WIDTH,
+  THEATER_TICKET_BOOTH_ZONE,
   scaleTheaterInteriorZone,
 } from './theaterInteriorCollision'
 import { THEATER_ENABLED } from './theaterPremieres'
@@ -173,8 +174,8 @@ const THEATER_INTERIOR_TRIGGER_ZONES: TriggerZone[] = [
     action: 'OPEN_THEATER_EXIT',
   },
   {
-    id: 'theater-interior-screen',
-    ...scaleTheaterInteriorZone({ x: 420, y: 280, width: 380, height: 220 }),
+    id: 'theater-ticket-booth',
+    ...scaleTheaterInteriorZone(THEATER_TICKET_BOOTH_ZONE),
     action: 'OPEN_THEATER_SCREEN',
   },
 ]
@@ -186,6 +187,7 @@ const FIVE_TRIGGER_ZONES: TriggerZone[] = [
 ]
 
 const FIVE_GYM_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/5ive-gym.png')
+const THEATER_INTERIOR_MAP_SRC = publicAsset('Assets/tileset/theater.png')
 
 const FIVE_GYM_INTERIOR_NPCS = FIVE_GYM1_INTERIOR_NPCS.map((npc) => ({
   ...npc,
@@ -280,7 +282,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
   'theater-interior': {
     id: 'theater-interior',
     label: 'danny theater',
-    mapSrc: FIVE_GYM_INTERIOR_MAP_SRC,
+    mapSrc: THEATER_INTERIOR_MAP_SRC,
     mapDrawScale: THEATER_INTERIOR_MAP_DRAW_SCALE,
     worldWidth: THEATER_INTERIOR_WORLD_WIDTH,
     worldHeight: THEATER_INTERIOR_WORLD_HEIGHT,

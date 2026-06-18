@@ -315,7 +315,6 @@ export function GameScreen() {
   const pendingGymLossLineRef = useRef(false)
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
   const pendingGymWelcomeRef = useRef(false)
-  const pendingTheaterOpenRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
   const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
@@ -777,9 +776,6 @@ export function GameScreen() {
     if (target.cityId === 'five-gym-interior' && !isOceanviewGymVisited()) {
       setOceanviewGymVisited()
       pendingGymWelcomeRef.current = true
-    }
-    if (target.cityId === 'theater-interior') {
-      pendingTheaterOpenRef.current = true
     }
     if (target.cityId === 'southside') {
       markCityVisited('southside')
@@ -1271,14 +1267,10 @@ export function GameScreen() {
         'one run. four fights, three henchmen, then the leader. full heal between each. one loss sends you back to the start.',
       ])
     }
-    if (pendingTheaterOpenRef.current) {
-      pendingTheaterOpenRef.current = false
-      openTheater()
-    }
     if (e2ClosingPhaseRef.current === 'exit-interior') {
       runE2ClosingMobDialogue()
     }
-  }, [openTheater, runE2ClosingMobDialogue, showNarration])
+  }, [runE2ClosingMobDialogue, showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
     showNarration(["the darkline's open now. take it south."])
@@ -2489,8 +2481,6 @@ export function GameScreen() {
         >
           <div
             className={`game-screen-play__world${
-              currentCity === 'theater-interior' ? ' game-screen-play__world--theater' : ''
-            }${
               episodeWorldReveal === 'hidden' || episodeWorldReveal === 'fade-in-pending'
                 ? ' game-screen-play__world--episode-hidden'
                 : ''

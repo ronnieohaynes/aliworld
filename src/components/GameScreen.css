@@ -145,10 +145,6 @@
 }
 
 
-.game-screen-play__world--theater {
-  filter: brightness(0.42) saturate(0.75);
-}
-
 .game-screen-interior {
   position: absolute;
   inset: 0;
