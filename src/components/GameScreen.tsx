@@ -1269,32 +1269,30 @@ export function GameScreen() {
   const runE2ClosingMobDialogue = useCallback(() => {
     if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
     if (isE2ClosingCrowdDismissed()) {
-      queueE2ClosingReturnFive()
+      if (currentCity === 'southside') {
+        e2ClosingPhaseRef.current = 'return-five'
+        queueE2ClosingReturnFive()
+      }
       return
     }
     e2ClosingPhaseRef.current = 'mob'
     beginNpcDialogue(E2_CLOSING_CRIER_NPC, {
       onComplete: () => {
         setE2ClosingCrowdDismissed()
+        e2ClosingPhaseRef.current = 'return-five'
         queueE2ClosingReturnFive()
       },
     })
-  }, [beginNpcDialogue, queueE2ClosingReturnFive])
+  }, [beginNpcDialogue, currentCity, queueE2ClosingReturnFive])
 
   const startE2ClosingExitInterior = useCallback(() => {
     if (isE2Complete()) return
     if (e2ClosingPhaseRef.current !== 'idle' && e2ClosingPhaseRef.current !== 'exit-interior') {
       return
     }
-    if (e2ClosingPhaseRef.current === 'idle') {
-      e2ClosingPhaseRef.current = 'exit-interior'
-      showNarration(['a crowd is forming outside.'], () => {
-        queueE2ClosingSouthsideExit()
-      })
-      return
-    }
+    e2ClosingPhaseRef.current = 'exit-interior'
     queueE2ClosingSouthsideExit()
-  }, [queueE2ClosingSouthsideExit, showNarration])
+  }, [queueE2ClosingSouthsideExit])
 
   const showBStaxLines = useCallback((lines: string[], onComplete?: () => void) => {
     setDialogue({
@@ -1360,7 +1358,10 @@ export function GameScreen() {
       ])
     }
     if (e2ClosingPhaseRef.current === 'exit-interior') {
-      runE2ClosingMobDialogue()
+      e2ClosingPhaseRef.current = 'mob'
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => runE2ClosingMobDialogue())
+      })
       return
     }
     if (e2ClosingPhaseRef.current === 'return-five') {
@@ -2144,59 +2145,37 @@ export function GameScreen() {
   useEffect(() => {
     if (!isRestockerDefeated() || isE2Complete()) return
     if (cutsceneFlowActive || battleNpcId || battleWipePhase) return
-
-    if (
-      isE2ClosingCrowdDismissed() &&
-      currentCity === 'five' &&
-      !dialogue &&
-      !mapTransition &&
-      !mapTransitionPending &&
-      !showDarkline &&
-      !cultDarklinePhase &&
-      !darklineEnterTransition
-    ) {
-      if (!questTransitionActive) {
-        runE2ClosingEpisodeCards()
-      }
-      return
-    }
-
-    if (cutsceneFlowActive || questTransitionActive || dialogue) {
-      return
-    }
-    if (mapTransition || showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) {
+    if (dialogue || questTransitionActive || mapTransition) return
+    if (mapTransitionPending || showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) {
       return
     }
 
     const phase = e2ClosingPhaseRef.current
 
-    if (
-      phase === 'exit-interior' &&
-      currentCity === 'blue-store-interior' &&
-      !mapTransitionPending &&
-      !mapTransition
-    ) {
+    if (phase === 'exit-interior' && currentCity === 'blue-store-interior') {
       queueE2ClosingSouthsideExit()
       return
     }
 
-    if (
-      (phase === 'return-five' || isE2ClosingCrowdDismissed()) &&
-      currentCity === 'southside' &&
-      !mapTransitionPending &&
-      !mapTransition
-    ) {
+    if (phase === 'return-five' && currentCity === 'southside') {
       queueE2ClosingReturnFive()
       return
     }
 
-    if (phase !== 'idle' && phase !== 'mob') return
-    if (mapTransitionPending) return
+    if (
+      isE2ClosingCrowdDismissed() &&
+      currentCity === 'five' &&
+      phase !== 'cards' &&
+      !questTransitionActive
+    ) {
+      runE2ClosingEpisodeCards()
+      return
+    }
+
+    if (phase !== 'idle') return
 
     if (currentCity === 'blue-store-interior') {
       startE2ClosingExitInterior()
-    } else if (currentCity === 'southside' && phase === 'idle' && !isE2ClosingCrowdDismissed()) {
-      runE2ClosingMobDialogue()
     }
   }, [
     battleNpcId,
@@ -2213,7 +2192,6 @@ export function GameScreen() {
     queueE2ClosingReturnFive,
     queueE2ClosingSouthsideExit,
     runE2ClosingEpisodeCards,
-    runE2ClosingMobDialogue,
     showDarkline,
     startE2ClosingExitInterior,
   ])
@@ -2299,7 +2277,7 @@ export function GameScreen() {
       pendingGymChainRef.current = null
       if (chain) {
         showNarration([chain.progressLabel], () => {
-          startNpcBattle(chain.nextNpcId)
+          window.requestAnimationFrame(() => startNpcBattle(chain.nextNpcId))
         })
         return
       }
@@ -2319,6 +2297,7 @@ export function GameScreen() {
         )
       } else if (getActiveGymRun()?.practice) {
         clearActiveGymRun()
+        showNarration(['practice run complete. no rewards — full gauntlet again anytime.'])
       }
     }
 
@@ -2937,7 +2916,9 @@ export function GameScreen() {
                   type="button"
                   className="game-screen-gym-choice__btn"
                   onClick={() => {
-                    startGymGauntletBattle(currentGymWeek.id, true)
+                    showWeeklyGauntletExplainerIfNeeded(() =>
+                      startGymGauntletBattle(currentGymWeek.id, true),
+                    )
                   }}
                 >
                   practice
@@ -2948,7 +2929,11 @@ export function GameScreen() {
                   key={week.id}
                   type="button"
                   className="game-screen-gym-choice__btn"
-                  onClick={() => startGymGauntletBattle(week.id, true)}
+                  onClick={() => {
+                    showWeeklyGauntletExplainerIfNeeded(() =>
+                      startGymGauntletBattle(week.id, true),
+                    )
+                  }}
                 >
                   practice week {week.weekNumber}
                 </button>

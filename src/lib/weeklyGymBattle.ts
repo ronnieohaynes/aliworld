@@ -1,6 +1,7 @@
-import { isGymGauntletCombatId } from '../data/gymWeeks'
+import { getGymRunCombatId, getGymWeekById, isGymGauntletCombatId } from '../data/gymWeeks'
 import {
   beginGymRun,
+  clearActiveGymRun,
   getActiveGymRun,
   getActiveGymRunCombatId,
   restartGymRun,
@@ -33,15 +34,23 @@ export function resolveGymBattleOptions(npcId: string): GymBattleOptions {
 }
 
 export function startWeeklyGymRun(weekId: string, practice: boolean): string | null {
+  const week = getGymWeekById(weekId)
+  if (!week) return null
+
   if (practice) {
-    beginGymRun(weekId, true)
-  } else {
-    const existing = getActiveGymRun()
-    if (existing && !existing.practice && existing.weekId === weekId) {
-      return getActiveGymRunCombatId()
-    }
-    beginGymRun(weekId, false)
+    clearActiveGymRun()
+    const run = beginGymRun(weekId, true)
+    if (!run) return null
+    return getGymRunCombatId(week, 0)
   }
+
+  const existing = getActiveGymRun()
+  if (existing && !existing.practice && existing.weekId === weekId) {
+    return getActiveGymRunCombatId()
+  }
+
+  const run = beginGymRun(weekId, false)
+  if (!run) return null
   return getActiveGymRunCombatId()
 }
 
