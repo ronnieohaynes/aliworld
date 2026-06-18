@@ -1,5 +1,6 @@
 import { getBuildName } from '../data/buildName'
-import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
+import { getEmblemDef } from '../data/emblemRegistry'
+import { getMidnightVariantRenderTuning } from '../data/midnightVariants'
 import { loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
 import {
@@ -10,6 +11,7 @@ import {
 } from '../game/worldSpriteRender'
 import { getAuthState } from '../store/authStore'
 import { getSelectedMidnightVariant } from '../store/characterStore'
+import { getActiveEmblemId, resolvePlayerWalkSrc } from '../store/cosmeticsStore'
 import { getPlayerLevel } from '../store/playerStore'
 import { publicAsset } from '../utils/publicAsset'
 
@@ -192,6 +194,7 @@ function drawIdentityTypography(
   level: number,
   sigil: HTMLImageElement,
   contentTop: number,
+  emblem: HTMLImageElement | null,
 ): void {
   const buildUpper = build.name.toUpperCase()
   const article = articleForBuildName(build.name)
@@ -227,14 +230,26 @@ function drawIdentityTypography(
   y += 64
   const pill = `@${handle} · lvl ${level}`
   ctx.font = `500 26px ${MONO}`
-  const pillW = ctx.measureText(pill).width + 48
-  const pillX = (IDENTITY_CARD_WIDTH - pillW) / 2
+  const pillTextW = ctx.measureText(pill).width
+  const emblemSize = emblem ? 34 : 0
+  const emblemGap = emblem ? 10 : 0
+  const pillW = pillTextW + 48
+  const pillRowW = pillW + emblemGap + emblemSize
+  const rowStartX = (IDENTITY_CARD_WIDTH - pillRowW) / 2
+  const pillX = rowStartX
   const pillY = y - 28
   ctx.fillStyle = 'rgba(14, 14, 24, 0.55)'
   roundRect(ctx, pillX, pillY, pillW, 44, 22)
   ctx.fill()
   ctx.fillStyle = CREAM
-  ctx.fillText(pill, IDENTITY_CARD_WIDTH / 2, y)
+  ctx.fillText(pill, pillX + pillW / 2, y)
+
+  if (emblem) {
+    const emblemY = pillY + (44 - emblemSize) / 2
+    ctx.imageSmoothingEnabled = true
+    ctx.drawImage(emblem, pillX + pillW + emblemGap, emblemY, emblemSize, emblemSize)
+    ctx.imageSmoothingEnabled = false
+  }
 
   ctx.textAlign = 'left'
 }
@@ -306,11 +321,16 @@ export async function generateIdentityCard(): Promise<Blob> {
   const handle = getAuthState().profile?.handle?.toLowerCase() ?? 'player'
   const variant = getSelectedMidnightVariant()
   const tuning = getMidnightVariantRenderTuning(variant)
-  const walkSrc = getMidnightWalkSrc(variant)
+  const walkSrc = resolvePlayerWalkSrc(variant)
+  const emblemId = getActiveEmblemId()
+  const emblemPromise = emblemId
+    ? loadImage(getEmblemDef(emblemId).artSrc).catch(() => null)
+    : Promise.resolve(null)
 
-  const [sigil, sheet] = await Promise.all([
+  const [sigil, sheet, emblemImg] = await Promise.all([
     loadImage(SIGIL_SRC),
     loadSpriteSheetWithFallback(walkSrc),
+    emblemPromise,
   ])
 
   if (!sheet?.loaded) {
@@ -328,7 +348,7 @@ export async function generateIdentityCard(): Promise<Blob> {
   drawVoidBackground(ctx)
   drawCardFrame(ctx, build.color)
   const contentBottom = drawSpriteHero(ctx, spriteSource, build.color)
-  drawIdentityTypography(ctx, build, handle, level, sigil, contentBottom)
+  drawIdentityTypography(ctx, build, handle, level, sigil, contentBottom, emblemImg)
   drawCardFooter(ctx)
 
   return canvasToPngBlob(canvas)

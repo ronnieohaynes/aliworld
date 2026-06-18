@@ -6,7 +6,12 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
-import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
+import { getMidnightVariantRenderTuning } from '../data/midnightVariants'
+import {
+  getCosmeticsRevision,
+  resolvePlayerWalkSrc,
+  subscribeCosmeticsStore,
+} from '../store/cosmeticsStore'
 import { loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
 import {
@@ -53,6 +58,7 @@ import {
   sumSkillLevels,
   computePlayerLevel,
 } from '../store/skillStore'
+import { HandleWithEmblem } from './HandleWithEmblem'
 import { generateIdentityCard } from '../lib/identityCard'
 import { IdentityCardPreview } from './IdentityCardPreview'
 import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
@@ -198,6 +204,11 @@ export function LoadoutScreen({
   const playerLevel = useMemo(() => getPlayerLevel(), [skills])
   const build = useMemo(() => deriveBuildName(skills), [skills])
   const grantsRevision = useSyncExternalStore(subscribeGrantsStore, getGrantsRevision, getGrantsRevision)
+  const cosmeticsRevision = useSyncExternalStore(
+    subscribeCosmeticsStore,
+    getCosmeticsRevision,
+    getCosmeticsRevision,
+  )
   const badgeLabels = useMemo(() => {
     void grantsRevision
     return getBadgeGrantLabels()
@@ -232,7 +243,7 @@ export function LoadoutScreen({
 
   useEffect(() => {
     let cancelled = false
-    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
+    const walkSrc = resolvePlayerWalkSrc(selectedMidnightVariant)
     const tuning = getMidnightVariantRenderTuning(selectedMidnightVariant)
 
     void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
@@ -243,7 +254,7 @@ export function LoadoutScreen({
     return () => {
       cancelled = true
     }
-  }, [selectedMidnightVariant])
+  }, [selectedMidnightVariant, cosmeticsRevision])
 
   const handleSlotClick = (slot: EquipSlot) => {
     setSelectedSlot(slot)
@@ -333,7 +344,12 @@ export function LoadoutScreen({
               </p>
             ) : null}
             <p className="loadout-screen__level">
-              {playerHandle ? `@${playerHandle} · ` : ''}lvl {playerLevel}
+              {playerHandle ? (
+                <>
+                  <HandleWithEmblem handle={playerHandle} /> ·{' '}
+                </>
+              ) : null}
+              lvl {playerLevel}
             </p>
             <button
               ref={shareCardRef}

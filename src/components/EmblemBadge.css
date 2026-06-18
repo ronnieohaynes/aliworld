@@ -1,0 +1,23 @@
+.emblem-badge {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  flex-shrink: 0;
+}
+
+.emblem-badge--svg {
+  filter: drop-shadow(0 0 4px rgba(212, 184, 122, 0.35));
+}
+
+.handle-with-emblem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.handle-with-emblem__text {
+  font: inherit;
+  color: inherit;
+}

@@ -9,8 +9,12 @@ import {
 import {
   formatMidnightVariantTuningDebug,
   getMidnightVariantRenderTuning,
-  getMidnightWalkSrc,
 } from '../data/midnightVariants'
+import {
+  getCosmeticsRevision,
+  resolvePlayerWalkSrc,
+  subscribeCosmeticsStore,
+} from '../store/cosmeticsStore'
 import {
   drawSheetFrame,
   loadSpriteSheetWithFallback,
@@ -845,6 +849,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     getSelectedMidnightVariant,
     getSelectedMidnightVariant,
   )
+  const cosmeticsRevision = useSyncExternalStore(
+    subscribeCosmeticsStore,
+    getCosmeticsRevision,
+    getCosmeticsRevision,
+  )
   const selectedMidnightVariantRef = useRef(selectedMidnightVariant)
 
   const playerLevel = useSyncExternalStore(subscribePlayerStore, getPlayerLevel, getPlayerLevel)
@@ -1085,7 +1094,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   useEffect(() => {
     let cancelled = false
     midnightSheetRef.current = null
-    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
+    const walkSrc = resolvePlayerWalkSrc(selectedMidnightVariant)
 
     void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
       if (cancelled) return
@@ -1096,7 +1105,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       cancelled = true
       midnightSheetRef.current = null
     }
-  }, [selectedMidnightVariant])
+  }, [selectedMidnightVariant, cosmeticsRevision])
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))

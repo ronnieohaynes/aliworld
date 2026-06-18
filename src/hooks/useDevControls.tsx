@@ -6,7 +6,7 @@ import type { PlayCutsceneOptions } from '../lib/playCutscene'
 import type { PlayerHandle } from '../components/Player'
 import {
   DevModeConfirmModal,
-  DevModeIndicator,
+  DevModeToolbar,
   DevModeToast,
 } from '../components/DevModeUI'
 import {
@@ -61,6 +61,7 @@ export type UseDevControlsOptions = {
   spawnDevSpar: () => void
   canSpawnDevSpar: () => boolean
   startTutorialBattle: () => void
+  openShop: () => void
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -174,6 +175,12 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         return
       }
 
+      if (e.shiftKey && (e.code === 'Digit3' || e.key === '#' || e.key === '3')) {
+        e.preventDefault()
+        optionsRef.current.openShop()
+        return
+      }
+
       if (e.key === 'k' || e.key === 'K') {
         if (!canSpawnDevSpar()) return
         e.preventDefault()
@@ -241,7 +248,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
           onCancel={handleCancelConfirm}
         />
       ) : null}
-      {devModeEnabled ? <DevModeIndicator /> : null}
+      {devModeEnabled ? <DevModeToolbar onOpenShop={() => optionsRef.current.openShop()} /> : null}
       {toastMessage ? <DevModeToast message={toastMessage} /> : null}
     </>
   )

@@ -5,6 +5,7 @@ import { isNetworkAuthError, toFriendlyAuthError } from '../utils/authErrors'
 import { getPasswordResetRedirectUrl, isPasswordRecoveryUrl } from '../utils/authRoutes'
 import { track } from '../lib/analytics'
 import { resetCharacterForSignOut } from './characterStore'
+import { resetCosmeticsEquipForSignOut } from './cosmeticsStore'
 import { refreshPlayerGrants, resetGrantsStore } from './grantsStore'
 import { hydrateFromAccount, resetProgression } from './playerStore'
 
@@ -103,6 +104,7 @@ function handleSignedOut(): void {
   })
   resetProgression()
   resetCharacterForSignOut()
+  resetCosmeticsEquipForSignOut()
   resetGrantsStore()
 }
 

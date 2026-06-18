@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchGymLeaderboard, type GymLeaderboardEntry } from '../lib/gymLeaderboardApi'
 import { LeaderboardVariantSprite } from './LeaderboardVariantSprite'
+import { HandleWithEmblem } from './HandleWithEmblem'
 import './GymLeaderboardScreen.css'
 
 type Props = {
@@ -165,7 +166,13 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
                       height={rank === 1 ? 72 : 60}
                       className="gym-leaderboard__sprite"
                     />
-                    <span className="gym-leaderboard__handle">@{entry.handle}</span>
+                    <span className="gym-leaderboard__handle">
+                      {isViewer ? (
+                        <HandleWithEmblem handle={entry.handle} />
+                      ) : (
+                        <>@{entry.handle}</>
+                      )}
+                    </span>
                     <span className="gym-leaderboard__wins">{entry.winCount} wins</span>
                   </div>
                 )
@@ -187,7 +194,13 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
                       }`}
                     >
                       <span className="gym-leaderboard__list-rank">#{rank}</span>
-                      <span className="gym-leaderboard__list-handle">@{entry.handle}</span>
+                      <span className="gym-leaderboard__list-handle">
+                        {isViewer ? (
+                          <HandleWithEmblem handle={entry.handle} />
+                        ) : (
+                          <>@{entry.handle}</>
+                        )}
+                      </span>
                       <span className="gym-leaderboard__list-wins">{entry.winCount}</span>
                     </li>
                   )

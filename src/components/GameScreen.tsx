@@ -136,6 +136,8 @@ import { FannyPackScreen } from './FannyPackScreen'
 import { GymLeaderboardScreen } from './GymLeaderboardScreen'
 import { GhostTrainingScreen } from './GhostTrainingScreen'
 import { TheaterScreen } from './TheaterScreen'
+import { ShopScreen } from './ShopScreen'
+import { COSMETICS_SHOP_ENABLED } from '../config/printsGate'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
 import { MenuEntryCover, MENU_TRANSITION_MS, MENU_TRANSITION_MIDPOINT_MS, type MenuTransitionTarget } from './MenuEntryCover'
@@ -351,6 +353,7 @@ export function GameScreen() {
   const [showGymLeaderboard, setShowGymLeaderboard] = useState(false)
   const [showGhostTraining, setShowGhostTraining] = useState(false)
   const [showTheater, setShowTheater] = useState(false)
+  const [showShop, setShowShop] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -834,6 +837,17 @@ export function GameScreen() {
     setShowTheater(false)
   }, [])
 
+  const openCosmeticsShop = useCallback(() => {
+    if (!COSMETICS_SHOP_ENABLED) return
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowShop(true)
+  }, [])
+
+  const handleShopClose = useCallback(() => {
+    setShowShop(false)
+  }, [])
+
   const toggleStartMenu = useCallback(() => {
     console.log('[tutorial-start] toggleStartMenu enter', {
       loadoutTutorialStep,
@@ -847,7 +861,7 @@ export function GameScreen() {
       console.log('[tutorial-start] toggleStartMenu guard: menuTransition')
       return
     }
-    if (showGymLeaderboard || showGhostTraining || showTheater) return
+    if (showGymLeaderboard || showGhostTraining || showTheater || showShop) return
     if (showStartMenu) {
       console.log('[tutorial-start] toggleStartMenu guard: already open → resume')
       resumeFromPauseMenu()
@@ -876,11 +890,12 @@ export function GameScreen() {
     showGymLeaderboard,
     showGhostTraining,
     showTheater,
+    showShop,
     showStartMenu,
   ])
 
   const handleFannyPack = useCallback(() => {
-    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
+    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
     if (showFannyPack) {
       if (menuReturnPending) {
         beginResumeTransition()
@@ -897,6 +912,9 @@ export function GameScreen() {
     menuTransition,
     showFannyPack,
     showGymLeaderboard,
+    showGhostTraining,
+    showTheater,
+    showShop,
     showStartMenu,
     worldEntryActive,
   ])
@@ -913,13 +931,13 @@ export function GameScreen() {
       ) {
         return
       }
-      if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
+      if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
       e.preventDefault()
       handleFannyPack()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleFannyPack, showStartMenu, showGymLeaderboard, showGhostTraining, showTheater])
+  }, [handleFannyPack, showStartMenu, showGymLeaderboard, showGhostTraining, showTheater, showShop])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -933,11 +951,12 @@ export function GameScreen() {
       ) {
         return
       }
-      if (showGymLeaderboard || showGhostTraining || showTheater) {
+      if (showGymLeaderboard || showGhostTraining || showTheater || showShop) {
         e.preventDefault()
         setShowGymLeaderboard(false)
         setShowGhostTraining(false)
         setShowTheater(false)
+        setShowShop(false)
         return
       }
       if (showLoadout || showFannyPack) {
@@ -982,6 +1001,7 @@ export function GameScreen() {
     showGymLeaderboard,
     showGhostTraining,
     showTheater,
+    showShop,
     showStartMenu,
     menuTransition,
   ])
@@ -1074,6 +1094,7 @@ export function GameScreen() {
       !showGymLeaderboard &&
       !showGhostTraining &&
       !showTheater &&
+      !showShop &&
       cafeFade !== 'scene'
     )
   }, [
@@ -1093,6 +1114,7 @@ export function GameScreen() {
     showGymLeaderboard,
     showGhostTraining,
     showTheater,
+    showShop,
     cafeFade,
   ])
 
@@ -1373,6 +1395,7 @@ export function GameScreen() {
     spawnDevSpar: startDevSparBattle,
     canSpawnDevSpar,
     startTutorialBattle,
+    openShop: openCosmeticsShop,
   })
 
   useEffect(() => {
@@ -1818,7 +1841,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard || showGhostTraining || showTheater)
+    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard || showGhostTraining || showTheater || showShop)
       return
     openNearbyNpcDialogue()
   }, [
@@ -1844,7 +1867,7 @@ export function GameScreen() {
     if (cutsceneFlowActive || questTransitionActive) return
     if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
-    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -1895,6 +1918,7 @@ export function GameScreen() {
         showGymLeaderboard ||
         showGhostTraining ||
         showTheater ||
+        showShop ||
         battleNpcId ||
         battleWipePhase ||
         menuTransition
@@ -2276,7 +2300,7 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
     if (showLoadout) {
       handleLoadoutClose()
       return
@@ -2400,6 +2424,7 @@ export function GameScreen() {
     !showGymLeaderboard &&
     !showGhostTraining &&
     !showTheater &&
+    !showShop &&
     !showDarkline &&
     !cultDarklinePhase &&
     !showInterior &&
@@ -2538,6 +2563,7 @@ export function GameScreen() {
                 showGymLeaderboard ||
                 showGhostTraining ||
                 showTheater ||
+                showShop ||
                 showStartMenu ||
                 cutsceneFlowActive ||
                 questTransitionActive
@@ -2850,6 +2876,7 @@ export function GameScreen() {
             />
           )}
           {showTheater && <TheaterScreen onClose={handleTheaterClose} />}
+          {showShop && <ShopScreen onClose={handleShopClose} />}
       </GameShell>
     </div>
   )

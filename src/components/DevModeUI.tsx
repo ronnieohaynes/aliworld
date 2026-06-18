@@ -51,6 +51,18 @@ export function DevModeConfirmModal({ kind, onConfirm, onCancel }: ConfirmModalP
   )
 }
 
+export function DevModeToolbar({ onOpenShop }: { onOpenShop: () => void }) {
+  return (
+    <div className="dev-mode-toolbar" aria-label="Dev mode controls">
+      <span className="dev-mode-toolbar__badge">dev</span>
+      <button type="button" className="dev-mode-toolbar__shop" onClick={onOpenShop}>
+        open shop
+      </button>
+    </div>
+  )
+}
+
+/** @deprecated Use DevModeToolbar */
 export function DevModeIndicator() {
   return (
     <div className="dev-mode-indicator" aria-hidden>
