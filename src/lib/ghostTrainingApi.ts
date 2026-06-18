@@ -1,3 +1,4 @@
+import { GHOST_DAILY_XP_BATTLE_CAP } from '../data/ghostDailyReset'
 import { supabase } from './supabaseClient'
 
 export type GhostOpponentRef = {
@@ -135,9 +136,37 @@ async function post<T>(body: Record<string, unknown>): Promise<T> {
   return (await res.json()) as T
 }
 
+function normalizeGhostAttempts(
+  value: unknown,
+): Record<string, number> {
+  if (!value || typeof value !== 'object') return {}
+  const out: Record<string, number> = {}
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    const n = Number(raw)
+    if (Number.isFinite(n) && n >= 0) out[key] = Math.floor(n)
+  }
+  return out
+}
+
+/** Backfill fields missing from older ghost-training edge fn deployments. */
+export function normalizeGhostTrainingSyncResponse(
+  raw: GhostTrainingSyncResponse,
+): GhostTrainingSyncResponse {
+  return {
+    ...raw,
+    dailyCompleted: Array.isArray(raw.dailyCompleted) ? raw.dailyCompleted : [],
+    dailyGhostAttempts: normalizeGhostAttempts(raw.dailyGhostAttempts),
+    perGhostDailyCap:
+      Number.isFinite(raw.perGhostDailyCap) && raw.perGhostDailyCap > 0
+        ? Math.floor(raw.perGhostDailyCap)
+        : GHOST_DAILY_XP_BATTLE_CAP,
+  }
+}
+
 /** Harvest ghost from server profile + refresh daily set. */
 export async function syncGhostTraining(): Promise<GhostTrainingSyncResponse> {
-  return post({ action: 'sync' })
+  const data = await post<GhostTrainingSyncResponse>({ action: 'sync' })
+  return normalizeGhostTrainingSyncResponse(data)
 }
 
 export async function recordGhostMatch(

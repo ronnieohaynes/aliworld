@@ -109,9 +109,10 @@ export async function refreshGhostTraining(): Promise<GhostTrainingSyncResponse 
   emit()
   try {
     const data = await syncGhostTraining()
-    cacheSnapshots(data)
-    saveLocal({ lastSyncDayKey: data.dayKey })
-    uiState = { kind: 'ready', data }
+    const normalized = data
+    cacheSnapshots(normalized)
+    saveLocal({ lastSyncDayKey: normalized.dayKey })
+    uiState = { kind: 'ready', data: normalized }
     emit()
     return data
   } catch {
@@ -217,7 +218,7 @@ export async function completeGhostBattle(
         data: {
           ...uiState.data,
           dailyCompleted: completed,
-          dailyGhostAttempts: res.dailyGhostAttempts ?? uiState.data.dailyGhostAttempts,
+          dailyGhostAttempts: res.dailyGhostAttempts ?? {},
           championClearedToday: pending.isChampion && result === 'win'
             ? true
             : uiState.data.championClearedToday,

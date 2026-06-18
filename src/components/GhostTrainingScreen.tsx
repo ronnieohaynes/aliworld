@@ -136,9 +136,10 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
               {ready.opponents.map((ref) => {
                 const snap = snapshotForOpponent(ready.snapshots, ref)
                 const done = ready.dailyCompleted.includes(ref.slot)
-                const attempts = Math.max(0, Number(ready.dailyGhostAttempts[ref.combatId] ?? 0))
-                const capped = attempts >= ready.perGhostDailyCap
-                const attemptsLeft = Math.max(0, ready.perGhostDailyCap - attempts)
+                const attempts = Math.max(0, Number(ready.dailyGhostAttempts?.[ref.combatId] ?? 0))
+                const cap = ready.perGhostDailyCap > 0 ? ready.perGhostDailyCap : 3
+                const capped = attempts >= cap
+                const attemptsLeft = Math.max(0, cap - attempts)
                 return (
                   <li
                     key={ref.combatId}
@@ -157,7 +158,7 @@ export function GhostTrainingScreen({ onClose, onFight }: Props) {
                         {done ? ' · cleared' : ''}
                       </span>
                       <span className="ghost-training__opponent-meta">
-                        xp fights: {attempts}/{ready.perGhostDailyCap}
+                        xp fights: {attempts}/{cap}
                         {!capped ? ` · ${attemptsLeft} left` : ' · cap reached'}
                       </span>
                     </div>
