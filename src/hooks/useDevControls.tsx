@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { clearMidnightVariant } from '../store/characterStore'
 import { clearShowDebug, toggleShowDebug } from '../store/playerStore'
-import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
+import { EPISODE_CUTSCENE_PRESETS, buildEpisodeCutsceneOptions } from '../data/episodeCutscenes'
 import type { PlayCutsceneOptions } from '../lib/playCutscene'
 import type { PlayerHandle } from '../components/Player'
 import {
@@ -22,6 +22,16 @@ type CutsceneDevPlayer = {
 let cutsceneDevPlayer: CutsceneDevPlayer | null = null
 let cutsceneDevEndSeconds = 0
 let cutsceneDevSkip: (() => void) | null = null
+
+function isCutsceneDevActive(): boolean {
+  return cutsceneDevSkip != null || cutsceneDevPlayer != null
+}
+
+function episodeFromDigitKey(e: KeyboardEvent): number | null {
+  const match = /^Digit([1-9])$/.exec(e.code)
+  if (!match) return null
+  return Number(match[1])
+}
 
 /** Registered by CutsceneOverlay while mounted (dev Shift+E skip-to-end). */
 export function registerCutsceneDevSkip(skip: (() => void) | null): void {
@@ -47,11 +57,24 @@ function devSkipActiveCutscene(): boolean {
   return true
 }
 
-const E1_CUTSCENE: Pick<PlayCutsceneOptions, 'videoId' | 'startSeconds' | 'endSeconds'> = {
-  videoId: '6t83Cdmq1fM',
-  startSeconds: 112,
-  endSeconds: 204,
+type DevEpisodeCutscenePreset = Pick<
+  PlayCutsceneOptions,
+  | 'videoId'
+  | 'startSeconds'
+  | 'endSeconds'
+  | 'videoTitle'
+  | 'isEpisodeCutscene'
+  | 'captions'
+  | 'youtubeCaptions'
+>
+
+/** Shift+E+1 … Shift+E+9 episode cutscene previews (extend as episodes ship). */
+const DEV_EPISODE_CUTSCENES: Record<number, DevEpisodeCutscenePreset> = {
+  1: { ...EPISODE_CUTSCENE_PRESETS[1], isEpisodeCutscene: true },
+  2: { ...EPISODE_CUTSCENE_PRESETS[2], isEpisodeCutscene: true },
 }
+
+const SHIFT_E_CHORD_MS = 800
 
 export type UseDevControlsOptions = {
   playerRef: RefObject<PlayerHandle | null>
@@ -92,6 +115,8 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
   )
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const shiftEChordArmedRef = useRef(false)
+  const shiftEChordTimerRef = useRef<number | null>(null)
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message)
@@ -125,6 +150,14 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
   useEffect(() => {
     if (!devAllowed) return
 
+    const clearShiftEChord = () => {
+      shiftEChordArmedRef.current = false
+      if (shiftEChordTimerRef.current != null) {
+        window.clearTimeout(shiftEChordTimerRef.current)
+        shiftEChordTimerRef.current = null
+      }
+    }
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return
       if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -138,6 +171,20 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         canSpawnDevSpar,
         startTutorialBattle,
       } = optionsRef.current
+
+      const episode = episodeFromDigitKey(e)
+      if (devModeEnabled && shiftEChordArmedRef.current && episode != null) {
+        const preset = DEV_EPISODE_CUTSCENES[episode]
+        e.preventDefault()
+        clearShiftEChord()
+        if (preset && canPlayCutscene()) {
+          playCutscene({
+            ...buildEpisodeCutsceneOptions(episode as 1 | 2),
+            devEpisodePreview: true,
+          })
+        }
+        return
+      }
 
       if (isShiftDigit2(e)) {
         if (!canToggleDevMode()) return
@@ -155,23 +202,20 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         return
       }
 
-      if (e.shiftKey && (e.code === 'Digit1' || e.key === '!' || e.key === '1')) {
-        if (!canPlayCutscene()) return
+      if (e.shiftKey && e.code === 'KeyE') {
         e.preventDefault()
-        playCutscene({
-          ...E1_CUTSCENE,
-          isEpisodeCutscene: true,
-          captions: EPISODE_1_CAPTIONS,
-          onComplete: () => {},
-        })
-        return
-      }
-
-      if (e.shiftKey && (e.code === 'KeyE' || e.key === 'E')) {
-        if (devSkipActiveCutscene()) {
-          e.preventDefault()
-          e.stopPropagation()
+        if (isCutsceneDevActive() && devSkipActiveCutscene()) {
+          clearShiftEChord()
+          return
         }
+        shiftEChordArmedRef.current = true
+        if (shiftEChordTimerRef.current != null) {
+          window.clearTimeout(shiftEChordTimerRef.current)
+        }
+        shiftEChordTimerRef.current = window.setTimeout(() => {
+          shiftEChordArmedRef.current = false
+          shiftEChordTimerRef.current = null
+        }, SHIFT_E_CHORD_MS)
         return
       }
 
@@ -227,7 +271,10 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
     }
 
     window.addEventListener('keydown', onKeyDown, true)
-    return () => window.removeEventListener('keydown', onKeyDown, true)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true)
+      clearShiftEChord()
+    }
   }, [confirmKind, devAllowed, devModeEnabled])
 
   if (!devAllowed) return null

@@ -16,7 +16,26 @@
   left: 0;
   right: 0;
   bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
   transition: opacity 400ms ease;
+}
+
+.cutscene-overlay__video-stage {
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+@container (min-aspect-ratio: 16 / 9) {
+  .cutscene-overlay__video-stage {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+  }
 }
 
 .cutscene-overlay--post-hold .cutscene-overlay__caption-slot {
@@ -47,7 +66,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 123px;
+  bottom: 0;
   z-index: 2;
   width: 100%;
   background: rgba(0, 0, 0, 0.5);
@@ -100,14 +119,6 @@
   transition: width 120ms linear;
 }
 
-.cutscene-overlay__skip {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  z-index: 4;
-  pointer-events: auto;
-}
-
 .cutscene-overlay__play-prompt {
   position: absolute;
   left: 50%;
@@ -128,10 +139,27 @@
   cursor: pointer;
 }
 
-.cutscene-overlay__play-prompt--muted {
-  top: auto;
-  bottom: 48px;
-  transform: translateX(-50%);
-  font-size: 10px;
-  opacity: 0.85;
+/* Rotate 90° within the game-shell viewport so landscape video fills top/bottom without spilling past the bezel width. */
+.cutscene-overlay--landscape-fullscreen {
+  container-type: size;
+}
+
+.cutscene-overlay--landscape-fullscreen .cutscene-overlay__frame {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  width: min(calc(100cqh - 4px), calc(100cqw * 16 / 9));
+  height: min(100cqw, calc((100cqh - 4px) * 9 / 16));
+  max-width: min(calc(100cqh - 4px), calc(100cqw * 16 / 9));
+  max-height: min(100cqw, calc((100cqh - 4px) * 9 / 16));
+  aspect-ratio: 16 / 9;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.cutscene-overlay--landscape-fullscreen .cutscene-overlay__video-stage {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
 }

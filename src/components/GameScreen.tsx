@@ -106,6 +106,7 @@ import {
   isCrowdAddressed,
   isE2Complete,
   isE2ClosingCrowdDismissed,
+  isE2CutscenePlayed,
   isRestockerDefeated,
   RESTOCKER_NPC_ID,
   setClerkConverted,
@@ -114,6 +115,7 @@ import {
   setCrowdAddressed,
   setE2ClosingCrowdDismissed,
   setE2Complete,
+  setE2CutscenePlayed,
   setRestockerDefeated,
   subscribeQuest2Store,
   TOWN_CRIER_NPC_ID,
@@ -153,9 +155,9 @@ import {
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
 import { trackProgressEvent } from '../lib/analytics'
-import type { PlayCutsceneOptions } from '../lib/playCutscene'
+import type { CutsceneCompleteMeta, PlayCutsceneOptions } from '../lib/playCutscene'
 import { preloadYouTubeIframeApi } from '../lib/youtubeIframeApi'
-import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
+import { buildEpisodeCutsceneOptions } from '../data/episodeCutscenes'
 import { useDevControls } from '../hooks/useDevControls'
 import { CutsceneOverlay } from './CutsceneOverlay'
 import {
@@ -230,8 +232,9 @@ const B_STAX_NPC: NpcData = {
 const PRELUDE_QUEST_NAME = "Midnight's Story"
 const EPISODE_1_NAME = 'The Field & The Cafe'
 const EPISODE_2_NAME = 'trust the signal'
+const EPISODE_3_NAME = 'the happening'
 /** Black hold on cutscene overlay after episode clip ends (ms). */
-const EPISODE_CUTSCENE_POST_HOLD_MS = 4_000
+const EPISODE_CUTSCENE_POST_HOLD_MS = 5_000
 /** Fade cutscene remnants to full black after post-clip hold (ms). */
 const EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS = 1_500
 /** World fade-in after episode title card exits (ms). */
@@ -313,6 +316,11 @@ export function GameScreen() {
   const [cutsceneQuestHelperHidden, setCutsceneQuestHelperHidden] = useState(false)
   const pendingCafeVideoHandoffRef = useRef(false)
   const cafeVideoHandoffStartedRef = useRef(false)
+  const pendingE2VideoHandoffRef = useRef(false)
+  const e2VideoHandoffStartedRef = useRef(false)
+  const episodeHandoffTimerRef = useRef<number | null>(null)
+  const devForceEpisodeTitleCardsRef = useRef(false)
+  const [episodeCutsceneEnding, setEpisodeCutsceneEnding] = useState(false)
   const pendingPostE1NarrationRef = useRef(false)
   const pendingGymLossLineRef = useRef(false)
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
@@ -325,7 +333,7 @@ export function GameScreen() {
     'visible' | 'hidden' | 'fade-in-pending' | 'fade-in'
   >('visible')
 
-  const cutsceneFlowActive = cutscene != null
+  const cutsceneFlowActive = cutscene != null || episodeCutsceneEnding
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [patchPickerOpen, setPatchPickerOpen] = useState(false)
   const patchAwardContinueRef = useRef<(() => void) | null>(null)
@@ -826,6 +834,11 @@ export function GameScreen() {
     tryBeginE2ClosingMapTransition('five', fiveCfg.spawnX, fiveCfg.spawnY, 'return-five', 'down')
   }, [tryBeginE2ClosingMapTransition])
 
+  const preloadE2CutsceneIfNeeded = useCallback(() => {
+    if (!E2_ENABLED || isE2CutscenePlayed()) return
+    preloadYouTubeIframeApi()
+  }, [])
+
   const handleMapTransitionMidpoint = useCallback(() => {
     const target = mapTransitionRef.current
     if (!target) return
@@ -836,6 +849,9 @@ export function GameScreen() {
     if (target.cityId === 'southside') {
       markCityVisited('southside')
     }
+    if (target.cityId === 'blue-store-interior') {
+      preloadE2CutsceneIfNeeded()
+    }
     setCurrentCity(target.cityId)
     playerRef.current?.setPosition(target.x, target.y)
     if (target.facing) {
@@ -844,7 +860,7 @@ export function GameScreen() {
     if (target.cityId !== 'blue-store-interior') {
       setLastLocation(target.cityId, target.x, target.y)
     }
-  }, [])
+  }, [preloadE2CutsceneIfNeeded])
 
   /** Leave pause flow and return to gameplay (same as choosing resume). */
   const resumeFromPauseMenu = useCallback(() => {
@@ -1390,8 +1406,43 @@ export function GameScreen() {
     setCafeFade('out')
   }, [])
 
+  const runE2VideoHandoffOnce = useCallback(() => {
+    const replayTitleCards = devForceEpisodeTitleCardsRef.current
+    devForceEpisodeTitleCardsRef.current = false
+
+    if (e2VideoHandoffStartedRef.current && !replayTitleCards) return
+    e2VideoHandoffStartedRef.current = true
+    setCutsceneQuestHelperHidden(false)
+    trackProgressEvent('episode_complete', { episode: 'e2' })
+    setCurrentCity('five')
+    markCityVisited('five')
+    const fiveCfg = CITY_CONFIGS.five
+    playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
+    setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
+    setEpisodeWorldReveal('hidden')
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      episodeName: EPISODE_3_NAME,
+      episodeNumber: 3,
+      type: 'episode_complete',
+      solidBlackBackdrop: true,
+      onExitFadeStart: () => {
+        setEpisodeWorldReveal('fade-in-pending')
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setEpisodeWorldReveal('fade-in'))
+        })
+      },
+      onComplete: () => {
+        setEpisodeWorldReveal('visible')
+      },
+    })
+  }, [showQuestTransition])
+
   const runCafeVideoHandoffOnce = useCallback(() => {
-    if (cafeVideoHandoffStartedRef.current) {
+    const replayTitleCards = devForceEpisodeTitleCardsRef.current
+    devForceEpisodeTitleCardsRef.current = false
+
+    if (cafeVideoHandoffStartedRef.current && !replayTitleCards) {
       pendingPostE1NarrationRef.current = false
       finishCafeScene()
       return
@@ -1433,34 +1484,110 @@ export function GameScreen() {
     runCafeVideoHandoffOnce()
   }, [runCafeVideoHandoffOnce])
 
-  const playCutscene = useCallback((opts: PlayCutsceneOptions) => {
-    setCutsceneQuestHelperHidden(true)
-    const { isEpisodeCutscene, onComplete: userOnComplete, ...rest } = opts
-    const holdMs = isEpisodeCutscene ? EPISODE_CUTSCENE_POST_HOLD_MS : 0
-    setCutscene({
-      ...rest,
-      postCompleteHoldMs: holdMs > 0 ? holdMs : undefined,
-      postCompleteFadeToBlackMs: isEpisodeCutscene
-        ? EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS
-        : undefined,
-      onComplete: () => {
-        if (isEpisodeCutscene) {
-          setE1CutscenePlayed()
-          pendingCafeVideoHandoffRef.current = true
-          return
-        }
-        setCutsceneQuestHelperHidden(false)
-        userOnComplete?.()
-      },
-    })
+  const clearEpisodeHandoffTimer = useCallback(() => {
+    if (episodeHandoffTimerRef.current != null) {
+      window.clearTimeout(episodeHandoffTimerRef.current)
+      episodeHandoffTimerRef.current = null
+    }
   }, [])
 
-  const handleCutsceneEnded = useCallback(() => {
+  const runPendingEpisodeHandoff = useCallback(() => {
+    clearEpisodeHandoffTimer()
+    setEpisodeCutsceneEnding(false)
     setCutscene(null)
-    if (!pendingCafeVideoHandoffRef.current) return
-    pendingCafeVideoHandoffRef.current = false
-    awardMidnightPatch(1, runCafeVideoHandoffOnce)
-  }, [awardMidnightPatch, runCafeVideoHandoffOnce])
+
+    if (pendingCafeVideoHandoffRef.current) {
+      pendingCafeVideoHandoffRef.current = false
+      setE1CutscenePlayed()
+      awardMidnightPatch(1, runCafeVideoHandoffOnce)
+      return
+    }
+    if (pendingE2VideoHandoffRef.current) {
+      pendingE2VideoHandoffRef.current = false
+      setE2CutscenePlayed()
+      awardMidnightPatch(2, runE2VideoHandoffOnce)
+    }
+  }, [
+    awardMidnightPatch,
+    clearEpisodeHandoffTimer,
+    runCafeVideoHandoffOnce,
+    runE2VideoHandoffOnce,
+  ])
+
+  const playCutscene = useCallback(
+    (opts: PlayCutsceneOptions) => {
+      clearEpisodeHandoffTimer()
+      setEpisodeCutsceneEnding(false)
+      pendingCafeVideoHandoffRef.current = false
+      pendingE2VideoHandoffRef.current = false
+      setCutsceneQuestHelperHidden(true)
+      const {
+        isEpisodeCutscene,
+        episodeHandoff,
+        devEpisodePreview,
+        onComplete: userOnComplete,
+        ...rest
+      } = opts
+      const isEpisode = isEpisodeCutscene || episodeHandoff != null
+      if (devEpisodePreview) {
+        devForceEpisodeTitleCardsRef.current = true
+      }
+      if (episodeHandoff === 1) {
+        cafeVideoHandoffStartedRef.current = false
+      } else if (episodeHandoff === 2) {
+        e2VideoHandoffStartedRef.current = false
+      }
+      const holdMs = isEpisode ? EPISODE_CUTSCENE_POST_HOLD_MS : 0
+      const fadeMs = isEpisode ? EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS : 0
+      setCutscene({
+        ...rest,
+        isEpisodeCutscene: isEpisode,
+        episodeHandoff,
+        postCompleteHoldMs: holdMs > 0 ? holdMs : undefined,
+        postCompleteFadeToBlackMs: fadeMs > 0 ? fadeMs : undefined,
+        onComplete: (meta?: CutsceneCompleteMeta) => {
+          if (episodeHandoff === 1 || episodeHandoff === 2) {
+            setEpisodeCutsceneEnding(true)
+            if (episodeHandoff === 1) {
+              pendingCafeVideoHandoffRef.current = true
+            } else {
+              pendingE2VideoHandoffRef.current = true
+            }
+            if (meta?.userSkip) {
+              runPendingEpisodeHandoff()
+              return
+            }
+            const handoffDelayMs = holdMs + fadeMs
+            episodeHandoffTimerRef.current = window.setTimeout(
+              runPendingEpisodeHandoff,
+              handoffDelayMs,
+            )
+            return
+          }
+          setCutsceneQuestHelperHidden(false)
+          userOnComplete?.(meta)
+        },
+      })
+    },
+    [clearEpisodeHandoffTimer, runPendingEpisodeHandoff],
+  )
+
+  const handleCutsceneEnded = useCallback(() => {
+    if (
+      !pendingCafeVideoHandoffRef.current &&
+      !pendingE2VideoHandoffRef.current
+    ) {
+      setCutscene(null)
+      return
+    }
+    runPendingEpisodeHandoff()
+  }, [runPendingEpisodeHandoff])
+
+  useEffect(() => {
+    return () => {
+      clearEpisodeHandoffTimer()
+    }
+  }, [clearEpisodeHandoffTimer])
 
   const canPlayDevCutscene = useCallback(() => {
     return (
@@ -1518,17 +1645,7 @@ export function GameScreen() {
     const next = cafeSceneLine + 1
     if (next >= CAFE_SCENE_LINES.length) {
       if (!isE1CutscenePlayed()) {
-        playCutscene({
-          videoId: '6t83Cdmq1fM',
-          startSeconds: 112,
-          endSeconds: 204,
-          isEpisodeCutscene: true,
-          captions: EPISODE_1_CAPTIONS,
-          onComplete: () => {
-            setE1CutscenePlayed()
-            completeQuest1AfterCafe()
-          },
-        })
+        playCutscene(buildEpisodeCutsceneOptions(1))
         return
       }
       completeQuest1AfterCafe()
@@ -1595,6 +1712,7 @@ export function GameScreen() {
           showNotYetDialogue(CLERK_NPC, 'nobody gets in until the crier moves.')
           return
         }
+        preloadE2CutsceneIfNeeded()
         {
           const interior = CITY_CONFIGS['blue-store-interior']
           const spawn = resolveDoorSpawn(
@@ -1683,6 +1801,7 @@ export function GameScreen() {
       currentCity,
       openGymLeaderboard,
       openTheater,
+      preloadE2CutsceneIfNeeded,
       showMarkBlockedDialogue,
       showNotYetDialogue,
       startMarkBattle,
@@ -1887,6 +2006,7 @@ export function GameScreen() {
         beginNpcDialogue(CLERK_NPC)
         return
       }
+      preloadE2CutsceneIfNeeded()
       beginNpcDialogue(CLERK_NPC, { onComplete: () => startNpcBattle(CLERK_NPC_ID) })
       return
     }
@@ -1925,6 +2045,7 @@ export function GameScreen() {
     startMarkBattle,
     startNpcBattle,
     playCrierHeraldDialogue,
+    preloadE2CutsceneIfNeeded,
   ])
 
   const handleInteract = useCallback(() => {
@@ -2359,6 +2480,12 @@ export function GameScreen() {
       playCrierHeraldDialogue()
     }
 
+    if (exit?.result === 'win' && exit.npcId === CLERK_NPC_ID && !isE2CutscenePlayed()) {
+      preloadE2CutsceneIfNeeded()
+      playCutscene(buildEpisodeCutsceneOptions(2))
+      return
+    }
+
     if (exit?.result === 'win' && exit.npcId === RESTOCKER_NPC_ID && !isE2Complete()) {
       startE2ClosingExitInterior()
       return
@@ -2382,6 +2509,8 @@ export function GameScreen() {
     }
   }, [
     playCrierHeraldDialogue,
+    playCutscene,
+    preloadE2CutsceneIfNeeded,
     reportCurrentLocation,
     showNotYetDialogue,
     showNarration,
@@ -2743,7 +2872,7 @@ export function GameScreen() {
                 : undefined
             }
           >
-          {showDebug && (
+          {showDebug && !battleNpcId && !battleWipePhase && (
             <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
               {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
             </pre>
@@ -2767,10 +2896,11 @@ export function GameScreen() {
               {touchTalkLabel}
             </button>
           )}
-          <GameCanvas debugHudId={showDebug ? GAME_DEBUG_HUD_ID : undefined}>
+          <GameCanvas debugHudId={showDebug && !battleNpcId && !battleWipePhase ? GAME_DEBUG_HUD_ID : undefined}>
             <Player
               ref={playerRef}
               cityConfig={cityConfig}
+              suppressDebugOverlay={!!battleNpcId || !!battleWipePhase}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
               dialogueActive={

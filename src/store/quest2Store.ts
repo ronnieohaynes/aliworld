@@ -27,6 +27,7 @@ type Quest2State = {
   e2ClosingCrowdDismissed: boolean
   /** Full e2 closing sequence finished (crowd → episode card). */
   e2Complete: boolean
+  e2CutscenePlayed: boolean
 }
 
 function emptyQuest2State(): Quest2State {
@@ -38,6 +39,7 @@ function emptyQuest2State(): Quest2State {
     restockerDefeated: false,
     e2ClosingCrowdDismissed: false,
     e2Complete: false,
+    e2CutscenePlayed: false,
   }
 }
 
@@ -58,6 +60,7 @@ function loadQuest2FromStorage(): Quest2State {
       e2ClosingCrowdDismissed:
         o.e2ClosingCrowdDismissed === true || o.e2Complete === true || o.e2Seen === true,
       e2Complete: o.e2Complete === true || o.e2Seen === true,
+      e2CutscenePlayed: o.e2CutscenePlayed === true,
     }
   } catch {
     return base
@@ -175,6 +178,17 @@ export function setE2Complete(): void {
   emit()
 }
 
+export function isE2CutscenePlayed(): boolean {
+  return state.e2CutscenePlayed
+}
+
+export function setE2CutscenePlayed(): void {
+  if (state.e2CutscenePlayed) return
+  state = { ...state, e2CutscenePlayed: true }
+  saveQuest2ToStorage()
+  emit()
+}
+
 /** @deprecated Legacy alias, use isE2Complete. */
 export function isE2Seen(): boolean {
   return state.e2Complete
@@ -188,6 +202,7 @@ export type Quest2Serialized = {
   restockerDefeated?: boolean
   e2ClosingCrowdDismissed?: boolean
   e2Complete?: boolean
+  e2CutscenePlayed?: boolean
   /** Legacy, migrated to e2Complete on load. */
   e2Seen?: boolean
 }
@@ -201,6 +216,7 @@ export function serialize(): Quest2Serialized {
     restockerDefeated: state.restockerDefeated,
     e2ClosingCrowdDismissed: state.e2ClosingCrowdDismissed,
     e2Complete: state.e2Complete,
+    e2CutscenePlayed: state.e2CutscenePlayed,
   }
 }
 
@@ -219,6 +235,7 @@ export function applyState(data: Partial<Quest2Serialized>): void {
     e2ClosingCrowdDismissed:
       data.e2ClosingCrowdDismissed === true || e2Complete,
     e2Complete,
+    e2CutscenePlayed: data.e2CutscenePlayed === true,
   }
   saveQuest2ToStorage()
   emit()

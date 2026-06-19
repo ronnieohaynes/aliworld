@@ -124,6 +124,7 @@ function emptyQuest2Serialized() {
     clerkConverted: false,
     restockerDefeated: false,
     e2Complete: false,
+    e2CutscenePlayed: false,
   }
 }
 
