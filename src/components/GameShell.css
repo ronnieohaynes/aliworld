@@ -587,6 +587,29 @@
   transform: translateX(-50%) translateY(1px);
 }
 
+.game-shell__cutscene-btn--skip.game-shell__cutscene-btn--glow {
+  color: #fff4d6;
+  border-color: rgba(244, 232, 193, 0.85);
+  animation: game-shell-cutscene-skip-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes game-shell-cutscene-skip-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 2px 0 #1a1525,
+      0 0 8px rgba(244, 232, 193, 0.4),
+      0 0 16px rgba(127, 119, 221, 0.25);
+  }
+
+  50% {
+    box-shadow:
+      0 2px 0 #1a1525,
+      0 0 16px rgba(244, 232, 193, 0.75),
+      0 0 32px rgba(127, 119, 221, 0.4);
+  }
+}
+
 .game-shell__cutscene-btn--full {
   left: 0;
   bottom: 0;

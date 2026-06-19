@@ -2704,11 +2704,20 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
-    if (showLoadout) {
-      handleLoadoutClose()
+    if (
+      menuTransition ||
+      worldEntryActive ||
+      showStartMenu ||
+      showGymLeaderboard ||
+      showGhostTraining ||
+      showTheater ||
+      showShop
+    ) {
       return
     }
+    // Script opens loadout only; close via loadout UI or Escape (not toggle).
+    if (showLoadout) return
+    setMenuReturnPending(false)
     setShowLoadout(true)
     // Script button tap completes the waitForAction step.
     if (loadoutTutorialStep === 1) {
@@ -2716,15 +2725,26 @@ export function GameScreen() {
     } else if (loadoutTutorialStep === XP_TUTORIAL_START_STEP + 1) {
       setLoadoutTutorialStep(XP_TUTORIAL_START_STEP + 2)
     }
-  }, [handleLoadoutClose, loadoutTutorialStep, showLoadout, showStartMenu, worldEntryActive])
+  }, [
+    loadoutTutorialStep,
+    menuTransition,
+    showGhostTraining,
+    showGymLeaderboard,
+    showLoadout,
+    showShop,
+    showStartMenu,
+    showTheater,
+    worldEntryActive,
+  ])
 
   const beginMenuEntryTransition = useCallback(
     (screen: 'fanny-pack' | 'loadout') => {
+      if (menuTransition) return
       setShowStartMenu(false)
       setMenuReturnPending(true)
       beginMenuTransition({ kind: 'to-screen', screen })
     },
-    [beginMenuTransition],
+    [beginMenuTransition, menuTransition],
   )
 
   const handleMenuTransitionMidpoint = useCallback(() => {

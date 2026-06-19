@@ -237,14 +237,12 @@ function MusicSpeakerIcon({ muted }: { muted: boolean }) {
   if (muted) {
     return (
       <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+        <path d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z" fill="currentColor" />
         <path
-          d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z"
-          fill="currentColor"
-        />
-        <path
-          d="M9.5 4.5L11 6M11 4.5L9.5 6"
+          d="M9 5.5c.8.8.8 2.2 0 3M10.5 4c1.6 1.6 1.6 4.4 0 6"
+          fill="none"
           stroke="currentColor"
-          strokeWidth="1.2"
+          strokeWidth="1.1"
           strokeLinecap="round"
         />
       </svg>
@@ -252,12 +250,14 @@ function MusicSpeakerIcon({ muted }: { muted: boolean }) {
   }
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z" fill="currentColor" />
       <path
-        d="M9 5.5c.8.8.8 2.2 0 3M10.5 4c1.6 1.6 1.6 4.4 0 6"
-        fill="none"
+        d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z"
+        fill="currentColor"
+      />
+      <path
+        d="M9.5 4.5L11 6M11 4.5L9.5 6"
         stroke="currentColor"
-        strokeWidth="1.1"
+        strokeWidth="1.2"
         strokeLinecap="round"
       />
     </svg>
@@ -289,7 +289,9 @@ function GameShellCutsceneControls() {
           <div className="game-shell__cutscene-triangle-plate" aria-hidden />
           <button
             type="button"
-            className="game-shell__cutscene-btn game-shell__cutscene-btn--skip"
+            className={`game-shell__cutscene-btn game-shell__cutscene-btn--skip${
+              cutsceneUi.playbackFinished ? ' game-shell__cutscene-btn--glow' : ''
+            }`}
             onClick={cutsceneUiSkip}
           >
             skip

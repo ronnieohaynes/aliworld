@@ -11,11 +11,14 @@ import {
 } from '../store/cutsceneUiStore'
 import './CutsceneOverlay.css'
 
+const YT_ENDED = 0
 const YT_UNSTARTED = -1
 const YT_PLAYING = 1
 const YT_PAUSED = 2
 const YT_BUFFERING = 3
 const AUTOPLAY_CHECK_MS = 700
+/** Clip seconds from end at which we treat playback as complete. */
+const CLIP_END_TOLERANCE_SEC = 0.35
 
 /** Seconds into the clip (0 at startSeconds), for progress. */
 function clipRelativeSeconds(
@@ -75,7 +78,6 @@ export function CutsceneOverlay({
   const playerRef = useRef<YTPlayer | null>(null)
   const playbackGateOpenRef = useRef(false)
   const playbackStartedRef = useRef(false)
-  const nearEndPollsRef = useRef(0)
   const lastKnownClipTimeRef = useRef(0)
   const lastApiClipTimeRef = useRef(0)
   const completePlaybackRef = useRef<() => void>(() => {})
@@ -111,7 +113,6 @@ export function CutsceneOverlay({
     teardownCompletedRef.current = false
     playbackGateOpenRef.current = false
     playbackStartedRef.current = false
-    nearEndPollsRef.current = 0
     lastKnownClipTimeRef.current = 0
     lastApiClipTimeRef.current = 0
     devSkipAnchorClipRef.current = null
@@ -153,6 +154,9 @@ export function CutsceneOverlay({
       setActiveCaption(null)
       setAutoplayBlocked(false)
       playerRef.current?.pauseVideo?.()
+      if (!userSkip) {
+        updateCutsceneUi({ playbackFinished: true })
+      }
       onCompleteRef.current(userSkip ? { userSkip: true } : undefined)
       const hold = userSkip ? 0 : postCompleteHoldMs
       const fadeToBlack = userSkip
@@ -300,8 +304,21 @@ export function CutsceneOverlay({
     }
     togglePlayPauseRef.current = togglePlayPause
 
+    const skipPostHold = () => {
+      if (teardownCompletedRef.current) return
+      window.clearTimeout(holdId)
+      window.clearTimeout(fadeOutId)
+      onCompleteRef.current({ userSkip: true })
+      teardown()
+    }
+
     const skipToEnd = () => {
-      if (endedRef.current) return
+      if (endedRef.current) {
+        if (postCompleteHoldMs > 0 || postCompleteFadeToBlackMs > 0) {
+          skipPostHold()
+        }
+        return
+      }
       userPausedRef.current = false
       userGestureStartedRef.current = true
       playbackGateOpenRef.current = true
@@ -358,30 +375,36 @@ export function CutsceneOverlay({
       }
     }
 
-    /** Keep the clip running unless the user paused from the shell controls. */
-    const resumeIfPausedMidClip = (player: YTPlayer) => {
-      if (endedRef.current) return false
-      if (userPausedRef.current) {
-        enforceUserPause(player)
+    const syncPausedFromPlayer = (player: YTPlayer) => {
+      if (endedRef.current || (!playbackStartedRef.current && !playbackGateOpenRef.current)) {
+        return
+      }
+      userPausedRef.current = true
+      setVideoPaused(true)
+      enforceUserPause(player)
+    }
+
+    const syncPlayingFromPlayer = (player: YTPlayer) => {
+      userPausedRef.current = false
+      setVideoPaused(false)
+      setAutoplayBlocked(false)
+      markPlaybackActive(player)
+      syncProgressFromPlayer(player)
+    }
+
+    const tryCompleteAtClipEnd = (player: YTPlayer): boolean => {
+      if (endedRef.current || !playbackStartedRef.current) return false
+      const clipTime = readApiClipTime(player)
+      if (clipTime >= spanSeconds - CLIP_END_TOLERANCE_SEC) {
+        completePlayback()
         return true
       }
-      const apiClipTime = readApiClipTime(player)
-      if (apiClipTime >= spanSeconds - 0.5) {
-        freezeProgress(player)
-        return true
-      }
-      player.playVideo()
-      return true
+      return false
     }
 
     const pollPlaybackProgress = () => {
       const player = playerRef.current
       if (!player || !playbackGateOpenRef.current) return
-
-      if (userPausedRef.current) {
-        enforceUserPause(player)
-        return
-      }
 
       const playerState =
         typeof player.getPlayerState === 'function' ? player.getPlayerState() : YT_UNSTARTED
@@ -389,8 +412,18 @@ export function CutsceneOverlay({
       const playheadAdvancing = apiClipTime > lastApiClipTimeRef.current + 0.01
       lastApiClipTimeRef.current = apiClipTime
 
+      if (playerState === YT_ENDED) {
+        completePlayback()
+        return
+      }
+
       if (playerState === YT_PAUSED) {
-        resumeIfPausedMidClip(player)
+        if (tryCompleteAtClipEnd(player)) return
+        if (!userPausedRef.current) {
+          syncPausedFromPlayer(player)
+          return
+        }
+        enforceUserPause(player)
         return
       }
 
@@ -408,13 +441,8 @@ export function CutsceneOverlay({
       if (!playbackStartedRef.current || spanSeconds <= 0) return
 
       const clipTime = lastKnownClipTimeRef.current
-      if (videoIsPlaying && clipTime >= spanSeconds - 0.35) {
-        nearEndPollsRef.current += 1
-        if (nearEndPollsRef.current >= 2) {
-          completePlayback()
-        }
-      } else {
-        nearEndPollsRef.current = 0
+      if (clipTime >= spanSeconds - CLIP_END_TOLERANCE_SEC) {
+        completePlayback()
       }
     }
 
@@ -463,20 +491,20 @@ export function CutsceneOverlay({
               }, 400)
             },
             onStateChange: (event) => {
-              if (userPausedRef.current) {
-                if (event.data === YT_PLAYING || event.data === YT_BUFFERING) {
-                  event.target.pauseVideo()
-                }
-                if (event.data === YT_PAUSED || event.data === YT_PLAYING || event.data === YT_BUFFERING) {
-                  enforceUserPause(event.target)
-                }
+              if (event.data === YT_ENDED) {
+                completePlayback()
                 return
               }
               if (event.data === YT_PAUSED) {
-                resumeIfPausedMidClip(event.target)
+                if (tryCompleteAtClipEnd(event.target)) return
+                syncPausedFromPlayer(event.target)
                 return
               }
               if (event.data === YT_BUFFERING) {
+                if (userPausedRef.current) {
+                  enforceUserPause(event.target)
+                  return
+                }
                 const apiClipTime = readApiClipTime(event.target)
                 if (apiClipTime > 0.01) {
                   markPlaybackActive(event.target)
@@ -485,9 +513,7 @@ export function CutsceneOverlay({
                 return
               }
               if (event.data === YT_PLAYING) {
-                setVideoPaused(false)
-                markPlaybackActive(event.target)
-                syncProgressFromPlayer(event.target)
+                syncPlayingFromPlayer(event.target)
               }
             },
           },
@@ -495,7 +521,7 @@ export function CutsceneOverlay({
       })
       .catch(() => completePlayback())
 
-    failId = window.setTimeout(completePlayback, (spanSeconds + 30) * 1000)
+    failId = window.setTimeout(completePlayback, (spanSeconds + 5) * 1000)
 
     return () => {
       registerCutsceneDevSkip(null)
