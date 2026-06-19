@@ -80,6 +80,8 @@ import {
   resetBattleTutorialSeen,
   isEpisode1TitleCardSeen,
   isTutorialPhase2Seen,
+  isXpTutorialSeen,
+  setXpTutorialSeen,
   isWalkerConverted,
   isWorldIntroSeen,
   JACLYN_NPC_ID,
@@ -196,6 +198,7 @@ import {
   allowsStartMenuDuringLoadoutTutorial,
   blocksWorldInteractDuringLoadoutTutorial,
   LOADOUT_TUTORIAL_STEPS,
+  XP_TUTORIAL_START_STEP,
   type LoadoutTutorialTarget,
 } from '../data/loadoutTutorial'
 import {
@@ -2354,16 +2357,20 @@ export function GameScreen() {
     })
   }, [finishAdamTutorial])
 
-  const finishLoadoutTutorial = useCallback(() => {
+  const finishLoadoutTutorial = useCallback((step: number | null) => {
     setLoadoutTutorialStep(null)
-    setTutorialPhase2Seen()
+    if (step != null && step >= XP_TUTORIAL_START_STEP) {
+      setXpTutorialSeen()
+    } else {
+      setTutorialPhase2Seen()
+    }
   }, [])
 
   const advanceLoadoutTutorial = useCallback(() => {
     setLoadoutTutorialStep((step) => {
       if (step == null) return step
       if (step >= LOADOUT_TUTORIAL_STEPS.length - 1) {
-        finishLoadoutTutorial()
+        finishLoadoutTutorial(step)
         return null
       }
       return step + 1
@@ -2371,7 +2378,10 @@ export function GameScreen() {
   }, [finishLoadoutTutorial])
 
   const skipLoadoutTutorial = useCallback(() => {
-    finishLoadoutTutorial()
+    setLoadoutTutorialStep((step) => {
+      finishLoadoutTutorial(step)
+      return null
+    })
   }, [finishLoadoutTutorial])
 
   const handleBattleExitComplete = useCallback(() => {
@@ -2600,6 +2610,9 @@ export function GameScreen() {
       if (result === 'win' && !isDevSpar) {
         if (battleNpcId === MARK_NPC_ID) {
           showMarkVictoryNarration()
+          if (!isXpTutorialSeen()) {
+            setLoadoutTutorialStep(XP_TUTORIAL_START_STEP)
+          }
         }
       }
       if (isGym && telemetry) {
@@ -2663,6 +2676,8 @@ export function GameScreen() {
     // Script button tap completes the waitForAction step.
     if (loadoutTutorialStep === 1) {
       setLoadoutTutorialStep(2)
+    } else if (loadoutTutorialStep === XP_TUTORIAL_START_STEP + 1) {
+      setLoadoutTutorialStep(XP_TUTORIAL_START_STEP + 2)
     }
   }, [handleLoadoutClose, loadoutTutorialStep, showLoadout, showStartMenu, worldEntryActive])
 
@@ -3090,7 +3105,9 @@ export function GameScreen() {
             />
           ) : null}
           {loadoutTutorialStep != null &&
-          loadoutTutorialStep <= 1 &&
+          (loadoutTutorialStep <= 1 ||
+            (loadoutTutorialStep >= XP_TUTORIAL_START_STEP &&
+              loadoutTutorialStep <= XP_TUTORIAL_START_STEP + 1)) &&
           !showStartMenu &&
           !showLoadout ? (
             <GuidedTutorialOverlay<LoadoutTutorialTarget | 'none'>

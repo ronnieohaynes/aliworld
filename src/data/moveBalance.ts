@@ -135,10 +135,10 @@ export function earlyStrikeDamageScale(attackSkillLevel: number): number {
 
 /** Defense skill, brace blocks more per level (multiplier reduction, capped). */
 export const DEF_MITIGATION_PER_LEVEL = 0.025
-/** Defense skill, passive incoming damage reduction per level (kept modest vs counter loop). */
-export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.009
+/** Defense skill, passive incoming damage reduction per level. 1.2% per level, cap at 50% (level 42). */
+export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.012
 /** Hard cap on total defense mitigation so builds never become invincible. */
-export const DEF_MAX_MITIGATION = 0.6
+export const DEF_MAX_MITIGATION = 0.5
 /** Brace never shrinks incoming below this fraction of raw hit damage. */
 export const DEF_BRACE_INCOMING_FLOOR = 0.1
 /** Bonus damage on the next strike after a successful brace (per defense level). */
@@ -175,19 +175,20 @@ export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: n
   return Math.max(1, Math.floor(incoming * (1 - frac)))
 }
 
-/** Speed skill, dodge reliability and counter scaling per level. */
-export const SPD_DODGE_PER_LEVEL = 0.02
-export const SPD_DODGE_MAX = 0.5
+/** Speed skill, dodge reliability and counter scaling per level.
+ *  Dodge chance: 33% at lvl 1, 65% at lvl 65 (MAX_SKILL_LEVEL), linear. */
+export const SPD_DODGE_PER_LEVEL = 0.005   // 0.5% per level above 1
+export const SPD_DODGE_MAX = 0.32          // full bonus reached at lvl 65
 /** Extra counter damage multiplier per speed level (on top of dodge bonus). */
 export const SPD_COUNTER_BONUS_PER_LEVEL = 0.09
 export const SPD_COUNTER_BONUS_MAX = 0.8
-/** Base dodge success before speed skill bonus (keeps early SLIP survivable). */
-export const SPD_DODGE_BASE_CHANCE = 0.68
+/** Base dodge success at skill level 1 (no bonus yet). */
+export const SPD_DODGE_BASE_CHANCE = 0.33
 /** Speed skill bonus added to combat spd for initiative ties. */
 export const SPD_INITIATIVE_WEIGHT = 1
 
 export function speedDodgeBonus(spdSkillLevel: number): number {
-  return Math.min(SPD_DODGE_MAX, spdSkillLevel * SPD_DODGE_PER_LEVEL)
+  return Math.min(SPD_DODGE_MAX, Math.max(0, spdSkillLevel - 1) * SPD_DODGE_PER_LEVEL)
 }
 
 export function speedCounterBonus(spdSkillLevel: number): number {
@@ -200,6 +201,23 @@ export function speedDodgeSuccessChance(spdSkillLevel: number): number {
 
 export function speedInitiativeBonus(spdSkillLevel: number): number {
   return Math.max(0, spdSkillLevel - 1) * SPD_INITIATIVE_WEIGHT
+}
+
+/** Defense skill, PARRY counter damage bonus per level. */
+export const DEF_PARRY_COUNTER_BONUS_PER_LEVEL = 0.07
+export const DEF_PARRY_COUNTER_BONUS_MAX = 0.7
+
+export function defParryCounterBonus(defSkillLevel: number): number {
+  return Math.min(DEF_PARRY_COUNTER_BONUS_MAX, defSkillLevel * DEF_PARRY_COUNTER_BONUS_PER_LEVEL)
+}
+
+/** Luck skill, PARRY dodge reliability per level. */
+export const LCK_DODGE_BASE_CHANCE = 0.40
+export const LCK_DODGE_PER_LEVEL = 0.005  // 0.5% per level above 1, matches SLIP curve
+export const LCK_DODGE_MAX = 0.32         // full bonus at lvl 65, same as SLIP
+
+export function luckDodgeSuccessChance(lckSkillLevel: number): number {
+  return Math.min(0.99, LCK_DODGE_BASE_CHANCE + Math.min(LCK_DODGE_MAX, Math.max(0, lckSkillLevel - 1) * LCK_DODGE_PER_LEVEL))
 }
 
 /** Luck stat weight in crit rolls, makes luck investment show up in fight feel. */

@@ -45,6 +45,8 @@ import {
   speedCounterBonus,
   speedDodgeBonus,
   speedDodgeSuccessChance,
+  luckDodgeSuccessChance,
+  defParryCounterBonus,
 } from './moveBalance'
 import { scheduleDeathClock } from './combatSystems'
 import type { PlayerMoveId } from './moveIds'
@@ -64,6 +66,8 @@ export type ResolveMoveContext = {
   eDmg: number
   /** Raw defense skill level, mitigation tuned in moveBalance; matchup loop outweighs level gaps. */
   def: number
+  /** Derived defense stat (archetype base + skill bonus), used as PARRY counter damage base. */
+  defStat: number
   /** Speed skill level, scales dodge and initiative. */
   spd: number
   /** Luck skill level, cross-scale secondary hooks. */
@@ -363,13 +367,18 @@ export function applyMoveBehavior(
               CROSS_SCALE.PARRY_REFLECT_DEF_CAP,
             )
           : 1
+      const dodgeChance = def.id === 'PARRY'
+        ? luckDodgeSuccessChance(lck)
+        : speedDodgeSuccessChance(ctx.spd)
       if (incomingEnemyHit(ctx)) {
-        if (Math.random() < speedDodgeSuccessChance(ctx.spd)) {
+        if (Math.random() < dodgeChance) {
           out.dodged = true
           out.incoming = 0
-          const counterScale =
-            1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd) + slipAtkBonus
-          out.playerDmg = jitter(Math.floor(atk * d.counterMult * counterScale))
+          const counterScale = def.id === 'PARRY'
+            ? 1 + defParryCounterBonus(ctx.def)
+            : 1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd) + slipAtkBonus
+          const counterBase = def.id === 'PARRY' ? ctx.defStat : atk
+          out.playerDmg = jitter(Math.floor(counterBase * d.counterMult * counterScale))
           if (Math.random() * 100 < d.stunChance.base + lck * d.stunChance.lckMult) {
             out.stunApplied = true
           }

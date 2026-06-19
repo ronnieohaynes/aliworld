@@ -539,6 +539,7 @@ function buildResolveContext(
     attackSkillLevel: skills.attack.level,
     eDmg: strike.eDmg,
     def: skills.defense.level,
+    defStat: state.playerStats.def,
     spd: skills.speed.level,
     enemyAttacks: strike.enemyAttacks,
     lck: state.playerStats.lck,

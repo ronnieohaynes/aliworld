@@ -27,10 +27,10 @@ export function chooseGhostMove(
   const lean = leanSkill === 'none' ? null : (leanSkill as BuildLoopSkill)
   const themed = lean ? leanThemedMoves(lean) : leanThemedMoves('none')
 
-  // Defense-lean: HOLD bias when hurt (mirrors restocker heuristics).
-  if (lean === 'defense' && candidates.includes('HOLD')) {
+  // Defense-lean: ANCHOR bias when hurt (mirrors restocker heuristics).
+  if (lean === 'defense' && candidates.includes('ANCHOR')) {
     const holdChance = enemyHpRatio < 0.35 ? 0.72 : enemyHpRatio < 0.6 ? 0.52 : 0.32
-    if (Math.random() < holdChance) return 'HOLD'
+    if (Math.random() < holdChance) return 'ANCHOR'
   }
 
   // Attack-lean: pressure when ahead.

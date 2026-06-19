@@ -7,10 +7,10 @@ import type { PlayerMoveId } from './moveIds'
  */
 export const ARCHETYPE_ENEMY_MOVES: Record<BuildLoopSkill | 'balanced', readonly PlayerMoveId[]> = {
   attack: ['STRIKE', 'STRIKE', 'CANNON', 'LOOP', 'WHISPER'],
-  defense: ['HOLD', 'HOLD', 'CANNON', 'STRIKE', 'SLIP'],
+  defense: ['ANCHOR', 'ANCHOR', 'CANNON', 'STRIKE', 'SLIP'],
   speed: ['SLIP', 'STRIKE', 'WHISPER', 'FURY_SWEEP', 'LOOP'],
   luck: ['WHISPER', 'WHISPER', 'SLIP', 'STRIKE', 'LOOP'],
-  balanced: ['STRIKE', 'HOLD', 'SLIP', 'WHISPER', 'CANNON'],
+  balanced: ['STRIKE', 'ANCHOR', 'SLIP', 'WHISPER', 'CANNON'],
 }
 
 export function enemyMovesForBuild(buildType: BuildLoopSkill | null): PlayerMoveId[] {
@@ -24,12 +24,12 @@ export function leanThemedMoves(lean: BuildLoopSkill | 'none'): PlayerMoveId[] {
     case 'attack':
       return ['STRIKE', 'CANNON', 'LOOP']
     case 'defense':
-      return ['HOLD', 'CANNON']
+      return ['ANCHOR', 'CANNON']
     case 'speed':
       return ['SLIP', 'WHISPER']
     case 'luck':
       return ['WHISPER', 'LOOP']
     default:
-      return ['STRIKE', 'SLIP', 'HOLD', 'WHISPER']
+      return ['STRIKE', 'SLIP', 'ANCHOR', 'WHISPER']
   }
 }

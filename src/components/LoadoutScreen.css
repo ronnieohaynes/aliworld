@@ -373,9 +373,22 @@
 
 .loadout-screen__skill-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.loadout-screen__skill-label-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.loadout-screen__skill-tagline {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: #7878a0;
+  text-transform: lowercase;
 }
 
 .loadout-screen__skill-label {

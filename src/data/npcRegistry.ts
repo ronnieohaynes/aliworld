@@ -37,7 +37,7 @@ export type CombatStats = {
 export type NpcTelegraphFlavor = Partial<Record<PlayerMoveId, string>>
 
 export type NpcGuardCounter = {
-  /** Chance to riposte when player attacks into HOLD (0–1). */
+  /** Chance to riposte when player attacks into ANCHOR (0–1). */
   chance: number
   damageMult: number
 }
@@ -54,9 +54,9 @@ export type NpcCombatEntry = {
   winningLine?: string
   /** Optional per-move telegraph flavor (e.g. "winds up"). */
   telegraphFlavor?: NpcTelegraphFlavor
-  /** Punishes attacking into HOLD, round-tuned on gym heads. */
+  /** Punishes attacking into ANCHOR, round-tuned on gym heads. */
   guardCounter?: NpcGuardCounter
-  /** Fraction of mitigated damage that pierces player HOLD/SLIP (0–1). */
+  /** Fraction of mitigated damage that pierces player ANCHOR/SLIP (0–1). */
   enemyGuardPierce?: number
   spriteSrc?: string
   /** Location key for city battle backdrop when `battleBg` is unset. */
@@ -104,12 +104,12 @@ const WALKER: NpcCombatEntry = entry({
   id: 'walker',
   displayName: 'walker',
   level: 2,
-  moves: ['STRIKE', 'FURY_SWEEP', 'HOLD'],
+  moves: ['STRIKE', 'FURY_SWEEP', 'ANCHOR'],
   leanSkill: 'none',
   telegraphFlavor: {
     STRIKE: 'lines up',
     FURY_SWEEP: 'winds up —',
-    HOLD: 'plants his feet —',
+    ANCHOR: 'plants his feet —',
   },
   losingLine: 'i get it now. tell me where to go.',
   winningLine: "not yet. keep going.",
@@ -143,11 +143,10 @@ const MARK: NpcCombatEntry = entry({
   id: 'mark',
   displayName: 'mark',
   level: 5,
-  moves: ['HOLD', 'ANCHOR', 'DARK_BREAK', 'STRIKE', 'SLIP', 'WHISPER'],
+  moves: ['ANCHOR', 'ANCHOR', 'DARK_BREAK', 'STRIKE', 'SLIP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
-    HOLD: 'roots in —',
-    ANCHOR: 'digs in —',
+    ANCHOR: 'roots in —',
     DARK_BREAK: 'draws back —',
     STRIKE: 'swings —',
     SLIP: 'feints —',
@@ -204,10 +203,10 @@ const RESTOCKER: NpcCombatEntry = entry({
   displayName: 'restocker',
   level: 9,
   hpScale: 1.72,
-  moves: ['HOLD', 'HOLD', 'HOLD', 'CANNON', 'STRIKE', 'SLIP', 'LOOP', 'WHISPER'],
+  moves: ['ANCHOR', 'ANCHOR', 'ANCHOR', 'CANNON', 'STRIKE', 'SLIP', 'LOOP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
-    HOLD: 'restocks',
+    ANCHOR: 'restocks',
     CANNON: 'heaves —',
     STRIKE: 'swings',
     SLIP: 'feints',

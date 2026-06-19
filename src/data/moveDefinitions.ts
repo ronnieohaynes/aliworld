@@ -222,7 +222,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       profile: {
         counterMult: 0.7,
         weakMult: 0.4,
-        stunChance: { base: 20, lckMult: 2 },
+        stunChance: { base: 14, lckMult: 1.5 },
       },
     },
     onResolve: [],
@@ -248,23 +248,23 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   PARRY: def({
     id: 'PARRY',
     displayName: 'PARRY',
-    skill: 'attack',
-    ladderRung: 2,
+    skill: 'defense',
+    ladderRung: 1,
     cost: { kind: 'none' },
     behavior: {
       kind: 'dodge',
       profile: {
         counterMult: PARRY_DODGE_COUNTER_MULT,
         weakMult: PARRY_DODGE_WEAK_MULT,
-        stunChance: { base: 22, lckMult: 2.5 },
+        stunChance: { base: 18, lckMult: 2 },
         onDodgeReflectPct: PARRY_ON_DODGE_REFLECT_PCT,
       },
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: speedDodgeMoveXp },
+      { skill: 'defense', amount: speedDodgeMoveXp },
     ],
-    uiDescription: 'read and punish. counter-hit with reflect.',
+    uiDescription: 'read and punish. counter scales with def.',
     uiClassName: 'battle-screen__move--parry',
     playerLogLine: (r) =>
       r.dodged
