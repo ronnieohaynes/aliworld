@@ -3,16 +3,21 @@ import { trackTheaterVideoPlay } from '../lib/analytics'
 import type { Caption, PlayCutsceneOptions } from '../lib/playCutscene'
 import { loadYouTubeIframeApi, type YTPlayer } from '../lib/youtubeIframeApi'
 import { registerCutsceneDevPlayer, registerCutsceneDevSkip } from '../hooks/useDevControls'
+import {
+  registerCutsceneUiHandlers,
+  setCutsceneUiActive,
+  unregisterCutsceneUiHandlers,
+  updateCutsceneUi,
+} from '../store/cutsceneUiStore'
 import './CutsceneOverlay.css'
 
 const YT_UNSTARTED = -1
 const YT_PLAYING = 1
 const YT_PAUSED = 2
 const YT_BUFFERING = 3
-const YT_CUED = 5
 const AUTOPLAY_CHECK_MS = 700
 
-/** Seconds into the clip (0 at startSeconds), for captions and progress. */
+/** Seconds into the clip (0 at startSeconds), for progress. */
 function clipRelativeSeconds(
   playbackSeconds: number,
   startSeconds: number,
@@ -39,18 +44,14 @@ function findActiveCaption(captions: Caption[] | undefined, clipTime: number): C
   return null
 }
 
-function resolveClipTime(
-  apiClipTime: number,
-  clockClipTime: number,
-  skipAnchor: number | null,
-): number {
-  if (skipAnchor != null) {
-    return Math.max(apiClipTime, clockClipTime, skipAnchor)
-  }
-  if (apiClipTime > 0.05) {
-    return Math.max(apiClipTime, clockClipTime)
-  }
-  return clockClipTime
+function clampClipTime(clipTime: number, spanSeconds: number): number {
+  if (spanSeconds <= 0) return 0
+  return Math.min(spanSeconds, Math.max(0, clipTime))
+}
+
+function readYouTubeVideoTitle(player: YTPlayer): string | null {
+  const title = player.getVideoData?.().title?.trim()
+  return title || null
 }
 
 type Props = PlayCutsceneOptions & {
@@ -63,54 +64,67 @@ export function CutsceneOverlay({
   endSeconds,
   postCompleteHoldMs = 0,
   postCompleteFadeToBlackMs = 0,
+  videoTitle,
   captions,
+  youtubeCaptions = false,
   onComplete,
   onEnded,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const hostIdRef = useRef(`cutscene-${Math.random().toString(36).slice(2)}`)
   const playerRef = useRef<YTPlayer | null>(null)
-  const playbackStartedAtMsRef = useRef<number | null>(null)
-  const pausedAtMsRef = useRef<number | null>(null)
   const playbackGateOpenRef = useRef(false)
+  const playbackStartedRef = useRef(false)
   const nearEndPollsRef = useRef(0)
-  const playbackLatchedRef = useRef(false)
+  const lastKnownClipTimeRef = useRef(0)
   const lastApiClipTimeRef = useRef(0)
   const completePlaybackRef = useRef<() => void>(() => {})
   const skipToClipEndRef = useRef<() => void>(() => {})
   const resumeFromUserGestureRef = useRef<() => void>(() => {})
-  const pendingDevSkipRef = useRef(false)
+  const toggleSoundMutedRef = useRef<() => void>(() => {})
+  const togglePlayPauseRef = useRef<() => void>(() => {})
+  const userPausedRef = useRef(false)
   const devSkipAnchorClipRef = useRef<number | null>(null)
+  const userGestureStartedRef = useRef(false)
   const autoplayCheckIdRef = useRef(0)
   const endedRef = useRef(false)
+  const teardownCompletedRef = useRef(false)
   const onCompleteRef = useRef(onComplete)
   const onEndedRef = useRef(onEnded)
   const [progress, setProgress] = useState(0)
   const [activeCaption, setActiveCaption] = useState<Caption | null>(null)
   const [postHoldPhase, setPostHoldPhase] = useState<'none' | 'hold' | 'fade-to-black'>('none')
-  const [skipVisible, setSkipVisible] = useState(false)
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [soundMuted, setSoundMuted] = useState(true)
+  const [videoPaused, setVideoPaused] = useState(false)
+  const [landscapeFullscreen, setLandscapeFullscreen] = useState(true)
+  const autoplayBlockedRef = useRef(false)
+  const soundMutedRef = useRef(true)
+  autoplayBlockedRef.current = autoplayBlocked
+  soundMutedRef.current = soundMuted
   onCompleteRef.current = onComplete
   onEndedRef.current = onEnded
+  const useCustomCaptions = !youtubeCaptions && (captions?.length ?? 0) > 0
 
   useEffect(() => {
     endedRef.current = false
-    playbackStartedAtMsRef.current = null
-    pausedAtMsRef.current = null
+    teardownCompletedRef.current = false
     playbackGateOpenRef.current = false
+    playbackStartedRef.current = false
     nearEndPollsRef.current = 0
-    playbackLatchedRef.current = false
+    lastKnownClipTimeRef.current = 0
     lastApiClipTimeRef.current = 0
     devSkipAnchorClipRef.current = null
+    userGestureStartedRef.current = false
+    userPausedRef.current = false
     setProgress(0)
     setActiveCaption(null)
     setPostHoldPhase('none')
-    setSkipVisible(false)
     setAutoplayBlocked(false)
     setSoundMuted(true)
+    setVideoPaused(false)
+    setLandscapeFullscreen(true)
     let pollId = 0
-    let skipRevealId = 0
     let failId = 0
     let holdId = 0
     let fadeOutId = 0
@@ -118,28 +132,36 @@ export function CutsceneOverlay({
     const spanSeconds = Math.max(0, endSeconds - startSeconds)
 
     const teardown = () => {
+      if (teardownCompletedRef.current) return
+      teardownCompletedRef.current = true
       registerCutsceneDevSkip(null)
       registerCutsceneDevPlayer(null)
       playerRef.current?.destroy()
       playerRef.current = null
-      playbackStartedAtMsRef.current = null
       onEndedRef.current()
     }
 
-    const completePlayback = () => {
+    const completePlayback = (userSkip = false) => {
       if (endedRef.current) return
       endedRef.current = true
       devSkipAnchorClipRef.current = null
       window.clearInterval(pollId)
       window.clearTimeout(failId)
+      window.clearTimeout(holdId)
+      window.clearTimeout(fadeOutId)
       setProgress(1)
       setActiveCaption(null)
       setAutoplayBlocked(false)
       playerRef.current?.pauseVideo?.()
-      onCompleteRef.current()
-      const hold = postCompleteHoldMs
-      const fadeToBlack =
-        postCompleteFadeToBlackMs > 0 ? postCompleteFadeToBlackMs : hold > 0 ? 1_500 : 0
+      onCompleteRef.current(userSkip ? { userSkip: true } : undefined)
+      const hold = userSkip ? 0 : postCompleteHoldMs
+      const fadeToBlack = userSkip
+        ? 0
+        : postCompleteFadeToBlackMs > 0
+          ? postCompleteFadeToBlackMs
+          : hold > 0
+            ? 1_500
+            : 0
       if (hold > 0) {
         setPostHoldPhase('hold')
         holdId = window.setTimeout(() => {
@@ -161,6 +183,14 @@ export function CutsceneOverlay({
       return clipRelativeSeconds(current, startSeconds, endSeconds)
     }
 
+    const updateProgressAtClipTime = (clipTime: number) => {
+      const clamped = clampClipTime(clipTime, spanSeconds)
+      if (useCustomCaptions) {
+        setActiveCaption(findActiveCaption(captions, clamped))
+      }
+      setProgress(spanSeconds > 0 ? clamped / spanSeconds : 0)
+    }
+
     const openPlaybackGate = () => {
       if (endedRef.current || playbackGateOpenRef.current) return
       playbackGateOpenRef.current = true
@@ -170,15 +200,27 @@ export function CutsceneOverlay({
       }
     }
 
+    const markPlaybackActive = (player?: YTPlayer) => {
+      playbackStartedRef.current = true
+      setAutoplayBlocked(false)
+      if (player) {
+        openPlaybackGate()
+      }
+    }
+
     const scheduleAutoplayCheck = (player: YTPlayer) => {
       const checkId = ++autoplayCheckIdRef.current
       window.setTimeout(() => {
         if (endedRef.current || checkId !== autoplayCheckIdRef.current) return
+        if (userGestureStartedRef.current || playbackStartedRef.current) {
+          setAutoplayBlocked(false)
+          return
+        }
         const state =
           typeof player.getPlayerState === 'function' ? player.getPlayerState() : YT_UNSTARTED
-        if (state === YT_PLAYING || state === YT_BUFFERING) {
-          setAutoplayBlocked(false)
-          openPlaybackGate()
+        const apiClipTime = readApiClipTime(player)
+        if (state === YT_PLAYING || apiClipTime > 0.01) {
+          markPlaybackActive(player)
           return
         }
         setAutoplayBlocked(true)
@@ -188,9 +230,6 @@ export function CutsceneOverlay({
     const tryStartPlayback = (player: YTPlayer) => {
       player.mute?.()
       setSoundMuted(true)
-      // Do NOT set playbackStartedAtMsRef here, we don't know yet when the
-      // video will actually start playing (buffering may take hundreds of ms).
-      // onStateChange(YT_PLAYING) is the authoritative clock start point.
       player.playVideo()
       scheduleAutoplayCheck(player)
     }
@@ -198,139 +237,191 @@ export function CutsceneOverlay({
     const resumeFromUserGesture = () => {
       const player = playerRef.current
       if (!player || endedRef.current) return
+      userGestureStartedRef.current = true
       setAutoplayBlocked(false)
-      player.unMute?.()
-      setSoundMuted(false)
-      // Sync clock from the API's actual current time so captions stay aligned
-      // whether the video was already playing muted or starting fresh.
-      if (typeof player.getCurrentTime === 'function') {
-        const current = player.getCurrentTime()
-        if (typeof current === 'number' && Number.isFinite(current)) {
-          const apiClip = Math.max(0, current - startSeconds)
-          playbackStartedAtMsRef.current = Date.now() - apiClip * 1000
-        }
+      if (autoplayBlockedRef.current) {
+        player.playVideo()
+        openPlaybackGate()
+        return
       }
-      if (playbackStartedAtMsRef.current == null) {
-        playbackStartedAtMsRef.current = Date.now()
+      if (soundMutedRef.current) {
+        player.unMute?.()
+        setSoundMuted(false)
+        player.playVideo()
       }
-      player.playVideo()
-      openPlaybackGate()
-      scheduleAutoplayCheck(player)
     }
     resumeFromUserGestureRef.current = resumeFromUserGesture
 
-    const tryCompleteIfSeekAtEnd = () => {
+    const toggleSoundMuted = () => {
       const player = playerRef.current
-      if (!player || endedRef.current || spanSeconds <= 0) return
-      const apiClipTime = readApiClipTime(player)
-      if (apiClipTime >= spanSeconds - 0.5) {
-        nearEndPollsRef.current = 2
-        completePlayback()
+      if (!player || endedRef.current) return
+      if (soundMutedRef.current) {
+        userGestureStartedRef.current = true
+        player.unMute?.()
+        setSoundMuted(false)
+        setAutoplayBlocked(false)
+        player.playVideo()
+        openPlaybackGate()
+      } else {
+        player.mute?.()
+        setSoundMuted(true)
+      }
+    }
+    toggleSoundMutedRef.current = toggleSoundMuted
+
+    const enforceUserPause = (player: YTPlayer) => {
+      freezeProgress(player)
+      setVideoPaused(true)
+      const state =
+        typeof player.getPlayerState === 'function' ? player.getPlayerState() : YT_UNSTARTED
+      if (state === YT_PLAYING || state === YT_BUFFERING) {
+        player.pauseVideo()
       }
     }
 
-    const skipToEndForDev = () => {
-      if (endedRef.current) return
-      playbackGateOpenRef.current = true
-      playbackLatchedRef.current = true
-
+    const togglePlayPause = () => {
       const player = playerRef.current
-      if (!player) {
-        pendingDevSkipRef.current = true
+      if (!player || endedRef.current) return
+      userGestureStartedRef.current = true
+      setAutoplayBlocked(false)
+
+      if (!userPausedRef.current) {
+        userPausedRef.current = true
+        setVideoPaused(true)
+        player.pauseVideo()
+        enforceUserPause(player)
         return
       }
 
-      pendingDevSkipRef.current = false
-      const anchorClip = Math.max(0, spanSeconds - 0.25)
-      devSkipAnchorClipRef.current = anchorClip
-      playbackStartedAtMsRef.current = Date.now() - anchorClip * 1000
-      pausedAtMsRef.current = null
-      lastApiClipTimeRef.current = anchorClip
-      player.seekTo(clipSeekTarget(), true)
-      player.playVideo?.()
-      nearEndPollsRef.current = 2
-      if (spanSeconds > 0) {
-        const next = Math.min(1, anchorClip / spanSeconds)
-        setProgress(next)
-        setActiveCaption(findActiveCaption(captions, anchorClip))
+      userPausedRef.current = false
+      setVideoPaused(false)
+      player.playVideo()
+      openPlaybackGate()
+    }
+    togglePlayPauseRef.current = togglePlayPause
+
+    const skipToEnd = () => {
+      if (endedRef.current) return
+      userPausedRef.current = false
+      userGestureStartedRef.current = true
+      playbackGateOpenRef.current = true
+      playbackStartedRef.current = true
+      setAutoplayBlocked(false)
+      setVideoPaused(false)
+
+      const player = playerRef.current
+      if (player) {
+        const anchorClip = Math.max(0, spanSeconds - 0.25)
+        devSkipAnchorClipRef.current = anchorClip
+        lastKnownClipTimeRef.current = anchorClip
+        updateProgressAtClipTime(anchorClip)
+        player.seekTo(clipSeekTarget(), true)
+        player.pauseVideo?.()
+      } else {
+        setProgress(1)
       }
 
-      window.setTimeout(() => {
-        pollPlaybackProgress()
-        tryCompleteIfSeekAtEnd()
-      }, 200)
-      window.setTimeout(() => {
-        pollPlaybackProgress()
-        tryCompleteIfSeekAtEnd()
-      }, 600)
-      window.setTimeout(() => {
-        tryCompleteIfSeekAtEnd()
-      }, 1200)
+      completePlayback(true)
     }
-    skipToClipEndRef.current = skipToEndForDev
-    registerCutsceneDevSkip(skipToEndForDev)
+    skipToClipEndRef.current = skipToEnd
+    registerCutsceneDevSkip(skipToEnd)
 
-    skipRevealId = window.setTimeout(() => setSkipVisible(true), 5000)
+    const resolveClipTimeWhilePlaying = (apiClipTime: number): number => {
+      const skipAnchor = devSkipAnchorClipRef.current
+      let clipTime = apiClipTime
+      if (
+        clipTime <= 0.05 &&
+        playbackStartedRef.current &&
+        lastKnownClipTimeRef.current > 0.05
+      ) {
+        clipTime = lastKnownClipTimeRef.current
+      }
+      if (skipAnchor != null) {
+        clipTime = Math.max(clipTime, skipAnchor)
+      }
+      return clampClipTime(clipTime, spanSeconds)
+    }
+
+    const syncProgressFromPlayer = (player: YTPlayer) => {
+      const clipTime = resolveClipTimeWhilePlaying(readApiClipTime(player))
+      lastKnownClipTimeRef.current = clipTime
+      updateProgressAtClipTime(clipTime)
+    }
+
+    const freezeProgress = (player: YTPlayer) => {
+      const apiClipTime = readApiClipTime(player)
+      if (apiClipTime > 0.05) {
+        lastKnownClipTimeRef.current = clampClipTime(apiClipTime, spanSeconds)
+      }
+      if (playbackStartedRef.current) {
+        updateProgressAtClipTime(lastKnownClipTimeRef.current)
+      }
+    }
+
+    /** Keep the clip running unless the user paused from the shell controls. */
+    const resumeIfPausedMidClip = (player: YTPlayer) => {
+      if (endedRef.current) return false
+      if (userPausedRef.current) {
+        enforceUserPause(player)
+        return true
+      }
+      const apiClipTime = readApiClipTime(player)
+      if (apiClipTime >= spanSeconds - 0.5) {
+        freezeProgress(player)
+        return true
+      }
+      player.playVideo()
+      return true
+    }
 
     const pollPlaybackProgress = () => {
       const player = playerRef.current
       if (!player || !playbackGateOpenRef.current) return
 
-      const playerState =
-        typeof player.getPlayerState === 'function' ? player.getPlayerState() : YT_PLAYING
-
-      const apiClipTime = readApiClipTime(player)
-
-      if (playerState === YT_PAUSED && apiClipTime < spanSeconds - 0.5) {
-        setActiveCaption(null)
+      if (userPausedRef.current) {
+        enforceUserPause(player)
         return
       }
 
-      const startedAt = playbackStartedAtMsRef.current
-      const clockClipTime = startedAt != null ? (Date.now() - startedAt) / 1000 : 0
-
-      const skipAnchor = devSkipAnchorClipRef.current
-      let clipTime = resolveClipTime(apiClipTime, clockClipTime, skipAnchor)
-      clipTime = spanSeconds > 0 ? Math.min(spanSeconds, Math.max(0, clipTime)) : 0
-
-      const playheadMoved = apiClipTime > lastApiClipTimeRef.current + 0.02
-      if (playerState === YT_PLAYING || playheadMoved || clipTime > 0.15) {
-        playbackLatchedRef.current = true
-      }
+      const playerState =
+        typeof player.getPlayerState === 'function' ? player.getPlayerState() : YT_UNSTARTED
+      const apiClipTime = readApiClipTime(player)
+      const playheadAdvancing = apiClipTime > lastApiClipTimeRef.current + 0.01
       lastApiClipTimeRef.current = apiClipTime
 
-      const canAdvance =
-        playerState === YT_PLAYING ||
-        (playbackLatchedRef.current &&
-          (playerState === YT_BUFFERING ||
-            playerState === YT_UNSTARTED ||
-            playerState === YT_CUED))
-
-      if (playerState !== YT_PAUSED) {
-        setActiveCaption(findActiveCaption(captions, clipTime))
-      }
-
-      if (!canAdvance) {
+      if (playerState === YT_PAUSED) {
+        resumeIfPausedMidClip(player)
         return
       }
 
-      const next = spanSeconds > 0 ? Math.min(1, Math.max(0, clipTime / spanSeconds)) : 0
-      setProgress(next)
+      const videoIsPlaying =
+        playerState === YT_PLAYING || (playheadAdvancing && playerState !== YT_UNSTARTED)
 
-      if (spanSeconds <= 0) return
-
-      if (skipAnchor == null && clockClipTime >= spanSeconds - 0.35) {
-        completePlayback()
-        return
+      if (videoIsPlaying) {
+        playbackStartedRef.current = true
+        setAutoplayBlocked(false)
+        syncProgressFromPlayer(player)
+      } else if (playbackStartedRef.current) {
+        freezeProgress(player)
       }
 
-      if (apiClipTime >= spanSeconds - 0.35 || clipTime >= spanSeconds - 0.35) {
+      if (!playbackStartedRef.current || spanSeconds <= 0) return
+
+      const clipTime = lastKnownClipTimeRef.current
+      if (videoIsPlaying && clipTime >= spanSeconds - 0.35) {
         nearEndPollsRef.current += 1
         if (nearEndPollsRef.current >= 2) {
           completePlayback()
         }
       } else {
         nearEndPollsRef.current = 0
+      }
+    }
+
+    const syncMusicBarTitle = (player: YTPlayer) => {
+      const youtubeTitle = readYouTubeVideoTitle(player)
+      if (youtubeTitle) {
+        updateCutsceneUi({ title: youtubeTitle })
       }
     }
 
@@ -357,46 +448,47 @@ export function CutsceneOverlay({
             playsinline: 1,
             fs: 0,
             disablekb: 1,
+            cc_load_policy: youtubeCaptions ? 1 : 0,
+            ...(youtubeCaptions ? { cc_lang_pref: 'en' } : {}),
           },
           events: {
             onReady: (event) => {
               playerRef.current = event.target
               registerCutsceneDevPlayer(event.target, endSeconds)
+              syncMusicBarTitle(event.target)
               tryStartPlayback(event.target)
-              if (pendingDevSkipRef.current) {
-                skipToEndForDev()
-              }
               window.setTimeout(() => {
                 if (endedRef.current) return
                 openPlaybackGate()
               }, 400)
             },
             onStateChange: (event) => {
-              if (event.data === YT_PAUSED) {
-                if (pausedAtMsRef.current == null) {
-                  pausedAtMsRef.current = Date.now()
+              if (userPausedRef.current) {
+                if (event.data === YT_PLAYING || event.data === YT_BUFFERING) {
+                  event.target.pauseVideo()
                 }
-                setActiveCaption(null)
+                if (event.data === YT_PAUSED || event.data === YT_PLAYING || event.data === YT_BUFFERING) {
+                  enforceUserPause(event.target)
+                }
                 return
               }
-              if (event.data === YT_PLAYING || event.data === YT_BUFFERING) {
-                setAutoplayBlocked(false)
+              if (event.data === YT_PAUSED) {
+                resumeIfPausedMidClip(event.target)
+                return
               }
-              if (event.data === YT_PLAYING && pausedAtMsRef.current != null) {
-                const pausedMs = Date.now() - pausedAtMsRef.current
-                pausedAtMsRef.current = null
-                if (playbackStartedAtMsRef.current != null) {
-                  playbackStartedAtMsRef.current += pausedMs
+              if (event.data === YT_BUFFERING) {
+                const apiClipTime = readApiClipTime(event.target)
+                if (apiClipTime > 0.01) {
+                  markPlaybackActive(event.target)
+                  syncProgressFromPlayer(event.target)
                 }
+                return
               }
               if (event.data === YT_PLAYING) {
-                playbackLatchedRef.current = true
+                setVideoPaused(false)
+                markPlaybackActive(event.target)
+                syncProgressFromPlayer(event.target)
               }
-              if (event.data !== YT_PLAYING) return
-              if (playbackStartedAtMsRef.current == null) {
-                playbackStartedAtMsRef.current = Date.now()
-              }
-              openPlaybackGate()
             },
           },
         })
@@ -411,22 +503,71 @@ export function CutsceneOverlay({
       window.clearTimeout(failId)
       window.clearTimeout(holdId)
       window.clearTimeout(fadeOutId)
-      window.clearTimeout(skipRevealId)
-      if (!endedRef.current) {
-        registerCutsceneDevPlayer(null)
-        playerRef.current?.destroy()
-        playerRef.current = null
-        playbackStartedAtMsRef.current = null
+      if (teardownCompletedRef.current) return
+      if (endedRef.current) {
+        onEndedRef.current()
+        return
       }
+      registerCutsceneDevPlayer(null)
+      playerRef.current?.destroy()
+      playerRef.current = null
     }
-  }, [videoId, startSeconds, endSeconds, postCompleteHoldMs, postCompleteFadeToBlackMs, captions])
+  }, [videoId, startSeconds, endSeconds, postCompleteHoldMs, postCompleteFadeToBlackMs, captions, youtubeCaptions])
 
   useEffect(() => {
     overlayRef.current?.focus({ preventScroll: true })
   }, [])
 
+  useEffect(() => {
+    const title = videoTitle?.trim() || 'cutscene'
+    setCutsceneUiActive(true, { title, subtitle: 'ALIWORLD' })
+    registerCutsceneUiHandlers({
+      skip: () => skipToClipEndRef.current(),
+      enterFullscreen: () => setLandscapeFullscreen(true),
+      exitFullscreen: () => setLandscapeFullscreen(false),
+      toggleSoundMuted: () => toggleSoundMutedRef.current(),
+      togglePlayPause: () => togglePlayPauseRef.current(),
+      resumeFromGesture: () => resumeFromUserGestureRef.current(),
+    })
+    return () => {
+      unregisterCutsceneUiHandlers()
+      setCutsceneUiActive(false)
+    }
+  }, [videoTitle])
+
+  useEffect(() => {
+    updateCutsceneUi({
+      progress,
+      landscapeFullscreen,
+      soundMuted,
+      videoPaused,
+      gestureKind: autoplayBlocked ? 'play' : null,
+    })
+  }, [autoplayBlocked, landscapeFullscreen, progress, soundMuted, videoPaused])
+
+  useEffect(() => {
+    if (postHoldPhase !== 'none') {
+      setLandscapeFullscreen(false)
+    }
+  }, [postHoldPhase])
+
+  useEffect(() => {
+    if (!landscapeFullscreen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLandscapeFullscreen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [landscapeFullscreen])
+
+  useEffect(() => {
+    window.dispatchEvent(new Event('resize'))
+  }, [landscapeFullscreen])
+
   const handleOverlayTap = () => {
-    if (autoplayBlocked || soundMuted) {
+    if (autoplayBlocked) {
       resumeFromUserGestureRef.current()
     }
   }
@@ -436,7 +577,9 @@ export function CutsceneOverlay({
       ref={overlayRef}
       className={`cutscene-overlay${
         postHoldPhase === 'hold' ? ' cutscene-overlay--post-hold' : ''
-      }${postHoldPhase === 'fade-to-black' ? ' cutscene-overlay--fade-to-black' : ''}`}
+      }${postHoldPhase === 'fade-to-black' ? ' cutscene-overlay--fade-to-black' : ''}${
+        landscapeFullscreen ? ' cutscene-overlay--landscape-fullscreen' : ''
+      }`}
       style={
         postCompleteFadeToBlackMs > 0 || postCompleteHoldMs > 0
           ? {
@@ -453,24 +596,22 @@ export function CutsceneOverlay({
       onClick={handleOverlayTap}
     >
       <div className="cutscene-overlay__frame">
-        <div id={hostIdRef.current} className="cutscene-overlay__player-host" />
-        {activeCaption ? (
-          <div
-            key={`${activeCaption.start}-${activeCaption.end}`}
-            className="cutscene-overlay__caption-slot"
-            aria-live="polite"
-          >
-            <p className="cutscene-overlay__caption">{activeCaption.text}</p>
-          </div>
-        ) : null}
+        <div className="cutscene-overlay__video-stage">
+          <div id={hostIdRef.current} className="cutscene-overlay__player-host" />
+          {useCustomCaptions && activeCaption ? (
+            <div
+              key={`${activeCaption.start}-${activeCaption.end}`}
+              className="cutscene-overlay__caption-slot"
+              aria-live="polite"
+            >
+              <p className="cutscene-overlay__caption">{activeCaption.text}</p>
+            </div>
+          ) : null}
+        </div>
       </div>
       {autoplayBlocked ? (
         <button type="button" className="cutscene-overlay__play-prompt" onClick={handleOverlayTap}>
           tap to play ▸
-        </button>
-      ) : soundMuted ? (
-        <button type="button" className="cutscene-overlay__play-prompt cutscene-overlay__play-prompt--muted" onClick={handleOverlayTap}>
-          tap for sound ▸
         </button>
       ) : null}
       <div
@@ -485,18 +626,6 @@ export function CutsceneOverlay({
           style={{ width: `${Math.round(progress * 10000) / 100}%` }}
         />
       </div>
-      {skipVisible ? (
-        <button
-          type="button"
-          className="cutscene-overlay__skip"
-          onClick={(e) => {
-            e.stopPropagation()
-            skipToClipEndRef.current()
-          }}
-        >
-          skip ▸
-        </button>
-      ) : null}
     </div>
   )
 }
