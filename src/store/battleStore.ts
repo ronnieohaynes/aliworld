@@ -24,6 +24,7 @@ import {
 import {
   applyDoubleHit,
   deathClockHitLogLine,
+  invalidateCritWhenNoDamage,
   resolveDeathClocksAtTurnStart,
   resolveEnemyStrike,
   splitIncomingWithReflect,
@@ -33,6 +34,7 @@ import {
 import type { DeathClock } from '../data/combatTypes'
 import type { UpcomingMove } from '../data/enemyMoves'
 import type { PlayerMoveId } from '../data/moveIds'
+import { getMoveLogDisplayName } from '../game/moveHighlightColors'
 import {
   applyPlayerMoveFromDef,
   applyStolenEnemyMove,
@@ -95,6 +97,9 @@ export const BATTLE_ROUND_END_GAP_MS = 1150
 export const RIB_MOVE_GAP_MS = 2100
 export const RIB_ROUND_END_GAP_MS = 1800
 
+/** Extra pause after turn damage feedback finishes before move selection unlocks. */
+export const TURN_POST_DAMAGE_MOVE_DELAY_MS = 1000
+
 export type BattleResolveStep = 'idle' | 'pause_after_first' | 'pause_after_second'
 
 export type PendingResolve = {
@@ -130,6 +135,9 @@ export const BATTLE_PACE_SCALE = 2.85
 export const BATTLE_RESOLVE_DELAY_MS = Math.round(650 * BATTLE_PACE_SCALE)
 export const BATTLE_END_LOSE_DELAY_MS = Math.round(500 * BATTLE_PACE_SCALE)
 export const BATTLE_END_WIN_DELAY_MS = Math.round(600 * BATTLE_PACE_SCALE)
+
+/** Max action-log lines kept per turn (both resolution phases + bleed/reflect/chip). */
+export const BATTLE_LOG_MAX_ENTRIES = 6
 
 export type BattleState = {
   npc: NpcCombatEntry
@@ -583,6 +591,7 @@ function resolvePlayerMoveBody(
   eMove: UpcomingMove,
   slot?: number,
 ): { out: ResolveResult; post: import('../data/moves').PostResolveEffects } {
+  const enemyDefShatteredBefore = state.battleMove.enemyDefShattered
   const strike = resolveEnemyIncoming(state, eMove)
   const { enemyStunned, enemyAttacks, eDmg, actualMove } = strike
   const out = emptyResolveResult(eMove, pMove, enemyStunned, enemyAttacks)
@@ -667,6 +676,8 @@ function resolvePlayerMoveBody(
 
   finalizeEnemyDamageBlocked(out, rawOutgoingVsEnemy)
 
+  invalidateCritWhenNoDamage(out, state.battleMove, enemyDefShatteredBefore)
+
   return { out, post }
 }
 
@@ -729,7 +740,7 @@ export function resolveMoves(
 
 function appendLog(log: string[], line: string): string[] {
   const next = [...log, line]
-  if (next.length > 3) next.shift()
+  if (next.length > BATTLE_LOG_MAX_ENTRIES) next.shift()
   return next
 }
 
@@ -843,21 +854,25 @@ function applyEnemyResolutionPhase(
       nextEnemyHp = Math.max(0, nextEnemyHp - reflected)
       r.reflectedDmg = reflected
       battle.counterweightReflectPct = null
+      nextLog = appendLog(nextLog, `counterweight. ${reflected}.`)
     }
     const split = splitIncomingWithReflect(incoming, state.combatStatus.playerReflect)
     nextHp = Math.max(0, nextHp - split.damageToPlayer)
-    if (r.guardCountered && split.damageToPlayer > 0) {
-      nextLog = appendLog(nextLog, `${lower} counters. ${split.damageToPlayer}.`)
-    } else if (r.playerActed && split.damageToPlayer > 0 && r.eMove !== 'STUNNED') {
-      const moveName = MOVES[r.eMove as PlayerMoveId]?.displayName ?? r.eMove
-      nextLog = appendLog(
-        nextLog,
-        `${lower}'s ${moveName}, ${split.damageToPlayer}.`,
-      )
+    if (r.playerActed && r.eMove !== 'STUNNED') {
+      if (r.guardCountered) {
+        nextLog = appendLog(nextLog, `${lower} counters. ${split.damageToPlayer}.`)
+      } else {
+        const moveName = getMoveLogDisplayName(r.eMove)
+        nextLog = appendLog(
+          nextLog,
+          `${lower}'s ${moveName}, ${split.damageToPlayer}.`,
+        )
+      }
     }
     if (split.damageToEnemy > 0) {
       nextEnemyHp = Math.max(0, nextEnemyHp - split.damageToEnemy)
       r.reflectedDmg = (r.reflectedDmg ?? 0) + split.damageToEnemy
+      nextLog = appendLog(nextLog, `reflect. ${split.damageToEnemy}.`)
     }
     if (!r.playerActed) {
       nextLog = appendLog(
@@ -917,6 +932,7 @@ function applyPlayerResolutionPhase(
 
   let combatStatus = state.combatStatus
   let damageToEnemy = r.playerDmg
+  let reflectToPlayer = 0
 
   if (r.playerActed && damageToEnemy > 0) {
     const split = splitOutgoingWithReflect(damageToEnemy, combatStatus.enemyReflect)
@@ -924,6 +940,7 @@ function applyPlayerResolutionPhase(
     if (split.damageToPlayer > 0) {
       nextPlayerHp = Math.max(0, nextPlayerHp - split.damageToPlayer)
       r.reflectedDmg = (r.reflectedDmg ?? 0) + split.damageToPlayer
+      reflectToPlayer = split.damageToPlayer
     }
     const doubled = applyDoubleHit(damageToEnemy, combatStatus.playerDouble)
     damageToEnemy = doubled.totalDamage
@@ -962,6 +979,9 @@ function applyPlayerResolutionPhase(
         phenomenaLine: r.phenomenaLine,
       }),
     )
+    if (reflectToPlayer > 0) {
+      nextLog = appendLog(nextLog, `reflect. ${reflectToPlayer}.`)
+    }
   }
 
   working = { ...working, combatStatus }
@@ -1207,7 +1227,10 @@ function applySkillXpToState(
 }
 
 function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number): BattleState {
+  const priorLogLen = state.log.length
   let working = processTurnStart(state)
+  // Each turn's log should only show this turn's outcomes (keep death-clock lines).
+  working = { ...working, log: working.log.slice(priorLogLen) }
   const eMove = state.upcomingMove !== 'STUNNED' ? state.upcomingMove as PlayerMoveId : null
   working = {
     ...working,
@@ -1502,6 +1525,16 @@ export function getTelegraphText(state: BattleState): string {
   if (!display) return ''
   if (!display.moveName) return display.prefix + display.suffix
   return `${display.prefix}${display.moveName}${display.suffix}`
+}
+
+/** Preview upcoming enemy move only before their first committed attack (walker FURY_SWEEP tutorial excepted). */
+export function shouldPreviewEnemyTelegraph(
+  state: Pick<BattleState, 'enemyMoveHistory' | 'upcomingMove'>,
+  options?: { walkerHeavyTutorial?: boolean },
+): boolean {
+  if (state.enemyMoveHistory.length === 0) return true
+  if (options?.walkerHeavyTutorial && state.upcomingMove === 'FURY_SWEEP') return true
+  return false
 }
 
 export function createInitialBattleState(

@@ -83,6 +83,7 @@ export type UseDevControlsOptions = {
   canToggleDevMode: () => boolean
   spawnDevSpar: () => void
   canSpawnDevSpar: () => boolean
+  canStartTutorialBattle: () => boolean
   startTutorialBattle: () => void
   openShop: () => void
 }
@@ -147,6 +148,16 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
     setConfirmKind(null)
   }, [])
 
+  const tryStartTutorialBattle = useCallback(() => {
+    const { canStartTutorialBattle, startTutorialBattle } = optionsRef.current
+    if (!canStartTutorialBattle()) {
+      showToast('cannot start tutorial here.')
+      return
+    }
+    startTutorialBattle()
+    showToast('walker tutorial battle…')
+  }, [showToast])
+
   useEffect(() => {
     if (!devAllowed) return
 
@@ -169,7 +180,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         canToggleDevMode,
         spawnDevSpar,
         canSpawnDevSpar,
-        startTutorialBattle,
+        canStartTutorialBattle,
       } = optionsRef.current
 
       const episode = episodeFromDigitKey(e)
@@ -233,9 +244,13 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
       }
 
       if (e.shiftKey && (e.code === 'KeyT' || e.key === 'T')) {
-        if (!canSpawnDevSpar()) return
         e.preventDefault()
-        startTutorialBattle()
+        if (!canStartTutorialBattle()) {
+          showToast('cannot start tutorial here.')
+          return
+        }
+        optionsRef.current.startTutorialBattle()
+        showToast('walker tutorial battle…')
         return
       }
 
@@ -275,7 +290,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
       window.removeEventListener('keydown', onKeyDown, true)
       clearShiftEChord()
     }
-  }, [confirmKind, devAllowed, devModeEnabled])
+  }, [confirmKind, devAllowed, devModeEnabled, showToast])
 
   if (!devAllowed) return null
 
@@ -295,7 +310,13 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
           onCancel={handleCancelConfirm}
         />
       ) : null}
-      {devModeEnabled ? <DevModeToolbar onOpenShop={() => optionsRef.current.openShop()} /> : null}
+      {devModeEnabled ? (
+        <DevModeToolbar
+          onOpenShop={() => optionsRef.current.openShop()}
+          onStartTutorial={tryStartTutorialBattle}
+          canStartTutorial={() => optionsRef.current.canStartTutorialBattle()}
+        />
+      ) : null}
       {toastMessage ? <DevModeToast message={toastMessage} /> : null}
     </>
   )

@@ -78,17 +78,35 @@
   user-select: none;
 }
 
+.dev-mode-toolbar__tutorial,
 .dev-mode-toolbar__shop {
   padding: 4px 10px;
-  border: 1px solid rgba(212, 184, 122, 0.45);
   border-radius: 4px;
   background: rgba(10, 10, 18, 0.82);
-  color: #d4b87a;
   font: inherit;
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: lowercase;
   cursor: pointer;
+}
+
+.dev-mode-toolbar__tutorial {
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  color: #c084fc;
+}
+
+.dev-mode-toolbar__tutorial:hover:not(:disabled) {
+  background: rgba(192, 132, 252, 0.12);
+}
+
+.dev-mode-toolbar__tutorial:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dev-mode-toolbar__shop {
+  border: 1px solid rgba(212, 184, 122, 0.45);
+  color: #d4b87a;
 }
 
 .dev-mode-toolbar__shop:hover {

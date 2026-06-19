@@ -1645,6 +1645,8 @@ export function GameScreen() {
     cultDarklinePhase,
   ])
 
+  const canStartTutorialBattle = canSpawnDevSpar
+
   const devModeUi = useDevControls({
     playerRef,
     playCutscene,
@@ -1652,6 +1654,7 @@ export function GameScreen() {
     canToggleDevMode: canSpawnDevSpar,
     spawnDevSpar: startDevSparBattle,
     canSpawnDevSpar,
+    canStartTutorialBattle,
     startTutorialBattle,
     openShop: openCosmeticsShop,
   })
@@ -2715,8 +2718,14 @@ export function GameScreen() {
     ) {
       return
     }
-    // Script opens loadout only; close via loadout UI or Escape (not toggle).
-    if (showLoadout) return
+    if (showLoadout) {
+      if (menuReturnPending) {
+        beginResumeTransition()
+      } else {
+        setShowLoadout(false)
+      }
+      return
+    }
     setMenuReturnPending(false)
     setShowLoadout(true)
     // Script button tap completes the waitForAction step.
@@ -2726,7 +2735,9 @@ export function GameScreen() {
       setLoadoutTutorialStep(XP_TUTORIAL_START_STEP + 2)
     }
   }, [
+    beginResumeTransition,
     loadoutTutorialStep,
+    menuReturnPending,
     menuTransition,
     showGhostTraining,
     showGymLeaderboard,

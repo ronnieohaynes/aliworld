@@ -191,6 +191,28 @@ export function splitOutgoingWithReflect(
   }
 }
 
+/** Crit rolls happen before enemy mitigation; strip crit effects when no damage lands. */
+export function invalidateCritWhenNoDamage(
+  out: {
+    playerDmg: number
+    crit: boolean
+    bleedApplied: boolean
+    bleedTurns?: number
+    bleedPotencyMult?: number
+  },
+  battleMove: Pick<BattleMoveState, 'enemyDefShattered'>,
+  enemyDefShatteredBefore: boolean,
+): void {
+  if (out.playerDmg > 0 || !out.crit) return
+  out.crit = false
+  out.bleedApplied = false
+  out.bleedTurns = undefined
+  out.bleedPotencyMult = undefined
+  if (!enemyDefShatteredBefore && battleMove.enemyDefShattered) {
+    battleMove.enemyDefShattered = false
+  }
+}
+
 /** Player's next hit lands twice, returns total damage to apply. */
 export function applyDoubleHit(playerDmg: number, playerDouble: number): {
   totalDamage: number

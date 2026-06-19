@@ -85,7 +85,7 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
   if (r.stunApplied) {
     events.push({ kind: 'status', text: 'stun!', target: 'enemy', tone: 'stun' })
   }
-  if (r.bleedApplied) {
+  if (r.bleedApplied && r.playerDmg > 0) {
     events.push({ kind: 'status', text: 'bleed!', target: 'enemy', tone: 'bleed' })
   }
   if (r.shakeApplied) {
