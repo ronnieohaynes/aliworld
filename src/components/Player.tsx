@@ -110,6 +110,8 @@ function seedStandingMapTransitionTriggers(
 
 // ─── Overworld status plate helpers ──────────────────────────────────────────
 
+/** Horizontal nudge for the player status card above the sprite (positive = right). */
+const OVERWORLD_PLAYER_PLATE_OFFSET_X = 5
 
 /**
  * Draw a compact status plate (name · lv X · archetype) centered at `cx`
@@ -1574,7 +1576,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             if (handle) {
               const playerBuildName = deriveBuildName(skills)
               const archetype = playerBuildName.name
-              const plateCenterX = worldDrawX + drawDw / 2
+              const plateCenterX = worldDrawX + drawDw / 2 + OVERWORLD_PLAYER_PLATE_OFFSET_X
               const plateBottomY = worldDrawY - 4
               drawOverworldStatusPlate(ctx, handle, pLevel, archetype, plateCenterX, plateBottomY, playerBuildName.color)
             }

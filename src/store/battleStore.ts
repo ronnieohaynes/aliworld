@@ -269,6 +269,8 @@ export type ResolveResult = {
   rawIncoming: number
   damageBlocked: number
   damageAvoided: number
+  /** Damage absorbed when the enemy braces/blocks the player's hit. */
+  enemyDamageBlocked: number
   /** Next strike boosted after a successful brace (perfect guard). */
   perfectGuardBonus: boolean
   /** Enemy dodged the player's attack (SLIP/PARRY). */
@@ -316,6 +318,7 @@ function emptyResolveResult(
     rawIncoming: 0,
     damageBlocked: 0,
     damageAvoided: 0,
+    enemyDamageBlocked: 0,
     perfectGuardBonus: false,
     enemyDodged: false,
     enemyBraced: false,
@@ -564,6 +567,15 @@ function finalizeIncomingXpMetrics(
     rawIncoming > 0 ? Math.max(0, rawIncoming - out.incoming) : 0
 }
 
+function finalizeEnemyDamageBlocked(out: ResolveResult, rawOutgoing: number): void {
+  if (out.enemyDodged) {
+    out.enemyDamageBlocked = 0
+    return
+  }
+  out.enemyDamageBlocked =
+    rawOutgoing > 0 ? Math.max(0, rawOutgoing - out.playerDmg) : 0
+}
+
 function resolvePlayerMoveBody(
   state: BattleState,
   pMove: PlayerMove,
@@ -614,6 +626,8 @@ function resolvePlayerMoveBody(
     out.playerDmg = Math.max(1, Math.floor(out.playerDmg * ENEMY_WHISPER_PLAYER_WEAKEN_MULT))
   }
 
+  const rawOutgoingVsEnemy = out.playerDmg
+
   applyEnemyMoveBehavior(state, out, actualMove)
   applyNpcGuardCounter(state, out, actualMove)
 
@@ -649,6 +663,8 @@ function resolvePlayerMoveBody(
       Math.floor(out.playerDmg * playerOutgoingDamageMult(state.combatStatus)),
     )
   }
+
+  finalizeEnemyDamageBlocked(out, rawOutgoingVsEnemy)
 
   return { out, post }
 }

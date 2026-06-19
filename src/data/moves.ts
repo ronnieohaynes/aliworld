@@ -1,7 +1,8 @@
-import { applyStatusToCombat, rollBleedTurns, type CombatStatusState } from './combatStatus'
+import type { StatusApplySpec } from './combatTypes'
+import { applyStatusToCombat, rollBleedTurns, statusTargetFor, type CombatStatusState } from './combatStatus'
 import { STATUS_DEFAULT_TURNS } from './combatTypes'
 import { ENEMY_SHAKE_OUTGOING_MULT } from './moveBalance'
-import { getEnemyMoveDef, type EnemyMoveId, type UpcomingMove } from './enemyMoves'
+import { ENEMY_MOVES, type EnemyMoveId, type UpcomingMove } from './enemyMoves'
 import { MOVES } from './moveDefinitions'
 import {
   DEFAULT_EQUIPPED_MOVES,
@@ -46,6 +47,14 @@ export {
 
 export function getMoveDef(id: PlayerMoveId) {
   return MOVES[id]
+}
+
+/** onResolve specs for an enemy telegraph move (legacy pool or unified PlayerMoveId). */
+function enemyMoveOnResolveSpecs(eMove: UpcomingMove): StatusApplySpec[] {
+  if (eMove === 'STUNNED') return []
+  const legacy = ENEMY_MOVES[eMove as EnemyMoveId]
+  if (legacy) return legacy.onResolve
+  return MOVES[eMove as PlayerMoveId]?.onResolve ?? []
 }
 
 export function isMoveUnlocked(
@@ -135,10 +144,12 @@ export function mergeEnemyMoveIntoCombatStatus(
   blockStatus: boolean,
 ): CombatStatusState {
   if (blockStatus || eMove === 'STUNNED') return status
-  const def = getEnemyMoveDef(eMove as EnemyMoveId)
   let next = status
-  for (const spec of def.onResolve) {
-    next = applyStatusToCombat(next, spec, 'player')
+  for (const spec of enemyMoveOnResolveSpecs(eMove)) {
+    const effect = typeof spec === 'string' ? spec : spec.effect
+    const playerActorTarget = statusTargetFor(effect)
+    const enemyActorTarget = playerActorTarget === 'enemy' ? 'player' : 'enemy'
+    next = applyStatusToCombat(next, spec, enemyActorTarget)
   }
   return next
 }
@@ -164,8 +175,7 @@ export function previewEnemyStatusOnPlayer(
     playerMissApplied: false,
   }
   if (blockStatus || eMove === 'STUNNED') return flags
-  const def = getEnemyMoveDef(eMove as EnemyMoveId)
-  for (const spec of def.onResolve) {
+  for (const spec of enemyMoveOnResolveSpecs(eMove)) {
     const effect = typeof spec === 'string' ? spec : spec.effect
     if (effect === 'shake') flags.playerShakeApplied = true
     if (effect === 'bleed') flags.playerBleedApplied = true

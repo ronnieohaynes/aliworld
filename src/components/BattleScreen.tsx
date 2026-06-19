@@ -297,6 +297,92 @@ const SKILL_DISPLAY: Record<string, string> = {
   hp: 'HP',
 }
 
+const BATTLE_LUNGE_ATTACK_MS = 760
+const BATTLE_LUNGE_SPEED_MS = 480
+const BATTLE_LUNGE_DEFENSE_MS = 600
+const BATTLE_HIT_FLASH_MS = 40
+const BATTLE_HIT_MS = 840
+const BATTLE_DODGE_MS = 420
+
+function playerLungeMsForSkill(skill: string): number {
+  if (skill === 'speed') return BATTLE_LUNGE_SPEED_MS
+  if (skill === 'defense') return BATTLE_LUNGE_DEFENSE_MS
+  return BATTLE_LUNGE_ATTACK_MS
+}
+
+/** Floaters appear only after lunge finishes and the hit reaction plays out. */
+function floaterDelayAfterLungeStart(lungeMs: number): number {
+  return lungeMs + BATTLE_HIT_FLASH_MS + BATTLE_HIT_MS
+}
+
+function computePhaseGaps(
+  enemyActedFirst: boolean,
+  runItBack: boolean,
+  hasEnemyTargetEvents: boolean,
+  hasPlayerTargetEvents: boolean,
+): { playerPhaseGap: number; enemyPhaseGap: number } {
+  const moveGapMs = runItBack ? RIB_MOVE_GAP_MS : BATTLE_MOVE_GAP_MS
+  let playerPhaseGap = 0
+  let enemyPhaseGap = 0
+  if (enemyActedFirst && hasEnemyTargetEvents) {
+    playerPhaseGap = moveGapMs
+  }
+  if (!enemyActedFirst && hasPlayerTargetEvents && hasEnemyTargetEvents) {
+    enemyPhaseGap = moveGapMs
+  }
+  return { playerPhaseGap, enemyPhaseGap }
+}
+
+function computeImpactTimings(opts: {
+  playerLungeMs: number
+  enemyLungeMs: number
+  enemyActedFirst: boolean
+  runItBack: boolean
+  hasEnemyTargetEvents: boolean
+  hasPlayerTargetEvents: boolean
+  playerDealsDirectDamage: boolean
+  enemyDealsDamage: boolean
+}): {
+  playerPhaseStart: number
+  enemyPhaseStart: number
+  playerImpact: number
+  enemyImpact: number
+  playerPhaseLen: number
+  enemyPhaseLen: number
+} {
+  const { playerPhaseGap, enemyPhaseGap } = computePhaseGaps(
+    opts.enemyActedFirst,
+    opts.runItBack,
+    opts.hasEnemyTargetEvents,
+    opts.hasPlayerTargetEvents,
+  )
+  const playerFloaterAt = floaterDelayAfterLungeStart(opts.playerLungeMs)
+  const enemyFloaterAt = floaterDelayAfterLungeStart(opts.enemyLungeMs)
+
+  let playerPhaseStart = 0
+  let enemyPhaseStart = 0
+  if (opts.playerDealsDirectDamage && opts.enemyDealsDamage) {
+    if (opts.enemyActedFirst) {
+      enemyPhaseStart = 0
+      playerPhaseStart = enemyFloaterAt
+    } else {
+      playerPhaseStart = 0
+      enemyPhaseStart = playerFloaterAt
+    }
+  }
+
+  const playerImpact = playerPhaseStart + playerPhaseGap + playerFloaterAt
+  const enemyImpact = enemyPhaseStart + enemyPhaseGap + enemyFloaterAt
+  return {
+    playerPhaseStart,
+    enemyPhaseStart,
+    playerImpact,
+    enemyImpact,
+    playerPhaseLen: playerPhaseStart + playerFloaterAt,
+    enemyPhaseLen: enemyPhaseStart + enemyFloaterAt,
+  }
+}
+
 type BattleXpGain = {
   skill: string
   xpGained: number
@@ -890,10 +976,6 @@ export function BattleScreen({
 
   useEffect(() => {
     if (state.feedbackEvents.length <= feedbackSeenRef.current) return
-    const newEvents = state.feedbackEvents.slice(feedbackSeenRef.current)
-    countersLandedRef.current += newEvents.filter(
-      (event) => event.kind === 'counter' && event.target === 'enemy',
-    ).length
     feedbackSeenRef.current = state.feedbackEvents.length
   }, [state.feedbackEvents, state.feedbackSeq])
 
@@ -995,9 +1077,9 @@ export function BattleScreen({
     const { r } = pending
     if (!r.enemyAttacks && r.rawIncoming <= 0) return
 
-    const ENEMY_LUNGE_MS = 760
-    const HIT_FLASH_MS = 40
-    const DODGE_MS = 420
+    const ENEMY_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
+    const HIT_FLASH_MS = BATTLE_HIT_FLASH_MS
+    const DODGE_MS = BATTLE_DODGE_MS
 
     setEnemyAtkFx(true)
     const enemyAtkOff = window.setTimeout(() => setEnemyAtkFx(false), ENEMY_LUNGE_MS)
@@ -1027,12 +1109,12 @@ export function BattleScreen({
     const enemyActedFirst = state.feedbackEnemyActedFirst
 
     const skill = lastPlayerMoveSkillRef.current
-    const PLAYER_LUNGE_MS = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
-    const ENEMY_LUNGE_MS = 760
-    const HIT_FLASH_MS = 40
-    const DAMAGE_DELAY_MS = 540
-    const HIT_MS = 840
+    const PLAYER_LUNGE_MS = playerLungeMsForSkill(skill)
+    const ENEMY_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
+    const HIT_FLASH_MS = BATTLE_HIT_FLASH_MS
+    const HIT_MS = BATTLE_HIT_MS
     const BLEED_DAMAGE_DELAY_MS = 2000
+    const damageFloaterAt = floaterDelayAfterLungeStart
 
     const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
     const attackDelta = Math.max(0, enemyDelta - bleedDelta)
@@ -1040,22 +1122,23 @@ export function BattleScreen({
     const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
     const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
 
-    // Duration of one side's full attack sequence (lunge → hit → damage settled)
-    const playerPhaseLen = PLAYER_LUNGE_MS + DAMAGE_DELAY_MS
-    const enemyPhaseLen = ENEMY_LUNGE_MS + DAMAGE_DELAY_MS
+    const playerFloaterAt = floaterDelayAfterLungeStart(PLAYER_LUNGE_MS)
+    const enemyFloaterAt = floaterDelayAfterLungeStart(ENEMY_LUNGE_MS)
 
-    // Determine sequencing: first attacker animates, then second attacker starts after
+    // When both sides damage on the same HP tick, stagger the second attack.
     let playerPhaseStart = 0
     let enemyPhaseStart = 0
     if (playerDealsDirectDamage && enemyDealsDamage) {
       if (enemyActedFirst) {
         enemyPhaseStart = 0
-        playerPhaseStart = enemyPhaseLen
+        playerPhaseStart = enemyFloaterAt
       } else {
         playerPhaseStart = 0
-        enemyPhaseStart = playerPhaseLen
+        enemyPhaseStart = playerFloaterAt
       }
     }
+    const playerPhaseLen = playerPhaseStart + playerFloaterAt
+    const enemyPhaseLen = enemyPhaseStart + enemyFloaterAt
 
     // --- Player attacks enemy (direct damage, not dodge) ---
     if (playerDealsDirectDamage) {
@@ -1078,14 +1161,14 @@ export function BattleScreen({
           ])
           window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
         }
-      }, t + PLAYER_LUNGE_MS + DAMAGE_DELAY_MS)
+      }, t + damageFloaterAt(PLAYER_LUNGE_MS))
       clampBattleScrollDrift()
     }
 
     // --- Enemy dodged → counter sequence ---
     if (playerDelta > 0 && wasEnemyDodge) {
-      const DODGE_DURATION = 420
-      const COUNTER_LUNGE_MS = 760
+      const DODGE_DURATION = BATTLE_DODGE_MS
+      const COUNTER_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
       const id = Date.now() + Math.random()
 
       setPlayerAtkFx(skill)
@@ -1112,7 +1195,7 @@ export function BattleScreen({
           { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
         ])
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
-      }, counterStart + COUNTER_LUNGE_MS + DAMAGE_DELAY_MS)
+      }, counterStart + damageFloaterAt(COUNTER_LUNGE_MS))
       clampBattleScrollDrift()
     } else if (enemyDealsDamage) {
       // --- Enemy attacks player (normal) ---
@@ -1133,7 +1216,7 @@ export function BattleScreen({
           { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
         ])
         window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
-      }, t + ENEMY_LUNGE_MS + DAMAGE_DELAY_MS)
+      }, t + damageFloaterAt(ENEMY_LUNGE_MS))
       clampBattleScrollDrift()
     }
 
@@ -1174,51 +1257,39 @@ export function BattleScreen({
     if (events.length === 0) return
 
     const skill = lastPlayerMoveSkillRef.current
-    const playerLunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
-    const enemyLunge = 760
-    const DAMAGE_DELAY_MS = 540
+    const playerLunge = playerLungeMsForSkill(skill)
+    const enemyLunge = BATTLE_LUNGE_ATTACK_MS
     const enemyActedFirst = state.feedbackEnemyActedFirst
 
     const { enemyDelta, playerDelta } = lastHpDeltasRef.current
     const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
     const attackDelta = Math.max(0, enemyDelta - bleedDelta)
     const wasEnemyDodge = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const hasEnemyTargetEvents = events.some((e) => e.target === 'enemy')
+    const hasPlayerTargetEvents = events.some((e) => e.target === 'player')
     const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
     const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
 
-    const playerPhaseLen = playerLunge + DAMAGE_DELAY_MS
-    const enemyPhaseLen = enemyLunge + DAMAGE_DELAY_MS
-
-    let playerPhaseStart = 0
-    let enemyPhaseStart = 0
-    if (playerDealsDirectDamage && enemyDealsDamage) {
-      if (enemyActedFirst) {
-        enemyPhaseStart = 0
-        playerPhaseStart = enemyPhaseLen
-      } else {
-        playerPhaseStart = 0
-        enemyPhaseStart = playerPhaseLen
-      }
-    }
-
-    const playerImpact = playerPhaseStart + playerLunge + DAMAGE_DELAY_MS
-    const enemyImpact = enemyPhaseStart + enemyLunge + DAMAGE_DELAY_MS
+    const { playerImpact, enemyImpact } = computeImpactTimings({
+      playerLungeMs: playerLunge,
+      enemyLungeMs: enemyLunge,
+      enemyActedFirst,
+      runItBack: state.runItBackMode,
+      hasEnemyTargetEvents,
+      hasPlayerTargetEvents,
+      playerDealsDirectDamage: playerDealsDirectDamage || hasEnemyTargetEvents,
+      enemyDealsDamage: enemyDealsDamage || hasPlayerTargetEvents,
+    })
 
     if (events.some((e) => e.kind === 'dodged' && e.target === 'player') && !enemyActedFirst) {
       window.setTimeout(() => {
         setPlayerDodgeFx(true)
-        window.setTimeout(() => setPlayerDodgeFx(false), 420)
+        window.setTimeout(() => setPlayerDodgeFx(false), BATTLE_DODGE_MS)
       }, enemyImpact)
     }
     // Enemy dodge flash is handled in the HP-change useEffect's dodge sequence
     const CRIT_EXTRA_MS = 500
-    // Status effects wait for the hit-flash animation to fully finish before appearing.
-    // Hit flash starts at +40ms (HIT_FLASH_MS) and runs for 840ms (HIT_MS), ending at
-    // +880ms relative to lunge start, i.e. +340ms relative to baseDelay (lunge+540).
-    // Add a small buffer so the status floater never overlaps the tail of the flash.
-    const STATUS_SETTLE_MS = 380
-    // Bleed damage always trails the attack's own damage floater by a fixed 500ms,
-    // independent of any crit/status stagger ahead of it.
+    const STATUS_SETTLE_MS = 120
     const BLEED_DAMAGE_DELAY_MS = 2000
     if (events.some((e) => e.kind === 'crit')) {
       window.setTimeout(() => {
@@ -1256,7 +1327,7 @@ export function BattleScreen({
       }, delay)
     })
     clampBattleScrollDrift()
-  }, [state.feedbackSeq, state.feedbackEvents, clampBattleScrollDrift])
+  }, [state.feedbackSeq, state.feedbackEvents, state.feedbackEnemyActedFirst, state.runItBackMode, clampBattleScrollDrift])
 
   // Mirror the floater timing for the battle log line. Plain log lines (no
   // crit/status feedback) sync immediately; lines describing a crit and/or a
@@ -1276,31 +1347,32 @@ export function BattleScreen({
     }
 
     const skill = lastPlayerMoveSkillRef.current
-    const pLunge = skill === 'speed' ? 480 : skill === 'defense' ? 600 : 760
-    const eLunge = 760
-    const DMG_DELAY = 540
+    const pLunge = playerLungeMsForSkill(skill)
+    const eLunge = BATTLE_LUNGE_ATTACK_MS
     const enemyActedFirst = state.feedbackEnemyActedFirst
 
     const { enemyDelta: eDelta, playerDelta: pDelta } = lastHpDeltasRef.current
     const bDelta = Math.min(state.feedbackBleedDamage, Math.max(0, eDelta))
     const aDelta = Math.max(0, eDelta - bDelta)
     const eDodge = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const hasEnemyTargetEvents = events.some((e) => e.target === 'enemy')
+    const hasPlayerTargetEvents = events.some((e) => e.target === 'player')
     const pDirect = aDelta > 0 && !eDodge
     const eDirect = pDelta > 0 && !eDodge
 
-    const pPhaseLen = pLunge + DMG_DELAY
-    const ePhaseLen = eLunge + DMG_DELAY
-    let pStart = 0
-    let eStart = 0
-    if (pDirect && eDirect) {
-      if (enemyActedFirst) { eStart = 0; pStart = ePhaseLen }
-      else { pStart = 0; eStart = pPhaseLen }
-    }
-    const playerImpact = pStart + pLunge + DMG_DELAY
-    const enemyImpact = eStart + eLunge + DMG_DELAY
+    const { playerImpact, enemyImpact } = computeImpactTimings({
+      playerLungeMs: pLunge,
+      enemyLungeMs: eLunge,
+      enemyActedFirst,
+      runItBack: state.runItBackMode,
+      hasEnemyTargetEvents,
+      hasPlayerTargetEvents,
+      playerDealsDirectDamage: pDirect || hasEnemyTargetEvents,
+      enemyDealsDamage: eDirect || hasPlayerTargetEvents,
+    })
 
     const CRIT_EXTRA_MS = 500
-    const STATUS_SETTLE_MS = 380
+    const STATUS_SETTLE_MS = 120
     const BLEED_DAMAGE_DELAY_MS = 2000
 
     let enemyEvtIdx = 0
@@ -1326,7 +1398,7 @@ export function BattleScreen({
       setLogLineMode('result')
     }, maxDelay)
     return () => window.clearTimeout(timer)
-  }, [state.log, state.feedbackEvents, state.feedbackEnemyActedFirst])
+  }, [state.log, state.feedbackEvents, state.feedbackEnemyActedFirst, state.runItBackMode])
 
   // When a move is selected, the telegraph line is replaced by the name of
   // whichever side's move resolves first this turn.
