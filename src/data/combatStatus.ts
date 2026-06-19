@@ -8,6 +8,8 @@ import {
   type StatusTarget,
 } from './combatTypes'
 import {
+  BLEED_TURNS_MAX,
+  BLEED_TURNS_MIN,
   ENEMY_SHAKE_OUTGOING_MULT,
   ENEMY_SLOW_OUTGOING_MULT,
   speedInitiativeBonus,
@@ -34,6 +36,10 @@ export function isBuffEffect(effect: StatusEffectId): boolean {
   return BUFF_EFFECTS.has(effect)
 }
 
+export function rollBleedTurns(): number {
+  return BLEED_TURNS_MIN + Math.floor(Math.random() * (BLEED_TURNS_MAX - BLEED_TURNS_MIN + 1))
+}
+
 /** @deprecated Use explicit target in applyStatusToCombat. */
 export function statusTargetFor(effect: StatusEffectId): StatusTarget {
   if (DEBUFF_EFFECTS.has(effect)) return 'enemy'
@@ -49,13 +55,13 @@ export function normalizeStatusSpec(spec: StatusApplySpec): {
   if (typeof spec === 'string') {
     return {
       effect: spec,
-      turns: STATUS_DEFAULT_TURNS[spec],
+      turns: spec === 'bleed' ? rollBleedTurns() : STATUS_DEFAULT_TURNS[spec],
       reflectPercent: 0.35,
     }
   }
   return {
     effect: spec.effect,
-    turns: spec.turns ?? STATUS_DEFAULT_TURNS[spec.effect],
+    turns: spec.turns ?? (spec.effect === 'bleed' ? rollBleedTurns() : STATUS_DEFAULT_TURNS[spec.effect]),
     reflectPercent: spec.reflectPercent ?? 0.35,
   }
 }
@@ -121,6 +127,7 @@ export function tickCombatStatus(status: CombatStatusState): CombatStatusState {
   if (next.playerMiss > 0) next.playerMiss--
   if (next.playerBrace > 0) next.playerBrace--
   if (next.playerDouble > 0) next.playerDouble--
+  if (next.playerWeaken > 0) next.playerWeaken--
   if (next.playerReflect && next.playerReflect.turns > 0) {
     const turns = next.playerReflect.turns - 1
     next.playerReflect = turns > 0 ? { ...next.playerReflect, turns } : null
@@ -211,6 +218,7 @@ export function getPlayerStatusLabels(status: CombatStatusState): string[] {
   if (status.playerBrace > 0) parts.push('braced')
   if (status.playerDouble > 0) parts.push('doubled')
   if (status.playerReflect) parts.push('reflecting')
+  if (status.playerWeaken > 0) parts.push('weakened')
   return parts
 }
 
@@ -243,6 +251,7 @@ export function combatStatusFromLegacy(fields: {
     playerStun: fields.playerStun ?? 0,
     playerSlow: fields.playerSlow ?? 0,
     playerMiss: fields.playerMiss ?? 0,
+    playerWeaken: 0,
     enemyBrace: 0,
     enemyDouble: 0,
     enemyReflect: null,

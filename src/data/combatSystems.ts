@@ -5,22 +5,30 @@ import {
 } from './combatStatus'
 import type { BattleMoveState } from './battleMoveState'
 import type { DeathClock } from './combatTypes'
-import {
-  computeEnemyStrikeDamage,
-  getEnemyMoveDef,
-  type EnemyMoveId,
-  type UpcomingMove,
-} from './enemyMoves'
+import type { UpcomingMove } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
+import { MOVES } from './moveDefinitions'
+
+const ATTACKING_BEHAVIOR_KINDS = new Set([
+  'damage', 'fury-sweep', 'dark-break', 'cannon', 'blackout', 'loop',
+  'gravity-shift', 'refract', 'hyperdrive', 'devils-cut', 'phenomena',
+  'sealed-fate', 'snag',
+])
+
+function isAttackingPlayerMove(moveId: PlayerMoveId): boolean {
+  const def = MOVES[moveId]
+  return def ? ATTACKING_BEHAVIOR_KINDS.has(def.behavior.kind) : false
+}
 
 export type EnemyStrikeResolution = {
-  actualMove: EnemyMoveId
+  actualMove: PlayerMoveId
   enemyStunned: boolean
   /** True whenever the enemy lands a strike with eDmg > 0 this turn. */
   enemyAttacks: boolean
   eDmg: number
 }
 
-/** Single source of truth for incoming enemy damage, dodge/brace read eDmg from here. */
+/** Single source of truth for incoming enemy damage — uses player move definitions. */
 export function resolveEnemyStrike(
   eMove: UpcomingMove,
   ctx: {
@@ -34,9 +42,8 @@ export function resolveEnemyStrike(
     return { actualMove: 'STRIKE', enemyStunned: true, enemyAttacks: false, eDmg: 0 }
   }
 
-  const actualMove = eMove as EnemyMoveId
-  const def = getEnemyMoveDef(actualMove)
-  if (!def.isAttacking) {
+  const actualMove = eMove as PlayerMoveId
+  if (!isAttackingPlayerMove(actualMove)) {
     return { actualMove, enemyStunned: false, enemyAttacks: false, eDmg: 0 }
   }
 
@@ -175,12 +182,12 @@ export function splitOutgoingWithReflect(
   reflect: CombatStatusState['enemyReflect'],
 ): ReflectResult {
   if (!reflect || outgoing <= 0) {
-    return { damageToPlayer: outgoing, damageToEnemy: 0 }
+    return { damageToPlayer: 0, damageToEnemy: outgoing }
   }
   const reflected = Math.floor(outgoing * reflect.percent)
   return {
-    damageToPlayer: Math.max(0, outgoing - reflected),
-    damageToEnemy: reflected,
+    damageToPlayer: reflected,
+    damageToEnemy: Math.max(0, outgoing - reflected),
   }
 }
 
@@ -200,15 +207,28 @@ export type EnemyDamageContext = {
   status: CombatStatusState
 }
 
-/** Data-driven enemy strike before def mitigation. */
+/** Enemy damage using the same move definitions as the player. */
 export function computeEnemyIncomingDamage(
-  moveId: EnemyMoveId,
+  moveId: PlayerMoveId,
   ctx: EnemyDamageContext,
 ): number {
   if (enemyLosesTurn(ctx.status)) return 0
-  const def = getEnemyMoveDef(moveId)
-  if (!def.isAttacking) return 0
-  const base = computeEnemyStrikeDamage(ctx.eAtk, def)
+  const moveDef = MOVES[moveId]
+  if (!moveDef || !isAttackingPlayerMove(moveId)) return 0
+  const behavior = moveDef.behavior
+  let damageMult = 1
+  if ('profile' in behavior && behavior.profile && 'damageMult' in behavior.profile) {
+    damageMult = behavior.profile.damageMult
+  } else if (behavior.kind === 'loop') {
+    damageMult = 0.6
+  } else if (behavior.kind === 'gravity-shift') {
+    damageMult = 0.35
+  } else if (behavior.kind === 'hyperdrive') {
+    damageMult = 0.25
+  } else if (behavior.kind === 'refract' || behavior.kind === 'phenomena' || behavior.kind === 'sealed-fate') {
+    damageMult = 0
+  }
+  const base = Math.floor(ctx.eAtk * damageMult)
   let dmg = Math.floor(base * enemyOutgoingDamageMult(ctx.status))
   if (ctx.status.enemyDouble > 0) {
     dmg *= 2
@@ -226,11 +246,10 @@ export type ExposedResolveInput = {
 /** Player does not act; enemy still swings if able (free swing). */
 export function buildExposedResolveInput(input: ExposedResolveInput) {
   const stunned = enemyLosesTurn(input.status)
-  const actualMove: EnemyMoveId =
-    input.eMove === 'STUNNED' ? 'STRIKE' : (input.eMove as EnemyMoveId)
-  const def = getEnemyMoveDef(actualMove)
-  const enemyAttacks = !stunned && def.isAttacking
-  const incoming = enemyAttacks
+  const actualMove: PlayerMoveId =
+    input.eMove === 'STUNNED' ? 'STRIKE' : (input.eMove as PlayerMoveId)
+  const attacks = !stunned && isAttackingPlayerMove(actualMove)
+  const incoming = attacks
     ? computeEnemyIncomingDamage(actualMove, {
         eAtk: input.eAtk,
         status: input.status,
@@ -244,7 +263,7 @@ export function buildExposedResolveInput(input: ExposedResolveInput) {
     incoming,
     logLine: stunned
       ? `${input.displayName.toLowerCase()} can't move.`
-      : enemyAttacks
+      : attacks
         ? `you're exposed. ${incoming} taken.`
         : `you're exposed. nothing comes.`,
   }

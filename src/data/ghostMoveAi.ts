@@ -1,11 +1,11 @@
 import { deriveBuildLoopType, type BuildLoopSkill } from './buildName'
-import type { EnemyMoveId } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
 import { leanThemedMoves } from './ghostArchetypeMoves'
 import type { LeanSkill } from './skillCounter'
 
 export type GhostMovePickOptions = {
   enemyHpRatio: number
-  lastMove?: EnemyMoveId | null
+  lastMove?: PlayerMoveId | null
   leanSkill: LeanSkill
 }
 
@@ -14,9 +14,9 @@ export type GhostMovePickOptions = {
  * HP heuristics (restocker-style), avoid immediate repeats, lean theme bias.
  */
 export function chooseGhostMove(
-  moves: readonly EnemyMoveId[],
+  moves: readonly PlayerMoveId[],
   options: GhostMovePickOptions,
-): EnemyMoveId {
+): PlayerMoveId {
   if (moves.length === 0) return 'STRIKE'
   if (moves.length === 1) return moves[0]!
 
@@ -27,15 +27,15 @@ export function chooseGhostMove(
   const lean = leanSkill === 'none' ? null : (leanSkill as BuildLoopSkill)
   const themed = lean ? leanThemedMoves(lean) : leanThemedMoves('none')
 
-  // Defense-lean: HOLD bias when hurt (mirrors restocker heuristics).
-  if (lean === 'defense' && candidates.includes('HOLD')) {
+  // Defense-lean: ANCHOR bias when hurt (mirrors restocker heuristics).
+  if (lean === 'defense' && candidates.includes('ANCHOR')) {
     const holdChance = enemyHpRatio < 0.35 ? 0.72 : enemyHpRatio < 0.6 ? 0.52 : 0.32
-    if (Math.random() < holdChance) return 'HOLD'
+    if (Math.random() < holdChance) return 'ANCHOR'
   }
 
   // Attack-lean: pressure when ahead.
   if (lean === 'attack' && enemyHpRatio > 0.65) {
-    const pressure = candidates.filter((m) => m === 'STRIKE' || m === 'HAYMAKER' || m === 'LOOP')
+    const pressure = candidates.filter((m) => m === 'STRIKE' || m === 'CANNON' || m === 'FURY_SWEEP' || m === 'LOOP')
     if (pressure.length > 0 && Math.random() < 0.62) {
       return pressure[Math.floor(Math.random() * pressure.length)]!
     }

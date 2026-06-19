@@ -1,7 +1,8 @@
 import type { BattleFeedbackEvent, BattleFeedbackTone } from './battleFeedback'
 import { deriveBuildLoopType } from './buildName'
 import type { UpcomingMove } from './enemyMoves'
-import { getEnemyMoveDef, type EnemyMoveId } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
+import { MOVES } from './moveDefinitions'
 import {
   ADVANTAGE_XP_BONUS,
   COUNTER_XP_BONUS,
@@ -40,7 +41,14 @@ function bonusCallout(
 
 function isHeavyTelegraphedMove(move: UpcomingMove): boolean {
   if (move === 'STUNNED') return false
-  return getEnemyMoveDef(move as EnemyMoveId).damageMult >= 1.6
+  const def = MOVES[move as PlayerMoveId]
+  if (!def) return false
+  const b = def.behavior
+  if (b.kind === 'cannon' || b.kind === 'blackout' || b.kind === 'sealed-fate') return true
+  if ('profile' in b && b.profile && 'damageMult' in b.profile) {
+    return b.profile.damageMult >= 1.6
+  }
+  return false
 }
 
 /** Extra skill XP when the player reads the fight, stacked only when distinct moments fire. */

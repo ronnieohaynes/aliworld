@@ -19,7 +19,7 @@ export const BATTLE_ENEMY_FEET = { x: 68, y: 221 } as const
 export const BATTLE_ENEMY_PLATE_OFFSET_X = 3
 
 /** Screen point where the player's feet land (bottom-center of visible sprite). */
-export const BATTLE_PLAYER_FEET = { x: 165 + BATTLE_FIGHTER_NUDGE_X, y: 224 } as const
+export const BATTLE_PLAYER_FEET = { x: 165 + BATTLE_FIGHTER_NUDGE_X + 10, y: 224 } as const
 
 /** Vertical nudge for the player status plate (negative = up). */
 export const BATTLE_PLAYER_PLATE_OFFSET_Y = -35

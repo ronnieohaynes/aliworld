@@ -21,6 +21,7 @@ type Quest1State = {
   battleTutorialSeen: boolean
   walkerHeavyTutorialBeatSeen: boolean
   tutorialPhase2Seen: boolean
+  xpTutorialSeen: boolean
   worldIntroSeen: boolean
   mp3PlayerOwned: boolean
   episode1TitleCardSeen: boolean
@@ -37,6 +38,7 @@ function emptyQuest1State(): Quest1State {
     battleTutorialSeen: false,
     walkerHeavyTutorialBeatSeen: false,
     tutorialPhase2Seen: false,
+    xpTutorialSeen: false,
     worldIntroSeen: false,
     mp3PlayerOwned: false,
     episode1TitleCardSeen: false,
@@ -76,6 +78,7 @@ function loadQuest1FromStorage(): Quest1State {
       battleTutorialSeen: o.battleTutorialSeen === true,
       walkerHeavyTutorialBeatSeen: o.walkerHeavyTutorialBeatSeen === true,
       tutorialPhase2Seen: o.tutorialPhase2Seen === true,
+      xpTutorialSeen: o.xpTutorialSeen === true,
       worldIntroSeen: o.worldIntroSeen === true,
       mp3PlayerOwned: o.mp3PlayerOwned === true,
       episode1TitleCardSeen: o.episode1TitleCardSeen === true,
@@ -235,6 +238,17 @@ export function setTutorialPhase2Seen(): void {
   emit()
 }
 
+export function isXpTutorialSeen(): boolean {
+  return state.xpTutorialSeen
+}
+
+export function setXpTutorialSeen(): void {
+  if (state.xpTutorialSeen) return
+  state = { ...state, xpTutorialSeen: true }
+  saveQuest1ToStorage()
+  emit()
+}
+
 export function isWorldIntroSeen(): boolean {
   return state.worldIntroSeen
 }
@@ -278,6 +292,7 @@ export type Quest1Serialized = {
   battleTutorialSeen?: boolean
   walkerHeavyTutorialBeatSeen?: boolean
   tutorialPhase2Seen?: boolean
+  xpTutorialSeen?: boolean
   worldIntroSeen?: boolean
   mp3PlayerOwned?: boolean
   episode1TitleCardSeen?: boolean
@@ -317,6 +332,7 @@ export function applyState(data: Partial<Quest1Serialized>): void {
     battleTutorialSeen: data.battleTutorialSeen === true,
     walkerHeavyTutorialBeatSeen: data.walkerHeavyTutorialBeatSeen === true,
     tutorialPhase2Seen: data.tutorialPhase2Seen === true,
+    xpTutorialSeen: data.xpTutorialSeen === true,
     worldIntroSeen: data.worldIntroSeen === true,
     mp3PlayerOwned: data.mp3PlayerOwned === true,
     episode1TitleCardSeen: data.episode1TitleCardSeen === true,

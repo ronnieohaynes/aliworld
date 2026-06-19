@@ -21,6 +21,14 @@ export type BattleFeedbackEvent = {
 export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedbackEvent[] {
   const events: BattleFeedbackEvent[] = []
 
+  if (r.enemyDamageBlocked > 0) {
+    events.push({
+      kind: 'blocked',
+      text: `-${r.enemyDamageBlocked} blocked`,
+      target: 'enemy',
+      tone: 'defense',
+    })
+  }
   if (r.damageBlocked > 0) {
     events.push({
       kind: 'blocked',
@@ -30,7 +38,14 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
-  if (r.dodged) {
+  if (r.enemyDodged) {
+    events.push({
+      kind: 'dodged',
+      text: 'dodged',
+      target: 'enemy',
+      tone: 'speed',
+    })
+  } else if (r.dodged) {
     events.push({
       kind: 'dodged',
       text: 'dodged',
@@ -39,23 +54,7 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
-  if (r.guardCountered) {
-    events.push({
-      kind: 'counter',
-      text: 'counter!',
-      target: 'player',
-      tone: 'attack',
-    })
-  }
-
-  if (r.playerDmg > 0 && r.dodged) {
-    events.push({
-      kind: 'counter',
-      text: `+${r.playerDmg} counter`,
-      target: 'enemy',
-      tone: 'speed',
-    })
-  } else if (r.playerDmg > 0 && r.crit) {
+  if (r.playerDmg > 0 && r.crit) {
     events.push({
       kind: 'crit',
       text: 'CRIT',

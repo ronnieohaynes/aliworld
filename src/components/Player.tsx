@@ -29,6 +29,7 @@ import { NPC_INTERACT_RANGE, NPC_SIZE } from '../data/npcs'
 import { getNpcCombatEntry } from '../data/npcRegistry'
 import { leanSkillAccentColor } from '../data/skillCounter'
 import { deriveBuildName } from '../data/buildName'
+import { npcSkillsForLevel } from '../data/npcCombatStats'
 import { drawStoryIdleNpcPose, type StoryIdlePoses } from '../game/npcIdleSprites'
 import {
   assignStripSpriteToNpc,
@@ -109,24 +110,8 @@ function seedStandingMapTransitionTriggers(
 
 // ─── Overworld status plate helpers ──────────────────────────────────────────
 
-function deriveArchetypeLabel(stats: { atk: number; def: number; spd: number }, leanSkill: string): string {
-  const PURE: Record<string, string> = {
-    attack: 'heavy hands',
-    defense: 'immovable wall',
-    speed: 'speed demon',
-    luck: 'wildcard',
-    none: 'blank slate',
-  }
-  const ranked = [
-    { skill: 'attack', value: stats.atk },
-    { skill: 'defense', value: stats.def },
-    { skill: 'speed', value: stats.spd },
-  ].sort((a, b) => b.value - a.value)
-  const top = ranked[0]!
-  const second = ranked[1]!
-  if (top.value - second.value >= 2) return PURE[top.skill] ?? 'blank slate'
-  return PURE[leanSkill] ?? 'blank slate'
-}
+/** Horizontal nudge for the player status card above the sprite (positive = right). */
+const OVERWORLD_PLAYER_PLATE_OFFSET_X = 5
 
 /**
  * Draw a compact status plate (name · lv X · archetype) centered at `cx`
@@ -1589,14 +1574,9 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             const pLevel = playerLevelRef.current
             const skills = playerSkillsRef.current
             if (handle) {
-              const pStats = { atk: skills.attack.level, def: skills.defense.level, spd: skills.speed.level }
-              const leanSkill = (['attack', 'defense', 'speed', 'luck'] as const).reduce(
-                (best, id) => (skills[id].level > skills[best].level ? id : best),
-                'attack' as 'attack' | 'defense' | 'speed' | 'luck',
-              )
-              const archetype = deriveArchetypeLabel(pStats, leanSkill)
               const playerBuildName = deriveBuildName(skills)
-              const plateCenterX = worldDrawX + drawDw / 2
+              const archetype = playerBuildName.name
+              const plateCenterX = worldDrawX + drawDw / 2 + OVERWORLD_PLAYER_PLATE_OFFSET_X
               const plateBottomY = worldDrawY - 4
               drawOverworldStatusPlate(ctx, handle, pLevel, archetype, plateCenterX, plateBottomY, playerBuildName.color)
             }
@@ -1686,7 +1666,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
 
           const combatEntry = getNpcCombatEntry(npc.id)
           if (combatEntry != null) {
-            const archetype = deriveArchetypeLabel(combatEntry.stats, combatEntry.leanSkill)
+            const npcBuild = deriveBuildName(npcSkillsForLevel(combatEntry.level, combatEntry.leanSkill))
+            const archetype = npcBuild.name
             const npcColor = leanSkillAccentColor(combatEntry.leanSkill)
             const plateCenterX = dx + displayW / 2
             const plateBottomY = dy - 4

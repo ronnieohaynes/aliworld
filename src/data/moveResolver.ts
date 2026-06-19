@@ -3,6 +3,8 @@ import type { BattleMoveState } from './battleMoveState'
 import {
   BLACKOUT_ARMED_DAMAGE_MULT,
   BLACKOUT_RELEASE_DODGE_MULT,
+  BLEED_TURNS_MAX,
+  BLEED_TURNS_MIN,
   CROSS_SCALE,
   crossSecondaryBonus,
   crossSecondaryFlat,
@@ -21,8 +23,6 @@ import {
   COUNTERWEIGHT_REFLECT_CHANCE,
   COUNTERWEIGHT_REFLECT_PCT_MAX,
   COUNTERWEIGHT_REFLECT_PCT_MIN,
-  FURY_SWEEP_BLEED_TURNS_MAX,
-  FURY_SWEEP_BLEED_TURNS_MIN,
   FURY_SWEEP_DAMAGE_FLOOR,
   INVINCIBLE_BLOCK_COUNT,
   INVINCIBLE_SACRIFICE_PCT,
@@ -45,10 +45,12 @@ import {
   speedCounterBonus,
   speedDodgeBonus,
   speedDodgeSuccessChance,
+  luckDodgeSuccessChance,
+  defParryCounterBonus,
 } from './moveBalance'
 import { scheduleDeathClock } from './combatSystems'
-import type { EnemyMoveId } from './enemyMoves'
-import { getEnemyMoveDef } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
+import { MOVES } from './moveDefinitions'
 import type {
   MoveDefinition,
   MoveDamageProfile,
@@ -64,6 +66,8 @@ export type ResolveMoveContext = {
   eDmg: number
   /** Raw defense skill level, mitigation tuned in moveBalance; matchup loop outweighs level gaps. */
   def: number
+  /** Derived defense stat (archetype base + skill bonus), used as PARRY counter damage base. */
+  defStat: number
   /** Speed skill level, scales dodge and initiative. */
   spd: number
   /** Luck skill level, cross-scale secondary hooks. */
@@ -74,7 +78,7 @@ export type ResolveMoveContext = {
   playerMaxHp: number
   enemyDef: number
   battle: BattleMoveState
-  npcMovePool: EnemyMoveId[]
+  npcMovePool: PlayerMoveId[]
   moveSlot?: number
 }
 
@@ -177,12 +181,7 @@ function applyFurySweep(
     dmg = Math.floor(dmg * c.damageMult)
     if (c.bleedOnCritOnly) {
       out.bleedApplied = true
-      const extraTurns = crossSecondaryFlat(
-        luckSkillLevel,
-        CROSS_SCALE.FURY_BLEED_TURNS_PER_LCK_LVL,
-        CROSS_SCALE.FURY_BLEED_TURNS_CAP,
-      )
-      out.bleedTurns = randomInt(FURY_SWEEP_BLEED_TURNS_MIN, FURY_SWEEP_BLEED_TURNS_MAX) + extraTurns
+      out.bleedTurns = randomInt(BLEED_TURNS_MIN, BLEED_TURNS_MAX)
       out.bleedPotencyMult = crossSecondaryMultiplier(
         luckSkillLevel,
         CROSS_SCALE.FURY_BLEED_POTENCY_PER_LCK_LVL,
@@ -197,7 +196,7 @@ function applyFurySweep(
 }
 
 /** Native skill level for a stolen enemy move (SNAG cross-scale). */
-function stolenMoveNativeSkillLevel(enemyMoveId: EnemyMoveId, ctx: ResolveMoveContext): number {
+function stolenMoveNativeSkillLevel(enemyMoveId: PlayerMoveId, ctx: ResolveMoveContext): number {
   switch (enemyMoveId) {
     case 'SLIP':
       return ctx.spd
@@ -216,18 +215,23 @@ function incomingEnemyHit(ctx: ResolveMoveContext): boolean {
 }
 
 export function applyStolenEnemyMove(
-  enemyMoveId: EnemyMoveId,
+  enemyMoveId: PlayerMoveId,
   ctx: ResolveMoveContext,
   out: PlayerMoveResolveOut,
   stolenScale = 1,
 ): void {
-  const def = getEnemyMoveDef(enemyMoveId)
-  if (!def.isAttacking) {
+  const moveDef = MOVES[enemyMoveId]
+  if (!moveDef) {
     out.playerDmg = jitter(Math.floor(ctx.atk * 0.4 * stolenScale))
     out.incoming = 0
     return
   }
-  let dmg = Math.floor(ctx.atk * def.damageMult * stolenScale)
+  const behavior = moveDef.behavior
+  let damageMult = 1
+  if ('profile' in behavior && behavior.profile && 'damageMult' in behavior.profile) {
+    damageMult = behavior.profile.damageMult
+  }
+  let dmg = Math.floor(ctx.atk * damageMult * stolenScale)
   dmg = applyPerfectGuardBonus(dmg, ctx, out)
   out.playerDmg = jitter(dmg)
   out.incoming = incomingEnemyHit(ctx) ? ctx.eDmg : 0
@@ -363,13 +367,18 @@ export function applyMoveBehavior(
               CROSS_SCALE.PARRY_REFLECT_DEF_CAP,
             )
           : 1
+      const dodgeChance = def.id === 'PARRY'
+        ? luckDodgeSuccessChance(lck)
+        : speedDodgeSuccessChance(ctx.spd)
       if (incomingEnemyHit(ctx)) {
-        if (Math.random() < speedDodgeSuccessChance(ctx.spd)) {
+        if (Math.random() < dodgeChance) {
           out.dodged = true
           out.incoming = 0
-          const counterScale =
-            1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd) + slipAtkBonus
-          out.playerDmg = jitter(Math.floor(atk * d.counterMult * counterScale))
+          const counterScale = def.id === 'PARRY'
+            ? 1 + defParryCounterBonus(ctx.def)
+            : 1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd) + slipAtkBonus
+          const counterBase = def.id === 'PARRY' ? ctx.defStat : atk
+          out.playerDmg = jitter(Math.floor(counterBase * d.counterMult * counterScale))
           if (Math.random() * 100 < d.stunChance.base + lck * d.stunChance.lckMult) {
             out.stunApplied = true
           }
@@ -574,7 +583,6 @@ export function applyMoveBehavior(
         out,
         enemyAttacks,
       )
-      if (battle.lastEnemyMove) battle.forceEnemyMove = battle.lastEnemyMove
       break
     }
 

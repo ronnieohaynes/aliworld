@@ -19,15 +19,17 @@ export const FURY_SWEEP_CRIT_MULT = 1.2
 export const FURY_SWEEP_CRIT_BASE = 8
 export const FURY_SWEEP_CRIT_LCK_MULT = 2
 export const FURY_SWEEP_DAMAGE_MULT = 1.15
-export const FURY_SWEEP_BLEED_TURNS_MIN = 2
-export const FURY_SWEEP_BLEED_TURNS_MAX = 5
+export const BLEED_TURNS_MIN = 1
+export const BLEED_TURNS_MAX = 3
+export const FURY_SWEEP_BLEED_TURNS_MIN = BLEED_TURNS_MIN
+export const FURY_SWEEP_BLEED_TURNS_MAX = BLEED_TURNS_MAX
 
-export const DARK_BREAK_DAMAGE_MULT = 0.45
+export const DARK_BREAK_DAMAGE_MULT = 1.4
 export const DARK_BREAK_ACCURACY_MULT = 0.5
 export const DARK_BREAK_ACCURACY_TURNS_MIN = 2
 export const DARK_BREAK_ACCURACY_TURNS_MAX = 3
 
-export const CANNON_DAMAGE_MULT = 1.1
+export const CANNON_DAMAGE_MULT = 1.5
 export const CANNON_CRIT_BASE = 28
 export const CANNON_CRIT_LCK_MULT = 2.5
 export const CANNON_CRIT_MULT = 1.5
@@ -43,14 +45,14 @@ export const SECOND_WIND_HEAL_CAP_PCT = 0.4
 
 export const DEVILS_CUT_TURNS_MIN = 2
 export const DEVILS_CUT_TURNS_MAX = 3
-export const DEVILS_CUT_DAMAGE_MULT = 0.42
+export const DEVILS_CUT_DAMAGE_MULT = 0.6
 export const DEVILS_CUT_LIFESTEAL_BASE = 0.1
 export const DEVILS_CUT_LIFESTEAL_PER_LCK = 0.0035
 export const DEVILS_CUT_LIFESTEAL_CAP = 0.2
 
-export const PARRY_DODGE_COUNTER_MULT = 0.72
+export const PARRY_DODGE_COUNTER_MULT = 0.8
 export const PARRY_DODGE_WEAK_MULT = 0.35
-export const PARRY_ON_DODGE_REFLECT_PCT = 0.02
+export const PARRY_ON_DODGE_REFLECT_PCT = 0.12
 
 export const GRAVITY_SHIFT_SLOW_TURNS_MIN = 2
 export const GRAVITY_SHIFT_SLOW_TURNS_MAX = 5
@@ -71,7 +73,7 @@ export const SEALED_FATE_DAMAGE_MULT = 3
 export const SEALED_FATE_HIT_CHANCE = 0.99
 export const SEALED_FATE_MISS_SELF_DAMAGE_PCT = 0.8
 
-export const PHENOMENA_DAMAGE_MULT_MIN = 0.35
+export const PHENOMENA_DAMAGE_MULT_MIN = 0.65
 export const PHENOMENA_DAMAGE_MULT_MAX = 1.25
 export const PHENOMENA_HEAL_PCT_MIN = 0.08
 export const PHENOMENA_HEAL_PCT_MAX = 0.22
@@ -88,6 +90,26 @@ export const ENEMY_SLOW_OUTGOING_MULT = 0.56
 export const BLEED_DAMAGE_MAX_HP_PCT = 0.09
 /** Shared enemy LOOP / HAYMAKER strike multiplier, telegraphed heavies. */
 export const ENEMY_LOOP_STRIKE_MULT = 2
+
+/** Enemy AI tier thresholds — level at which enemies gain smarter move selection. */
+export const ENEMY_AI_TIER1_LEVEL = 3
+export const ENEMY_AI_TIER2_LEVEL = 5
+export const ENEMY_AI_TIER3_LEVEL = 8
+
+/** Enemy HOLD — brace reduces incoming player damage by this fraction. */
+export const ENEMY_HOLD_BRACE_MULT = 0.35
+/** Enemy SLIP — base dodge chance (before speed scaling). */
+export const ENEMY_SLIP_DODGE_CHANCE = 0.45
+/** Enemy SLIP — counter damage as fraction of enemy ATK on successful dodge. */
+export const ENEMY_SLIP_COUNTER_MULT = 0.5
+/** Enemy WHISPER — player outgoing damage multiplier while weakened. */
+export const ENEMY_WHISPER_PLAYER_WEAKEN_MULT = 0.6
+/** Enemy WHISPER — duration in turns. */
+export const ENEMY_WHISPER_WEAKEN_TURNS = 2
+/** Enemy BAIT — counter damage multiplier on enemy ATK when player attacks into it. */
+export const ENEMY_BAIT_COUNTER_MULT = 1.2
+/** Enemy BAIT — player damage reduction when trapped. */
+export const ENEMY_BAIT_PLAYER_DMG_MULT = 0.15
 
 /** Combat XP scales with enemy level vs player level (clamp). */
 export const XP_LEVEL_GAP_PER_LEVEL = 0.15
@@ -113,10 +135,10 @@ export function earlyStrikeDamageScale(attackSkillLevel: number): number {
 
 /** Defense skill, brace blocks more per level (multiplier reduction, capped). */
 export const DEF_MITIGATION_PER_LEVEL = 0.025
-/** Defense skill, passive incoming damage reduction per level (kept modest vs counter loop). */
-export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.009
+/** Defense skill, passive incoming damage reduction per level. 1.2% per level, cap at 50% (level 42). */
+export const DEF_PASSIVE_MITIGATION_PER_LEVEL = 0.012
 /** Hard cap on total defense mitigation so builds never become invincible. */
-export const DEF_MAX_MITIGATION = 0.6
+export const DEF_MAX_MITIGATION = 0.5
 /** Brace never shrinks incoming below this fraction of raw hit damage. */
 export const DEF_BRACE_INCOMING_FLOOR = 0.1
 /** Bonus damage on the next strike after a successful brace (per defense level). */
@@ -153,19 +175,20 @@ export function applyDefensePassiveMitigation(incoming: number, defSkillLevel: n
   return Math.max(1, Math.floor(incoming * (1 - frac)))
 }
 
-/** Speed skill, dodge reliability and counter scaling per level. */
-export const SPD_DODGE_PER_LEVEL = 0.02
-export const SPD_DODGE_MAX = 0.5
+/** Speed skill, dodge reliability and counter scaling per level.
+ *  Dodge chance: 33% at lvl 1, 65% at lvl 65 (MAX_SKILL_LEVEL), linear. */
+export const SPD_DODGE_PER_LEVEL = 0.005   // 0.5% per level above 1
+export const SPD_DODGE_MAX = 0.32          // full bonus reached at lvl 65
 /** Extra counter damage multiplier per speed level (on top of dodge bonus). */
 export const SPD_COUNTER_BONUS_PER_LEVEL = 0.09
 export const SPD_COUNTER_BONUS_MAX = 0.8
-/** Base dodge success before speed skill bonus (keeps early SLIP survivable). */
-export const SPD_DODGE_BASE_CHANCE = 0.68
+/** Base dodge success at skill level 1 (no bonus yet). */
+export const SPD_DODGE_BASE_CHANCE = 0.33
 /** Speed skill bonus added to combat spd for initiative ties. */
 export const SPD_INITIATIVE_WEIGHT = 1
 
 export function speedDodgeBonus(spdSkillLevel: number): number {
-  return Math.min(SPD_DODGE_MAX, spdSkillLevel * SPD_DODGE_PER_LEVEL)
+  return Math.min(SPD_DODGE_MAX, Math.max(0, spdSkillLevel - 1) * SPD_DODGE_PER_LEVEL)
 }
 
 export function speedCounterBonus(spdSkillLevel: number): number {
@@ -178,6 +201,23 @@ export function speedDodgeSuccessChance(spdSkillLevel: number): number {
 
 export function speedInitiativeBonus(spdSkillLevel: number): number {
   return Math.max(0, spdSkillLevel - 1) * SPD_INITIATIVE_WEIGHT
+}
+
+/** Defense skill, PARRY counter damage bonus per level. */
+export const DEF_PARRY_COUNTER_BONUS_PER_LEVEL = 0.07
+export const DEF_PARRY_COUNTER_BONUS_MAX = 0.7
+
+export function defParryCounterBonus(defSkillLevel: number): number {
+  return Math.min(DEF_PARRY_COUNTER_BONUS_MAX, defSkillLevel * DEF_PARRY_COUNTER_BONUS_PER_LEVEL)
+}
+
+/** Luck skill, PARRY dodge reliability per level. */
+export const LCK_DODGE_BASE_CHANCE = 0.40
+export const LCK_DODGE_PER_LEVEL = 0.005  // 0.5% per level above 1, matches SLIP curve
+export const LCK_DODGE_MAX = 0.32         // full bonus at lvl 65, same as SLIP
+
+export function luckDodgeSuccessChance(lckSkillLevel: number): number {
+  return Math.min(0.99, LCK_DODGE_BASE_CHANCE + Math.min(LCK_DODGE_MAX, Math.max(0, lckSkillLevel - 1) * LCK_DODGE_PER_LEVEL))
 }
 
 /** Luck stat weight in crit rolls, makes luck investment show up in fight feel. */

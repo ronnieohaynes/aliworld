@@ -1,4 +1,3 @@
-import { EPISODE_1_CAPTIONS } from './episode1Captions'
 import type { Caption } from './episode1Captions'
 import type { EpisodeCutsceneHandoff, PlayCutsceneOptions, CutsceneCompleteMeta } from '../lib/playCutscene'
 
@@ -16,10 +15,10 @@ export type EpisodeCutscenePreset = {
 export const EPISODE_CUTSCENE_PRESETS: Record<1 | 2, EpisodeCutscenePreset> = {
   1: {
     videoId: '6t83Cdmq1fM',
-    startSeconds: 112,
+    startSeconds: 74,
     endSeconds: 204,
     videoTitle: 'ALIWORLD EP. 1: "THE NORMAL?" | a cinematic rap series.',
-    captions: EPISODE_1_CAPTIONS,
+    youtubeCaptions: true,
   },
   2: {
     videoId: 'y4WdKh9cZsM',

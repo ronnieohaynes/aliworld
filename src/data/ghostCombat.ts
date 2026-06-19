@@ -148,7 +148,7 @@ export function buildGhostCombatEntry(snapshot: GhostSnapshot): NpcCombatEntry {
     id: combatId,
     displayName: snapshot.displayName,
     level: snapshot.level,
-    stats: { hp: maxHp, maxHp, atk, def, spd },
+    stats: { hp: maxHp, maxHp, atk, def, spd, lck: Math.max(1, Math.round(statsBase.lck * (championMult.atk > 1 ? 1.1 : 1))) },
     moves,
     leanSkill: snapshot.leanSkill,
     losingLine: snapshot.champion ? '...impossible.' : 'good run.',

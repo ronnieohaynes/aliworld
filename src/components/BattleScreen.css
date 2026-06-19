@@ -803,6 +803,15 @@
   top: 34%;
 }
 
+/* Dodged: enemy dodges player's attack — top-left */
+.battle-screen__floater--enemy.battle-screen__floater--kind-dodged {
+  top: 12%; left: 8%;
+}
+/* Blocked: enemy braces player's attack — top-left offset */
+.battle-screen__floater--enemy.battle-screen__floater--kind-blocked {
+  top: 18%; left: 8%;
+}
+
 /* --- PLAYER side (bottom half) --- */
 /* Damage number: bottom-left */
 .battle-screen__floater--player.battle-screen__floater--kind-damage {
@@ -1021,6 +1030,40 @@
   gap: 6px;
   animation: battle-levelup-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
+.battle-knockout-card--win,
+.battle-knockout-card--lose {
+  margin-top: -48px;
+}
+.battle-knockout-outcome {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin: 0 0 4px;
+  text-align: center;
+}
+.battle-knockout-outcome--win,
+.battle-knockout-outcome--lose {
+  font-family: 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+  font-size: clamp(42px, 12vw, 58px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  margin: 0 0 22px;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+}
+.battle-knockout-outcome--win {
+  color: #f8ecc4;
+  text-shadow:
+    0 0 36px rgba(248, 236, 196, 0.42),
+    0 2px 14px rgba(0, 0, 0, 0.9);
+}
+.battle-knockout-outcome--lose {
+  color: #e84a4a;
+  text-shadow:
+    0 0 36px rgba(232, 74, 74, 0.38),
+    0 2px 14px rgba(0, 0, 0, 0.9);
+}
 .battle-knockout-name {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 18px;
@@ -1084,6 +1127,15 @@
 }
 .battle-knockout-xp-level {
   color: #f4e8c1;
+}
+.battle-knockout-encouragement {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  color: #7878a0;
+  margin: 4px 0 8px;
+  text-align: center;
 }
 
 /* ── Draw overlay ── */

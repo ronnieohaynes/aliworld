@@ -14,7 +14,7 @@ export const BATTLE_TUTORIAL_STEPS: ReadonlyArray<{
     target: 'telegraph',
   },
   {
-    text: 'these are your moves. STRIKE hits. SLIP dodges. HOLD braces. WHISPER hits on luck. the skill level next to each move grows as you use it.',
+    text: 'these are your moves. STRIKE hits. SLIP dodges. PARRY reads and counters. WHISPER hits on luck. the skill level next to each move grows as you use it.',
     target: 'moves',
   },
   {

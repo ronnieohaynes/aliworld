@@ -1,4 +1,4 @@
-import type { EnemyMoveId } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
 import type { LeanSkill } from './skillCounter'
 import type { NpcTelegraphFlavor } from './npcRegistry'
 
@@ -14,7 +14,7 @@ export type FiveGym1GuardCounter = {
 export type FiveGym1RoundConfig = {
   level: number
   fixedHp: number
-  moves: EnemyMoveId[]
+  moves: PlayerMoveId[]
   leanSkill: LeanSkill
   telegraphFlavor: NpcTelegraphFlavor
   guardCounter?: FiveGym1GuardCounter
@@ -26,39 +26,39 @@ export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 4,
     fixedHp: 60,
-    moves: ['STRIKE', 'BAIT', 'HAYMAKER', 'LOOP'],
+    moves: ['STRIKE', 'PARRY', 'FURY_SWEEP', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
-      STRIKE: 'sets a jab',
-      BAIT: 'opens up',
-      HAYMAKER: 'winds up',
-      LOOP: 'draws the loop',
+      STRIKE: 'sets a jab —',
+      PARRY: 'opens up —',
+      FURY_SWEEP: 'winds up —',
+      LOOP: 'draws the loop —',
     },
   },
   {
     level: 7,
     fixedHp: 90,
-    moves: ['STRIKE', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP'],
+    moves: ['STRIKE', 'PARRY', 'PARRY', 'DARK_BREAK', 'LOOP'],
     leanSkill: 'defense',
     telegraphFlavor: {
-      STRIKE: 'feints, then jabs',
-      BAIT: 'leaves a gap',
-      HAYMAKER: 'commits heavy',
-      LOOP: 'spins the loop',
+      STRIKE: 'feints, then jabs —',
+      PARRY: 'leaves a gap —',
+      DARK_BREAK: 'darkens his aim —',
+      LOOP: 'spins the loop —',
     },
   },
   {
     level: 10,
     fixedHp: 120,
-    moves: ['STRIKE', 'BAIT', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP', 'LOOP'],
+    moves: ['STRIKE', 'PARRY', 'PARRY', 'PARRY', 'CANNON', 'LOOP', 'LOOP'],
     leanSkill: 'defense',
     guardCounter: { chance: 0.7, damageMult: 2.85 },
     enemyGuardPierce: 0.55,
     telegraphFlavor: {
-      STRIKE: 'cuts through',
-      BAIT: 'dares you to swing',
-      HAYMAKER: 'loads up',
-      LOOP: 'the loop is coming',
+      STRIKE: 'cuts through —',
+      PARRY: 'dares you to swing —',
+      CANNON: 'loads up —',
+      LOOP: 'the loop is coming —',
     },
   },
 ] as const
