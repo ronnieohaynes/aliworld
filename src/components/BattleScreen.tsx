@@ -1937,12 +1937,30 @@ export function BattleScreen({
         const xpGains = computeBattleXpGains(battleStartSkillsRef.current, playerSkills)
         return (
           <div className="battle-knockout-overlay" onClick={handleKnockoutContinue}>
-            <div className="battle-knockout-card">
+            <div
+              className={`battle-knockout-card${
+                knockoutPopup === 'win'
+                  ? ' battle-knockout-card--win'
+                  : ' battle-knockout-card--lose'
+              }`}
+            >
+              <p
+                className={`battle-knockout-outcome${
+                  knockoutPopup === 'win'
+                    ? ' battle-knockout-outcome--win'
+                    : ' battle-knockout-outcome--lose'
+                }`}
+              >
+                {knockoutPopup === 'win' ? 'Victory' : 'Defeat'}
+              </p>
               <p className="battle-knockout-name">
                 {knockoutPopup === 'win' ? state.npc.displayName.toUpperCase() : playerHandle.toUpperCase()}
               </p>
               <p className="battle-knockout-label">has fallen.</p>
               <BattleXpSummary xpGains={xpGains} />
+              {knockoutPopup === 'lose' && (
+                <p className="battle-knockout-encouragement">Better luck next time.</p>
+              )}
               <span className="battle-knockout-continue">tap to continue ▸</span>
             </div>
           </div>
