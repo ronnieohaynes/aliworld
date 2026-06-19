@@ -1,4 +1,4 @@
-import type { EnemyMoveId } from './enemyMoves'
+import type { PlayerMoveId } from './moveIds'
 import type { LeanSkill } from './skillCounter'
 import type { NpcTelegraphFlavor } from './npcRegistry'
 import { publicAsset } from '../utils/publicAsset'
@@ -15,7 +15,7 @@ export type GymFighterConfig = {
   displayName: string
   level: number
   fixedHp: number
-  moves: readonly EnemyMoveId[]
+  moves: readonly PlayerMoveId[]
   leanSkill: LeanSkill
   telegraphFlavor: NpcTelegraphFlavor
   guardCounter?: { chance: number; damageMult: number }
@@ -62,14 +62,14 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
       name: 'Jerome',
       level: 10,
       fixedHp: 120,
-      moves: ['STRIKE', 'BAIT', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP', 'LOOP'],
+      moves: ['STRIKE', 'PARRY', 'PARRY', 'PARRY', 'CANNON', 'LOOP', 'LOOP'],
       leanSkill: 'defense',
       guardCounter: { chance: 0.7, damageMult: 2.85 },
       enemyGuardPierce: 0.55,
       telegraphFlavor: {
         STRIKE: 'cuts through',
-        BAIT: 'dares you to swing',
-        HAYMAKER: 'loads up',
+        PARRY: 'dares you to swing',
+        CANNON: 'loads up',
         LOOP: 'the loop is coming',
       },
       spriteSrc: JEROME_SPRITE,
@@ -89,12 +89,12 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
         displayName: 'Bag Work',
         level: 4,
         fixedHp: 55,
-        moves: ['STRIKE', 'BAIT', 'HAYMAKER'],
+        moves: ['STRIKE', 'PARRY', 'CANNON'],
         leanSkill: 'defense',
         telegraphFlavor: {
           STRIKE: 'sets a jab',
-          BAIT: 'opens up',
-          HAYMAKER: 'winds up',
+          PARRY: 'opens up',
+          CANNON: 'winds up',
         },
         spriteSrc: NPC2_SPRITE,
         spriteColumns: 4,
@@ -106,11 +106,11 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
         displayName: 'Sparring',
         level: 6,
         fixedHp: 70,
-        moves: ['STRIKE', 'BAIT', 'BAIT', 'LOOP'],
+        moves: ['STRIKE', 'PARRY', 'PARRY', 'LOOP'],
         leanSkill: 'speed',
         telegraphFlavor: {
           STRIKE: 'feints, then jabs',
-          BAIT: 'leaves a gap',
+          PARRY: 'leaves a gap',
           LOOP: 'draws the loop',
         },
         spriteSrc: JASON_SPRITE,
@@ -122,12 +122,12 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
         displayName: 'Corner',
         level: 8,
         fixedHp: 90,
-        moves: ['STRIKE', 'BAIT', 'BAIT', 'HAYMAKER', 'LOOP'],
+        moves: ['STRIKE', 'PARRY', 'PARRY', 'CANNON', 'LOOP'],
         leanSkill: 'attack',
         telegraphFlavor: {
           STRIKE: 'cuts in',
-          BAIT: 'dares you forward',
-          HAYMAKER: 'commits heavy',
+          PARRY: 'dares you forward',
+          CANNON: 'commits heavy',
           LOOP: 'spins the loop',
         },
         spriteSrc: JACLYN_SPRITE,

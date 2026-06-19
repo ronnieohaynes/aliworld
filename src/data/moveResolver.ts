@@ -192,7 +192,7 @@ function applyFurySweep(
 }
 
 /** Native skill level for a stolen enemy move (SNAG cross-scale). */
-function stolenMoveNativeSkillLevel(enemyMoveId: EnemyMoveId, ctx: ResolveMoveContext): number {
+function stolenMoveNativeSkillLevel(enemyMoveId: PlayerMoveId, ctx: ResolveMoveContext): number {
   switch (enemyMoveId) {
     case 'SLIP':
       return ctx.spd
