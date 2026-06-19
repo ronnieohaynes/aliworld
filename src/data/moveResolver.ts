@@ -3,6 +3,8 @@ import type { BattleMoveState } from './battleMoveState'
 import {
   BLACKOUT_ARMED_DAMAGE_MULT,
   BLACKOUT_RELEASE_DODGE_MULT,
+  BLEED_TURNS_MAX,
+  BLEED_TURNS_MIN,
   CROSS_SCALE,
   crossSecondaryBonus,
   crossSecondaryFlat,
@@ -21,8 +23,6 @@ import {
   COUNTERWEIGHT_REFLECT_CHANCE,
   COUNTERWEIGHT_REFLECT_PCT_MAX,
   COUNTERWEIGHT_REFLECT_PCT_MIN,
-  FURY_SWEEP_BLEED_TURNS_MAX,
-  FURY_SWEEP_BLEED_TURNS_MIN,
   FURY_SWEEP_DAMAGE_FLOOR,
   INVINCIBLE_BLOCK_COUNT,
   INVINCIBLE_SACRIFICE_PCT,
@@ -177,12 +177,7 @@ function applyFurySweep(
     dmg = Math.floor(dmg * c.damageMult)
     if (c.bleedOnCritOnly) {
       out.bleedApplied = true
-      const extraTurns = crossSecondaryFlat(
-        luckSkillLevel,
-        CROSS_SCALE.FURY_BLEED_TURNS_PER_LCK_LVL,
-        CROSS_SCALE.FURY_BLEED_TURNS_CAP,
-      )
-      out.bleedTurns = randomInt(FURY_SWEEP_BLEED_TURNS_MIN, FURY_SWEEP_BLEED_TURNS_MAX) + extraTurns
+      out.bleedTurns = randomInt(BLEED_TURNS_MIN, BLEED_TURNS_MAX)
       out.bleedPotencyMult = crossSecondaryMultiplier(
         luckSkillLevel,
         CROSS_SCALE.FURY_BLEED_POTENCY_PER_LCK_LVL,

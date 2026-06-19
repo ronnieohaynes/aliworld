@@ -175,12 +175,12 @@ export function splitOutgoingWithReflect(
   reflect: CombatStatusState['enemyReflect'],
 ): ReflectResult {
   if (!reflect || outgoing <= 0) {
-    return { damageToPlayer: outgoing, damageToEnemy: 0 }
+    return { damageToPlayer: 0, damageToEnemy: outgoing }
   }
   const reflected = Math.floor(outgoing * reflect.percent)
   return {
-    damageToPlayer: Math.max(0, outgoing - reflected),
-    damageToEnemy: reflected,
+    damageToPlayer: reflected,
+    damageToEnemy: Math.max(0, outgoing - reflected),
   }
 }
 

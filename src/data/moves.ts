@@ -1,4 +1,4 @@
-import { applyStatusToCombat, type CombatStatusState } from './combatStatus'
+import { applyStatusToCombat, rollBleedTurns, type CombatStatusState } from './combatStatus'
 import { STATUS_DEFAULT_TURNS } from './combatTypes'
 import { ENEMY_SHAKE_OUTGOING_MULT } from './moveBalance'
 import { getEnemyMoveDef, type EnemyMoveId, type UpcomingMove } from './enemyMoves'
@@ -103,7 +103,7 @@ export function mergeResolveIntoCombatStatus(
       next,
       {
         effect: 'bleed',
-        turns: out.bleedTurns ?? STATUS_DEFAULT_TURNS.bleed,
+        turns: out.bleedTurns ?? rollBleedTurns(),
       },
       'enemy',
     )

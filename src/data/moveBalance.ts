@@ -19,8 +19,10 @@ export const FURY_SWEEP_CRIT_MULT = 1.2
 export const FURY_SWEEP_CRIT_BASE = 8
 export const FURY_SWEEP_CRIT_LCK_MULT = 2
 export const FURY_SWEEP_DAMAGE_MULT = 1.15
-export const FURY_SWEEP_BLEED_TURNS_MIN = 2
-export const FURY_SWEEP_BLEED_TURNS_MAX = 5
+export const BLEED_TURNS_MIN = 1
+export const BLEED_TURNS_MAX = 3
+export const FURY_SWEEP_BLEED_TURNS_MIN = BLEED_TURNS_MIN
+export const FURY_SWEEP_BLEED_TURNS_MAX = BLEED_TURNS_MAX
 
 export const DARK_BREAK_DAMAGE_MULT = 0.45
 export const DARK_BREAK_ACCURACY_MULT = 0.5

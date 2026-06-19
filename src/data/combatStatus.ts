@@ -8,6 +8,8 @@ import {
   type StatusTarget,
 } from './combatTypes'
 import {
+  BLEED_TURNS_MAX,
+  BLEED_TURNS_MIN,
   ENEMY_SHAKE_OUTGOING_MULT,
   ENEMY_SLOW_OUTGOING_MULT,
   speedInitiativeBonus,
@@ -34,6 +36,10 @@ export function isBuffEffect(effect: StatusEffectId): boolean {
   return BUFF_EFFECTS.has(effect)
 }
 
+export function rollBleedTurns(): number {
+  return BLEED_TURNS_MIN + Math.floor(Math.random() * (BLEED_TURNS_MAX - BLEED_TURNS_MIN + 1))
+}
+
 /** @deprecated Use explicit target in applyStatusToCombat. */
 export function statusTargetFor(effect: StatusEffectId): StatusTarget {
   if (DEBUFF_EFFECTS.has(effect)) return 'enemy'
@@ -49,13 +55,13 @@ export function normalizeStatusSpec(spec: StatusApplySpec): {
   if (typeof spec === 'string') {
     return {
       effect: spec,
-      turns: STATUS_DEFAULT_TURNS[spec],
+      turns: spec === 'bleed' ? rollBleedTurns() : STATUS_DEFAULT_TURNS[spec],
       reflectPercent: 0.35,
     }
   }
   return {
     effect: spec.effect,
-    turns: spec.turns ?? STATUS_DEFAULT_TURNS[spec.effect],
+    turns: spec.turns ?? (spec.effect === 'bleed' ? rollBleedTurns() : STATUS_DEFAULT_TURNS[spec.effect]),
     reflectPercent: spec.reflectPercent ?? 0.35,
   }
 }

@@ -77,6 +77,7 @@ import {
   getShowDebug,
   getPlayerSkills,
 } from '../store/playerStore'
+import { type SkillId, type SkillsState } from '../store/skillStore'
 import { deriveBuildLoopType, deriveBuildName } from '../data/buildName'
 import {
   isBattleTutorialSeen,
@@ -270,6 +271,56 @@ const SKILL_DISPLAY: Record<string, string> = {
   speed: 'SPD',
   luck: 'LCK',
   hp: 'HP',
+}
+
+type BattleXpGain = {
+  skill: string
+  xpGained: number
+  leveled: boolean
+  startLv: number
+  endLv: number
+}
+
+function snapshotBattleSkills(skills: SkillsState): SkillsState {
+  return (Object.keys(skills) as SkillId[]).reduce<SkillsState>((acc, id) => {
+    acc[id] = { ...skills[id] }
+    return acc
+  }, {} as SkillsState)
+}
+
+function computeBattleXpGains(
+  startSkills: SkillsState | null,
+  endSkills: SkillsState,
+): BattleXpGain[] {
+  if (!startSkills) return []
+  return (Object.keys(endSkills) as SkillId[]).flatMap((k) => {
+    const sv = startSkills[k]
+    const ev = endSkills[k]
+    if (!sv || !ev) return []
+    const xpGained = (ev.xp ?? 0) - (sv.xp ?? 0)
+    const leveled = (ev.level ?? 1) > (sv.level ?? 1)
+    if (xpGained <= 0 && !leveled) return []
+    return [{ skill: k, xpGained, leveled, startLv: sv.level ?? 1, endLv: ev.level ?? 1 }]
+  })
+}
+
+function BattleXpSummary({ xpGains }: { xpGains: BattleXpGain[] }) {
+  if (xpGains.length === 0) return null
+  return (
+    <div className="battle-knockout-xp-summary">
+      {xpGains.map(({ skill, xpGained, leveled, startLv, endLv }) => (
+        <div key={skill} className="battle-knockout-xp-row">
+          <span className="battle-knockout-xp-skill">{SKILL_DISPLAY[skill] ?? skill}</span>
+          {xpGained > 0 && (
+            <span className="battle-knockout-xp-gained">+{xpGained} xp</span>
+          )}
+          {leveled && (
+            <span className="battle-knockout-xp-level">lv {startLv}→{endLv}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function LevelUpOverlay({
@@ -523,12 +574,11 @@ export function BattleScreen({
       }),
   )
 
-  // Snapshot player skills at battle start for XP summary
-  const battleStartSkillsRef = useRef<ReturnType<typeof getPlayerSkills> | null>(null)
+  // Deep snapshot at battle start so per-turn XP grants don't mutate the baseline.
+  const battleStartSkillsRef = useRef<SkillsState | null>(null)
   useEffect(() => {
-    battleStartSkillsRef.current = { ...getPlayerSkills() }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    battleStartSkillsRef.current = snapshotBattleSkills(getPlayerSkills())
+  }, [npcId])
 
   // Measure stage height so sprite feet Y positions stay in the right half
   useEffect(() => {
@@ -619,6 +669,7 @@ export function BattleScreen({
   // fully settles (same moment the result log line updates).
   const [turnAnnounce, setTurnAnnounce] = useState<string | null>(null)
   const prevPendingResolveRef = useRef(state.pendingResolve)
+  const prevResolveStepRef = useRef(state.resolveStep)
   // Single battle-log line cycles through these, telegraph and the last
   // action result are never shown at the same time.
   const [logLineMode, setLogLineMode] = useState<'telegraph' | 'announce' | 'result'>('telegraph')
@@ -834,8 +885,8 @@ export function BattleScreen({
 
   const handleLoseNarrationContinue = useCallback(() => {
     setLoseNarrationVisible(false)
-    finishBattle('lose')
-  }, [finishBattle])
+    setKnockoutPopup('lose')
+  }, [])
 
   const handleKnockoutContinue = useCallback(() => {
     if (!knockoutPopup) return
@@ -848,10 +899,10 @@ export function BattleScreen({
   const KNOCKOUT_POPUP_DELAY_MS = 2400  // animation (1300ms) + 1s pause before popup
   useEffect(() => {
     if (state.phase !== 'ended' || state.result !== 'draw') return
+    if (state.pendingLevelUpNotification) return
     const timer = window.setTimeout(() => setDrawPopup(true), KNOCKOUT_POPUP_DELAY_MS)
     return () => window.clearTimeout(timer)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.phase, state.result])
+  }, [state.phase, state.result, state.pendingLevelUpNotification])
 
   useEffect(() => {
     if (state.phase !== 'ended') return
@@ -887,6 +938,39 @@ export function BattleScreen({
     winMatchupCalloutRef.current = true
     // Matchup "type win." callout hidden per design
   }, [state.phase, state.result, counterRelation])
+
+  // Enemy-first turns (e.g. SLIP): enemy swings, then dodge/counter in phase 2.
+  useEffect(() => {
+    const prevStep = prevResolveStepRef.current
+    prevResolveStepRef.current = state.resolveStep
+    if (state.resolveStep !== 'pause_after_first' || prevStep === 'pause_after_first') return
+
+    const pending = state.pendingResolve
+    if (!pending?.enemyFirst) return
+
+    const { r } = pending
+    if (!r.enemyAttacks && r.rawIncoming <= 0) return
+
+    const ENEMY_LUNGE_MS = 760
+    const HIT_FLASH_MS = 40
+    const DODGE_MS = 420
+
+    setEnemyAtkFx(true)
+    const enemyAtkOff = window.setTimeout(() => setEnemyAtkFx(false), ENEMY_LUNGE_MS)
+
+    let dodgeOff = 0
+    if (r.dodged) {
+      dodgeOff = window.setTimeout(() => {
+        setPlayerDodgeFx(true)
+        window.setTimeout(() => setPlayerDodgeFx(false), DODGE_MS)
+      }, ENEMY_LUNGE_MS + HIT_FLASH_MS)
+    }
+
+    return () => {
+      window.clearTimeout(enemyAtkOff)
+      if (dodgeOff) window.clearTimeout(dodgeOff)
+    }
+  }, [state.resolveStep, state.pendingResolve])
 
   useEffect(() => {
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp
@@ -947,8 +1031,11 @@ export function BattleScreen({
       const DAMAGE_DELAY_MS = 540 + STAGGER_MS
       const HIT_MS = 840
       const id = Date.now() + Math.random()
-      setEnemyAtkFx(true)
-      window.setTimeout(() => setEnemyAtkFx(false), LUNGE_MS)
+      const enemyActedFirst = state.feedbackEnemyActedFirst
+      if (!enemyActedFirst) {
+        setEnemyAtkFx(true)
+        window.setTimeout(() => setEnemyAtkFx(false), LUNGE_MS)
+      }
       window.setTimeout(() => {
         setPlayerHitFx(true)
         window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
@@ -988,7 +1075,7 @@ export function BattleScreen({
     const playerImpact = lunge + 540 + playerPhaseDelay  // when player's strike lands
     const enemyImpact = lunge + 540                       // when enemy's strike lands (phase 1)
 
-    if (events.some((e) => e.kind === 'dodged')) {
+    if (events.some((e) => e.kind === 'dodged') && !enemyActedFirst) {
       window.setTimeout(() => {
         setPlayerDodgeFx(true)
         window.setTimeout(() => setPlayerDodgeFx(false), 420)
@@ -1626,19 +1713,7 @@ export function BattleScreen({
         />
       )}
       {knockoutPopup && (() => {
-        const startSkills = battleStartSkillsRef.current
-        const endSkills = playerSkills
-        const xpGains = startSkills
-          ? (Object.keys(endSkills) as Array<keyof typeof endSkills>).flatMap((k) => {
-              const sv = startSkills[k]
-              const ev = endSkills[k]
-              if (!sv || !ev) return []
-              const xpGained = (ev.xp ?? 0) - (sv.xp ?? 0)
-              const leveled = (ev.level ?? 1) > (sv.level ?? 1)
-              if (xpGained <= 0 && !leveled) return []
-              return [{ skill: k as string, xpGained, leveled, startLv: sv.level ?? 1, endLv: ev.level ?? 1 }]
-            })
-          : []
+        const xpGains = computeBattleXpGains(battleStartSkillsRef.current, playerSkills)
         return (
           <div className="battle-knockout-overlay" onClick={handleKnockoutContinue}>
             <div className="battle-knockout-card">
@@ -1646,21 +1721,7 @@ export function BattleScreen({
                 {knockoutPopup === 'win' ? state.npc.displayName.toUpperCase() : playerHandle.toUpperCase()}
               </p>
               <p className="battle-knockout-label">has fallen.</p>
-              {xpGains.length > 0 && (
-                <div className="battle-knockout-xp-summary">
-                  {xpGains.map(({ skill, xpGained, leveled, startLv, endLv }) => (
-                    <div key={skill} className="battle-knockout-xp-row">
-                      <span className="battle-knockout-xp-skill">{SKILL_DISPLAY[skill] ?? skill}</span>
-                      {xpGained > 0 && (
-                        <span className="battle-knockout-xp-gained">+{xpGained} xp</span>
-                      )}
-                      {leveled && (
-                        <span className="battle-knockout-xp-level">lv {startLv}→{endLv}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <BattleXpSummary xpGains={xpGains} />
               <span className="battle-knockout-continue">tap to continue ▸</span>
             </div>
           </div>
@@ -1671,6 +1732,7 @@ export function BattleScreen({
           <div className="battle-draw-card">
             <p className="battle-draw-title">DRAW.</p>
             <p className="battle-draw-subtitle">both fighters fell.</p>
+            <BattleXpSummary xpGains={computeBattleXpGains(battleStartSkillsRef.current, playerSkills)} />
             <div className="battle-draw-actions">
               <button
                 type="button"
