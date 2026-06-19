@@ -230,6 +230,11 @@ function getFighterStatusTags(
   }
 
   const tags: StatusTag[] = []
+  if (status.playerBleed > 0) tags.push({ label: 'bleed', turns: status.playerBleed })
+  if (status.playerShake > 0) tags.push({ label: 'shake', turns: status.playerShake })
+  if (status.playerStun > 0) tags.push({ label: 'stun', turns: status.playerStun })
+  if (status.playerSlow > 0) tags.push({ label: 'slow', turns: status.playerSlow })
+  if (status.playerMiss > 0) tags.push({ label: 'miss', turns: status.playerMiss })
   if (status.playerBrace > 0) tags.push({ label: 'brace', turns: status.playerBrace })
   if (status.playerDouble > 0) tags.push({ label: 'double', turns: status.playerDouble })
   if (status.playerReflect && status.playerReflect.turns > 0) {

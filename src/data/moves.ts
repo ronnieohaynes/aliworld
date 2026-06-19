@@ -1,6 +1,7 @@
 import { applyStatusToCombat, type CombatStatusState } from './combatStatus'
 import { STATUS_DEFAULT_TURNS } from './combatTypes'
 import { ENEMY_SHAKE_OUTGOING_MULT } from './moveBalance'
+import { getEnemyMoveDef, type EnemyMoveId, type UpcomingMove } from './enemyMoves'
 import { MOVES } from './moveDefinitions'
 import {
   DEFAULT_EQUIPPED_MOVES,
@@ -79,10 +80,14 @@ export function mergeResolveIntoCombatStatus(
   if (blockStatus) return status
   let next = status
   if (out.shakeApplied) {
-    next = applyStatusToCombat(next, {
-      effect: 'shake',
-      turns: out.shakePotency != null ? STATUS_DEFAULT_TURNS.shake : undefined,
-    })
+    next = applyStatusToCombat(
+      next,
+      {
+        effect: 'shake',
+        turns: out.shakePotency != null ? STATUS_DEFAULT_TURNS.shake : undefined,
+      },
+      'enemy',
+    )
     if (out.shakePotency != null) {
       next = {
         ...next,
@@ -94,26 +99,81 @@ export function mergeResolveIntoCombatStatus(
     }
   }
   if (out.bleedApplied) {
-    next = applyStatusToCombat(next, {
-      effect: 'bleed',
-      turns: out.bleedTurns ?? STATUS_DEFAULT_TURNS.bleed,
-    })
+    next = applyStatusToCombat(
+      next,
+      {
+        effect: 'bleed',
+        turns: out.bleedTurns ?? STATUS_DEFAULT_TURNS.bleed,
+      },
+      'enemy',
+    )
     if (out.bleedPotencyMult != null) {
       next = { ...next, enemyBleedPotencyMult: out.bleedPotencyMult }
     }
   }
-  if (out.stunApplied) next = applyStatusToCombat(next, 'stun')
-  if (out.braced) next = applyStatusToCombat(next, 'brace')
+  if (out.stunApplied) next = applyStatusToCombat(next, 'stun', 'enemy')
+  if (out.braced) next = applyStatusToCombat(next, 'brace', 'player')
   if (out.slowApplied) {
-    next = applyStatusToCombat(next, {
-      effect: 'slow',
-      turns: out.slowTurns ?? STATUS_DEFAULT_TURNS.slow,
-    })
+    next = applyStatusToCombat(
+      next,
+      {
+        effect: 'slow',
+        turns: out.slowTurns ?? STATUS_DEFAULT_TURNS.slow,
+      },
+      'enemy',
+    )
   }
-  if (out.missApplied) next = applyStatusToCombat(next, 'miss')
-  if (out.doubleApplied) next = applyStatusToCombat(next, 'double')
-  if (out.reflectApplied) next = applyStatusToCombat(next, 'reflect')
+  if (out.missApplied) next = applyStatusToCombat(next, 'miss', 'enemy')
+  if (out.doubleApplied) next = applyStatusToCombat(next, 'double', 'player')
+  if (out.reflectApplied) next = applyStatusToCombat(next, 'reflect', 'player')
   return next
+}
+
+export function mergeEnemyMoveIntoCombatStatus(
+  status: CombatStatusState,
+  eMove: UpcomingMove,
+  blockStatus: boolean,
+): CombatStatusState {
+  if (blockStatus || eMove === 'STUNNED') return status
+  const def = getEnemyMoveDef(eMove as EnemyMoveId)
+  let next = status
+  for (const spec of def.onResolve) {
+    next = applyStatusToCombat(next, spec, 'player')
+  }
+  return next
+}
+
+export type EnemyStatusOnPlayerFlags = {
+  playerShakeApplied: boolean
+  playerBleedApplied: boolean
+  playerStunApplied: boolean
+  playerSlowApplied: boolean
+  playerMissApplied: boolean
+}
+
+/** Flags for battle feedback when an enemy move applies status to the player. */
+export function previewEnemyStatusOnPlayer(
+  eMove: UpcomingMove,
+  blockStatus: boolean,
+): EnemyStatusOnPlayerFlags {
+  const flags: EnemyStatusOnPlayerFlags = {
+    playerShakeApplied: false,
+    playerBleedApplied: false,
+    playerStunApplied: false,
+    playerSlowApplied: false,
+    playerMissApplied: false,
+  }
+  if (blockStatus || eMove === 'STUNNED') return flags
+  const def = getEnemyMoveDef(eMove as EnemyMoveId)
+  for (const spec of def.onResolve) {
+    const effect = typeof spec === 'string' ? spec : spec.effect
+    if (effect === 'shake') flags.playerShakeApplied = true
+    if (effect === 'bleed') flags.playerBleedApplied = true
+    if (effect === 'stun') flags.playerStunApplied = true
+    if (effect === 'slow') flags.playerSlowApplied = true
+    if (effect === 'miss') flags.playerMissApplied = true
+  }
+  return flags
 }
 
 export function playerLogLineForMove(

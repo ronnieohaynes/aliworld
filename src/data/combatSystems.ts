@@ -170,6 +170,20 @@ export function splitIncomingWithReflect(
   }
 }
 
+export function splitOutgoingWithReflect(
+  outgoing: number,
+  reflect: CombatStatusState['enemyReflect'],
+): ReflectResult {
+  if (!reflect || outgoing <= 0) {
+    return { damageToPlayer: outgoing, damageToEnemy: 0 }
+  }
+  const reflected = Math.floor(outgoing * reflect.percent)
+  return {
+    damageToPlayer: Math.max(0, outgoing - reflected),
+    damageToEnemy: reflected,
+  }
+}
+
 /** Player's next hit lands twice, returns total damage to apply. */
 export function applyDoubleHit(playerDmg: number, playerDouble: number): {
   totalDamage: number
@@ -195,7 +209,11 @@ export function computeEnemyIncomingDamage(
   const def = getEnemyMoveDef(moveId)
   if (!def.isAttacking) return 0
   const base = computeEnemyStrikeDamage(ctx.eAtk, def)
-  return Math.floor(base * enemyOutgoingDamageMult(ctx.status))
+  let dmg = Math.floor(base * enemyOutgoingDamageMult(ctx.status))
+  if (ctx.status.enemyDouble > 0) {
+    dmg *= 2
+  }
+  return dmg
 }
 
 export type ExposedResolveInput = {

@@ -49,8 +49,7 @@ import type { MoveDefinition, MoveXpContext } from './moveTypes'
  * SNAG, answered by: deny value by killing fast
  * PHENOMENA, answered by: ANCHOR vs status procs, rng
  * SEALED_FATE, answered by: kill before clock, SECOND_WIND/out-sustain, clock miss gamble
- * Enemy status on player (stun/bleed/shake), not implemented yet; future enemy-design lever.
- *   When added: ANCHOR cleanses, brace reduces chip.
+ * Status effects apply symmetrically via applyStatusToCombat(target); ANCHOR blocks incoming status.
  */
 
 function defenseMoveXp(r: MoveXpContext): number {

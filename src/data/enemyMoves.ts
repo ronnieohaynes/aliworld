@@ -77,7 +77,7 @@ export const ENEMY_MOVES: Record<EnemyMoveId, EnemyMoveDefinition> = {
     isAttacking: false,
     skillType: 'luck',
     damageMult: 0,
-    onResolve: [],
+    onResolve: ['shake'],
   },
   HOLD: {
     id: 'HOLD',

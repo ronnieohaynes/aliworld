@@ -50,6 +50,16 @@ export type CombatStatusState = {
   /** Next successful player hit strikes twice (damage applied twice). */
   playerDouble: number
   playerReflect: ReflectBuff | null
+  playerBleed: number
+  playerBleedPotencyMult: number
+  playerShake: number
+  playerShakePotency: number
+  playerStun: number
+  playerSlow: number
+  playerMiss: number
+  enemyBrace: number
+  enemyDouble: number
+  enemyReflect: ReflectBuff | null
   enemyBleed: number
   /** Bleed chip multiplier while bleeding (1 = default). */
   enemyBleedPotencyMult: number
@@ -68,6 +78,16 @@ export function createEmptyCombatStatus(): CombatStatusState {
     playerBrace: 0,
     playerDouble: 0,
     playerReflect: null,
+    playerBleed: 0,
+    playerBleedPotencyMult: 1,
+    playerShake: 0,
+    playerShakePotency: 0,
+    playerStun: 0,
+    playerSlow: 0,
+    playerMiss: 0,
+    enemyBrace: 0,
+    enemyDouble: 0,
+    enemyReflect: null,
     enemyBleed: 0,
     enemyBleedPotencyMult: 1,
     enemyShake: 0,

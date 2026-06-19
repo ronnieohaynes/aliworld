@@ -65,7 +65,6 @@ const COMBO_NAMES: Record<string, string> = {
 
 const LOW_STAT_BUILDS: Record<string, BuildName> = {
   'attack+defense': { name: 'glass cannon', color: RED },
-  'attack+!defense': { name: 'heavy hands', color: RED },
   'defense+attack': { name: 'deadbolt', color: BLUE },
   'speed+defense': { name: 'paper ghost', color: GREEN },
   luck: { name: 'longshot', color: PURPLE },
@@ -123,8 +122,9 @@ function deriveLowStatBuild(skills: SkillsState): BuildName | null {
   if (top.level - second.level < PURE_THRESHOLD) return null
 
   if (top.skill === 'attack') {
+    // Glass cannon only when defense is dumped; heavy hands is pure attack (PURE_NAMES).
     if (isLowSkill(skills, 'defense')) return LOW_STAT_BUILDS['attack+defense']!
-    return LOW_STAT_BUILDS['attack+!defense']!
+    return null
   }
 
   if (top.skill === 'defense' && isLowSkill(skills, 'attack')) {

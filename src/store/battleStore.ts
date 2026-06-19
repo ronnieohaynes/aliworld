@@ -13,6 +13,8 @@ import {
   enemyLosesTurn,
   getEnemyStatusLabels,
   playerActsFirstDespiteSpd,
+  playerLosesTurn,
+  playerOutgoingDamageMult,
   tickCombatStatus,
   type CombatStatusState,
 } from '../data/combatStatus'
@@ -22,6 +24,7 @@ import {
   resolveDeathClocksAtTurnStart,
   resolveEnemyStrike,
   splitIncomingWithReflect,
+  splitOutgoingWithReflect,
   tickDeathClocks,
 } from '../data/combatSystems'
 import type { DeathClock } from '../data/combatTypes'
@@ -35,6 +38,8 @@ import {
   applyStolenEnemyMove,
   getMoveDef,
   mergeResolveIntoCombatStatus,
+  mergeEnemyMoveIntoCombatStatus,
+  previewEnemyStatusOnPlayer,
   playerLogLineForMove,
   type PlayerMoveId,
 } from '../data/moves'
@@ -248,6 +253,12 @@ export type ResolveResult = {
   missApplied: boolean
   doubleApplied: boolean
   reflectApplied: boolean
+  /** Enemy move applied these debuffs to the player this turn (for feedback). */
+  playerShakeApplied: boolean
+  playerBleedApplied: boolean
+  playerStunApplied: boolean
+  playerSlowApplied: boolean
+  playerMissApplied: boolean
   enemyAttacks: boolean
   enemyStunned: boolean
   /** False during exposed / skip turns, no player move effects or XP move line. */
@@ -288,6 +299,11 @@ function emptyResolveResult(
     missApplied: false,
     doubleApplied: false,
     reflectApplied: false,
+    playerShakeApplied: false,
+    playerBleedApplied: false,
+    playerStunApplied: false,
+    playerSlowApplied: false,
+    playerMissApplied: false,
     enemyAttacks,
     enemyStunned,
     playerActed: true,
@@ -561,6 +577,13 @@ function resolvePlayerMoveBody(
   state.battleMove.lastEnemyDamage = eDmg
   if (post.phenomenaLine) out.phenomenaLine = post.phenomenaLine
 
+  if (out.playerDmg > 0) {
+    out.playerDmg = Math.max(
+      0,
+      Math.floor(out.playerDmg * playerOutgoingDamageMult(state.combatStatus)),
+    )
+  }
+
   return { out, post }
 }
 
@@ -758,6 +781,21 @@ function applyEnemyResolutionPhase(
   if (nextHp <= 0) {
     return { playerHp: nextHp, enemyHp: nextEnemyHp, log: nextLog, ended: true, result: 'lose' }
   }
+
+  if (state.combatStatus.playerBleed > 0) {
+    const potency = state.combatStatus.playerBleedPotencyMult ?? 1
+    const b = Math.max(
+      1,
+      Math.floor(state.playerStats.maxHp * BLEED_DAMAGE_MAX_HP_PCT * potency),
+    )
+    if (nextHp > 0) {
+      nextHp = Math.max(0, nextHp - b)
+      nextLog = appendLog(nextLog, `you bleed. ${b} damage.`)
+    } else {
+      nextLog = appendLog(nextLog, 'you bleed.')
+    }
+  }
+
   return { playerHp: nextHp, enemyHp: nextEnemyHp, log: nextLog, ended: false }
 }
 
@@ -788,6 +826,12 @@ function applyPlayerResolutionPhase(
   let damageToEnemy = r.playerDmg
 
   if (r.playerActed && damageToEnemy > 0) {
+    const split = splitOutgoingWithReflect(damageToEnemy, combatStatus.enemyReflect)
+    damageToEnemy = split.damageToEnemy
+    if (split.damageToPlayer > 0) {
+      nextPlayerHp = Math.max(0, nextPlayerHp - split.damageToPlayer)
+      r.reflectedDmg = (r.reflectedDmg ?? 0) + split.damageToPlayer
+    }
     const doubled = applyDoubleHit(damageToEnemy, combatStatus.playerDouble)
     damageToEnemy = doubled.totalDamage
     if (doubled.consumedDouble) {
@@ -903,6 +947,14 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     r,
     battleMove.anchorBlocksStatus,
   )
+  combatStatus = mergeEnemyMoveIntoCombatStatus(
+    combatStatus,
+    r.eMove,
+    battleMove.anchorBlocksStatus,
+  )
+  if (r.incoming > 0 && state.combatStatus.enemyDouble > 0) {
+    combatStatus = { ...combatStatus, enemyDouble: 0 }
+  }
   battleMove.anchorBlocksStatus = false
 
   if (battleMove.enemyAccuracyTurns > 0) {
@@ -1053,17 +1105,27 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
     playerSkipTurns: consumed.flags.playerSkipTurns,
   }
 
-  const resolved = consumed.wasExposed
+  const statusStunned = playerLosesTurn(working.combatStatus)
+  const resolved = consumed.wasExposed || statusStunned
     ? resolveExposedTurn(working, pMove, working.upcomingMove)
     : {
         out: resolveMoves(working, pMove, working.upcomingMove, slot),
         post: { deathClocks: [], selfDamage: 0, healPlayer: 0 },
       }
-  if (consumed.wasExposed) {
+  if (consumed.wasExposed || statusStunned) {
     applyPostResolveEffects(working, resolved.post)
   }
   // Apply run-it-back damage doubling before any phase resolution.
-  let r = resolved.out
+  let r = {
+    ...resolved.out,
+    ...previewEnemyStatusOnPlayer(
+      resolved.out.eMove,
+      working.battleMove.anchorBlocksStatus,
+    ),
+  }
+  if (statusStunned) {
+    r = { ...r, playerActed: false }
+  }
   if (working.runItBackMode) {
     r = {
       ...r,

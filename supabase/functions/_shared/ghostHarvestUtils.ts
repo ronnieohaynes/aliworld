@@ -1,12 +1,12 @@
 /** Edge-safe harvest helpers (mirrors client skill/build logic). */
 
+import { deriveBuildLoopType, type BuildLoopSkill } from './buildName.ts'
+
+export type { BuildLoopSkill }
+export { deriveBuildLoopType }
+
 type SkillProgress = { level: number; xp: number }
 export type EdgeSkillsState = Record<'attack' | 'speed' | 'defense' | 'luck' | 'hp', SkillProgress>
-
-const PURE_THRESHOLD = 3
-const COMBO_THRESHOLD = 2
-
-export type BuildLoopSkill = 'attack' | 'speed' | 'defense' | 'luck'
 
 function rankedCombatSkills(skills: EdgeSkillsState): { skill: BuildLoopSkill; level: number }[] {
   const rows: { skill: BuildLoopSkill; level: number }[] = [
@@ -17,16 +17,6 @@ function rankedCombatSkills(skills: EdgeSkillsState): { skill: BuildLoopSkill; l
   ]
   rows.sort((a, b) => b.level - a.level)
   return rows
-}
-
-export function deriveBuildLoopType(skills: EdgeSkillsState): BuildLoopSkill | null {
-  const ranked = rankedCombatSkills(skills)
-  const top = ranked[0]!
-  const second = ranked[1]!
-  const third = ranked[2]!
-  if (top.level - second.level >= PURE_THRESHOLD) return top.skill
-  if (second.level - third.level >= COMBO_THRESHOLD) return top.skill
-  return null
 }
 
 export function dominantCombatSkill(skills: EdgeSkillsState): BuildLoopSkill {

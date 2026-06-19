@@ -82,7 +82,7 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
-  // Priority order: stun → bleed → shake → slow
+  // Priority order: stun → bleed → shake → slow (player → enemy, then enemy → player)
   if (r.stunApplied) {
     events.push({ kind: 'status', text: 'stun!', target: 'enemy', tone: 'stun' })
   }
@@ -94,6 +94,21 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
   }
   if (r.slowApplied) {
     events.push({ kind: 'status', text: 'slow!', target: 'enemy', tone: 'slow' })
+  }
+  if (r.playerStunApplied) {
+    events.push({ kind: 'status', text: 'stun!', target: 'player', tone: 'stun' })
+  }
+  if (r.playerBleedApplied) {
+    events.push({ kind: 'status', text: 'bleed!', target: 'player', tone: 'bleed' })
+  }
+  if (r.playerShakeApplied) {
+    events.push({ kind: 'status', text: 'shake!', target: 'player', tone: 'shake' })
+  }
+  if (r.playerSlowApplied) {
+    events.push({ kind: 'status', text: 'slow!', target: 'player', tone: 'slow' })
+  }
+  if (r.playerMissApplied) {
+    events.push({ kind: 'status', text: 'miss!', target: 'player', tone: 'stun' })
   }
 
   return events
