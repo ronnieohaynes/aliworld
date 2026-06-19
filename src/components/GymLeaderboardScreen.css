@@ -30,6 +30,26 @@
   overflow-y: auto;
 }
 
+.gym-leaderboard__countdown {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #534ab7;
+  background: rgba(83, 74, 183, 0.14);
+  color: #d4b87a;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.gym-leaderboard__countdown--completed {
+  border-color: #7a7a96;
+  background: rgba(42, 42, 62, 0.85);
+  color: #f4e8c1;
+  line-height: 1.45;
+}
+
 .gym-leaderboard__header {
   display: flex;
   align-items: flex-start;

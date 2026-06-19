@@ -177,6 +177,7 @@ function pickVariety<T extends { build_type?: string | null; primarySkill?: stri
 async function resolveChampionSnapshot(supabase: SupabaseClient): Promise<PublicGhostSnapshot> {
   const { data: ranked } = await supabase.rpc('internal_gym_leaderboard_ranked', {
     p_since: ANALYTICS_V2_TRACKING_SINCE,
+    p_until: null,
     p_limit: 1,
   })
 

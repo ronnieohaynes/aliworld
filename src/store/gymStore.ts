@@ -11,6 +11,7 @@ import {
   isCurrentGymWeek,
   type GymWeekDefinition,
 } from '../data/gymWeeks'
+import { isGymWeekScoringOpen } from '../data/gymWeekSchedule'
 
 const STORAGE_KEY = 'aliworld:gym:v2'
 const LEGACY_STORAGE_KEY = 'aliworld:gym:v1'
@@ -214,8 +215,10 @@ export function syncWeeklyCalendar(input: GymState = state, nowMs = Date.now()):
   }
 
   const currentWeek = getCurrentGymWeek(nowMs)
-  if (next.activeRun && !next.activeRun.practice && next.activeRun.weekId !== currentWeek.id) {
-    next = { ...next, activeRun: null }
+  if (next.activeRun && !next.activeRun.practice) {
+    if (next.activeRun.weekId !== currentWeek.id || !isGymWeekScoringOpen(nowMs)) {
+      next = { ...next, activeRun: null }
+    }
   }
 
   next.trackedAbsoluteWeek = abs
@@ -301,6 +304,7 @@ export function beginGymRun(weekId: string, practice: boolean, nowMs = Date.now(
     if (!isLiveWeek && !retired.some((w) => w.id === weekId)) return null
   } else {
     if (!isCurrentGymWeek(weekId, nowMs)) return null
+    if (!isGymWeekScoringOpen(nowMs)) return null
     if (isCurrentWeeklyGymCleared(nowMs)) return null
   }
 
@@ -381,6 +385,7 @@ export function recordWeeklyGymClear(nowMs = Date.now()): GymWeekClearResult | n
   const run = state.activeRun
   if (!run || run.practice) return null
   if (!isCurrentGymWeek(run.weekId, nowMs)) return null
+  if (!isGymWeekScoringOpen(nowMs)) return null
 
   const abs = getAbsoluteWeekIndex(nowMs)
   if (state.clearedAbsoluteWeeks.includes(abs)) {

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchGymLeaderboard, type GymLeaderboardEntry } from '../lib/gymLeaderboardApi'
+import {
+  formatGymWeekCountdown,
+  getGymWeekPhase,
+  getGymWeekRemainingMs,
+  type GymWeekPhase,
+} from '../data/gymWeekSchedule'
 import { LeaderboardVariantSprite } from './LeaderboardVariantSprite'
 import { HandleWithEmblem } from './HandleWithEmblem'
 import './GymLeaderboardScreen.css'
@@ -11,8 +17,14 @@ type Props = {
 
 type LoadState =
   | { kind: 'loading' }
-  | { kind: 'empty'; trackingSince: string }
-  | { kind: 'ready'; trackingSince: string; entries: GymLeaderboardEntry[] }
+  | { kind: 'empty'; trackingSince: string; weekPhase: GymWeekPhase; frozen: boolean }
+  | {
+      kind: 'ready'
+      trackingSince: string
+      weekPhase: GymWeekPhase
+      frozen: boolean
+      entries: GymLeaderboardEntry[]
+    }
   | { kind: 'error'; message: string }
 
 function formatTrackingSince(iso: string): string {
@@ -24,14 +36,27 @@ function formatTrackingSince(iso: string): string {
 export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   const [refreshing, setRefreshing] = useState(false)
+  const [remainingMs, setRemainingMs] = useState(() => getGymWeekRemainingMs())
+  const weekPhase = getGymWeekPhase()
 
   const load = useCallback(async (force = false) => {
     try {
       const data = await fetchGymLeaderboard({ force })
       if (data.entries.length === 0) {
-        setState({ kind: 'empty', trackingSince: data.trackingSince })
+        setState({
+          kind: 'empty',
+          trackingSince: data.trackingSince,
+          weekPhase: data.weekPhase,
+          frozen: data.frozen,
+        })
       } else {
-        setState({ kind: 'ready', trackingSince: data.trackingSince, entries: data.entries })
+        setState({
+          kind: 'ready',
+          trackingSince: data.trackingSince,
+          weekPhase: data.weekPhase,
+          frozen: data.frozen,
+          entries: data.entries,
+        })
       }
     } catch (err) {
       setState({
@@ -44,6 +69,13 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
   useEffect(() => {
     void load(false)
   }, [load])
+
+  useEffect(() => {
+    const tick = () => setRemainingMs(getGymWeekRemainingMs())
+    tick()
+    const id = window.setInterval(tick, 60_000)
+    return () => window.clearInterval(id)
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,6 +99,8 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
   const rest = state.kind === 'ready' ? state.entries.slice(3) : []
 
   const handleRefresh = async () => {
+    if (state.kind === 'ready' && state.frozen) return
+    if (state.kind === 'empty' && state.frozen) return
     setRefreshing(true)
     await load(true)
     setRefreshing(false)
@@ -75,17 +109,38 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
   const trackingSince =
     state.kind === 'ready' || state.kind === 'empty' ? state.trackingSince : null
 
+  const displayPhase: GymWeekPhase =
+    state.kind === 'ready' || state.kind === 'empty' ? state.weekPhase : weekPhase
+
+  const isFrozen =
+    state.kind === 'ready' || state.kind === 'empty' ? state.frozen : displayPhase === 'completed'
+
+  const countdownLabel =
+    displayPhase === 'completed'
+      ? 'GYM WEEK COMPLETED. CHECK BACK MONDAY FOR REWARDS.'
+      : `gym week ends in ${formatGymWeekCountdown(remainingMs)}`
+
   return (
     <div className="gym-leaderboard" role="dialog" aria-label="Gym champions board">
       <div className="gym-leaderboard__backdrop" onClick={onClose} aria-hidden />
       <div className="gym-leaderboard__panel">
+        <div
+          className={`gym-leaderboard__countdown${
+            displayPhase === 'completed' ? ' gym-leaderboard__countdown--completed' : ''
+          }`}
+          aria-live="polite"
+        >
+          {countdownLabel}
+        </div>
+
         <header className="gym-leaderboard__header">
           <div>
             <p className="gym-leaderboard__eyebrow">cult.18 · oceanview gym</p>
             <h1 className="gym-leaderboard__title">champions board</h1>
             {trackingSince ? (
               <p className="gym-leaderboard__sub">
-                total gym wins · tracking since {formatTrackingSince(trackingSince)}
+                {isFrozen ? 'final standings · week ending ' : 'this week · since '}
+                {formatTrackingSince(trackingSince)}
               </p>
             ) : null}
           </div>
@@ -94,7 +149,7 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
               type="button"
               className="gym-leaderboard__btn"
               onClick={() => void handleRefresh()}
-              disabled={refreshing || state.kind === 'loading'}
+              disabled={refreshing || state.kind === 'loading' || isFrozen}
             >
               {refreshing ? 'refreshing…' : 'refresh'}
             </button>
@@ -201,7 +256,7 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
                           <>@{entry.handle}</>
                         )}
                       </span>
-                      <span className="gym-leaderboard__list-wins">{entry.winCount}</span>
+                      <span className="gym-leaderboard__list-wins">{entry.winCount} wins</span>
                     </li>
                   )
                 })}

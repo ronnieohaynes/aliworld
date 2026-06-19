@@ -1,8 +1,6 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 import { corsHeaders } from '../_shared/cors.ts'
-
-const GYM_WEEK_EPOCH_MS = Date.parse('2026-05-26T09:00:00.000Z')
-const MS_PER_GYM_WEEK = 7 * 24 * 60 * 60 * 1000
+import { getAbsoluteWeekIndex } from '../_shared/gymWeekSchedule.ts'
 
 /** Must stay in sync with src/data/gymWeeks.ts GYM_WEEKS ids. */
 const LIVE_GYM_WEEK_IDS = ['1'] as const
@@ -21,8 +19,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
 }
 
 function currentLiveWeekId(nowMs = Date.now()): string {
-  if (nowMs < GYM_WEEK_EPOCH_MS) return LIVE_GYM_WEEK_IDS[0]!
-  const abs = Math.floor((nowMs - GYM_WEEK_EPOCH_MS) / MS_PER_GYM_WEEK)
+  const abs = getAbsoluteWeekIndex(nowMs)
   return LIVE_GYM_WEEK_IDS[abs % LIVE_GYM_WEEK_IDS.length]!
 }
 

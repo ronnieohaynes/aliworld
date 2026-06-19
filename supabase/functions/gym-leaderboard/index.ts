@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 import { corsHeaders } from '../_shared/cors.ts'
-import { ANALYTICS_V2_TRACKING_SINCE } from '../_shared/analyticsConstants.ts'
+import { getGymWeekWindow } from '../_shared/gymWeekSchedule.ts'
 import {
   isRegisteredMidnightVariantId,
   type MidnightVariantId,
@@ -15,6 +15,11 @@ export type PublicLeaderboardEntry = {
 
 export type PublicLeaderboardResponse = {
   trackingSince: string
+  trackingUntil: string | null
+  weekIndex: number
+  weekPhase: 'active' | 'completed'
+  deadlineMs: number
+  frozen: boolean
   entries: PublicLeaderboardEntry[]
 }
 
@@ -58,8 +63,11 @@ Deno.serve(async (req) => {
   })
 
   try {
+    const window = getGymWeekWindow()
+
     const { data: ranked, error: rankError } = await supabase.rpc('internal_gym_leaderboard_ranked', {
-      p_since: ANALYTICS_V2_TRACKING_SINCE,
+      p_since: window.sinceIso,
+      p_until: window.untilIso,
       p_limit: LEADERBOARD_LIMIT,
     })
 
@@ -71,7 +79,12 @@ Deno.serve(async (req) => {
     const rows = ranked ?? []
     if (rows.length === 0) {
       return jsonResponse({
-        trackingSince: ANALYTICS_V2_TRACKING_SINCE,
+        trackingSince: window.sinceIso,
+        trackingUntil: window.untilIso,
+        weekIndex: window.weekIndex,
+        weekPhase: window.phase,
+        deadlineMs: window.deadlineMs,
+        frozen: window.frozen,
         entries: [],
       })
     }
@@ -119,7 +132,12 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse({
-      trackingSince: ANALYTICS_V2_TRACKING_SINCE,
+      trackingSince: window.sinceIso,
+      trackingUntil: window.untilIso,
+      weekIndex: window.weekIndex,
+      weekPhase: window.phase,
+      deadlineMs: window.deadlineMs,
+      frozen: window.frozen,
       entries,
     })
   } catch (err) {

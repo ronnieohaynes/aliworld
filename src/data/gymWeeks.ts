@@ -6,9 +6,15 @@ import { publicAsset } from '../utils/publicAsset'
 /** Week 1 leader, legacy overworld + combat id. */
 export const WEEK1_LEADER_NPC_ID = '5ive-gym1'
 
-/** Monday 09:00 UTC, week index 0 starts here (week 1 live). */
-export const GYM_WEEK_EPOCH_MS = Date.parse('2026-05-26T09:00:00.000Z')
-export const MS_PER_GYM_WEEK = 7 * 24 * 60 * 60 * 1000
+import {
+  getAbsoluteWeekIndex as scheduleAbsoluteWeekIndex,
+  getGymWeekStartMs,
+  MS_PER_GYM_WEEK,
+} from './gymWeekSchedule'
+
+/** Monday 00:00 PT, week index 0 starts here (first live gym week). */
+export const GYM_WEEK_EPOCH_MS = getGymWeekStartMs(0)
+export { MS_PER_GYM_WEEK }
 
 export type GymFighterConfig = {
   combatId: string
@@ -153,8 +159,7 @@ export function gymWeekBadgeLabel(weekNumber: number): string {
 }
 
 export function getAbsoluteWeekIndex(nowMs = Date.now()): number {
-  if (nowMs < GYM_WEEK_EPOCH_MS) return 0
-  return Math.floor((nowMs - GYM_WEEK_EPOCH_MS) / MS_PER_GYM_WEEK)
+  return scheduleAbsoluteWeekIndex(nowMs)
 }
 
 export function getGymWeekById(weekId: string): GymWeekDefinition | undefined {

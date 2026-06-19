@@ -46,6 +46,7 @@ import {
   resetGymRunOnLoss,
   setOceanviewGymVisited,
   setWeeklyGauntletExplainerSeen,
+  refreshWeeklyGymCalendar,
   subscribeGymStore,
 } from '../store/gymStore'
 import {
@@ -54,6 +55,7 @@ import {
   gymRunProgressLabel,
   isGymGauntletCombatId,
 } from '../data/gymWeeks'
+import { isGymWeekScoringOpen } from '../data/gymWeekSchedule'
 import { claimGymWeekReward } from '../lib/gymWeekRewardApi'
 import { refreshPlayerGrants } from '../store/grantsStore'
 import { resolveGymBattleOptions, restartWeeklyGymRun, startWeeklyGymRun } from '../lib/weeklyGymBattle'
@@ -299,6 +301,8 @@ type DialogueState = {
   onComplete?: () => void
 }
 
+const GYM_LEADERBOARD_DISMISSED_KEY = 'aliworld:gym-leaderboard-dismissed'
+
 export function GameScreen() {
   const playerRef = useRef<PlayerHandle>(null)
   const [currentCity, setCurrentCity] = useState<CityId>('five')
@@ -325,6 +329,7 @@ export function GameScreen() {
   const pendingGymLossLineRef = useRef(false)
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
   const pendingGymWelcomeRef = useRef(false)
+  const pendingGymLeaderboardAutoPopRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
   const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'return-five' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
@@ -495,6 +500,18 @@ export function GameScreen() {
     void gymRevision
     return getRetiredGymWeeks()
   }, [gymRevision])
+
+  const gymScoringOpen = useMemo(() => {
+    void gymRevision
+    return isGymWeekScoringOpen()
+  }, [gymRevision])
+
+  useEffect(() => {
+    if (currentCity !== 'five-gym-interior') return
+    refreshWeeklyGymCalendar()
+    const id = window.setInterval(() => refreshWeeklyGymCalendar(), 60_000)
+    return () => window.clearInterval(id)
+  }, [currentCity])
 
   const gymBattleOptions = useMemo(() => {
     if (!battleNpcId) {
@@ -846,6 +863,9 @@ export function GameScreen() {
       setOceanviewGymVisited()
       pendingGymWelcomeRef.current = true
     }
+    if (target.cityId === 'five-gym-interior') {
+      pendingGymLeaderboardAutoPopRef.current = true
+    }
     if (target.cityId === 'southside') {
       markCityVisited('southside')
     }
@@ -881,6 +901,11 @@ export function GameScreen() {
   }, [])
 
   const handleGymLeaderboardClose = useCallback(() => {
+    try {
+      sessionStorage.setItem(GYM_LEADERBOARD_DISMISSED_KEY, '1')
+    } catch {
+      // ignore quota / private mode
+    }
     setShowGymLeaderboard(false)
   }, [])
 
@@ -1380,6 +1405,18 @@ export function GameScreen() {
       showNarration([
         'one run. four fights, three henchmen, then the leader. full heal between each. one loss sends you back to the start.',
       ])
+    }
+    if (pendingGymLeaderboardAutoPopRef.current) {
+      pendingGymLeaderboardAutoPopRef.current = false
+      let dismissed = false
+      try {
+        dismissed = sessionStorage.getItem(GYM_LEADERBOARD_DISMISSED_KEY) === '1'
+      } catch {
+        dismissed = false
+      }
+      if (!dismissed) {
+        setShowGymLeaderboard(true)
+      }
     }
     if (e2ClosingPhaseRef.current === 'exit-interior') {
       e2ClosingPhaseRef.current = 'mob'
@@ -3123,7 +3160,7 @@ export function GameScreen() {
                   in progress, {gymRunProgressLabel(gymActiveRun.fightIndex)}
                 </p>
               ) : null}
-              {gymActiveRun && !gymActiveRun.practice ? (
+              {gymActiveRun && !gymActiveRun.practice && gymScoringOpen ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
@@ -3133,7 +3170,7 @@ export function GameScreen() {
                 >
                   continue
                 </button>
-              ) : !isCurrentWeeklyGymCleared() ? (
+              ) : !isCurrentWeeklyGymCleared() && gymScoringOpen ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
@@ -3146,7 +3183,12 @@ export function GameScreen() {
                   start gauntlet
                 </button>
               ) : null}
-              {isCurrentWeeklyGymCleared() ? (
+              {!gymScoringOpen && !isCurrentWeeklyGymCleared() ? (
+                <p className="game-screen-gym-choice__progress">
+                  gym week closed — check the board for final standings. practice still open.
+                </p>
+              ) : null}
+              {isCurrentWeeklyGymCleared() || !gymScoringOpen ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn"
@@ -3173,7 +3215,7 @@ export function GameScreen() {
                   practice week {week.weekNumber}
                 </button>
               ))}
-              {gymActiveRun && !gymActiveRun.practice ? (
+              {gymActiveRun && !gymActiveRun.practice && gymScoringOpen ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn"
