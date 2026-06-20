@@ -499,8 +499,38 @@ function applyPostResolveEffects(
   }
 }
 
+const ENEMY_ATTACK_ANIM_KINDS = new Set([
+  'damage',
+  'fury-sweep',
+  'dark-break',
+  'cannon',
+  'blackout',
+  'loop',
+  'gravity-shift',
+  'refract',
+  'hyperdrive',
+  'devils-cut',
+  'phenomena',
+  'sealed-fate',
+  'snag',
+])
+
+function isEnemyAttackAnimMove(eMove: UpcomingMove): boolean {
+  if (eMove === 'STUNNED') return false
+  const def = MOVES[eMove as PlayerMoveId]
+  return def ? ENEMY_ATTACK_ANIM_KINDS.has(def.behavior.kind) : false
+}
+
 function withResolveFeedback(state: BattleState, r: ResolveResult, enemyActedFirst: boolean): BattleState {
-  const feedbackEvents = appendBattleFeedback([], r)
+  let feedbackEvents = appendBattleFeedback([], r)
+  // Zero-damage swings (e.g. WHISPER jittering to 0) still need presentation hooks.
+  if (feedbackEvents.length === 0) {
+    if (r.playerActed && isPlayerAggressiveMove(r.pMove)) {
+      feedbackEvents = [{ kind: 'status', text: '', target: 'enemy', tone: 'attack' }]
+    } else if (!r.enemyStunned && isEnemyAttackAnimMove(r.eMove)) {
+      feedbackEvents = [{ kind: 'status', text: '', target: 'player', tone: 'attack' }]
+    }
+  }
   if (feedbackEvents.length === 0) return state
   return { ...state, feedbackEvents, feedbackSeq: state.feedbackSeq + 1, feedbackEnemyActedFirst: enemyActedFirst }
 }

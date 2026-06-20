@@ -257,14 +257,53 @@ function feedbackTargetsEnemy(events: BattleFeedbackEvent[]): boolean {
   return events.some((e) => e.target === 'enemy')
 }
 
-function resolveIndicatesPlayerActed(pending: PendingResolve | null): boolean {
-  return pending?.r.playerActed === true
+const PLAYER_ATTACK_ANIM_KINDS = new Set([
+  'damage',
+  'fury-sweep',
+  'dark-break',
+  'cannon',
+  'blackout',
+  'loop',
+  'gravity-shift',
+  'refract',
+  'hyperdrive',
+  'devils-cut',
+  'phenomena',
+  'sealed-fate',
+  'snag',
+])
+
+function isPlayerAttackAnimMove(pMove: PlayerMove | undefined): boolean {
+  if (!pMove) return false
+  const def = MOVES[pMove]
+  return def ? PLAYER_ATTACK_ANIM_KINDS.has(def.behavior.kind) : false
+}
+
+function isEnemyAttackAnimMove(eMove: PendingResolve['r']['eMove']): boolean {
+  if (eMove === 'STUNNED') return false
+  const def = MOVES[eMove as PlayerMoveId]
+  return def ? PLAYER_ATTACK_ANIM_KINDS.has(def.behavior.kind) : false
+}
+
+function resolveIndicatesPlayerAttackMove(pending: PendingResolve | null): boolean {
+  if (!pending?.r.playerActed) return false
+  return isPlayerAttackAnimMove(pending.r.pMove)
 }
 
 function resolveIndicatesEnemyAttack(pending: PendingResolve | null): boolean {
   const r = pending?.r
   if (!r || r.enemyStunned) return false
-  return r.enemyAttacks || r.rawIncoming > 0
+  return r.enemyAttacks || r.rawIncoming > 0 || isEnemyAttackAnimMove(r.eMove)
+}
+
+/** WHISPER uses luck skill but should lunge like other hit moves. */
+function playerAtkFxForMove(
+  pMove: PlayerMove | undefined,
+  skill: string,
+): 'attack' | 'speed' | 'defense' | 'luck' {
+  if (pMove === 'WHISPER') return 'attack'
+  if (skill === 'speed' || skill === 'defense' || skill === 'luck') return skill
+  return 'attack'
 }
 
 /** True when the player side should play an attack/defense lunge this turn (even at 0 damage). */
@@ -275,12 +314,15 @@ function playerPhaseAnimates(opts: {
   pendingResolve: PendingResolve | null
 }): boolean {
   if (opts.wasEnemyDodge) {
-    return resolveIndicatesPlayerActed(opts.pendingResolve) || feedbackTargetsEnemy(opts.feedbackEvents)
+    return (
+      resolveIndicatesPlayerAttackMove(opts.pendingResolve) ||
+      feedbackTargetsEnemy(opts.feedbackEvents)
+    )
   }
   return (
     opts.attackDelta > 0 ||
     feedbackTargetsEnemy(opts.feedbackEvents) ||
-    resolveIndicatesPlayerActed(opts.pendingResolve)
+    resolveIndicatesPlayerAttackMove(opts.pendingResolve)
   )
 }
 
@@ -1551,7 +1593,23 @@ export function BattleScreen({
     const hpUnchanged =
       prevEnemyHpRef.current === state.enemyHp &&
       prevPlayerHpRef.current === state.playerHp
-    if (hpUnchanged && state.feedbackEvents.length === 0) {
+    const wasEnemyDodgeEarly = state.feedbackEvents.some(
+      (e) => e.kind === 'dodged' && e.target === 'enemy',
+    )
+    const wouldAnimateWithoutHpChange =
+      playerPhaseAnimates({
+        attackDelta: 0,
+        wasEnemyDodge: wasEnemyDodgeEarly,
+        feedbackEvents: state.feedbackEvents,
+        pendingResolve: state.pendingResolve,
+      }) ||
+      enemyPhaseAnimates({
+        playerDelta: 0,
+        wasEnemyDodge: wasEnemyDodgeEarly,
+        feedbackEvents: state.feedbackEvents,
+        pendingResolve: state.pendingResolve,
+      })
+    if (hpUnchanged && state.feedbackEvents.length === 0 && !wouldAnimateWithoutHpChange) {
       return
     }
 
@@ -1586,7 +1644,8 @@ export function BattleScreen({
     const enemyActedFirst = state.feedbackEnemyActedFirst
 
     const skill = lastPlayerMoveSkillRef.current
-    const PLAYER_LUNGE_MS = playerLungeMsForSkill(skill)
+    const atkFx = playerAtkFxForMove(state.pendingResolve?.r.pMove, skill)
+    const PLAYER_LUNGE_MS = playerLungeMsForSkill(atkFx === 'attack' ? 'attack' : skill)
     const ENEMY_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
     const HIT_FLASH_MS = BATTLE_HIT_FLASH_MS
     const HIT_MS = BATTLE_HIT_MS
@@ -1614,7 +1673,7 @@ export function BattleScreen({
       const revealAt = schedule.enemyDirectAt
       const id = Date.now() + Math.random()
       window.setTimeout(() => {
-        setPlayerAtkFx(skill)
+        setPlayerAtkFx(atkFx)
         window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
       }, t)
       window.setTimeout(() => {
@@ -1650,7 +1709,7 @@ export function BattleScreen({
       const id = Date.now() + Math.random()
 
       window.setTimeout(() => {
-        setPlayerAtkFx(skill)
+        setPlayerAtkFx(atkFx)
         window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
       }, t)
       window.setTimeout(() => {
@@ -1849,6 +1908,7 @@ export function BattleScreen({
     let enemyEvtIdx = 0
     let playerEvtIdx = 0
     events.forEach((event) => {
+      if (!event.text) return
       const isEnemyTarget = event.target === 'enemy'
       const evtIdx = isEnemyTarget ? enemyEvtIdx++ : playerEvtIdx++
       if (FLOATER_SKIP_KINDS.has(event.kind)) return
