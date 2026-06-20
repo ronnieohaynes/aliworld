@@ -66,6 +66,7 @@ import {
   getTelegraphDisplay,
   shouldPreviewEnemyTelegraph,
   type LevelUpNotification,
+  type PendingResolve,
   type PlayerMove,
 } from '../store/battleStore'
 import {
@@ -248,6 +249,56 @@ const FLOATER_SKIP_KINDS = new Set<BattleFeedbackEvent['kind']>([
   'perfect-guard',
 ])
 
+function feedbackTargetsPlayer(events: BattleFeedbackEvent[]): boolean {
+  return events.some((e) => e.target === 'player' && e.kind !== 'xp-bonus')
+}
+
+function feedbackTargetsEnemy(events: BattleFeedbackEvent[]): boolean {
+  return events.some((e) => e.target === 'enemy')
+}
+
+function resolveIndicatesPlayerActed(pending: PendingResolve | null): boolean {
+  return pending?.r.playerActed === true
+}
+
+function resolveIndicatesEnemyAttack(pending: PendingResolve | null): boolean {
+  const r = pending?.r
+  if (!r || r.enemyStunned) return false
+  return r.enemyAttacks || r.rawIncoming > 0
+}
+
+/** True when the player side should play an attack/defense lunge this turn (even at 0 damage). */
+function playerPhaseAnimates(opts: {
+  attackDelta: number
+  wasEnemyDodge: boolean
+  feedbackEvents: BattleFeedbackEvent[]
+  pendingResolve: PendingResolve | null
+}): boolean {
+  if (opts.wasEnemyDodge) {
+    return resolveIndicatesPlayerActed(opts.pendingResolve) || feedbackTargetsEnemy(opts.feedbackEvents)
+  }
+  return (
+    opts.attackDelta > 0 ||
+    feedbackTargetsEnemy(opts.feedbackEvents) ||
+    resolveIndicatesPlayerActed(opts.pendingResolve)
+  )
+}
+
+/** True when the enemy side should play an attack lunge this turn (even at 0 damage). */
+function enemyPhaseAnimates(opts: {
+  playerDelta: number
+  wasEnemyDodge: boolean
+  feedbackEvents: BattleFeedbackEvent[]
+  pendingResolve: PendingResolve | null
+}): boolean {
+  if (opts.wasEnemyDodge) return false
+  return (
+    opts.playerDelta > 0 ||
+    feedbackTargetsPlayer(opts.feedbackEvents) ||
+    resolveIndicatesEnemyAttack(opts.pendingResolve)
+  )
+}
+
 type StatusTag = {
   label: string
   turns: number
@@ -331,6 +382,8 @@ function computeInstantPhaseLogRevealDelay(opts: {
   playerDelta: number
   bleedDelta: number
   wasEnemyDodge: boolean
+  playerPhaseAnimates: boolean
+  enemyPhaseAnimates: boolean
 }): number {
   const schedule = computeDamageRevealSchedule({
     playerLungeMs: opts.playerLungeMs,
@@ -340,18 +393,18 @@ function computeInstantPhaseLogRevealDelay(opts: {
     playerDelta: opts.playerDelta,
     bleedDelta: opts.phase2Only ? opts.bleedDelta : 0,
     wasEnemyDodge: opts.wasEnemyDodge,
+    playerPhaseAnimates: opts.playerPhaseAnimates,
+    enemyPhaseAnimates: opts.enemyPhaseAnimates,
   })
-  const pDirect = opts.attackDelta > 0 && !opts.wasEnemyDodge
-  const eDirect = opts.playerDelta > 0 && !opts.wasEnemyDodge
   const impacts = computeImpactTimings({
     playerLungeMs: opts.playerLungeMs,
     enemyLungeMs: opts.enemyLungeMs,
     enemyActedFirst: opts.enemyActedFirst,
     runItBack: opts.runItBack,
-    hasEnemyTargetEvents: pDirect,
-    hasPlayerTargetEvents: eDirect,
-    playerDealsDirectDamage: pDirect,
-    enemyDealsDamage: eDirect,
+    hasEnemyTargetEvents: opts.playerPhaseAnimates,
+    hasPlayerTargetEvents: opts.enemyPhaseAnimates,
+    playerDealsDirectDamage: opts.playerPhaseAnimates,
+    enemyDealsDamage: opts.enemyPhaseAnimates,
   })
 
   if (opts.phase2Only) {
@@ -551,15 +604,19 @@ function computeDamageRevealSchedule(opts: {
   playerDelta: number
   bleedDelta: number
   wasEnemyDodge: boolean
+  playerPhaseAnimates?: boolean
+  enemyPhaseAnimates?: boolean
 }): DamageRevealSchedule {
-  const playerDealsDirectDamage = opts.attackDelta > 0 && !opts.wasEnemyDodge
-  const enemyDealsDamage = opts.playerDelta > 0 && !opts.wasEnemyDodge
+  const playerAnimates =
+    opts.playerPhaseAnimates ?? (opts.attackDelta > 0 && !opts.wasEnemyDodge)
+  const enemyAnimates =
+    opts.enemyPhaseAnimates ?? (opts.playerDelta > 0 && !opts.wasEnemyDodge)
   const playerRevealOffset = floaterDelayAfterLungeStart(opts.playerLungeMs)
   const enemyRevealOffset = floaterDelayAfterLungeStart(opts.enemyLungeMs)
 
   let playerPhaseStart = 0
   let enemyPhaseStart = 0
-  if (playerDealsDirectDamage && enemyDealsDamage) {
+  if (playerAnimates && enemyAnimates) {
     if (opts.enemyActedFirst) {
       enemyPhaseStart = 0
       playerPhaseStart = enemyRevealOffset
@@ -567,28 +624,31 @@ function computeDamageRevealSchedule(opts: {
       playerPhaseStart = 0
       enemyPhaseStart = playerRevealOffset
     }
+  } else if (playerAnimates) {
+    playerPhaseStart = 0
+  } else if (enemyAnimates) {
+    enemyPhaseStart = opts.enemyActedFirst ? 0 : 0
   }
 
-  const playerPhaseLen = playerPhaseStart + playerRevealOffset
-  const enemyPhaseLen = enemyPhaseStart + enemyRevealOffset
+  const playerPhaseLen = playerPhaseStart + (playerAnimates ? playerRevealOffset : 0)
+  const enemyPhaseLen = enemyPhaseStart + (enemyAnimates ? enemyRevealOffset : 0)
 
-  const enemyDirectAt = playerDealsDirectDamage
-    ? playerPhaseStart + playerRevealOffset
-    : null
+  const enemyDirectAt =
+    playerAnimates && !opts.wasEnemyDodge ? playerPhaseStart + playerRevealOffset : null
 
   let playerDirectAt: number | null = null
   if (opts.wasEnemyDodge && opts.playerDelta > 0) {
     const counterStart = opts.playerLungeMs + BATTLE_DODGE_MS
     playerDirectAt = counterStart + floaterDelayAfterLungeStart(opts.enemyLungeMs)
-  } else if (enemyDealsDamage) {
+  } else if (enemyAnimates) {
     playerDirectAt = enemyPhaseStart + enemyRevealOffset
   }
 
   let bleedAt: number | null = null
   if (opts.bleedDelta > 0) {
     const lastPhaseEnd = Math.max(
-      playerDealsDirectDamage ? playerPhaseLen : 0,
-      enemyDealsDamage ? enemyPhaseLen : 0,
+      playerAnimates ? playerPhaseLen : 0,
+      enemyAnimates ? enemyPhaseLen : 0,
       opts.wasEnemyDodge && opts.playerDelta > 0
         ? opts.playerLungeMs + BATTLE_DODGE_MS + floaterDelayAfterLungeStart(opts.enemyLungeMs)
         : 0,
@@ -1488,16 +1548,29 @@ export function BattleScreen({
   }, [state.resolveStep, state.pendingResolve, state.enemyHp])
 
   useEffect(() => {
-    if (
+    const hpUnchanged =
       prevEnemyHpRef.current === state.enemyHp &&
       prevPlayerHpRef.current === state.playerHp
-    ) {
+    if (hpUnchanged && state.feedbackEvents.length === 0) {
       return
     }
 
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp
     const playerDelta = prevPlayerHpRef.current - state.playerHp
-    if (enemyDelta > 0 || playerDelta > 0) {
+    const wasEnemyDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const playerAnimates = playerPhaseAnimates({
+      attackDelta: Math.max(0, enemyDelta - Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))),
+      wasEnemyDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
+    const enemyAnimates = enemyPhaseAnimates({
+      playerDelta,
+      wasEnemyDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
+    if (enemyDelta > 0 || playerDelta > 0 || playerAnimates || enemyAnimates) {
       turnHadDamageRef.current = true
     }
     if (enemyDelta !== 0) clearHpAnimTimeouts('enemy')
@@ -1510,7 +1583,6 @@ export function BattleScreen({
     const scheduleEnemyHp = (fn: () => void, delayMs: number) => scheduleHpTimeout('enemy', fn, delayMs)
     const schedulePlayerHp = (fn: () => void, delayMs: number) => scheduleHpTimeout('player', fn, delayMs)
 
-    const wasEnemyDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
     const enemyActedFirst = state.feedbackEnemyActedFirst
 
     const skill = lastPlayerMoveSkillRef.current
@@ -1522,8 +1594,6 @@ export function BattleScreen({
     const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
     const attackDelta = Math.max(0, enemyDelta - bleedDelta)
     const afterAttackHp = fromEnemyHp - attackDelta
-    const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
-    const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
 
     const schedule = computeDamageRevealSchedule({
       playerLungeMs: PLAYER_LUNGE_MS,
@@ -1533,11 +1603,13 @@ export function BattleScreen({
       playerDelta,
       bleedDelta,
       wasEnemyDodge,
+      playerPhaseAnimates: playerAnimates,
+      enemyPhaseAnimates: enemyAnimates,
     })
     const { playerPhaseStart, enemyPhaseStart } = schedule
 
-    // --- Player attacks enemy (direct damage, not dodge) ---
-    if (playerDealsDirectDamage && schedule.enemyDirectAt != null) {
+    // --- Player attacks enemy (including 0-damage hits and blocks) ---
+    if (playerAnimates && !wasEnemyDodge && schedule.enemyDirectAt != null) {
       const t = playerPhaseStart
       const revealAt = schedule.enemyDirectAt
       const id = Date.now() + Math.random()
@@ -1550,13 +1622,15 @@ export function BattleScreen({
         window.setTimeout(() => setEnemyHitFx(false), HIT_MS)
       }, t + PLAYER_LUNGE_MS + HIT_FLASH_MS)
       scheduleEnemyHp(() => {
-        animateHpTicks(
-          scheduleEnemyHp,
-          setDisplayedEnemyHp,
-          fromEnemyHp,
-          afterAttackHp,
-          () => displayedEnemyHpRef.current,
-        )
+        if (attackDelta > 0) {
+          animateHpTicks(
+            scheduleEnemyHp,
+            setDisplayedEnemyHp,
+            fromEnemyHp,
+            afterAttackHp,
+            () => displayedEnemyHpRef.current,
+          )
+        }
         if (attackDelta > 0) {
           setFloaters((f) => [
             ...f,
@@ -1568,44 +1642,48 @@ export function BattleScreen({
       clampBattleScrollDrift()
     }
 
-    // --- Enemy dodged → counter sequence ---
-    if (playerDelta > 0 && wasEnemyDodge && schedule.playerDirectAt != null && fromEnemyHp > 0 && state.enemyHp > 0) {
+    // --- Enemy dodged → optional counter sequence ---
+    if (wasEnemyDodge && playerAnimates && fromEnemyHp > 0 && state.enemyHp > 0) {
       const DODGE_DURATION = BATTLE_DODGE_MS
       const COUNTER_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
-      const revealAt = schedule.playerDirectAt
+      const t = playerPhaseStart
       const id = Date.now() + Math.random()
 
-      setPlayerAtkFx(skill)
-      window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
-
+      window.setTimeout(() => {
+        setPlayerAtkFx(skill)
+        window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
+      }, t)
       window.setTimeout(() => {
         setEnemyDodgeFx(true)
         window.setTimeout(() => setEnemyDodgeFx(false), DODGE_DURATION)
-      }, PLAYER_LUNGE_MS)
+      }, t + PLAYER_LUNGE_MS)
 
-      const counterStart = PLAYER_LUNGE_MS + DODGE_DURATION
-      scheduleEnemyAttackLunge(counterStart, COUNTER_LUNGE_MS)
-      window.setTimeout(() => {
-        setPlayerHitFx(true)
-        window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
-      }, counterStart + COUNTER_LUNGE_MS + HIT_FLASH_MS)
-      schedulePlayerHp(() => {
-        animateHpTicks(
-          schedulePlayerHp,
-          setDisplayedPlayerHp,
-          fromPlayerHp,
-          state.playerHp,
-          () => displayedPlayerHpRef.current,
-        )
-        setFloaters((f) => [
-          ...f,
-          { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
-        ])
-        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
-      }, revealAt)
+      if (playerDelta > 0 && schedule.playerDirectAt != null) {
+        const revealAt = schedule.playerDirectAt
+        const counterStart = t + PLAYER_LUNGE_MS + DODGE_DURATION
+        scheduleEnemyAttackLunge(counterStart, COUNTER_LUNGE_MS)
+        window.setTimeout(() => {
+          setPlayerHitFx(true)
+          window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
+        }, counterStart + COUNTER_LUNGE_MS + HIT_FLASH_MS)
+        schedulePlayerHp(() => {
+          animateHpTicks(
+            schedulePlayerHp,
+            setDisplayedPlayerHp,
+            fromPlayerHp,
+            state.playerHp,
+            () => displayedPlayerHpRef.current,
+          )
+          setFloaters((f) => [
+            ...f,
+            { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+          ])
+          window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+        }, revealAt)
+      }
       clampBattleScrollDrift()
     } else if (
-      enemyDealsDamage &&
+      enemyAnimates &&
       schedule.playerDirectAt != null &&
       fromEnemyHp > 0 &&
       state.enemyHp > 0
@@ -1620,18 +1698,20 @@ export function BattleScreen({
         window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
       }, t + ENEMY_LUNGE_MS + HIT_FLASH_MS)
       schedulePlayerHp(() => {
-        animateHpTicks(
-          schedulePlayerHp,
-          setDisplayedPlayerHp,
-          fromPlayerHp,
-          state.playerHp,
-          () => displayedPlayerHpRef.current,
-        )
-        setFloaters((f) => [
-          ...f,
-          { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
-        ])
-        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+        if (playerDelta > 0) {
+          animateHpTicks(
+            schedulePlayerHp,
+            setDisplayedPlayerHp,
+            fromPlayerHp,
+            state.playerHp,
+            () => displayedPlayerHpRef.current,
+          )
+          setFloaters((f) => [
+            ...f,
+            { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+          ])
+          window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+        }
       }, revealAt)
       clampBattleScrollDrift()
     }
@@ -1666,6 +1746,8 @@ export function BattleScreen({
     state.playerHp,
     state.feedbackBleedDamage,
     state.feedbackEvents,
+    state.feedbackSeq,
+    state.pendingResolve,
     clampBattleScrollDrift,
     clearHpAnimTimeouts,
     scheduleHpTimeout,
@@ -1676,7 +1758,6 @@ export function BattleScreen({
     if (state.feedbackSeq === prevFeedbackSeqRef.current) return
     prevFeedbackSeqRef.current = state.feedbackSeq
 
-    turnHadDamageRef.current = false
     setPostDamageMoveDelayActive(false)
 
     const events = state.feedbackEvents
@@ -1691,10 +1772,18 @@ export function BattleScreen({
     const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
     const attackDelta = Math.max(0, enemyDelta - bleedDelta)
     const wasEnemyDodge = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
-    const hasEnemyTargetEvents = events.some((e) => e.target === 'enemy')
-    const hasPlayerTargetEvents = events.some((e) => e.target === 'player')
-    const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
-    const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
+    const playerAnimates = playerPhaseAnimates({
+      attackDelta,
+      wasEnemyDodge,
+      feedbackEvents: events,
+      pendingResolve: state.pendingResolve,
+    })
+    const enemyAnimates = enemyPhaseAnimates({
+      playerDelta,
+      wasEnemyDodge,
+      feedbackEvents: events,
+      pendingResolve: state.pendingResolve,
+    })
 
     const damageSchedule = computeDamageRevealSchedule({
       playerLungeMs: playerLunge,
@@ -1704,6 +1793,8 @@ export function BattleScreen({
       playerDelta,
       bleedDelta,
       wasEnemyDodge,
+      playerPhaseAnimates: playerAnimates,
+      enemyPhaseAnimates: enemyAnimates,
     })
 
     const { playerImpact, enemyImpact } = computeImpactTimings({
@@ -1711,10 +1802,10 @@ export function BattleScreen({
       enemyLungeMs: enemyLunge,
       enemyActedFirst,
       runItBack: state.runItBackMode,
-      hasEnemyTargetEvents,
-      hasPlayerTargetEvents,
-      playerDealsDirectDamage: playerDealsDirectDamage || hasEnemyTargetEvents,
-      enemyDealsDamage: enemyDealsDamage || hasPlayerTargetEvents,
+      hasEnemyTargetEvents: playerAnimates,
+      hasPlayerTargetEvents: enemyAnimates,
+      playerDealsDirectDamage: playerAnimates,
+      enemyDealsDamage: enemyAnimates,
     })
 
     if (events.some((e) => e.kind === 'dodged' && e.target === 'player') && !enemyActedFirst) {
@@ -1733,11 +1824,11 @@ export function BattleScreen({
     const playerBlocked = events.some(
       (e) => (e.kind === 'blocked' || e.kind === 'perfect-guard') && e.target === 'player',
     )
-    if (playerBlocked && !enemyActedFirst && !enemyDealsDamage && state.enemyHp > 0) {
+    if (playerBlocked && !enemyActedFirst && !enemyAnimates && state.enemyHp > 0) {
       const attackStart = computePlayerFirstEnemyAttackStart({
         playerLungeMs: playerLunge,
         runItBack: state.runItBackMode,
-        playerDealsDirectDamage,
+        playerDealsDirectDamage: playerAnimates,
       })
       scheduleEnemyAttackLunge(attackStart, enemyLunge)
       window.setTimeout(() => {
@@ -1772,7 +1863,7 @@ export function BattleScreen({
         enemyActedFirst,
         runItBack: state.runItBackMode,
         bleedAt: damageSchedule.bleedAt,
-        playerDealsDirectDamage,
+        playerDealsDirectDamage: playerAnimates,
       })
       setPendingFloaterSchedules((n) => n + 1)
       window.setTimeout(() => {
@@ -1846,6 +1937,18 @@ export function BattleScreen({
     const bDelta = Math.min(state.feedbackBleedDamage, Math.max(0, eDelta))
     const aDelta = Math.max(0, eDelta - bDelta)
     const eDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const playerAnimates = playerPhaseAnimates({
+      attackDelta: aDelta,
+      wasEnemyDodge: eDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
+    const enemyAnimates = enemyPhaseAnimates({
+      playerDelta: pDelta,
+      wasEnemyDodge: eDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
 
     const delayMs = computeInstantPhaseLogRevealDelay({
       enemyActedFirst,
@@ -1857,12 +1960,14 @@ export function BattleScreen({
       playerDelta: pDelta,
       bleedDelta: bDelta,
       wasEnemyDodge: eDodge,
+      playerPhaseAnimates: playerAnimates,
+      enemyPhaseAnimates: enemyAnimates,
     })
 
     return reveal(linesToShow, delayMs)
   // Do not depend on feedbackEvents: finalizeTurn clears them without changing log,
   // which would cancel the reveal timer and leave turn 2+ damage stuck off-screen.
-  }, [state.log, state.phase, state.resolveStep, state.feedbackBleedDamage, state.feedbackEnemyActedFirst, state.runItBackMode])
+  }, [state.log, state.phase, state.resolveStep, state.feedbackBleedDamage, state.feedbackEnemyActedFirst, state.feedbackEvents, state.pendingResolve, state.runItBackMode])
 
   // When a move is selected, the telegraph line is replaced by the name of
   // whichever side's move resolves first this turn.

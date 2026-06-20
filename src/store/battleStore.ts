@@ -159,6 +159,8 @@ export type BattleState = {
   turn: number
   upcomingMove: UpcomingMove
   combatStatus: CombatStatusState
+  /** Snapshot at turn resolve start, used to tick durations without touching newly applied status. */
+  combatStatusAtTurnStart?: CombatStatusState
   /** Turns where the player does not act (enemy free swing). */
   playerExposedTurns: number
   /** Hyperdrive-style skipped player actions. */
@@ -783,6 +785,36 @@ function appendLog(log: string[], line: string): string[] {
   return next
 }
 
+function withPlayerResolveStatuses(
+  status: CombatStatusState,
+  r: ResolveResult,
+  anchorBlocksStatus: boolean,
+): CombatStatusState {
+  return mergeResolveIntoCombatStatus(status, r, anchorBlocksStatus)
+}
+
+function withEnemyResolveStatuses(
+  status: CombatStatusState,
+  r: ResolveResult,
+  anchorBlocksStatus: boolean,
+): CombatStatusState {
+  return mergeEnemyMoveIntoCombatStatus(status, r.eMove, anchorBlocksStatus)
+}
+
+function applyPlayerResolveStatusesToWorking(
+  working: BattleState,
+  r: ResolveResult,
+): BattleState {
+  return {
+    ...working,
+    combatStatus: withPlayerResolveStatuses(
+      working.combatStatus,
+      r,
+      working.battleMove.anchorBlocksStatus,
+    ),
+  }
+}
+
 function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove' | 'playerHp' | 'enemyHp' | 'enemyMaxHp' | 'playerStats' | 'playerMoveHistory' | 'enemyMoveHistory' | 'playerExposedTurns'>): UpcomingMove {
   if (enemyLosesTurn(state.combatStatus)) return 'STUNNED'
   const forced = state.battleMove.forceEnemyMove
@@ -1080,6 +1112,7 @@ function applyPlayerResolutionPhase(
   }
 
   if (winLocked) {
+    working = applyPlayerResolveStatusesToWorking(working, r)
     return {
       enemyHp: nextEnemyHp,
       playerHp: nextPlayerHp,
@@ -1095,8 +1128,8 @@ function applyPlayerResolutionPhase(
 
   let bleedDamage = 0
   let bleedActualHpChange = 0
-  if (working.combatStatus.enemyBleed > 0) {
-    const potency = working.combatStatus.enemyBleedPotencyMult ?? 1
+  if (state.combatStatus.enemyBleed > 0) {
+    const potency = state.combatStatus.enemyBleedPotencyMult ?? 1
     let rawBleed = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT * potency))
     if (state.runItBackMode) rawBleed *= 2
     if (nextEnemyHp > 0) {
@@ -1119,6 +1152,7 @@ function applyPlayerResolutionPhase(
 
   if (nextEnemyHp <= 0) {
     nextLog = appendLog(nextLog, `${lower} is finished.`)
+    working = applyPlayerResolveStatusesToWorking(working, r)
     return {
       enemyHp: nextEnemyHp,
       playerHp: nextPlayerHp,
@@ -1131,6 +1165,8 @@ function applyPlayerResolutionPhase(
       xpBonusEvents,
     }
   }
+
+  working = applyPlayerResolveStatusesToWorking(working, r)
 
   return {
     enemyHp: nextEnemyHp,
@@ -1146,7 +1182,7 @@ function applyPlayerResolutionPhase(
 
 function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
   const battleMove = { ...state.battleMove }
-  let combatStatus = tickCombatStatus(state.combatStatus)
+  let combatStatus = tickCombatStatus(state.combatStatusAtTurnStart ?? state.combatStatus)
   combatStatus = mergeResolveIntoCombatStatus(
     combatStatus,
     r,
@@ -1234,6 +1270,7 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     turn,
     upcomingMove,
     combatStatus,
+    combatStatusAtTurnStart: undefined,
     battleMove,
     enemyHp,
     log,
@@ -1306,6 +1343,10 @@ function applySkillXpToState(
 function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number): BattleState {
   const priorLogLen = state.log.length
   let working = processTurnStart(state)
+  working = {
+    ...working,
+    combatStatusAtTurnStart: working.combatStatus,
+  }
   // Each turn's log should only show this turn's outcomes (keep death-clock lines).
   working = { ...working, log: working.log.slice(priorLogLen) }
   const eMove = state.upcomingMove !== 'STUNNED' ? state.upcomingMove as PlayerMoveId : null
@@ -1418,6 +1459,11 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
       playerHp: enemyPhase.playerHp,
       enemyHp: enemyPhase.enemyHp,
       log: enemyPhase.log,
+      combatStatus: withEnemyResolveStatuses(
+        working.combatStatus,
+        r,
+        working.battleMove.anchorBlocksStatus,
+      ),
       pendingResolve: pending,
       resolveStep: 'pause_after_first',
       phase: 'busy',
@@ -1577,6 +1623,11 @@ function applySecondResolve(state: BattleState): BattleState {
     playerHp: enemyPhase.playerHp,
     enemyHp: enemyPhase.enemyHp,
     log: enemyPhase.log,
+    combatStatus: withEnemyResolveStatuses(
+      state.combatStatus,
+      r,
+      state.battleMove.anchorBlocksStatus,
+    ),
     pendingResolve: pending,
     resolveStep: 'pause_after_second',
     phase: 'busy',
