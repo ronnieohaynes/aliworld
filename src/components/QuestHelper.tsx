@@ -3,7 +3,7 @@ import { buildQuestObjectiveContext, resolvePrimaryQuestObjective } from '../dat
 import { trackProgressEvent } from '../lib/analytics'
 import { getArtifactStoreSnapshot, subscribeArtifactStore } from '../store/artifactStore'
 import { getQuest1Revision, subscribeQuest1Store } from '../store/quest1Store'
-import { getQuest2Snapshot, subscribeQuest2Store } from '../store/quest2Store'
+import { getQuest2Revision, subscribeQuest2Store } from '../store/quest2Store'
 import { getWorldMemorySnapshot, subscribeWorldMemoryStore } from '../store/worldMemory'
 import './QuestHelper.css'
 
@@ -26,8 +26,8 @@ export function QuestHelper() {
 
   const quest2Revision = useSyncExternalStore(
     subscribeQuest2Store,
-    getQuest2Snapshot,
-    getQuest2Snapshot,
+    getQuest2Revision,
+    getQuest2Revision,
   )
 
   const objective = useMemo(() => {

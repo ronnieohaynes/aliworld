@@ -27,6 +27,8 @@ import {
   MOVE_SKILL_LADDERS,
   type PlayerMoveId,
 } from '../data/moves'
+import { MoveScaleTag } from './MoveScaleTag'
+import './MoveScaleTag.css'
 import { deriveBuildName } from '../data/buildName'
 import type { MoveSkill } from '../data/moveTypes'
 import {
@@ -101,6 +103,7 @@ type MoveLadderEntry = {
   equipped: boolean
   label: string
   description: string
+  scaleParts: ReturnType<typeof getMoveUiMeta>['scaleParts']
   unlockRequirement: string
 }
 
@@ -148,7 +151,7 @@ function buildSkillSections(
     const ceil = cumulativeXpForLevel(level + 1)
     const pct = skillXpProgressPct(level, xp)
     const moves = MOVE_SKILL_LADDERS[id].map((moveId, index) => {
-      const { label: moveLabel, description } = getMoveUiMeta(moveId)
+      const { label: moveLabel, description, scaleParts } = getMoveUiMeta(moveId)
       const def = getMoveDef(moveId)
       return {
         moveId,
@@ -157,6 +160,7 @@ function buildSkillSections(
         equipped: equipped.includes(moveId),
         label: moveLabel,
         description,
+        scaleParts,
         unlockRequirement: `${SKILL_SHORT[id]} ${def.unlockAtSkillLevel}`,
       }
     })
@@ -533,6 +537,7 @@ export function LoadoutScreen({
                             <span className="loadout-screen__move-rung">rung {move.rung}</span>
                             <span className="loadout-screen__move-name">{move.label}</span>
                             <span className="loadout-screen__move-desc">{move.description}</span>
+                            <MoveScaleTag parts={move.scaleParts} className="loadout-screen__move-scale" />
                             {!move.unlocked && (
                               <span className="loadout-screen__move-lock">
                                 {move.unlockRequirement}

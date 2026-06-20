@@ -9,7 +9,7 @@ import {
 import './DarklineScreen.css'
 
 const PLATFORM_BG_SRC = publicAsset('Assets/tileset/darkline-platform.png')
-const FADE_MS = 400
+const FADE_MS = 150
 
 type Props = {
   currentCity: CityId
