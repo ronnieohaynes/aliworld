@@ -51,6 +51,38 @@ export function DevModeConfirmModal({ kind, onConfirm, onCancel }: ConfirmModalP
   )
 }
 
+type DevModeToolbarProps = {
+  onOpenShop: () => void
+  onStartTutorial: () => void
+  canStartTutorial: () => boolean
+}
+
+export function DevModeToolbar({
+  onOpenShop,
+  onStartTutorial,
+  canStartTutorial,
+}: DevModeToolbarProps) {
+  const tutorialReady = canStartTutorial()
+  return (
+    <div className="dev-mode-toolbar" aria-label="Dev mode controls">
+      <span className="dev-mode-toolbar__badge">dev</span>
+      <button
+        type="button"
+        className="dev-mode-toolbar__tutorial"
+        title="Shift+T"
+        disabled={!tutorialReady}
+        onClick={onStartTutorial}
+      >
+        tutorial · Shift+T
+      </button>
+      <button type="button" className="dev-mode-toolbar__shop" onClick={onOpenShop}>
+        open shop
+      </button>
+    </div>
+  )
+}
+
+/** @deprecated Use DevModeToolbar */
 export function DevModeIndicator() {
   return (
     <div className="dev-mode-indicator" aria-hidden>

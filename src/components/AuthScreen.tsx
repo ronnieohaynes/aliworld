@@ -46,7 +46,7 @@ export function AuthScreen() {
             setError(result.error)
             return
           }
-          setMessage('reset link sent — check your email.')
+          setMessage('reset link sent, check your email.')
         } finally {
           setSubmitting(false)
         }
@@ -116,7 +116,7 @@ export function AuthScreen() {
 
         {mode === 'forgot' && (
           <p className="auth-screen__hint">
-            enter your email — we&apos;ll send a link to set a new password.
+            enter your email, we&apos;ll send a link to set a new password.
           </p>
         )}
 

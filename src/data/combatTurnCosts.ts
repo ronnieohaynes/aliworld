@@ -35,7 +35,7 @@ export function applyMoveCostAfterResolve(
   }
 }
 
-/** exposedTurn on the same round — player chose a move but does not act this resolve. */
+/** exposedTurn on the same round, player chose a move but does not act this resolve. */
 export function playerActsThisTurn(cost: MoveCost, isExposedTurn: boolean): boolean {
   if (isExposedTurn) return false
   if (cost.kind === 'exposedTurn') return false

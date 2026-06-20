@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
-import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, type NpcData } from '../data/npcs'
-import { isE2QuestUnlocked } from '../data/quest2Objectives'
+import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, WALKER_E2_CROWD_NPC, type NpcData } from '../data/npcs'
+import { isE2QuestUnlocked, QUEST_2_CLOSING_TEXT } from '../data/quest2Objectives'
 import { E2_ENABLED } from '../store/quest2Store'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import {
@@ -15,7 +15,18 @@ import {
   type CityConfig,
   type CityId,
 } from '../data/cityConfig'
-import { FIVE_GYM_EXTERIOR_RETURN } from '../data/gymEntrance'
+import { OCEANVIEW_GYM_ENTRANCE_ZONE } from '../data/gymEntrance'
+import { resolveDoorSpawn, DOOR_SPAWN_OFFSET } from '../data/doorSpawn'
+import { BLUE_STORE_EXIT_ZONE } from '../data/blueStoreInteriorCollision'
+import { FIVE_GYM_EXIT_ZONE } from '../data/gymInteriorCollision'
+import {
+  THEATER_EXIT_ZONE,
+} from '../data/theaterInteriorCollision'
+import { THEATER_ENTRANCE_ZONE } from '../data/theaterEntrance'
+import { THEATER_ENABLED } from '../data/theaterPremieres'
+import { refreshTheaterAttendance } from '../store/theaterStore'
+import { SOUTHSIDE_ENTRANCE_ZONE } from '../data/southsideCollision'
+import { E2_CLOSING_CRIER_NPC, E2_CLOSING_MOB_NPCS } from '../data/e2ClosingNpcs'
 import {
   FIVE_GYM1_HEAD_NPC,
   FIVE_GYM1_ID,
@@ -24,12 +35,33 @@ import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
   getGymRevision,
-  isGym5ive1Cleared,
+  getActiveGymRun,
+  getActiveGymRunCombatId,
+  isCurrentWeeklyGymCleared,
   isOceanviewGymVisited,
-  recordGym5ive1Win,
+  isWeeklyGauntletExplainerSeen,
+  advanceGymRunAfterWin,
+  clearActiveGymRun,
+  recordWeeklyGymClear,
+  resetGymRunOnLoss,
   setOceanviewGymVisited,
+  setWeeklyGauntletExplainerSeen,
+  refreshWeeklyGymCalendar,
   subscribeGymStore,
 } from '../store/gymStore'
+import {
+  getCurrentGymWeek,
+  getRetiredGymWeeks,
+  gymRunProgressLabel,
+  isGymGauntletCombatId,
+} from '../data/gymWeeks'
+import { isGymWeekScoringOpen } from '../data/gymWeekSchedule'
+import { claimGymWeekReward } from '../lib/gymWeekRewardApi'
+import { refreshPlayerGrants } from '../store/grantsStore'
+import { resolveGymBattleOptions, restartWeeklyGymRun, startWeeklyGymRun } from '../lib/weeklyGymBattle'
+import { resolveGhostBattleOptions } from '../lib/ghostTrainingBattle'
+import { isGhostCombatId } from '../data/ghostCombat'
+import { completeGhostBattle, refreshGhostTraining } from '../store/ghostTrainingStore'
 import {
   buildQuestObjectiveContext,
   isE1ArcComplete,
@@ -50,6 +82,8 @@ import {
   resetBattleTutorialSeen,
   isEpisode1TitleCardSeen,
   isTutorialPhase2Seen,
+  isXpTutorialSeen,
+  setXpTutorialSeen,
   isWalkerConverted,
   isWorldIntroSeen,
   JACLYN_NPC_ID,
@@ -69,15 +103,23 @@ import {
 import {
   CLERK_NPC_ID,
   CROWD_2_NPC_ID,
-  getQuest2Snapshot,
+  getQuest2Revision,
   isClerkConverted,
   isCrierConverted,
+  isCrierSentAhead,
   isCrowdAddressed,
+  isE2Complete,
+  isE2ClosingCrowdDismissed,
+  isE2CutscenePlayed,
   isRestockerDefeated,
   RESTOCKER_NPC_ID,
   setClerkConverted,
   setCrierConverted,
+  setCrierSentAhead,
   setCrowdAddressed,
+  setE2ClosingCrowdDismissed,
+  setE2Complete,
+  setE2CutscenePlayed,
   setRestockerDefeated,
   subscribeQuest2Store,
   TOWN_CRIER_NPC_ID,
@@ -94,12 +136,17 @@ import {
 } from '../store/musicStore'
 import { publicAsset } from '../utils/publicAsset'
 import { GameShell } from './GameShell'
-import { BattleScreen } from './BattleScreen'
+import { BattleScreen, type BattleEndTelemetry } from './BattleScreen'
 import { ArtifactAcquisitionToasts } from './ArtifactAcquisitionToast'
 import { FannyPackScreen } from './FannyPackScreen'
+import { GymLeaderboardScreen } from './GymLeaderboardScreen'
+import { GhostTrainingScreen } from './GhostTrainingScreen'
+import { TheaterScreen } from './TheaterScreen'
+import { ShopScreen } from './ShopScreen'
+import { COSMETICS_SHOP_ENABLED } from '../config/printsGate'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
-import { MenuEntryCover, type MenuTransitionTarget } from './MenuEntryCover'
+import { MenuEntryCover, MENU_TRANSITION_MS, MENU_TRANSITION_MIDPOINT_MS, type MenuTransitionTarget } from './MenuEntryCover'
 import { WorldEntryWipe } from './WorldEntryWipe'
 import { CultTransition, type CultTransitionMode } from './CultTransition'
 import { DarklineScreen } from './DarklineScreen'
@@ -111,10 +158,10 @@ import {
   subscribeCharacterStore,
 } from '../store/characterStore'
 import { performNewGameReset } from '../store/gameProgress'
-import { track } from '../lib/analytics'
-import type { PlayCutsceneOptions } from '../lib/playCutscene'
+import { trackProgressEvent } from '../lib/analytics'
+import type { CutsceneCompleteMeta, PlayCutsceneOptions } from '../lib/playCutscene'
 import { preloadYouTubeIframeApi } from '../lib/youtubeIframeApi'
-import { EPISODE_1_CAPTIONS } from '../data/episode1Captions'
+import { buildEpisodeCutsceneOptions } from '../data/episodeCutscenes'
 import { useDevControls } from '../hooks/useDevControls'
 import { CutsceneOverlay } from './CutsceneOverlay'
 import {
@@ -138,14 +185,13 @@ import {
 } from '../store/patchesStore'
 import { getSkillLabels, type SkillId } from '../store/skillStore'
 import { PatchSkillPicker } from './PatchSkillPicker'
-import { signOut } from '../store/authStore'
+import { getAuthState, signOut } from '../store/authStore'
 import { QuestHelper } from './QuestHelper'
 import {
   StartMenuScreen,
   type StartMenuAction,
   type StartMenuHandle,
 } from './StartMenuScreen'
-import { AccountSaveIndicator } from './AccountSaveIndicator'
 import { BugReportScreen } from './BugReportScreen'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
 import { ButtonSpotlightRing, GuidedTutorialOverlay } from './GuidedTutorialOverlay'
@@ -153,6 +199,7 @@ import {
   allowsStartMenuDuringLoadoutTutorial,
   blocksWorldInteractDuringLoadoutTutorial,
   LOADOUT_TUTORIAL_STEPS,
+  XP_TUTORIAL_START_STEP,
   type LoadoutTutorialTarget,
 } from '../data/loadoutTutorial'
 import {
@@ -174,7 +221,7 @@ const NARRATOR_NPC: NpcData = {
   color: '#000',
 }
 
-// b.stax / Patches feature toggle — flip back to true to re-enable.
+// b.stax / Patches feature toggle, flip back to true to re-enable.
 const PATCHES_FEATURE_ENABLED = false
 
 const B_STAX_NPC: NpcData = {
@@ -189,8 +236,9 @@ const B_STAX_NPC: NpcData = {
 const PRELUDE_QUEST_NAME = "Midnight's Story"
 const EPISODE_1_NAME = 'The Field & The Cafe'
 const EPISODE_2_NAME = 'trust the signal'
+const EPISODE_3_NAME = 'the happening'
 /** Black hold on cutscene overlay after episode clip ends (ms). */
-const EPISODE_CUTSCENE_POST_HOLD_MS = 4_000
+const EPISODE_CUTSCENE_POST_HOLD_MS = 5_000
 /** Fade cutscene remnants to full black after post-clip hold (ms). */
 const EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS = 1_500
 /** World fade-in after episode title card exits (ms). */
@@ -255,13 +303,18 @@ type DialogueState = {
   onComplete?: () => void
 }
 
+const GYM_LEADERBOARD_DISMISSED_KEY = 'aliworld:gym-leaderboard-dismissed'
+
 export function GameScreen() {
   const playerRef = useRef<PlayerHandle>(null)
   const [currentCity, setCurrentCity] = useState<CityId>('five')
   const prevCityRef = useRef<CityId | null>(null)
   const [showInterior, setShowInterior] = useState(false)
   const [showDarkline, setShowDarkline] = useState(false)
+  const [darklineEnterTransition, setDarklineEnterTransition] = useState(false)
   const [cultDarklinePhase, setCultDarklinePhase] = useState<CultTransitionMode | null>(null)
+  const cultDarklinePhaseRef = useRef<CultTransitionMode | null>(null)
+  cultDarklinePhaseRef.current = cultDarklinePhase
   const darklineExitTargetRef = useRef<CityId | 'close' | null>(null)
   const [cafeFade, setCafeFade] = useState<CafeFadePhase>('none')
   const [cafeSceneLine, setCafeSceneLine] = useState(0)
@@ -269,16 +322,25 @@ export function GameScreen() {
   const [cutsceneQuestHelperHidden, setCutsceneQuestHelperHidden] = useState(false)
   const pendingCafeVideoHandoffRef = useRef(false)
   const cafeVideoHandoffStartedRef = useRef(false)
+  const pendingE2VideoHandoffRef = useRef(false)
+  const e2VideoHandoffStartedRef = useRef(false)
+  const episodeHandoffTimerRef = useRef<number | null>(null)
+  const devForceEpisodeTitleCardsRef = useRef(false)
+  const [episodeCutsceneEnding, setEpisodeCutsceneEnding] = useState(false)
   const pendingPostE1NarrationRef = useRef(false)
   const pendingGymLossLineRef = useRef(false)
+  const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
   const pendingGymWelcomeRef = useRef(false)
+  const pendingGymLeaderboardAutoPopRef = useRef(false)
+  const crierHeraldStartedRef = useRef(false)
+  const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'return-five' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
     'visible' | 'hidden' | 'fade-in-pending' | 'fade-in'
   >('visible')
 
-  const cutsceneFlowActive = cutscene != null
+  const cutsceneFlowActive = cutscene != null || episodeCutsceneEnding
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [patchPickerOpen, setPatchPickerOpen] = useState(false)
   const patchAwardContinueRef = useRef<(() => void) | null>(null)
@@ -289,7 +351,10 @@ export function GameScreen() {
   const pendingBattleExitRef = useRef<{
     result: 'win' | 'lose' | 'draw'
     npcId: string | null
+    playerHpRatio?: number
+    telemetry?: BattleEndTelemetry
   } | null>(null)
+  const gymRunDamageTakenRef = useRef(0)
   const startMenuBtnRef = useRef<HTMLButtonElement>(null)
   const interactBtnRef = useRef<HTMLButtonElement>(null)
   const scriptBtnRef = useRef<HTMLButtonElement>(null)
@@ -302,6 +367,10 @@ export function GameScreen() {
   const [showLoadout, setShowLoadout] = useState(false)
   const [bugReportScreenshot, setBugReportScreenshot] = useState<string | null>(null)
   const [showBugReport, setShowBugReport] = useState(false)
+  const [showGymLeaderboard, setShowGymLeaderboard] = useState(false)
+  const [showGhostTraining, setShowGhostTraining] = useState(false)
+  const [showTheater, setShowTheater] = useState(false)
+  const [showShop, setShowShop] = useState(false)
   const [showStartMenu, setShowStartMenu] = useState(false)
   const [menuReturnPending, setMenuReturnPending] = useState(false)
   const [menuTransition, setMenuTransition] = useState<MenuTransitionTarget | null>(null)
@@ -312,7 +381,7 @@ export function GameScreen() {
   const [nearbyNpcId, setNearbyNpcId] = useState<string | null>(null)
   const [locationReady, setLocationReady] = useState(false)
   const pendingRestoreRef = useRef<{ city: CityId; x: number; y: number } | null>(null)
-  /** City to preload for world entry — resolved once after account hydrate. */
+  /** City to preload for world entry, resolved once after account hydrate. */
   const [bootCityId, setBootCityId] = useState<CityId | null>(null)
   const [mapTransition, setMapTransition] = useState<MapTransitionTarget | null>(null)
   const [mapTransitionReady, setMapTransitionReady] = useState(false)
@@ -338,8 +407,8 @@ export function GameScreen() {
   )
   const quest2Revision = useSyncExternalStore(
     subscribeQuest2Store,
-    getQuest2Snapshot,
-    getQuest2Snapshot,
+    getQuest2Revision,
+    getQuest2Revision,
   )
   const artifactRevision = useSyncExternalStore(
     subscribeArtifactStore,
@@ -372,7 +441,7 @@ export function GameScreen() {
     if (isE2QuestUnlocked() && POST_E2_DARKLINE_DESTINATION !== POST_E1_DARKLINE_DESTINATION) {
       dest.push(POST_E2_DARKLINE_DESTINATION)
     }
-    if (!isCrierConverted()) {
+    if (!isCrierSentAhead()) {
       return dest.filter((id) => id !== 'southside')
     }
     return dest
@@ -400,27 +469,67 @@ export function GameScreen() {
   const gymDoorPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
     void quest1Revision
+    void quest2Revision
     if (currentCity !== 'five') return null
+    if (E2_ENABLED && isE2QuestUnlocked() && !isOceanviewGymVisited()) {
+      return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
+    }
     if (!E2_ENABLED && isE1ArcComplete(buildQuestObjectiveContext())) {
-      if (isGym5ive1Cleared() || isOceanviewGymVisited()) return null
+      if (isCurrentWeeklyGymCleared() || isOceanviewGymVisited()) return null
       return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
     }
     return null
-  }, [currentCity, gymRevision, quest1Revision])
+  }, [currentCity, gymRevision, quest1Revision, quest2Revision])
 
   const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
     if (currentCity !== 'five-gym-interior') return null
-    if (isGym5ive1Cleared() || gymHeadPulseDismissed) return null
+    if (isCurrentWeeklyGymCleared() || gymHeadPulseDismissed) return null
     return { kind: 'npc', id: FIVE_GYM1_ID }
   }, [currentCity, gymHeadPulseDismissed, gymRevision])
+
+  const currentGymWeek = useMemo(() => {
+    void gymRevision
+    return getCurrentGymWeek()
+  }, [gymRevision])
+
+  const gymActiveRun = useMemo(() => {
+    void gymRevision
+    return getActiveGymRun()
+  }, [gymRevision])
+
+  const retiredGymWeeks = useMemo(() => {
+    void gymRevision
+    return getRetiredGymWeeks()
+  }, [gymRevision])
+
+  const gymScoringOpen = useMemo(() => {
+    void gymRevision
+    return isGymWeekScoringOpen()
+  }, [gymRevision])
+
+  useEffect(() => {
+    if (currentCity !== 'five-gym-interior') return
+    refreshWeeklyGymCalendar()
+    const id = window.setInterval(() => refreshWeeklyGymCalendar(), 60_000)
+    return () => window.clearInterval(id)
+  }, [currentCity])
+
+  const gymBattleOptions = useMemo(() => {
+    if (!battleNpcId) {
+      return { combatXpPolicy: 'normal' as const, battleEndHealing: 'default' as const }
+    }
+    const ghostOpts = resolveGhostBattleOptions(battleNpcId)
+    if (ghostOpts) return ghostOpts
+    return resolveGymBattleOptions(battleNpcId)
+  }, [battleNpcId])
 
   const activePulseDescriptor =
     gymHeadPulseDescriptor ?? gymDoorPulseDescriptor ?? questPulseDescriptor
 
   useEffect(() => {
     if (currentCity === 'five-gym-interior') {
-      setGymHeadPulseDismissed(isGym5ive1Cleared())
+      setGymHeadPulseDismissed(isCurrentWeeklyGymCleared())
     } else {
       setGymHeadPulseDismissed(false)
     }
@@ -434,6 +543,18 @@ export function GameScreen() {
     },
     [currentCity],
   )
+
+  useEffect(() => {
+    if (!E2_ENABLED) return
+    let cancelled = false
+    void whenAccountHydrated().then(() => {
+      if (cancelled) return
+      void refreshGhostTraining()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -483,7 +604,7 @@ export function GameScreen() {
     if (!locationReady) return
     if (prevCityRef.current === currentCity) return
     if (prevCityRef.current !== null) {
-      track('city_enter', { city: currentCity })
+      trackProgressEvent('city_enter', { city: currentCity })
     }
     prevCityRef.current = currentCity
   }, [currentCity, locationReady])
@@ -507,7 +628,7 @@ export function GameScreen() {
         window.requestAnimationFrame(() => run(attempt + 1))
         return
       }
-      console.warn('[quest transition] ref unavailable — skipping overlay')
+      console.warn('[quest transition] ref unavailable, skipping overlay')
       setQuestTransitionActive(false)
       wrapped.onComplete?.()
     }
@@ -545,10 +666,15 @@ export function GameScreen() {
         npcs = npcs.filter((npc) => npc.id !== MARK_NPC_ID)
       }
       if (isE2QuestUnlocked()) {
-        if (!isCrowdAddressed()) {
+        const e2StreetActive = isOceanviewGymVisited()
+        if (e2StreetActive && !isCrowdAddressed()) {
+          npcs = npcs.filter((npc) => npc.id !== WALKER_NPC_ID)
           npcs = [...npcs, CROWD_1_NPC, CROWD_2_NPC]
+          if (isWalkerConverted()) {
+            npcs = [...npcs, WALKER_E2_CROWD_NPC]
+          }
         }
-        if (!isCrierConverted()) {
+        if (e2StreetActive && !isCrierSentAhead()) {
           npcs = [...npcs, TOWN_CRIER_NPC]
         }
       }
@@ -556,13 +682,23 @@ export function GameScreen() {
     }
     if (currentCity === 'southside') {
       let npcs = [...baseCityConfig.npcs]
+      if (isRestockerDefeated() && !isE2Complete() && !isE2ClosingCrowdDismissed()) {
+        npcs = [...npcs, ...E2_CLOSING_MOB_NPCS]
+      }
+      return { ...baseCityConfig, npcs }
+    }
+    if (currentCity === 'blue-store-interior') {
+      let npcs = [...baseCityConfig.npcs]
       if (!isClerkConverted()) {
         npcs = npcs.filter((npc) => npc.id !== RESTOCKER_NPC_ID)
+      }
+      if (isClerkConverted()) {
+        npcs = npcs.filter((npc) => npc.id !== CLERK_NPC_ID)
       }
       return { ...baseCityConfig, npcs }
     }
     return baseCityConfig
-  }, [baseCityConfig, currentCity, markDefeated, quest2Revision])
+  }, [baseCityConfig, currentCity, markDefeated, quest1Revision, quest2Revision, gymRevision])
 
   const canOpenStartMenu = useCallback(() => {
     const tutorialMenuException = allowsStartMenuDuringLoadoutTutorial(loadoutTutorialStep)
@@ -623,6 +759,12 @@ export function GameScreen() {
     setMapTransition(null)
     setMapTransitionReady(false)
     setMapTransitionPending(false)
+    if (
+      e2ClosingPhaseRef.current === 'exit-interior' ||
+      e2ClosingPhaseRef.current === 'return-five'
+    ) {
+      e2ClosingPhaseRef.current = 'idle'
+    }
   }, [])
 
   const showConnectionToast = useCallback((message: string) => {
@@ -671,12 +813,66 @@ export function GameScreen() {
     ],
   )
 
+  const tryBeginE2ClosingMapTransition = useCallback(
+    (
+      cityId: CityId,
+      x: number,
+      y: number,
+      phase: 'exit-interior' | 'return-five',
+      facing?: MapTransitionTarget['facing'],
+      attempt = 0,
+    ) => {
+      if (mapTransitionRef.current || mapTransitionPending) {
+        if (attempt < 120) {
+          window.requestAnimationFrame(() =>
+            tryBeginE2ClosingMapTransition(cityId, x, y, phase, facing, attempt + 1),
+          )
+        } else {
+          console.error('[e2 closing] map transition timed out while', phase)
+          e2ClosingPhaseRef.current = 'idle'
+        }
+        return
+      }
+      e2ClosingPhaseRef.current = phase
+      beginMapTransition(cityId, x, y, facing)
+    },
+    [beginMapTransition, mapTransitionPending],
+  )
+
+  const queueE2ClosingSouthsideExit = useCallback(() => {
+    tryBeginE2ClosingMapTransition(
+      'southside',
+      SOUTHSIDE_EXTERIOR_RETURN.x,
+      SOUTHSIDE_EXTERIOR_RETURN.y,
+      'exit-interior',
+    )
+  }, [tryBeginE2ClosingMapTransition])
+
+  const queueE2ClosingReturnFive = useCallback(() => {
+    const fiveCfg = CITY_CONFIGS.five
+    tryBeginE2ClosingMapTransition('five', fiveCfg.spawnX, fiveCfg.spawnY, 'return-five', 'down')
+  }, [tryBeginE2ClosingMapTransition])
+
+  const preloadE2CutsceneIfNeeded = useCallback(() => {
+    if (!E2_ENABLED || isE2CutscenePlayed()) return
+    preloadYouTubeIframeApi()
+  }, [])
+
   const handleMapTransitionMidpoint = useCallback(() => {
     const target = mapTransitionRef.current
     if (!target) return
     if (target.cityId === 'five-gym-interior' && !isOceanviewGymVisited()) {
       setOceanviewGymVisited()
       pendingGymWelcomeRef.current = true
+    }
+    if (target.cityId === 'five-gym-interior') {
+      pendingGymLeaderboardAutoPopRef.current = true
+    }
+    if (target.cityId === 'southside') {
+      markCityVisited('southside')
+    }
+    if (target.cityId === 'blue-store-interior') {
+      preloadE2CutsceneIfNeeded()
     }
     setCurrentCity(target.cityId)
     playerRef.current?.setPosition(target.x, target.y)
@@ -686,7 +882,7 @@ export function GameScreen() {
     if (target.cityId !== 'blue-store-interior') {
       setLastLocation(target.cityId, target.x, target.y)
     }
-  }, [])
+  }, [preloadE2CutsceneIfNeeded])
 
   /** Leave pause flow and return to gameplay (same as choosing resume). */
   const resumeFromPauseMenu = useCallback(() => {
@@ -699,6 +895,54 @@ export function GameScreen() {
   const beginResumeTransition = useCallback(() => {
     beginMenuTransition({ kind: 'resume' })
   }, [beginMenuTransition])
+
+  const openGymLeaderboard = useCallback(() => {
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowGymLeaderboard(true)
+  }, [])
+
+  const handleGymLeaderboardClose = useCallback(() => {
+    try {
+      sessionStorage.setItem(GYM_LEADERBOARD_DISMISSED_KEY, '1')
+    } catch {
+      // ignore quota / private mode
+    }
+    setShowGymLeaderboard(false)
+  }, [])
+
+  const openGhostTraining = useCallback(() => {
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowGhostTraining(true)
+  }, [])
+
+  const handleGhostTrainingClose = useCallback(() => {
+    setShowGhostTraining(false)
+  }, [])
+
+  const openTheater = useCallback(() => {
+    if (!THEATER_ENABLED) return
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowTheater(true)
+    void refreshTheaterAttendance()
+  }, [])
+
+  const handleTheaterClose = useCallback(() => {
+    setShowTheater(false)
+  }, [])
+
+  const openCosmeticsShop = useCallback(() => {
+    if (!COSMETICS_SHOP_ENABLED) return
+    setShowStartMenu(false)
+    setMenuReturnPending(false)
+    setShowShop(true)
+  }, [])
+
+  const handleShopClose = useCallback(() => {
+    setShowShop(false)
+  }, [])
 
   const toggleStartMenu = useCallback(() => {
     console.log('[tutorial-start] toggleStartMenu enter', {
@@ -713,6 +957,7 @@ export function GameScreen() {
       console.log('[tutorial-start] toggleStartMenu guard: menuTransition')
       return
     }
+    if (showGymLeaderboard || showGhostTraining || showTheater || showShop) return
     if (showStartMenu) {
       console.log('[tutorial-start] toggleStartMenu guard: already open → resume')
       resumeFromPauseMenu()
@@ -738,11 +983,15 @@ export function GameScreen() {
     resumeFromPauseMenu,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
+    showGhostTraining,
+    showTheater,
+    showShop,
     showStartMenu,
   ])
 
   const handleFannyPack = useCallback(() => {
-    if (menuTransition || worldEntryActive || showStartMenu) return
+    if (menuTransition || worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
     if (showFannyPack) {
       if (menuReturnPending) {
         beginResumeTransition()
@@ -758,6 +1007,10 @@ export function GameScreen() {
     menuReturnPending,
     menuTransition,
     showFannyPack,
+    showGymLeaderboard,
+    showGhostTraining,
+    showTheater,
+    showShop,
     showStartMenu,
     worldEntryActive,
   ])
@@ -774,13 +1027,13 @@ export function GameScreen() {
       ) {
         return
       }
-      if (worldEntryActive || showStartMenu) return
+      if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
       e.preventDefault()
       handleFannyPack()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleFannyPack, showStartMenu])
+  }, [handleFannyPack, showStartMenu, showGymLeaderboard, showGhostTraining, showTheater, showShop])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -792,6 +1045,14 @@ export function GameScreen() {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement
       ) {
+        return
+      }
+      if (showGymLeaderboard || showGhostTraining || showTheater || showShop) {
+        e.preventDefault()
+        setShowGymLeaderboard(false)
+        setShowGhostTraining(false)
+        setShowTheater(false)
+        setShowShop(false)
         return
       }
       if (showLoadout || showFannyPack) {
@@ -833,6 +1094,10 @@ export function GameScreen() {
     menuReturnPending,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
+    showGhostTraining,
+    showTheater,
+    showShop,
     showStartMenu,
     menuTransition,
   ])
@@ -861,14 +1126,44 @@ export function GameScreen() {
     setBattleWipePhase('enter')
   }, [battleNpcId, battleWipePhase])
 
-  // ── DEV ONLY: K spawns the sparring dummy — REMOVE BEFORE LAUNCH ──
+  const startGhostTrainingBattle = useCallback(
+    (combatId: string) => {
+      setShowGhostTraining(false)
+      startNpcBattle(combatId)
+    },
+    [startNpcBattle],
+  )
+
+  const startGymGauntletBattle = useCallback(
+    (weekId: string, practice: boolean) => {
+      const combatId = startWeeklyGymRun(weekId, practice)
+      if (!combatId) return
+      gymRunDamageTakenRef.current = 0
+      trackProgressEvent('gym_run_start', {
+        weekId,
+        practice,
+      })
+      setGymTrainerChoiceOpen(false)
+      startNpcBattle(combatId)
+    },
+    [startNpcBattle],
+  )
+
+  const continueGymGauntletBattle = useCallback(() => {
+    const combatId = getActiveGymRunCombatId()
+    if (!combatId) return
+    setGymTrainerChoiceOpen(false)
+    startNpcBattle(combatId)
+  }, [startNpcBattle])
+
+  // ── DEV ONLY: K spawns the sparring dummy, REMOVE BEFORE LAUNCH ──
   const startDevSparBattle = useCallback(() => {
     if (battleNpcId || battleWipePhase) return
     setDialogue(null)
     setBattleReady(false)
     setBattleNpcId(DEV_SPAR_NPC_ID)
     setBattleWipePhase('enter')
-    console.log('dev spar — remove before launch')
+    console.log('dev spar, remove before launch')
   }, [battleNpcId, battleWipePhase])
 
   // ── DEV ONLY: Shift+T replays the tutorial battle (walker + tutorial overlay) ──
@@ -879,7 +1174,7 @@ export function GameScreen() {
     setBattleReady(false)
     setBattleNpcId(WALKER_NPC_ID)
     setBattleWipePhase('enter')
-    console.log('dev tutorial battle — walker fight with tutorial overlay')
+    console.log('dev tutorial battle, walker fight with tutorial overlay')
   }, [battleNpcId, battleWipePhase])
 
   const canSpawnDevSpar = useCallback(() => {
@@ -897,6 +1192,10 @@ export function GameScreen() {
       !showStartMenu &&
       !showLoadout &&
       !showFannyPack &&
+      !showGymLeaderboard &&
+      !showGhostTraining &&
+      !showTheater &&
+      !showShop &&
       cafeFade !== 'scene'
     )
   }, [
@@ -913,6 +1212,10 @@ export function GameScreen() {
     showStartMenu,
     showLoadout,
     showFannyPack,
+    showGymLeaderboard,
+    showGhostTraining,
+    showTheater,
+    showShop,
     cafeFade,
   ])
 
@@ -948,6 +1251,100 @@ export function GameScreen() {
     })
   }, [])
 
+  const showWeeklyGauntletExplainerIfNeeded = useCallback(
+    (onDone: () => void) => {
+      if (isWeeklyGauntletExplainerSeen()) {
+        onDone()
+        return
+      }
+      setWeeklyGauntletExplainerSeen()
+      showNarration(
+        ['one run. four fights, three henchmen, then the leader. lose once and you start over.'],
+        onDone,
+      )
+    },
+    [showNarration],
+  )
+
+  const playCrierHeraldDialogue = useCallback(() => {
+    if (crierHeraldStartedRef.current || isCrierSentAhead()) return
+    crierHeraldStartedRef.current = true
+    beginNpcDialogue(TOWN_CRIER_NPC, {
+      onComplete: () => {
+        setCrierSentAhead()
+        showNarration(['DARKLINE — SOUTHSIDE UNLOCKED.'])
+      },
+    })
+  }, [beginNpcDialogue, showNarration])
+
+  const finishE2Episode = useCallback(() => {
+    if (isE2Complete()) return
+    setE2Complete()
+    e2ClosingPhaseRef.current = 'idle'
+    mapTransitionRef.current = null
+    setMapTransition(null)
+    setMapTransitionReady(false)
+    setMapTransitionPending(false)
+    setQuestTransitionActive(false)
+    setDialogue(null)
+    trackProgressEvent('quest_complete', { questId: 'e2-closing' })
+    trackProgressEvent('episode_complete', { episode: 'e2' })
+  }, [])
+
+  const runE2ClosingEpisodeCards = useCallback(() => {
+    if (isE2Complete()) return
+    if (e2ClosingPhaseRef.current === 'cards') {
+      if (!questTransitionActive) {
+        finishE2Episode()
+      }
+      return
+    }
+    e2ClosingPhaseRef.current = 'cards'
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      episodeName: EPISODE_2_NAME,
+      episodeNumber: 2,
+      type: 'episode_complete',
+      onComplete: () => {
+        window.requestAnimationFrame(() => {
+          showQuestTransition({
+            questName: QUEST_2_CLOSING_TEXT,
+            type: 'quest_complete',
+            onComplete: finishE2Episode,
+          })
+        })
+      },
+    })
+  }, [finishE2Episode, questTransitionActive, showQuestTransition])
+
+  const runE2ClosingMobDialogue = useCallback(() => {
+    if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
+    if (isE2ClosingCrowdDismissed()) {
+      if (currentCity === 'southside') {
+        e2ClosingPhaseRef.current = 'return-five'
+        queueE2ClosingReturnFive()
+      }
+      return
+    }
+    e2ClosingPhaseRef.current = 'mob'
+    beginNpcDialogue(E2_CLOSING_CRIER_NPC, {
+      onComplete: () => {
+        setE2ClosingCrowdDismissed()
+        e2ClosingPhaseRef.current = 'return-five'
+        queueE2ClosingReturnFive()
+      },
+    })
+  }, [beginNpcDialogue, currentCity, queueE2ClosingReturnFive])
+
+  const startE2ClosingExitInterior = useCallback(() => {
+    if (isE2Complete()) return
+    if (e2ClosingPhaseRef.current !== 'idle' && e2ClosingPhaseRef.current !== 'exit-interior') {
+      return
+    }
+    e2ClosingPhaseRef.current = 'exit-interior'
+    queueE2ClosingSouthsideExit()
+  }, [queueE2ClosingSouthsideExit])
+
   const showBStaxLines = useCallback((lines: string[], onComplete?: () => void) => {
     setDialogue({
       npc: B_STAX_NPC,
@@ -965,7 +1362,7 @@ export function GameScreen() {
    * claimed or none remain).
    */
   const awardMidnightPatch = useCallback((episodeIndex: number, onDone: () => void) => {
-    // b.stax / patches feature is hidden for now — skip straight through.
+    // b.stax / patches feature is hidden for now, skip straight through.
     if (!PATCHES_FEATURE_ENABLED) {
       onDone()
       return
@@ -976,7 +1373,7 @@ export function GameScreen() {
     }
     showBStaxLines(
       [
-        "yo — that's a wrap. you earned a patch for the jacket.",
+        "yo, that's a wrap. you earned a patch for the jacket.",
         "pick a skill. this patch's xp goes straight into it.",
       ],
       () => {
@@ -1008,29 +1405,94 @@ export function GameScreen() {
     if (pendingGymWelcomeRef.current) {
       pendingGymWelcomeRef.current = false
       showNarration([
-        'welcome to the first gym. beat the leader in the gauntlet to win prizes.',
+        'one run. four fights, three henchmen, then the leader. full heal between each. one loss sends you back to the start.',
       ])
     }
-  }, [showNarration])
+    if (pendingGymLeaderboardAutoPopRef.current) {
+      pendingGymLeaderboardAutoPopRef.current = false
+      let dismissed = false
+      try {
+        dismissed = sessionStorage.getItem(GYM_LEADERBOARD_DISMISSED_KEY) === '1'
+      } catch {
+        dismissed = false
+      }
+      if (!dismissed) {
+        setShowGymLeaderboard(true)
+      }
+    }
+    if (e2ClosingPhaseRef.current === 'exit-interior') {
+      e2ClosingPhaseRef.current = 'mob'
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => runE2ClosingMobDialogue())
+      })
+      return
+    }
+    if (e2ClosingPhaseRef.current === 'return-five') {
+      runE2ClosingEpisodeCards()
+    }
+  }, [runE2ClosingEpisodeCards, runE2ClosingMobDialogue, showNarration])
 
   const showMarkVictoryNarration = useCallback(() => {
     showNarration(["the darkline's open now. take it south."])
   }, [showNarration])
 
   const finishCafeScene = useCallback(() => {
-    setCafeSceneSeen()
-    track('episode_complete', { episode: 'e1' })
+    if (!isCafeSceneSeen()) {
+      setCafeSceneSeen()
+      trackProgressEvent('quest_complete', { questId: 'e1-cafe' })
+      trackProgressEvent('episode_complete', { episode: 'e1' })
+    }
     setCafeFade('out')
   }, [])
 
+  const runE2VideoHandoffOnce = useCallback(() => {
+    const replayTitleCards = devForceEpisodeTitleCardsRef.current
+    devForceEpisodeTitleCardsRef.current = false
+
+    if (e2VideoHandoffStartedRef.current && !replayTitleCards) return
+    e2VideoHandoffStartedRef.current = true
+    setCutsceneQuestHelperHidden(false)
+    trackProgressEvent('episode_complete', { episode: 'e2' })
+    setCurrentCity('five')
+    markCityVisited('five')
+    const fiveCfg = CITY_CONFIGS.five
+    playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
+    setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
+    setEpisodeWorldReveal('hidden')
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      episodeName: EPISODE_3_NAME,
+      episodeNumber: 3,
+      type: 'episode_complete',
+      solidBlackBackdrop: true,
+      onExitFadeStart: () => {
+        setEpisodeWorldReveal('fade-in-pending')
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setEpisodeWorldReveal('fade-in'))
+        })
+      },
+      onComplete: () => {
+        setEpisodeWorldReveal('visible')
+      },
+    })
+  }, [showQuestTransition])
+
   const runCafeVideoHandoffOnce = useCallback(() => {
-    if (cafeVideoHandoffStartedRef.current) {
-      pendingPostE1NarrationRef.current = true
+    const replayTitleCards = devForceEpisodeTitleCardsRef.current
+    devForceEpisodeTitleCardsRef.current = false
+
+    if (cafeVideoHandoffStartedRef.current && !replayTitleCards) {
+      pendingPostE1NarrationRef.current = false
       finishCafeScene()
       return
     }
     cafeVideoHandoffStartedRef.current = true
     setCutsceneQuestHelperHidden(false)
+    if (!isCafeSceneSeen()) {
+      setCafeSceneSeen()
+      trackProgressEvent('quest_complete', { questId: 'e1-cafe' })
+      trackProgressEvent('episode_complete', { episode: 'e1' })
+    }
     setCurrentCity('five')
     markCityVisited('five')
     const fiveCfg = CITY_CONFIGS.five
@@ -1052,7 +1514,7 @@ export function GameScreen() {
       onComplete: () => {
         setEpisodeWorldReveal('visible')
         pendingPostE1NarrationRef.current = true
-        finishCafeScene()
+        setCafeFade('out')
       },
     })
   }, [finishCafeScene, showQuestTransition])
@@ -1061,34 +1523,110 @@ export function GameScreen() {
     runCafeVideoHandoffOnce()
   }, [runCafeVideoHandoffOnce])
 
-  const playCutscene = useCallback((opts: PlayCutsceneOptions) => {
-    setCutsceneQuestHelperHidden(true)
-    const { isEpisodeCutscene, onComplete: userOnComplete, ...rest } = opts
-    const holdMs = isEpisodeCutscene ? EPISODE_CUTSCENE_POST_HOLD_MS : 0
-    setCutscene({
-      ...rest,
-      postCompleteHoldMs: holdMs > 0 ? holdMs : undefined,
-      postCompleteFadeToBlackMs: isEpisodeCutscene
-        ? EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS
-        : undefined,
-      onComplete: () => {
-        if (isEpisodeCutscene) {
-          setE1CutscenePlayed()
-          pendingCafeVideoHandoffRef.current = true
-          return
-        }
-        setCutsceneQuestHelperHidden(false)
-        userOnComplete?.()
-      },
-    })
+  const clearEpisodeHandoffTimer = useCallback(() => {
+    if (episodeHandoffTimerRef.current != null) {
+      window.clearTimeout(episodeHandoffTimerRef.current)
+      episodeHandoffTimerRef.current = null
+    }
   }, [])
 
-  const handleCutsceneEnded = useCallback(() => {
+  const runPendingEpisodeHandoff = useCallback(() => {
+    clearEpisodeHandoffTimer()
+    setEpisodeCutsceneEnding(false)
     setCutscene(null)
-    if (!pendingCafeVideoHandoffRef.current) return
-    pendingCafeVideoHandoffRef.current = false
-    awardMidnightPatch(1, runCafeVideoHandoffOnce)
-  }, [awardMidnightPatch, runCafeVideoHandoffOnce])
+
+    if (pendingCafeVideoHandoffRef.current) {
+      pendingCafeVideoHandoffRef.current = false
+      setE1CutscenePlayed()
+      awardMidnightPatch(1, runCafeVideoHandoffOnce)
+      return
+    }
+    if (pendingE2VideoHandoffRef.current) {
+      pendingE2VideoHandoffRef.current = false
+      setE2CutscenePlayed()
+      awardMidnightPatch(2, runE2VideoHandoffOnce)
+    }
+  }, [
+    awardMidnightPatch,
+    clearEpisodeHandoffTimer,
+    runCafeVideoHandoffOnce,
+    runE2VideoHandoffOnce,
+  ])
+
+  const playCutscene = useCallback(
+    (opts: PlayCutsceneOptions) => {
+      clearEpisodeHandoffTimer()
+      setEpisodeCutsceneEnding(false)
+      pendingCafeVideoHandoffRef.current = false
+      pendingE2VideoHandoffRef.current = false
+      setCutsceneQuestHelperHidden(true)
+      const {
+        isEpisodeCutscene,
+        episodeHandoff,
+        devEpisodePreview,
+        onComplete: userOnComplete,
+        ...rest
+      } = opts
+      const isEpisode = isEpisodeCutscene || episodeHandoff != null
+      if (devEpisodePreview) {
+        devForceEpisodeTitleCardsRef.current = true
+      }
+      if (episodeHandoff === 1) {
+        cafeVideoHandoffStartedRef.current = false
+      } else if (episodeHandoff === 2) {
+        e2VideoHandoffStartedRef.current = false
+      }
+      const holdMs = isEpisode ? EPISODE_CUTSCENE_POST_HOLD_MS : 0
+      const fadeMs = isEpisode ? EPISODE_CUTSCENE_POST_FADE_TO_BLACK_MS : 0
+      setCutscene({
+        ...rest,
+        isEpisodeCutscene: isEpisode,
+        episodeHandoff,
+        postCompleteHoldMs: holdMs > 0 ? holdMs : undefined,
+        postCompleteFadeToBlackMs: fadeMs > 0 ? fadeMs : undefined,
+        onComplete: (meta?: CutsceneCompleteMeta) => {
+          if (episodeHandoff === 1 || episodeHandoff === 2) {
+            setEpisodeCutsceneEnding(true)
+            if (episodeHandoff === 1) {
+              pendingCafeVideoHandoffRef.current = true
+            } else {
+              pendingE2VideoHandoffRef.current = true
+            }
+            if (meta?.userSkip) {
+              runPendingEpisodeHandoff()
+              return
+            }
+            const handoffDelayMs = holdMs + fadeMs
+            episodeHandoffTimerRef.current = window.setTimeout(
+              runPendingEpisodeHandoff,
+              handoffDelayMs,
+            )
+            return
+          }
+          setCutsceneQuestHelperHidden(false)
+          userOnComplete?.(meta)
+        },
+      })
+    },
+    [clearEpisodeHandoffTimer, runPendingEpisodeHandoff],
+  )
+
+  const handleCutsceneEnded = useCallback(() => {
+    if (
+      !pendingCafeVideoHandoffRef.current &&
+      !pendingE2VideoHandoffRef.current
+    ) {
+      setCutscene(null)
+      return
+    }
+    runPendingEpisodeHandoff()
+  }, [runPendingEpisodeHandoff])
+
+  useEffect(() => {
+    return () => {
+      clearEpisodeHandoffTimer()
+    }
+  }, [clearEpisodeHandoffTimer])
 
   const canPlayDevCutscene = useCallback(() => {
     return (
@@ -1106,6 +1644,8 @@ export function GameScreen() {
     cultDarklinePhase,
   ])
 
+  const canStartTutorialBattle = canSpawnDevSpar
+
   const devModeUi = useDevControls({
     playerRef,
     playCutscene,
@@ -1113,7 +1653,9 @@ export function GameScreen() {
     canToggleDevMode: canSpawnDevSpar,
     spawnDevSpar: startDevSparBattle,
     canSpawnDevSpar,
+    canStartTutorialBattle,
     startTutorialBattle,
+    openShop: openCosmeticsShop,
   })
 
   useEffect(() => {
@@ -1131,7 +1673,7 @@ export function GameScreen() {
         setCafeFade('none')
         if (pendingPostE1NarrationRef.current) {
           pendingPostE1NarrationRef.current = false
-          showNarration(["word is there's a gym opening in the 5ive. get your weight up."])
+          showNarration(["the gym's open in the 5ive. visit it and get your weight up."])
         }
       }, 400)
       return () => window.clearTimeout(t)
@@ -1145,17 +1687,7 @@ export function GameScreen() {
     const next = cafeSceneLine + 1
     if (next >= CAFE_SCENE_LINES.length) {
       if (!isE1CutscenePlayed()) {
-        playCutscene({
-          videoId: '6t83Cdmq1fM',
-          startSeconds: 112,
-          endSeconds: 204,
-          isEpisodeCutscene: true,
-          captions: EPISODE_1_CAPTIONS,
-          onComplete: () => {
-            setE1CutscenePlayed()
-            completeQuest1AfterCafe()
-          },
-        })
+        playCutscene(buildEpisodeCutsceneOptions(1))
         return
       }
       completeQuest1AfterCafe()
@@ -1200,9 +1732,9 @@ export function GameScreen() {
       if (action === 'OPEN_13GALLONS') {
         setShowInterior(true)
       } else if (action === 'OPEN_DARKLINE') {
-        if (cultDarklinePhase) return
+        if (cultDarklinePhase || darklineEnterTransition) return
         if (isMarkDefeated()) {
-          setCultDarklinePhase('enter')
+          setDarklineEnterTransition(true)
           return
         }
         if (!canApproachMark()) {
@@ -1218,40 +1750,89 @@ export function GameScreen() {
       } else if (action === 'OPEN_BLUE_STORE') {
         if (currentCity !== 'southside') return
         if (mapTransitionRef.current) return
-        if (!isCrierConverted()) {
+        if (!isCrierSentAhead()) {
           showNotYetDialogue(CLERK_NPC, 'nobody gets in until the crier moves.')
           return
         }
+        preloadE2CutsceneIfNeeded()
         {
           const interior = CITY_CONFIGS['blue-store-interior']
-          beginMapTransition(
-            'blue-store-interior',
-            interior.spawnX,
-            interior.spawnY,
+          const spawn = resolveDoorSpawn(
+            BLUE_STORE_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
           )
+          beginMapTransition('blue-store-interior', spawn.x, spawn.y)
         }
       } else if (action === 'OPEN_BLUE_STORE_EXIT') {
         if (currentCity !== 'blue-store-interior') return
         if (mapTransitionRef.current) return
-        beginMapTransition(
-          'southside',
-          SOUTHSIDE_EXTERIOR_RETURN.x,
-          SOUTHSIDE_EXTERIOR_RETURN.y,
-        )
+        {
+          const exterior = CITY_CONFIGS['southside']
+          const spawn = resolveDoorSpawn(
+            SOUTHSIDE_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('southside', spawn.x, spawn.y)
+        }
       } else if (action === 'OPEN_OCEANVIEW_GYM') {
         if (currentCity !== 'five') return
         if (mapTransitionRef.current) return
-        const interior = CITY_CONFIGS['five-gym-interior']
-        beginMapTransition('five-gym-interior', interior.spawnX, interior.spawnY, 'up')
+        {
+          const interior = CITY_CONFIGS['five-gym-interior']
+          const spawn = resolveDoorSpawn(
+            FIVE_GYM_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
+          )
+          beginMapTransition('five-gym-interior', spawn.x, spawn.y, 'up')
+        }
       } else if (action === 'OPEN_OCEANVIEW_GYM_EXIT') {
         if (currentCity !== 'five-gym-interior') return
         if (mapTransitionRef.current) return
-        beginMapTransition(
-          'five',
-          FIVE_GYM_EXTERIOR_RETURN.x,
-          FIVE_GYM_EXTERIOR_RETURN.y,
-          'down',
-        )
+        {
+          const exterior = CITY_CONFIGS['five']
+          const spawn = resolveDoorSpawn(
+            OCEANVIEW_GYM_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('five', spawn.x, spawn.y, 'down')
+        }
+      } else if (action === 'OPEN_GYM_LEADERBOARD') {
+        if (currentCity !== 'five-gym-interior') return
+        openGymLeaderboard()
+      } else if (action === 'OPEN_THEATER') {
+        if (!THEATER_ENABLED) return
+        if (currentCity !== 'five') return
+        if (mapTransitionRef.current) return
+        {
+          const interior = CITY_CONFIGS['theater-interior']
+          const spawn = resolveDoorSpawn(
+            THEATER_EXIT_ZONE,
+            -DOOR_SPAWN_OFFSET,
+            interior.collisionZones,
+          )
+          beginMapTransition('theater-interior', spawn.x, spawn.y, 'up')
+        }
+      } else if (action === 'OPEN_THEATER_EXIT') {
+        if (currentCity !== 'theater-interior') return
+        if (mapTransitionRef.current) return
+        setShowTheater(false)
+        {
+          const exterior = CITY_CONFIGS.five
+          const spawn = resolveDoorSpawn(
+            THEATER_ENTRANCE_ZONE,
+            DOOR_SPAWN_OFFSET,
+            exterior.collisionZones,
+          )
+          beginMapTransition('five', spawn.x, spawn.y, 'down')
+        }
+      } else if (action === 'OPEN_THEATER_SCREEN') {
+        if (!THEATER_ENABLED) return
+        if (currentCity !== 'theater-interior') return
+        openTheater()
       }
     },
     [
@@ -1260,6 +1841,9 @@ export function GameScreen() {
       canApproachMark,
       cultDarklinePhase,
       currentCity,
+      openGymLeaderboard,
+      openTheater,
+      preloadE2CutsceneIfNeeded,
       showMarkBlockedDialogue,
       showNotYetDialogue,
       startMarkBattle,
@@ -1299,12 +1883,17 @@ export function GameScreen() {
     setCultDarklinePhase('exit')
   }, [])
 
+  const handleDarklineEnterMidpoint = useCallback(() => {
+    setShowDarkline(true)
+  }, [])
+
+  const handleDarklineEnterComplete = useCallback(() => {
+    setDarklineEnterTransition(false)
+  }, [])
+
   const handleCultDarklineMidpoint = useCallback(() => {
-    if (cultDarklinePhase === 'enter') {
-      setShowDarkline(true)
-      return
-    }
-    if (cultDarklinePhase === 'exit') {
+    const phase = cultDarklinePhaseRef.current
+    if (phase === 'exit') {
       setShowDarkline(false)
       const target = darklineExitTargetRef.current
       if (target === 'close') {
@@ -1314,10 +1903,16 @@ export function GameScreen() {
       }
       darklineExitTargetRef.current = null
     }
-  }, [cultDarklinePhase, handleDarklineClose, handleDarklineTravel])
+  }, [handleDarklineClose, handleDarklineTravel])
 
   const handleCultDarklineComplete = useCallback(() => {
+    const phase = cultDarklinePhaseRef.current
     setCultDarklinePhase(null)
+    // Enter: keep darkline open for destination pick. Exit: midpoint already dismissed it.
+    if (phase === 'exit') {
+      setShowDarkline(false)
+      darklineExitTargetRef.current = null
+    }
   }, [])
 
   const completeAdamMp3Handoff = useCallback(() => {
@@ -1343,7 +1938,7 @@ export function GameScreen() {
         if (onComplete) onComplete()
         if (prev.npc.id === CROWD_2_NPC_ID && isE2QuestUnlocked() && !isCrowdAddressed()) {
           setCrowdAddressed()
-          track('npc_converted', { npcId: CROWD_2_NPC_ID })
+          trackProgressEvent('npc_converted', { npcId: CROWD_2_NPC_ID })
         }
         return null
       }
@@ -1401,19 +1996,38 @@ export function GameScreen() {
       return
     }
 
+    if (nearbyId === 'walker-crowd') {
+      if (!isOceanviewGymVisited()) {
+        showNotYetDialogue(WALKER_E2_CROWD_NPC, 'visit the gym first.')
+        return
+      }
+      beginNpcDialogue(WALKER_E2_CROWD_NPC)
+      return
+    }
+
     if (nearbyId === CROWD_2_NPC_ID) {
+      if (!isOceanviewGymVisited()) {
+        showNotYetDialogue(CROWD_2_NPC, 'visit the gym first.')
+        return
+      }
       beginNpcDialogue(CROWD_2_NPC)
       return
     }
 
     if (nearbyId === CROWD_1_NPC.id) {
+      if (!isOceanviewGymVisited()) {
+        showNotYetDialogue(CROWD_1_NPC, 'visit the gym first.')
+        return
+      }
       beginNpcDialogue(CROWD_1_NPC)
       return
     }
 
     if (nearbyId === TOWN_CRIER_NPC_ID) {
       if (isCrierConverted()) {
-        beginNpcDialogue(TOWN_CRIER_NPC)
+        if (!isCrierSentAhead()) {
+          playCrierHeraldDialogue()
+        }
         return
       }
       if (!isCrowdAddressed()) {
@@ -1425,8 +2039,8 @@ export function GameScreen() {
     }
 
     if (nearbyId === CLERK_NPC_ID) {
-      if (currentCity !== 'southside') return
-      if (!isCrierConverted()) {
+      if (currentCity !== 'blue-store-interior') return
+      if (!isCrierSentAhead()) {
         showNotYetDialogue(CLERK_NPC, 'the crier has to go first.')
         return
       }
@@ -1434,11 +2048,13 @@ export function GameScreen() {
         beginNpcDialogue(CLERK_NPC)
         return
       }
+      preloadE2CutsceneIfNeeded()
       beginNpcDialogue(CLERK_NPC, { onComplete: () => startNpcBattle(CLERK_NPC_ID) })
       return
     }
 
     if (nearbyId === RESTOCKER_NPC_ID) {
+      if (currentCity !== 'blue-store-interior') return
       if (!isClerkConverted()) {
         showNotYetDialogue(RESTOCKER_NPC, 'get through the clerk first.')
         return
@@ -1470,6 +2086,8 @@ export function GameScreen() {
     showNotYetDialogue,
     startMarkBattle,
     startNpcBattle,
+    playCrierHeraldDialogue,
+    preloadE2CutsceneIfNeeded,
   ])
 
   const handleInteract = useCallback(() => {
@@ -1489,7 +2107,7 @@ export function GameScreen() {
       advanceDialogue()
       return
     }
-    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout)
+    if (battleWipePhase || menuTransition || battleNpcId || showFannyPack || showLoadout || showGymLeaderboard || showGhostTraining || showTheater || showShop)
       return
     openNearbyNpcDialogue()
   }, [
@@ -1504,6 +2122,7 @@ export function GameScreen() {
     battleNpcId,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     menuTransition,
     worldEntryActive,
@@ -1514,7 +2133,7 @@ export function GameScreen() {
     if (cutsceneFlowActive || questTransitionActive) return
     if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
-    if (worldEntryActive || showStartMenu) return
+    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -1562,6 +2181,10 @@ export function GameScreen() {
         showStartMenu ||
         showLoadout ||
         showFannyPack ||
+        showGymLeaderboard ||
+        showGhostTraining ||
+        showTheater ||
+        showShop ||
         battleNpcId ||
         battleWipePhase ||
         menuTransition
@@ -1584,6 +2207,7 @@ export function GameScreen() {
     menuTransition,
     showFannyPack,
     showLoadout,
+    showGymLeaderboard,
     showStartMenu,
     worldEntryActive,
   ])
@@ -1673,6 +2297,78 @@ export function GameScreen() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isE2QuestUnlocked()) return
+    if (!isCrierConverted() || isCrierSentAhead()) return
+    if (crierHeraldStartedRef.current) return
+    if (cutsceneFlowActive || questTransitionActive || dialogue || battleNpcId || battleWipePhase) {
+      return
+    }
+    playCrierHeraldDialogue()
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    cutsceneFlowActive,
+    dialogue,
+    playCrierHeraldDialogue,
+    quest2Revision,
+    questTransitionActive,
+  ])
+
+  useEffect(() => {
+    if (!isRestockerDefeated() || isE2Complete()) return
+    if (cutsceneFlowActive || battleNpcId || battleWipePhase) return
+    if (dialogue || questTransitionActive || mapTransition) return
+    if (mapTransitionPending || showDarkline || cultDarklinePhase === 'enter' || darklineEnterTransition) {
+      return
+    }
+
+    const phase = e2ClosingPhaseRef.current
+
+    if (phase === 'exit-interior' && currentCity === 'blue-store-interior') {
+      queueE2ClosingSouthsideExit()
+      return
+    }
+
+    if (phase === 'return-five' && currentCity === 'southside') {
+      queueE2ClosingReturnFive()
+      return
+    }
+
+    if (
+      isE2ClosingCrowdDismissed() &&
+      currentCity === 'five' &&
+      phase !== 'cards' &&
+      !questTransitionActive
+    ) {
+      runE2ClosingEpisodeCards()
+      return
+    }
+
+    if (phase !== 'idle') return
+
+    if (currentCity === 'blue-store-interior') {
+      startE2ClosingExitInterior()
+    }
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    cultDarklinePhase,
+    currentCity,
+    cutsceneFlowActive,
+    dialogue,
+    darklineEnterTransition,
+    mapTransition,
+    mapTransitionPending,
+    quest2Revision,
+    questTransitionActive,
+    queueE2ClosingReturnFive,
+    queueE2ClosingSouthsideExit,
+    runE2ClosingEpisodeCards,
+    showDarkline,
+    startE2ClosingExitInterior,
+  ])
+
   const handleBattleEntryMidpoint = useCallback(() => {
     setBattleReady(true)
   }, [])
@@ -1700,16 +2396,20 @@ export function GameScreen() {
     })
   }, [finishAdamTutorial])
 
-  const finishLoadoutTutorial = useCallback(() => {
+  const finishLoadoutTutorial = useCallback((step: number | null) => {
     setLoadoutTutorialStep(null)
-    setTutorialPhase2Seen()
+    if (step != null && step >= XP_TUTORIAL_START_STEP) {
+      setXpTutorialSeen()
+    } else {
+      setTutorialPhase2Seen()
+    }
   }, [])
 
   const advanceLoadoutTutorial = useCallback(() => {
     setLoadoutTutorialStep((step) => {
       if (step == null) return step
       if (step >= LOADOUT_TUTORIAL_STEPS.length - 1) {
-        finishLoadoutTutorial()
+        finishLoadoutTutorial(step)
         return null
       }
       return step + 1
@@ -1717,7 +2417,10 @@ export function GameScreen() {
   }, [finishLoadoutTutorial])
 
   const skipLoadoutTutorial = useCallback(() => {
-    finishLoadoutTutorial()
+    setLoadoutTutorialStep((step) => {
+      finishLoadoutTutorial(step)
+      return null
+    })
   }, [finishLoadoutTutorial])
 
   const handleBattleExitComplete = useCallback(() => {
@@ -1739,15 +2442,102 @@ export function GameScreen() {
     setBattleWipePhase(null)
     reportCurrentLocation()
 
+    if (exit?.npcId && isGhostCombatId(exit.npcId)) {
+      void completeGhostBattle(exit.result, { playerHpRatio: exit.playerHpRatio }).then((res) => {
+        if (!res || exit.result !== 'win') return
+        if (res.fightTier === 'full' && res.progressAwarded) {
+          showNarration([
+            `ghost cleared. +${res.fighterPassiveXp} bonus xp — full prize.`,
+          ])
+        } else if (res.fightTier === 'grind' && res.fighterPassiveXp > 0) {
+          showNarration([`grind win. +${res.fighterPassiveXp} training xp.`])
+        } else if (res.fightTier === 'champion' && res.fighterPassiveXp > 0) {
+          showNarration([`champion down. +${res.fighterPassiveXp} bonus xp.`])
+        }
+      })
+    }
+
     if (pendingGymLossLineRef.current) {
       pendingGymLossLineRef.current = false
-      showNotYetDialogue(FIVE_GYM1_HEAD_NPC, "come back when you're ready.")
+      const lossLine = getCurrentGymWeek().leader.dialogue.loss
+      showNotYetDialogue(FIVE_GYM1_HEAD_NPC, lossLine)
+    }
+
+    if (exit?.result === 'win' && exit.npcId && isGymGauntletCombatId(exit.npcId)) {
+      const chain = pendingGymChainRef.current
+      pendingGymChainRef.current = null
+      if (chain) {
+        showNarration([chain.progressLabel], () => {
+          window.requestAnimationFrame(() => startNpcBattle(chain.nextNpcId))
+        })
+        return
+      }
+
+      const clearResult = recordWeeklyGymClear()
+      if (clearResult) {
+        trackProgressEvent('gym_run_end', {
+          outcome: 'clear',
+          weekId: clearResult.weekId,
+          practice: false,
+          streak: clearResult.streak,
+          noLoss: true,
+          cleanRun: gymRunDamageTakenRef.current <= 0,
+          damageTaken: gymRunDamageTakenRef.current,
+        })
+        trackProgressEvent('gym_week_clear', {
+          weekId: clearResult.weekId,
+          streak: clearResult.streak,
+          cleanRun: gymRunDamageTakenRef.current <= 0,
+        })
+        void claimGymWeekReward({
+          weekId: clearResult.weekId,
+          streak: clearResult.streak,
+        })
+          .then(() => refreshPlayerGrants())
+          .catch((err) => {
+            console.error('[gym-week-reward]', err instanceof Error ? err.message : String(err))
+          })
+        showNarration(
+          [`week ${clearResult.weekId} cleared. xp and badge on the board, come back next week.`],
+        )
+        gymRunDamageTakenRef.current = 0
+      } else if (getActiveGymRun()?.practice) {
+        const activePracticeRun = getActiveGymRun()
+        if (activePracticeRun) {
+          trackProgressEvent('gym_run_end', {
+            outcome: 'clear',
+            weekId: activePracticeRun.weekId,
+            practice: true,
+            noLoss: true,
+            cleanRun: gymRunDamageTakenRef.current <= 0,
+            damageTaken: gymRunDamageTakenRef.current,
+          })
+        }
+        clearActiveGymRun()
+        gymRunDamageTakenRef.current = 0
+        showNarration(['practice run complete. no rewards — full gauntlet again anytime.'])
+      }
     }
 
     const startPhase2Tutorial = () => {
       if (isBattleTutorialSeen() && !isTutorialPhase2Seen()) {
         setLoadoutTutorialStep(0)
       }
+    }
+
+    if (exit?.result === 'win' && exit.npcId === TOWN_CRIER_NPC_ID && !isCrierSentAhead()) {
+      playCrierHeraldDialogue()
+    }
+
+    if (exit?.result === 'win' && exit.npcId === CLERK_NPC_ID && !isE2CutscenePlayed()) {
+      preloadE2CutsceneIfNeeded()
+      playCutscene(buildEpisodeCutsceneOptions(2))
+      return
+    }
+
+    if (exit?.result === 'win' && exit.npcId === RESTOCKER_NPC_ID && !isE2Complete()) {
+      startE2ClosingExitInterior()
+      return
     }
 
     if (exit?.result === 'win' && exit.npcId === WALKER_NPC_ID) {
@@ -1766,63 +2556,137 @@ export function GameScreen() {
       }
       startPhase2Tutorial()
     }
-  }, [reportCurrentLocation, showNotYetDialogue, showQuestTransition])
+  }, [
+    playCrierHeraldDialogue,
+    playCutscene,
+    preloadE2CutsceneIfNeeded,
+    reportCurrentLocation,
+    showNotYetDialogue,
+    showNarration,
+    showQuestTransition,
+    startE2ClosingExitInterior,
+    startNpcBattle,
+  ])
 
   const handleWinPayoff = useCallback((npcId: string) => {
     if (isDevSparNpcId(npcId)) return
     if (npcId === WALKER_NPC_ID) {
       setWalkerConverted()
-      track('npc_converted', { npcId: WALKER_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: WALKER_NPC_ID })
     }
     if (npcId === JACLYN_NPC_ID) {
       setJaclynConverted()
-      track('npc_converted', { npcId: JACLYN_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: JACLYN_NPC_ID })
     }
     if (npcId === MARK_NPC_ID) {
       setMarkDefeated()
       collectArtifact('subway-pass')
-      track('npc_converted', { npcId: MARK_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: MARK_NPC_ID })
     }
     if (npcId === TOWN_CRIER_NPC_ID) {
       setCrierConverted()
-      track('npc_converted', { npcId: TOWN_CRIER_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: TOWN_CRIER_NPC_ID })
     }
     if (npcId === CLERK_NPC_ID) {
       setClerkConverted()
-      track('npc_converted', { npcId: CLERK_NPC_ID })
+      trackProgressEvent('npc_converted', { npcId: CLERK_NPC_ID })
     }
     if (npcId === RESTOCKER_NPC_ID) {
       setRestockerDefeated()
-      track('npc_converted', { npcId: RESTOCKER_NPC_ID })
-      track('episode_complete', { episode: 'e2' })
-    }
-    if (npcId === FIVE_GYM1_ID) {
-      recordGym5ive1Win()
+      trackProgressEvent('npc_converted', { npcId: RESTOCKER_NPC_ID })
     }
   }, [])
 
   const handleBattleEnd = useCallback(
-    (result: 'win' | 'lose' | 'draw', turns: number) => {
+    (
+      result: 'win' | 'lose' | 'draw',
+      turns: number,
+      playerHpRatio?: number,
+      telemetry?: BattleEndTelemetry,
+    ) => {
       const safeTurns = Number.isFinite(turns) && turns >= 0 ? turns : 0
       const isDevSpar = battleNpcId != null && isDevSparNpcId(battleNpcId)
+      const isGhost = battleNpcId != null && isGhostCombatId(battleNpcId)
+      const isGym = battleNpcId != null && isGymGauntletCombatId(battleNpcId)
+      const storyNpcIds = new Set([
+        WALKER_NPC_ID,
+        JACLYN_NPC_ID,
+        MARK_NPC_ID,
+        TOWN_CRIER_NPC_ID,
+        CLERK_NPC_ID,
+        RESTOCKER_NPC_ID,
+      ])
+      const isStoryFight = battleNpcId != null && storyNpcIds.has(battleNpcId)
+      const opponentType = isGhost ? 'ghost' : isGym ? 'gym' : isStoryFight ? 'story' : 'world'
+      const damageTaken = Math.max(0, Math.floor(telemetry?.damageTaken ?? 0))
+      const countersLanded = Math.max(0, Math.floor(telemetry?.countersLanded ?? 0))
+      const movesUsed = Array.isArray(telemetry?.movesUsed) ? telemetry?.movesUsed ?? [] : []
+      const hpRemaining = Math.max(0, Math.floor(telemetry?.hpRemaining ?? 0))
+      const maxHp = Math.max(1, Math.floor(telemetry?.maxHp ?? 1))
+      const computedHpRatio = hpRemaining / maxHp
+      const finalHpRatio = typeof playerHpRatio === 'number' ? playerHpRatio : computedHpRatio
+      const flawless = result === 'win' && damageTaken <= 0
       if (battleNpcId && !isDevSpar) {
-        track('battle_end', { enemyId: battleNpcId, result, turns: safeTurns })
+        trackProgressEvent('battle_end', {
+          enemyId: battleNpcId,
+          result,
+          turns: safeTurns,
+          opponentType,
+          ghost: isGhost,
+          gym: isGym,
+          story: isStoryFight,
+          hpRemaining,
+          maxHp,
+          playerHpRatio: finalHpRatio,
+          damageTaken,
+          countersLanded,
+          movesUsed,
+          flawless,
+          noHit: damageTaken <= 0,
+          moveCount: movesUsed.length,
+        })
       }
       if (result === 'win' && !isDevSpar) {
         if (battleNpcId === MARK_NPC_ID) {
           showMarkVictoryNarration()
-        }
-        if (battleNpcId === RESTOCKER_NPC_ID) {
-          showNarration(["something's wrong in the field.", 'you started it.'])
+          if (!isXpTutorialSeen()) {
+            setLoadoutTutorialStep(XP_TUTORIAL_START_STEP)
+          }
         }
       }
-      if (result === 'lose' && battleNpcId === FIVE_GYM1_ID) {
+      if (isGym && telemetry) {
+        gymRunDamageTakenRef.current += damageTaken
+      }
+      if (result === 'lose' && battleNpcId && isGymGauntletCombatId(battleNpcId)) {
+        const activeRun = getActiveGymRun()
+        if (activeRun) {
+          trackProgressEvent('gym_run_end', {
+            outcome: 'loss',
+            weekId: activeRun.weekId,
+            practice: activeRun.practice,
+            failedAtFightIndex: activeRun.fightIndex,
+            damageTaken: gymRunDamageTakenRef.current,
+            noLoss: false,
+            cleanRun: gymRunDamageTakenRef.current <= 0,
+          })
+        }
         pendingGymLossLineRef.current = true
+        resetGymRunOnLoss()
+        gymRunDamageTakenRef.current = 0
       }
-      pendingBattleExitRef.current = { result, npcId: battleNpcId }
+      if (result === 'win' && battleNpcId && isGymGauntletCombatId(battleNpcId)) {
+        const advanced = advanceGymRunAfterWin()
+        if (advanced && !advanced.completed && advanced.nextCombatId) {
+          pendingGymChainRef.current = {
+            nextNpcId: advanced.nextCombatId,
+            progressLabel: gymRunProgressLabel(advanced.run.fightIndex),
+          }
+        }
+      }
+      pendingBattleExitRef.current = { result, npcId: battleNpcId, playerHpRatio, telemetry }
       setBattleWipePhase('exit')
     },
-    [battleNpcId, showMarkVictoryNarration, showNarration],
+    [battleNpcId, showMarkVictoryNarration],
   )
 
   const handleFannyPackClose = useCallback(() => {
@@ -1842,25 +2706,55 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu) return
-    if (showLoadout) {
-      handleLoadoutClose()
+    if (
+      menuTransition ||
+      worldEntryActive ||
+      showStartMenu ||
+      showGymLeaderboard ||
+      showGhostTraining ||
+      showTheater ||
+      showShop
+    ) {
       return
     }
+    if (showLoadout) {
+      if (menuReturnPending) {
+        beginResumeTransition()
+      } else {
+        setShowLoadout(false)
+      }
+      return
+    }
+    setMenuReturnPending(false)
     setShowLoadout(true)
     // Script button tap completes the waitForAction step.
     if (loadoutTutorialStep === 1) {
       setLoadoutTutorialStep(2)
+    } else if (loadoutTutorialStep === XP_TUTORIAL_START_STEP + 1) {
+      setLoadoutTutorialStep(XP_TUTORIAL_START_STEP + 2)
     }
-  }, [handleLoadoutClose, loadoutTutorialStep, showLoadout, showStartMenu, worldEntryActive])
+  }, [
+    beginResumeTransition,
+    loadoutTutorialStep,
+    menuReturnPending,
+    menuTransition,
+    showGhostTraining,
+    showGymLeaderboard,
+    showLoadout,
+    showShop,
+    showStartMenu,
+    showTheater,
+    worldEntryActive,
+  ])
 
   const beginMenuEntryTransition = useCallback(
     (screen: 'fanny-pack' | 'loadout') => {
+      if (menuTransition) return
       setShowStartMenu(false)
       setMenuReturnPending(true)
       beginMenuTransition({ kind: 'to-screen', screen })
     },
-    [beginMenuTransition],
+    [beginMenuTransition, menuTransition],
   )
 
   const handleMenuTransitionMidpoint = useCallback(() => {
@@ -1909,6 +2803,12 @@ export function GameScreen() {
           setShowBugReport(true)
           break
         }
+        case 'champions':
+          openGymLeaderboard()
+          break
+        case 'ghost-training':
+          openGhostTraining()
+          break
         case 'new-game':
           break
         case 'sign-out':
@@ -1918,7 +2818,7 @@ export function GameScreen() {
           break
       }
     },
-    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, resumeFromPauseMenu],
+    [beginMenuEntryTransition, currentCity, loadoutTutorialStep, openGhostTraining, openGymLeaderboard, resumeFromPauseMenu],
   )
 
   const handleConfirmNewGame = useCallback(() => {
@@ -1957,6 +2857,10 @@ export function GameScreen() {
     !showStartMenu &&
     !showLoadout &&
     !showFannyPack &&
+    !showGymLeaderboard &&
+    !showGhostTraining &&
+    !showTheater &&
+    !showShop &&
     !showDarkline &&
     !cultDarklinePhase &&
     !showInterior &&
@@ -1964,7 +2868,9 @@ export function GameScreen() {
 
   const showQuestPulse = showQuestHelper && cafeFade === 'none'
   const showActiveQuestPulse =
-    showQuestPulse || gymHeadPulseDescriptor != null || gymDoorPulseDescriptor != null
+    showQuestPulse ||
+    gymHeadPulseDescriptor != null ||
+    gymDoorPulseDescriptor != null
 
   const isCoarsePointer = useCoarsePointer()
   const showInteractHint =
@@ -2015,7 +2921,6 @@ export function GameScreen() {
 
   return (
     <div className="game-screen">
-      <AccountSaveIndicator />
       <GameShell
         onFannyPack={handleFannyPack}
         onScript={handleOpenLoadout}
@@ -2048,7 +2953,7 @@ export function GameScreen() {
                 : undefined
             }
           >
-          {showDebug && (
+          {showDebug && !battleNpcId && !battleWipePhase && (
             <pre id={GAME_DEBUG_HUD_ID} className="game-screen-debug-hud">
               {`direction: down\nframe: 0\nsx: 0.0  sy: 0.0\nstate: idle`}
             </pre>
@@ -2072,24 +2977,30 @@ export function GameScreen() {
               {touchTalkLabel}
             </button>
           )}
-          <GameCanvas debugHudId={showDebug ? GAME_DEBUG_HUD_ID : undefined}>
+          <GameCanvas debugHudId={showDebug && !battleNpcId && !battleWipePhase ? GAME_DEBUG_HUD_ID : undefined}>
             <Player
               ref={playerRef}
               cityConfig={cityConfig}
+              suppressDebugOverlay={!!battleNpcId || !!battleWipePhase}
               onTrigger={handleTrigger}
               onTriggerExit={handleExitTrigger}
               dialogueActive={
                 !!dialogue ||
                 worldEntryActive ||
                 !!battleWipePhase ||
-                !!cultDarklinePhase ||
+                darklineEnterTransition ||
+                cultDarklinePhase === 'enter' ||
+                showDarkline ||
                 !!menuTransition ||
                 !!mapTransition ||
                 mapTransitionPending ||
                 showFannyPack ||
                 showLoadout ||
+                showGymLeaderboard ||
+                showGhostTraining ||
+                showTheater ||
+                showShop ||
                 showStartMenu ||
-                showDarkline ||
                 cutsceneFlowActive ||
                 questTransitionActive
               }
@@ -2117,6 +3028,15 @@ export function GameScreen() {
               destinations={darklineDestinations}
               inactiveDestinations={darklineInactiveDestinations}
               onBeginExit={handleDarklineBeginExit}
+            />
+          )}
+          {darklineEnterTransition && (
+            <MenuEntryCover
+              fadeIn
+              midpointMs={MENU_TRANSITION_MIDPOINT_MS}
+              totalMs={MENU_TRANSITION_MS * 2}
+              onMidpoint={handleDarklineEnterMidpoint}
+              onComplete={handleDarklineEnterComplete}
             />
           )}
           {cultDarklinePhase && (
@@ -2172,6 +3092,8 @@ export function GameScreen() {
                 onBattleEnd={handleBattleEnd}
                 onWinPayoff={handleWinPayoff}
                 runItBack={battleRunItBack}
+                combatXpPolicy={gymBattleOptions.combatXpPolicy}
+                battleEndHealing={gymBattleOptions.battleEndHealing}
               />
             )}
             {battleWipePhase && (
@@ -2249,7 +3171,9 @@ export function GameScreen() {
             />
           ) : null}
           {loadoutTutorialStep != null &&
-          loadoutTutorialStep <= 1 &&
+          (loadoutTutorialStep <= 1 ||
+            (loadoutTutorialStep >= XP_TUTORIAL_START_STEP &&
+              loadoutTutorialStep <= XP_TUTORIAL_START_STEP + 1)) &&
           !showStartMenu &&
           !showLoadout ? (
             <GuidedTutorialOverlay<LoadoutTutorialTarget | 'none'>
@@ -2271,19 +3195,85 @@ export function GameScreen() {
               className="game-screen-gym-choice"
               role="dialog"
               aria-modal="true"
-              aria-label="Trainer"
+              aria-label="Weekly gym gauntlet"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
-                onClick={() => {
-                  setGymTrainerChoiceOpen(false)
-                  startNpcBattle(FIVE_GYM1_ID)
-                }}
-              >
-                fight
-              </button>
+              <p className="game-screen-gym-choice__title">
+                week {currentGymWeek.weekNumber} · {currentGymWeek.leader.name}
+              </p>
+              {gymActiveRun && !gymActiveRun.practice ? (
+                <p className="game-screen-gym-choice__progress">
+                  in progress, {gymRunProgressLabel(gymActiveRun.fightIndex)}
+                </p>
+              ) : null}
+              {gymActiveRun && !gymActiveRun.practice && gymScoringOpen ? (
+                <button
+                  type="button"
+                  className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
+                  onClick={() => {
+                    showWeeklyGauntletExplainerIfNeeded(() => continueGymGauntletBattle())
+                  }}
+                >
+                  continue
+                </button>
+              ) : !isCurrentWeeklyGymCleared() && gymScoringOpen ? (
+                <button
+                  type="button"
+                  className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
+                  onClick={() => {
+                    showWeeklyGauntletExplainerIfNeeded(() =>
+                      startGymGauntletBattle(currentGymWeek.id, false),
+                    )
+                  }}
+                >
+                  start gauntlet
+                </button>
+              ) : null}
+              {!gymScoringOpen && !isCurrentWeeklyGymCleared() ? (
+                <p className="game-screen-gym-choice__progress">
+                  gym week closed — check the board for final standings. practice still open.
+                </p>
+              ) : null}
+              {isCurrentWeeklyGymCleared() || !gymScoringOpen ? (
+                <button
+                  type="button"
+                  className="game-screen-gym-choice__btn"
+                  onClick={() => {
+                    showWeeklyGauntletExplainerIfNeeded(() =>
+                      startGymGauntletBattle(currentGymWeek.id, true),
+                    )
+                  }}
+                >
+                  practice
+                </button>
+              ) : null}
+              {retiredGymWeeks.map((week) => (
+                <button
+                  key={week.id}
+                  type="button"
+                  className="game-screen-gym-choice__btn"
+                  onClick={() => {
+                    showWeeklyGauntletExplainerIfNeeded(() =>
+                      startGymGauntletBattle(week.id, true),
+                    )
+                  }}
+                >
+                  practice week {week.weekNumber}
+                </button>
+              ))}
+              {gymActiveRun && !gymActiveRun.practice && gymScoringOpen ? (
+                <button
+                  type="button"
+                  className="game-screen-gym-choice__btn"
+                  onClick={() => {
+                    const combatId = restartWeeklyGymRun()
+                    if (combatId) startNpcBattle(combatId)
+                    setGymTrainerChoiceOpen(false)
+                  }}
+                >
+                  restart run
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="game-screen-gym-choice__btn"
@@ -2322,6 +3312,20 @@ export function GameScreen() {
               onLoadoutTutorialSkip={skipLoadoutTutorial}
             />
           )}
+          {showGymLeaderboard && (
+            <GymLeaderboardScreen
+              viewerHandle={getAuthState().profile?.handle ?? null}
+              onClose={handleGymLeaderboardClose}
+            />
+          )}
+          {showGhostTraining && (
+            <GhostTrainingScreen
+              onClose={handleGhostTrainingClose}
+              onFight={startGhostTrainingBattle}
+            />
+          )}
+          {showTheater && <TheaterScreen onClose={handleTheaterClose} />}
+          {showShop && <ShopScreen onClose={handleShopClose} />}
       </GameShell>
     </div>
   )

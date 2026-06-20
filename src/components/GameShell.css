@@ -1,17 +1,9 @@
-/* GameShell frame 390×844; canvas renders at same internal resolution inside the bezel viewport */
-:root {
-  --game-shell-viewport-w: 100%;
-  --game-shell-shift-x: 0px;
-}
-
+/* GameShell design canvas 390×844; scaled uniformly via ScaledDesignStage */
 .game-shell {
   box-sizing: border-box;
-  aspect-ratio: 390 / 844;
-  height: min(844px, 100dvh);
-  width: auto;
-  max-width: 100vw;
-  max-height: 100dvh;
-  margin: 0 auto;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   padding: 8px 16px 10px;
   display: grid;
   grid-template-rows: 36px 1fr 110px 40px;
@@ -27,7 +19,7 @@
 }
 
 .game-shell--no-music {
-  grid-template-rows: 36px 1fr 110px;
+  grid-template-rows: 36px 1fr 110px 40px;
 }
 
 .game-shell__topbar {
@@ -37,12 +29,25 @@
   height: 36px;
 }
 
+.game-shell__topbar-music {
+  grid-column: 2;
+  justify-self: center;
+  width: 50%;
+  min-width: 0;
+}
+
+.game-shell__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+}
+
 .game-shell__sigil {
   display: block;
 }
 
 .game-shell__brand {
-  justify-self: center;
   font-family: 'Press Start 2P', monospace;
   font-size: 7px;
   line-height: 1.4;
@@ -104,6 +109,7 @@
   align-items: center;
   column-gap: 12px;
   height: 110px;
+  margin-top: 5px;
 }
 
 .game-shell__joystick {
@@ -265,11 +271,13 @@
   grid-template-columns: 16px 1fr auto;
   align-items: center;
   gap: 6px;
+  width: 100%;
   height: 28px;
   padding: 0 6px;
   background: #0f0d1a;
   border: 1px solid #2e2840;
   border-radius: 6px;
+  box-sizing: border-box;
 }
 
 .game-shell__album-art {
@@ -368,87 +376,315 @@
   align-items: center;
 }
 
-@media (max-width: 480px) {
-  :root {
-    --game-shell-shift-x: 0px;
-    --game-shell-viewport-w: 100%;
+.game-shell--video-mode .game-shell__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  min-height: 128px;
+  padding-inline: 12px;
+}
+
+.game-shell__cutscene-controls-mount {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.game-shell--video-mode .game-shell__cutscene-controls-mount {
+  width: 272px;
+  height: 118px;
+  margin-inline: auto;
+}
+
+.game-shell__cutscene-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-shrink: 0;
+  transform-origin: center center;
+  transition: transform 220ms ease;
+}
+
+.game-shell--video-mode .game-shell__cutscene-controls {
+  gap: 20px;
+  transform: rotate(90deg);
+}
+
+.game-shell--video-mode .game-shell__cutscene-triangle {
+  width: 112px;
+  height: 98px;
+}
+
+.game-shell--video-mode .game-shell__cutscene-btn--skip {
+  top: 2px;
+}
+
+.game-shell--video-mode .game-shell__cutscene-btn--full {
+  left: 2px;
+  bottom: 2px;
+}
+
+.game-shell--video-mode .game-shell__cutscene-btn--port {
+  right: 2px;
+  bottom: 2px;
+}
+
+/* Portrait letterbox: counter-rotate labels/icons 90° counter-clockwise. */
+.game-shell--video-portrait .game-shell__cutscene-mute {
+  transform: rotate(-90deg);
+}
+
+.game-shell--video-portrait .game-shell__cutscene-mute:active {
+  transform: rotate(-90deg) translateY(1px);
+}
+
+.game-shell--video-portrait .game-shell__cutscene-playpause {
+  transform: rotate(-90deg);
+}
+
+.game-shell--video-portrait .game-shell__cutscene-playpause:active {
+  transform: rotate(-90deg) translateY(1px);
+}
+
+.game-shell--video-portrait .game-shell__cutscene-btn--full,
+.game-shell--video-portrait .game-shell__cutscene-btn--port {
+  transform: rotate(-90deg);
+}
+
+.game-shell--video-portrait .game-shell__cutscene-btn--full:active:not(:disabled),
+.game-shell--video-portrait .game-shell__cutscene-btn--port:active:not(:disabled) {
+  transform: rotate(-90deg) translateY(1px);
+}
+
+.game-shell--video-portrait .game-shell__cutscene-btn--skip {
+  transform: translateX(-50%) rotate(-90deg);
+}
+
+.game-shell--video-portrait .game-shell__cutscene-btn--skip:active:not(:disabled) {
+  transform: translateX(-50%) translateY(1px) rotate(-90deg);
+}
+
+.game-shell__cutscene-playpause {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 66px;
+  min-height: 66px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #3d3660;
+  border-radius: 50%;
+  background: #252035;
+  color: #534ab7;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 0 #1a1525;
+}
+
+.game-shell__cutscene-playpause:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #1a1525;
+  background: #2e2840;
+  color: #7f77dd;
+}
+
+.game-shell__cutscene-playpause--glow {
+  color: #afa9ec;
+  border-color: rgba(127, 119, 221, 0.75);
+  animation: game-shell-cutscene-mute-glow 1.6s ease-in-out infinite;
+}
+
+.game-shell__cutscene-playpause[aria-pressed='false'] {
+  color: #afa9ec;
+  border-color: rgba(127, 119, 221, 0.55);
+}
+
+.game-shell__cutscene-triangle {
+  position: relative;
+  width: 97px;
+  height: 84px;
+}
+
+.game-shell__cutscene-triangle-plate {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 4%, 4% 96%, 96% 96%);
+  background: linear-gradient(180deg, #2e2840 0%, #1a1525 72%, #120e1c 100%);
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(127, 119, 221, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.game-shell__cutscene-triangle-plate::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  clip-path: polygon(50% 5%, 5% 95%, 95% 95%);
+  border: 1px solid rgba(83, 74, 183, 0.35);
+  pointer-events: none;
+}
+
+.game-shell__cutscene-btn {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  min-width: 46px;
+  min-height: 26px;
+  padding: 5px 8px;
+  border: 1px solid #3d3660;
+  border-radius: 99px;
+  background: #252035;
+  color: #afa9ec;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 0 #1a1525;
+}
+
+.game-shell__cutscene-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #1a1525;
+  background: #2e2840;
+}
+
+.game-shell__cutscene-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.game-shell__cutscene-btn--skip {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f4e8c1;
+  border-color: rgba(127, 119, 221, 0.55);
+}
+
+.game-shell__cutscene-btn--skip:active:not(:disabled) {
+  transform: translateX(-50%) translateY(1px);
+}
+
+.game-shell__cutscene-btn--skip.game-shell__cutscene-btn--glow {
+  color: #fff4d6;
+  border-color: rgba(244, 232, 193, 0.85);
+  animation: game-shell-cutscene-skip-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes game-shell-cutscene-skip-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 2px 0 #1a1525,
+      0 0 8px rgba(244, 232, 193, 0.4),
+      0 0 16px rgba(127, 119, 221, 0.25);
   }
 
-  .game-shell {
-    aspect-ratio: auto;
-    width: 100vw;
-    height: 100dvh;
-    max-width: 100vw;
-    max-height: 100dvh;
-    margin: 0;
-    transform: none;
-    border: none;
-    border-radius: 0;
-    padding:
-      max(8px, env(safe-area-inset-top, 0px))
-      max(10px, env(safe-area-inset-right, 0px))
-      max(10px, env(safe-area-inset-bottom, 0px))
-      max(10px, env(safe-area-inset-left, 0px));
-    grid-template-rows: auto 1fr auto auto;
-    gap: 2px;
-    min-height: 0;
+  50% {
+    box-shadow:
+      0 2px 0 #1a1525,
+      0 0 16px rgba(244, 232, 193, 0.75),
+      0 0 32px rgba(127, 119, 221, 0.4);
+  }
+}
+
+.game-shell__cutscene-btn--full {
+  left: 0;
+  bottom: 0;
+}
+
+.game-shell__cutscene-btn--port {
+  right: 0;
+  bottom: 0;
+}
+
+.game-shell__cutscene-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 66px;
+  height: 66px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #3d3660;
+  border-radius: 50%;
+  background: #252035;
+  color: #534ab7;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 0 #1a1525;
+}
+
+.game-shell__cutscene-mute:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #1a1525;
+  color: #7f77dd;
+}
+
+.game-shell__cutscene-mute--glow {
+  color: #afa9ec;
+  border-color: rgba(127, 119, 221, 0.75);
+  animation: game-shell-cutscene-mute-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes game-shell-cutscene-mute-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 2px 0 #1a1525,
+      0 0 8px rgba(127, 119, 221, 0.35),
+      0 0 16px rgba(127, 119, 221, 0.18);
   }
 
-  .game-shell--no-music {
-    grid-template-rows: auto 1fr auto;
+  50% {
+    box-shadow:
+      0 2px 0 #1a1525,
+      0 0 16px rgba(127, 119, 221, 0.7),
+      0 0 32px rgba(127, 119, 221, 0.35);
   }
+}
 
-  .game-shell__bezel {
-    min-height: 0;
-  }
+.game-shell__cutscene-mute[aria-pressed='false'] {
+  color: #afa9ec;
+  border-color: rgba(127, 119, 221, 0.55);
+}
 
-  .game-shell__viewport {
-    max-width: none;
-    min-height: 0;
-  }
+.game-shell__cutscene-mute svg {
+  width: 30px;
+  height: 30px;
+}
 
-  .game-shell__controls {
-    flex-shrink: 0;
-    height: 150px;
-    grid-template-columns: 1fr auto 1fr;
-    column-gap: 14px;
-  }
+.game-shell__music--cutscene {
+  opacity: 1;
+}
 
-  .game-shell__music {
-    flex-shrink: 0;
-  }
+.game-shell__album-art--cutscene {
+  background: linear-gradient(135deg, #534ab7 0%, #7f77dd 100%);
+}
 
-  .game-shell__mute-btn {
-    min-width: 32px;
-    min-height: 32px;
-    padding: 6px;
-  }
-
-  .game-shell__joystick {
-    justify-self: end;
-    width: 150px;
-    height: 150px;
-  }
-
-  .game-shell__joystick-base {
-    width: 150px;
-    height: 150px;
-    margin: -75px 0 0 -75px;
-  }
-
-  .game-shell__joystick-knob {
-    width: 64px;
-    height: 64px;
-  }
-
-  .game-shell__action {
-    width: 44px;
-    height: 44px;
-  }
-
-  .game-shell__actions {
-    grid-template-columns: 44px 44px;
-    grid-template-rows: 44px 44px;
-    gap: 10px;
-  }
+.game-shell__cutscene-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 8px;
+  color: #534ab7;
 }

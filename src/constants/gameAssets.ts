@@ -1,16 +1,20 @@
 import { publicAsset } from '../utils/publicAsset'
 
 /**
- * On disk: `public/Assets/Characters/` — use `publicAsset()` so paths respect Vite `base`.
+ * On disk: `public/Assets/Characters/`, use `publicAsset()` so paths respect Vite `base`.
  */
 const CHAR_DIR = publicAsset('Assets/Characters')
 
 export const GAME_CANVAS_WIDTH = 390
 export const GAME_CANVAS_HEIGHT = 844
 
-/** GameShell screen viewport width; height fills the bezel row via CSS flex. */
+/** Fixed design size of the full GameShell frame (chrome + bezel + controls). */
+export const GAME_SHELL_WIDTH = 390
+export const GAME_SHELL_HEIGHT = 844
+
+/** GameShell play viewport width at design scale (shell width minus bezel padding). */
 export const GAME_VIEWPORT_WIDTH = 358
-/** Approximate viewport height when shell is 844px tall (flex-filled bezel). */
+/** GameShell play viewport height at design scale (flex-filled bezel row). */
 export const GAME_VIEWPORT_HEIGHT = 616
 
 /** Default MDNGHT walk sheet (was midnight-walk.png → midnight-default.png). */
@@ -26,7 +30,7 @@ export const MIDNIGHT_WALK_FRAME_WIDTH = 256
 export const MIDNIGHT_WALK_FRAME_HEIGHT = 256
 export const MIDNIGHT_WALK_FRAMES_PER_DIRECTION = 4
 
-/** Neutral standing pose (second column) — held while idle. */
+/** Neutral standing pose (second column), held while idle. */
 export const MIDNIGHT_WALK_IDLE_FRAME = 1
 
 /** On-canvas scale relative to the original 96px-tall overworld size. */

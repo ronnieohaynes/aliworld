@@ -24,7 +24,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
     setClearing(true)
     try {
       const { cleared } = await clearAnalyticsEvents(adminSecret)
-      showToast(`cleared ${cleared.toLocaleString()} analytics events.`)
+      showToast(`cleared ${cleared.toLocaleString()} raw analytics events (durable progress kept).`)
       setClearOpen(false)
       setClearText('')
       onEventsCleared()
@@ -78,7 +78,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
       <section className="admin-danger">
         <h2 className="admin-danger__title">Danger zone</h2>
         <p className="admin-danger__lede">
-          destructive ops on game data — accounts and waitlist emails have their own tabs
+          destructive ops on game data, accounts and waitlist emails have their own tabs
         </p>
 
         <div className="admin-ops__actions">
@@ -155,7 +155,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
       </section>
 
       <p className="admin-ops__boundary">
-        platform ops (schema, auth settings, secrets, function deploys) live in supabase — everything else lives here.
+        platform ops (schema, auth settings, secrets, function deploys) live in supabase, everything else lives here.
       </p>
 
       {clearOpen ? (

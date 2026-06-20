@@ -17,18 +17,19 @@ export type BattleFeedbackEvent = {
   tone: BattleFeedbackTone
 }
 
-/** Build UI callouts from a resolved turn — mirrors what the player accomplished. */
+/** Build UI callouts from a resolved turn, mirrors what the player accomplished. */
 export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedbackEvent[] {
   const events: BattleFeedbackEvent[] = []
 
-  if (r.enemyBraced) {
+  if (r.enemyDamageBlocked > 0) {
     events.push({
       kind: 'blocked',
-      text: 'braced',
+      text: `-${r.enemyDamageBlocked} blocked`,
       target: 'enemy',
       tone: 'defense',
     })
-  } else if (r.damageBlocked > 0) {
+  }
+  if (r.damageBlocked > 0) {
     events.push({
       kind: 'blocked',
       text: `-${r.damageBlocked} blocked`,
@@ -53,30 +54,7 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
-  if (r.guardCountered) {
-    events.push({
-      kind: 'counter',
-      text: 'counter!',
-      target: 'player',
-      tone: 'attack',
-    })
-  }
-
-  if (r.playerDmg > 0 && r.dodged && !r.enemyDodged) {
-    events.push({
-      kind: 'counter',
-      text: `+${r.playerDmg} counter`,
-      target: 'enemy',
-      tone: 'speed',
-    })
-  } else if (r.enemyDodged && r.incoming > 0) {
-    events.push({
-      kind: 'counter',
-      text: `+${r.incoming} counter`,
-      target: 'player',
-      tone: 'speed',
-    })
-  } else if (r.playerDmg > 0 && r.crit) {
+  if (r.playerDmg > 0 && r.crit) {
     events.push({
       kind: 'crit',
       text: 'CRIT',
@@ -103,11 +81,11 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
     })
   }
 
-  // Priority order: stun → bleed → shake → slow
+  // Priority order: stun → bleed → shake → slow (player → enemy, then enemy → player)
   if (r.stunApplied) {
     events.push({ kind: 'status', text: 'stun!', target: 'enemy', tone: 'stun' })
   }
-  if (r.bleedApplied) {
+  if (r.bleedApplied && r.playerDmg > 0) {
     events.push({ kind: 'status', text: 'bleed!', target: 'enemy', tone: 'bleed' })
   }
   if (r.shakeApplied) {
@@ -115,6 +93,21 @@ export function buildBattleFeedbackFromResolve(r: ResolveResult): BattleFeedback
   }
   if (r.slowApplied) {
     events.push({ kind: 'status', text: 'slow!', target: 'enemy', tone: 'slow' })
+  }
+  if (r.playerStunApplied) {
+    events.push({ kind: 'status', text: 'stun!', target: 'player', tone: 'stun' })
+  }
+  if (r.playerBleedApplied) {
+    events.push({ kind: 'status', text: 'bleed!', target: 'player', tone: 'bleed' })
+  }
+  if (r.playerShakeApplied) {
+    events.push({ kind: 'status', text: 'shake!', target: 'player', tone: 'shake' })
+  }
+  if (r.playerSlowApplied) {
+    events.push({ kind: 'status', text: 'slow!', target: 'player', tone: 'slow' })
+  }
+  if (r.playerMissApplied) {
+    events.push({ kind: 'status', text: 'miss!', target: 'player', tone: 'stun' })
   }
 
   return events

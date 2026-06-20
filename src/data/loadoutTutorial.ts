@@ -7,17 +7,19 @@ export type LoadoutTutorialTarget =
   | 'stat_speed'
   | 'stat_defense'
   | 'stat_luck'
+  | 'skill_xp'
   | 'build'
   | 'share_card'
 
-/** Steps 0–1: block overworld talk while the script-button prompt is active. */
+/** Steps 0–1 and 9–10 block overworld talk while the script-button prompt is active. */
 export function blocksWorldInteractDuringLoadoutTutorial(step: number | null): boolean {
-  return step != null && step <= 1
+  return step != null && (step <= 1 || step === 10)
 }
 
 export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
   LoadoutTutorialTarget | 'none'
 >[] = [
+  // ── Phase 2: post-Walker loadout intro (steps 0–8) ──
   {
     text: "wow. you defeated your first opponent. let's show you what else.",
     target: 'none',
@@ -38,7 +40,7 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
     highlight: 'speed',
   },
   {
-    text: 'defense: braces and holds. guard more, take less.',
+    text: 'defense: blocks and counters. parry more, take less and hit back harder.',
     target: 'stat_defense',
     highlight: 'defense',
   },
@@ -60,9 +62,28 @@ export const LOADOUT_TUTORIAL_STEPS: readonly GuidedTutorialStep<
       'attack beats speed. speed beats luck. luck beats defense. defense beats attack. read them. pick right.',
     target: 'none',
   },
+
+  // ── XP tutorial: post-Mark (steps 9–11) ──
+  {
+    text: "every move you throw earns XP. that's how your skills grow.",
+    target: 'none',
+  },
+  {
+    text: 'open your loadout to see it.',
+    target: 'script_button',
+    waitForAction: true,
+  },
+  {
+    text: 'this bar tracks your XP toward the next level. keep fighting.',
+    target: 'skill_xp',
+    highlight: 'attack',
+  },
 ]
 
-/** No start-menu exception needed — loadout opens directly via the script button. */
+/** Step index where the post-Mark XP tutorial begins. */
+export const XP_TUTORIAL_START_STEP = 9
+
+/** No start-menu exception needed, loadout opens directly via the script button. */
 export function allowsStartMenuDuringLoadoutTutorial(_step: number | null): boolean {
   return false
 }

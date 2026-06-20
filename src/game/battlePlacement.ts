@@ -9,11 +9,29 @@ import type { VisibleBounds } from './spriteBounds'
 /** Battle enemy source canvas scale vs overworld NPC display. */
 export const BATTLE_SPRITE_SCALE = 1.2
 
+/** Horizontal nudge for battle fighters (negative = left). */
+export const BATTLE_FIGHTER_NUDGE_X = -5
+
 /** Screen point where every enemy's feet land (bottom-center of visible sprite). */
 export const BATTLE_ENEMY_FEET = { x: 68, y: 221 } as const
 
+/** Horizontal nudge for the enemy status plate (positive = right). */
+export const BATTLE_ENEMY_PLATE_OFFSET_X = 3
+
 /** Screen point where the player's feet land (bottom-center of visible sprite). */
-export const BATTLE_PLAYER_FEET = { x: 288, y: 224 } as const
+export const BATTLE_PLAYER_FEET = { x: 165 + BATTLE_FIGHTER_NUDGE_X + 10, y: 224 } as const
+
+/** Horizontal nudge for the player status plate (positive = right). */
+export const BATTLE_PLAYER_PLATE_OFFSET_X = 3
+
+/** Gap below sprite visible top where the plate anchor sits (enemy and player). */
+export const BATTLE_PLATE_VISIBLE_TOP_GAP = 5
+
+/** Toggle player status plate visibility in battle. */
+export const SHOW_BATTLE_PLAYER_PLATE = true
+
+/** Vertical nudge applied to the player fighter container (matches enemy +5). */
+export const BATTLE_PLAYER_FIGHTER_NUDGE_Y = 5
 
 /** @deprecated Use BATTLE_ENEMY_FEET.y */
 export const BATTLE_GROUND_Y = BATTLE_ENEMY_FEET.y
@@ -24,19 +42,19 @@ export const BATTLE_ENEMY_GROUND_Y = BATTLE_ENEMY_FEET.y
 /** @deprecated Use BATTLE_PLAYER_FEET.y */
 export const BATTLE_PLAYER_GROUND_Y = BATTLE_PLAYER_FEET.y
 
-/** @deprecated Feet X is derived from BATTLE_ENEMY_FEET — left edge varies per sprite. */
+/** @deprecated Feet X is derived from BATTLE_ENEMY_FEET, left edge varies per sprite. */
 export const BATTLE_ENEMY_X = 36
 
-/** @deprecated Feet X is derived from BATTLE_PLAYER_FEET — left edge varies per sprite. */
+/** @deprecated Feet X is derived from BATTLE_PLAYER_FEET, left edge varies per sprite. */
 export const BATTLE_PLAYER_X = 213
 
 /** Enemy visible height in battle. */
 export const BATTLE_TARGET_VISIBLE_H = 125
 
-/** Player visible height — slightly smaller so the perspective reads correctly. */
+/** Player visible height, slightly smaller so the perspective reads correctly. */
 export const BATTLE_PLAYER_TARGET_VISIBLE_H = 80
 
-/** @deprecated Alias for enemy target height — use with battleSizeMult. */
+/** @deprecated Alias for enemy target height, use with battleSizeMult. */
 export const BATTLE_ENEMY_DISPLAY_H = BATTLE_TARGET_VISIBLE_H
 
 /** Player visible height matches enemy target (no protagonist bump). */
@@ -52,7 +70,7 @@ export const BATTLE_PLAYER_SOURCE_H = WORLD_PLAYER_DISPLAY_HEIGHT
 export type BattleSpritePlacement = {
   x: number
   drawY: number
-  /** Y of the topmost visible pixel — use this for plate anchoring. */
+  /** Y of the topmost visible pixel, use this for plate anchoring. */
   visibleDrawY: number
   displayWidth: number
   displayHeight: number

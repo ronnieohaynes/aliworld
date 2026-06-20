@@ -1,5 +1,5 @@
 /**
- * Data-driven quest objectives — conditions read live game state (no parallel tracking).
+ * Data-driven quest objectives, conditions read live game state (no parallel tracking).
  */
 
 import { hasArtifact } from '../store/artifactStore'
@@ -22,6 +22,7 @@ import {
   buildQuest2ObjectiveContext,
   getQuest2ActiveStepId,
   isE2QuestUnlocked,
+  QUEST_2_CLOSING_TEXT,
   QUEST_2_STEPS,
   type Quest2ObjectiveContext,
 } from './quest2Objectives'
@@ -135,9 +136,9 @@ export function isE1ArcComplete(ctx: QuestObjectiveContext): boolean {
   return ctx.markDefeated && ctx.cafeSeen
 }
 
-const E1_CLOSING_OBJECTIVE_TEXT = 'episode 2 — soon.'
+const E1_CLOSING_OBJECTIVE_TEXT = 'episode 2, soon.'
 
-/** Ordered quests — quest 2 activates after e1 cafe beat. */
+/** Ordered quests, quest 2 activates after e1 cafe beat. */
 export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
   {
     id: 'quest-1-five',
@@ -151,7 +152,7 @@ export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
   },
 ]
 
-/** Quest 1 last step never completes — e2 unlocks after cafe + mark. */
+/** Quest 1 last step never completes, e2 unlocks after cafe + mark. */
 function shouldShowQuest2(ctx: QuestObjectiveContext): boolean {
   return isE2QuestUnlocked() && ctx.cafeSeen
 }
@@ -176,7 +177,7 @@ export function resolveActiveObjective(
   return { questId: quest.id, stepId: last.id, text: last.getText(ctx) }
 }
 
-/** Active objective — quest 2 after e1 unlock; otherwise quest 1. */
+/** Active objective, quest 2 after e1 unlock; otherwise quest 1. */
 export function resolvePrimaryQuestObjective(
   ctx: QuestObjectiveContext = buildQuestObjectiveContext(),
 ): ResolvedObjective {
@@ -189,6 +190,13 @@ export function resolvePrimaryQuestObjective(
   }
 
   if (shouldShowQuest2(ctx)) {
+    if (ctx.e2Complete) {
+      return {
+        questId: 'quest-2-southside',
+        stepId: 'e2-closing',
+        text: QUEST_2_CLOSING_TEXT,
+      }
+    }
     const quest2 = QUEST_DEFINITIONS[1]
     if (quest2) {
       const q2Ctx = ctx
@@ -197,8 +205,20 @@ export function resolvePrimaryQuestObjective(
           return { questId: quest2.id, stepId: step.id, text: step.getText(q2Ctx) }
         }
       }
-      const last = quest2.steps[quest2.steps.length - 1]!
-      return { questId: quest2.id, stepId: last.id, text: last.getText(q2Ctx) }
+      if (q2Ctx.restockerDefeated && !q2Ctx.e2ClosingCrowdDismissed) {
+        return {
+          questId: quest2.id,
+          stepId: 'e2-closing-pending',
+          text: 'step outside.',
+        }
+      }
+      if (q2Ctx.restockerDefeated && q2Ctx.e2ClosingCrowdDismissed) {
+        return {
+          questId: quest2.id,
+          stepId: 'e2-closing',
+          text: QUEST_2_CLOSING_TEXT,
+        }
+      }
     }
   }
 
@@ -248,18 +268,28 @@ export function getQuestPulseTargetDescriptor(
       return { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'cafe':
       return { kind: 'zone', action: 'OPEN_ONE_LOVE_CAFE' }
+    case 'e2-gym':
+      return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
     case 'e2-crowd':
       return ctx.crowdAddressed ? null : { kind: 'npc', id: CROWD_2_NPC_ID }
     case 'e2-crier':
       return { kind: 'npc', id: TOWN_CRIER_NPC_ID }
-    case 'e2-travel':
+    case 'e2-herald':
       return { kind: 'zone', action: 'OPEN_DARKLINE' }
+    case 'e2-travel':
+      return ctx.inSouthside
+        ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-clerk':
-      return { kind: 'zone', action: 'OPEN_BLUE_STORE' }
+      return ctx.inSouthside
+        ? { kind: 'zone', action: 'OPEN_BLUE_STORE' }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e2-restocker':
-      return { kind: 'npc', id: RESTOCKER_NPC_ID }
-    case 'e2-field':
-      return null
+      return ctx.clerkConverted
+        ? { kind: 'npc', id: RESTOCKER_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_BLUE_STORE' }
+    case 'e2-closing-pending':
+      return { kind: 'zone', action: 'OPEN_BLUE_STORE_EXIT' }
     default:
       return null
   }
@@ -313,7 +343,12 @@ function resolveDescriptorInCity(
     case 'zone': {
       const zone = findTriggerInCity(city, descriptor.action)
       if (!zone) return null
-      return { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 }
+      const cx = zone.x + zone.width / 2
+      // Store entrance: pulse on the doorstep (south edge), not zone centroid.
+      if (descriptor.action === 'OPEN_BLUE_STORE') {
+        return { x: cx, y: zone.y + zone.height - 6 }
+      }
+      return { x: cx, y: zone.y + zone.height / 2 }
     }
     case 'nearest-untalked-gating':
       return findNearestUntalkedGatingNpc(city, playerX, playerY)

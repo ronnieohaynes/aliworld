@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { buildQuestObjectiveContext, resolvePrimaryQuestObjective } from '../data/questObjectives'
-import { track } from '../lib/analytics'
+import { trackProgressEvent } from '../lib/analytics'
 import { getArtifactStoreSnapshot, subscribeArtifactStore } from '../store/artifactStore'
 import { getQuest1Revision, subscribeQuest1Store } from '../store/quest1Store'
 import { getQuest2Snapshot, subscribeQuest2Store } from '../store/quest2Store'
@@ -50,7 +50,7 @@ export function QuestHelper() {
       prev &&
       (prev.questId !== next.questId || prev.stepId !== next.stepId)
     ) {
-      track('quest_step_advance', {
+      trackProgressEvent('quest_step_advance', {
         questId: next.questId,
         stepId: next.stepId,
       })

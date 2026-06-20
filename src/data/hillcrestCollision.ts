@@ -13,10 +13,10 @@ export interface CollisionZone {
 export const HILLCREST_MAP_SIZE = { width: 1122, height: 1402 };
 
 export const HILLCREST_COLLISION_ZONES: CollisionZone[] = [
-  // outer walls (boundary — preserved from previous overlay)
+  // outer walls (boundary, preserved from previous overlay)
   { x: 200,  y: 0,    width: 216, height: 1402 },
   { x: 416,  y: 0,    width: 520, height: 72   },
-  { x: 936,  y: 16,   width: 128, height: 816  },
+  { x: 936,  y: 16,   width: 184, height: 872  },
   { x: 1032, y: 888,  width: 90,  height: 424  },
   // interior obstacles (updated from new overlay)
   { x: 414,  y: 82,   width: 43,  height: 66   },

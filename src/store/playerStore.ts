@@ -9,7 +9,7 @@ import { deriveBuildName } from '../data/buildName'
 import type { BattleFeedbackEvent } from '../data/battleFeedback'
 import type { TimingBonusGrant } from '../data/timingBonusXp'
 import { combatXpLevelMultiplier } from '../data/moveBalance'
-import { track } from '../lib/analytics'
+import { trackProgressEvent } from '../lib/analytics'
 import { PLAYER_LEVEL_MILESTONES } from '../lib/analyticsConstants'
 import { isDevModeEnabled, subscribeDevMode } from '../lib/devMode'
 import { supabase } from '../lib/supabaseClient'
@@ -51,6 +51,7 @@ import {
   type WorldMemoryState,
 } from './worldMemory'
 import { applyMidnightVariantFromAccount, getMidnightVariant } from './characterStore'
+import { syncGhostTraining } from '../lib/ghostTrainingApi'
 import { isMidnightVariantId, type MidnightVariantId } from '../data/midnightVariants'
 import {
   awardMoveXp,
@@ -269,7 +270,7 @@ export type PlayerStoreState = {
   archetype: ArchetypeId
   accessories: AccessoryBonuses[]
   skills: SkillsState
-  /** Four active battle slots — move ids unlocked via skill ladders. */
+  /** Four active battle slots, move ids unlocked via skill ladders. */
   equippedMoves: readonly [PlayerMoveId, PlayerMoveId, PlayerMoveId, PlayerMoveId]
   /** Overworld / between-battle HP; null = use computed max on next battle. */
   hp: number | null
@@ -283,14 +284,14 @@ function trackBuildNameIfChanged(skills: SkillsState): void {
   const next = deriveBuildName(skills).name
   if (next === trackedBuildName) return
   trackedBuildName = next
-  track('build_name_changed', { buildName: next })
+  trackProgressEvent('build_name_changed', { buildName: next })
 }
 
 function trackSkillLevelUps(before: SkillsState, after: SkillsState): void {
   const combatSkills: SkillId[] = ['attack', 'speed', 'defense', 'luck']
   for (const skill of combatSkills) {
     if (after[skill].level > before[skill].level) {
-      track('skill_levelup', { skill, level: after[skill].level })
+      trackProgressEvent('skill_levelup', { skill, level: after[skill].level })
     }
   }
 }
@@ -301,7 +302,7 @@ function trackPlayerLevelMilestones(before: SkillsState, after: SkillsState): vo
   if (next <= prev) return
   for (const threshold of PLAYER_LEVEL_MILESTONES) {
     if (prev < threshold && next >= threshold) {
-      track('player_level_milestone', { level: threshold })
+      trackProgressEvent('player_level_milestone', { level: threshold })
     }
   }
 }
@@ -363,6 +364,9 @@ async function runAccountSaveLoop(): Promise<void> {
     }
 
     setAccountSaveStatus('idle')
+    void syncGhostTraining().catch(() => {
+      // harvest is best-effort
+    })
   }
 }
 
@@ -481,7 +485,7 @@ function createDefaultPlayerState(): PlayerStoreState {
   }
 }
 
-/** Reset to defaults in memory only — used on logout so the next user starts clean. */
+/** Reset to defaults in memory only, used on logout so the next user starts clean. */
 export function resetProgression(): void {
   skipAccountSave = true
   lastLocation = null
@@ -525,7 +529,7 @@ export function getActiveEquippedMoves(): PlayerMoveId[] {
   return state.equippedMoves.filter((id) => isMoveUnlocked(id, state.skills))
 }
 
-/** Moves unlocked but not in any equipped slot — equip pool for loadout UI. */
+/** Moves unlocked but not in any equipped slot, equip pool for loadout UI. */
 export function getUnequippedUnlockedMoves(): PlayerMoveId[] {
   const unlocked = new Set(getUnlockedMoves(state.skills))
   for (const id of state.equippedMoves) unlocked.delete(id)
@@ -542,7 +546,7 @@ export function setEquippedMove(slot: 0 | 1 | 2 | 3, moveId: PlayerMoveId): void
   ]
   slots[slot] = moveId
   state = { ...state, equippedMoves: slots }
-  track('move_equipped', { slot, moveId })
+  trackProgressEvent('move_equipped', { slot, moveId })
   emit()
 }
 
@@ -551,7 +555,7 @@ export function setPlayerSkills(skills: SkillsState): void {
   emit()
 }
 
-/** Story / milestone skill XP — persists and triggers account save. */
+/** Story / milestone skill XP, persists and triggers account save. */
 export function grantPlayerSkillXp(skill: SkillId, amount: number): string[] {
   const before = state.skills
   const { skills, lines } = grantSkillXpAmount(before, skill, amount)
@@ -600,12 +604,13 @@ export type CombatXpResult = {
 export function applyCombatSkillXp(
   r: ResolveResult,
   timingBonuses: TimingBonusGrant[] = [],
-  options?: { enemyLevel?: number; playerLevel?: number; playerHpAfterHit?: number },
+  options?: { enemyLevel?: number; playerLevel?: number; playerHpAfterHit?: number; forceLevelXpMult?: number },
 ): CombatXpResult {
   const prevPlayerLevel = computePlayerLevel(state.skills)
   const playerLevelBefore = options?.playerLevel ?? prevPlayerLevel
   const enemyLevel = options?.enemyLevel ?? playerLevelBefore
-  const levelXpMult = combatXpLevelMultiplier(enemyLevel, playerLevelBefore)
+  const levelXpMult =
+    options?.forceLevelXpMult ?? combatXpLevelMultiplier(enemyLevel, playerLevelBefore)
   const scaleXp = (amount: number) => Math.max(0, Math.round(amount * levelXpMult))
 
   const before = state.skills

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState, type CSSProperties, 
 import { createPortal } from 'react-dom'
 import './BattleTutorialOverlay.css'
 
-export type BattleTutorialTarget = 'battle' | 'stage' | 'telegraph' | 'moves' | 'status' | 'plate' | 'statuslegend' | 'xpbar' | 'none'
+export type BattleTutorialTarget = 'battle' | 'stage' | 'telegraph' | 'moves' | 'status' | 'plate' | 'xpbar' | 'none'
 
 export const BATTLE_TUTORIAL_STEPS: ReadonlyArray<{
   text: string
@@ -14,12 +14,8 @@ export const BATTLE_TUTORIAL_STEPS: ReadonlyArray<{
     target: 'telegraph',
   },
   {
-    text: 'these are your moves. STRIKE hits. SLIP dodges. HOLD braces. WHISPER hits on luck. the skill level next to each move grows as you use it.',
+    text: 'four skills power your moves: attack, speed, defense, luck. attack is hit power. speed is dodge and counter. defense is block and brace. luck is the weird stuff. the level beside each move is that skill — it grows when you use it.',
     target: 'moves',
-  },
-  {
-    text: 'status effects show up here — bleed, shake, stun, and your brace.',
-    target: 'statuslegend',
   },
   {
     text: 'that bar tracks your overall level. every move you throw builds it.',

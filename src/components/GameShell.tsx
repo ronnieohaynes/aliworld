@@ -18,6 +18,17 @@ import {
   subscribeMusicStore,
   toggleSoundtrackPlaying,
 } from '../store/musicStore'
+import {
+  cutsceneUiEnterFullscreen,
+  cutsceneUiExitFullscreen,
+  cutsceneUiSkip,
+  cutsceneUiTogglePlayPause,
+  cutsceneUiToggleSoundMuted,
+  getCutsceneUiSnapshot,
+  subscribeCutsceneUiStore,
+} from '../store/cutsceneUiStore'
+import { ScaledDesignStage } from './ScaledDesignStage'
+import { AccountSaveIndicator } from './AccountSaveIndicator'
 import './GameShell.css'
 
 const ARROW_KEYS = {
@@ -228,14 +239,12 @@ function MusicSpeakerIcon({ muted }: { muted: boolean }) {
   if (muted) {
     return (
       <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+        <path d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z" fill="currentColor" />
         <path
-          d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z"
-          fill="currentColor"
-        />
-        <path
-          d="M9.5 4.5L11 6M11 4.5L9.5 6"
+          d="M9 5.5c.8.8.8 2.2 0 3M10.5 4c1.6 1.6 1.6 4.4 0 6"
+          fill="none"
           stroke="currentColor"
-          strokeWidth="1.2"
+          strokeWidth="1.1"
           strokeLinecap="round"
         />
       </svg>
@@ -243,19 +252,95 @@ function MusicSpeakerIcon({ muted }: { muted: boolean }) {
   }
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z" fill="currentColor" />
       <path
-        d="M9 5.5c.8.8.8 2.2 0 3M10.5 4c1.6 1.6 1.6 4.4 0 6"
-        fill="none"
+        d="M2 5.5h2.2L7 3v8L4.2 8.5H2V5.5z"
+        fill="currentColor"
+      />
+      <path
+        d="M9.5 4.5L11 6M11 4.5L9.5 6"
         stroke="currentColor"
-        strokeWidth="1.1"
+        strokeWidth="1.2"
         strokeLinecap="round"
       />
     </svg>
   )
 }
 
+function GameShellCutsceneControls() {
+  const cutsceneUi = useSyncExternalStore(
+    subscribeCutsceneUiStore,
+    getCutsceneUiSnapshot,
+    getCutsceneUiSnapshot,
+  )
+
+  return (
+    <div className="game-shell__cutscene-controls-mount">
+      <div className="game-shell__cutscene-controls" aria-label="Video controls">
+        <button
+          type="button"
+          className={`game-shell__cutscene-mute${
+            cutsceneUi.soundMuted ? ' game-shell__cutscene-mute--glow' : ''
+          }`}
+          aria-label={cutsceneUi.soundMuted ? 'Unmute video' : 'Mute video'}
+          aria-pressed={cutsceneUi.soundMuted}
+          onClick={cutsceneUiToggleSoundMuted}
+        >
+          <MusicSpeakerIcon muted={cutsceneUi.soundMuted} />
+        </button>
+        <div className="game-shell__cutscene-triangle">
+          <div className="game-shell__cutscene-triangle-plate" aria-hidden />
+          <button
+            type="button"
+            className={`game-shell__cutscene-btn game-shell__cutscene-btn--skip${
+              cutsceneUi.playbackFinished ? ' game-shell__cutscene-btn--glow' : ''
+            }`}
+            onClick={cutsceneUiSkip}
+          >
+            skip
+          </button>
+          <button
+            type="button"
+            className="game-shell__cutscene-btn game-shell__cutscene-btn--full"
+            aria-label="Rotate video to fill screen"
+            aria-pressed={cutsceneUi.landscapeFullscreen}
+            disabled={cutsceneUi.landscapeFullscreen}
+            onClick={cutsceneUiEnterFullscreen}
+          >
+            full
+          </button>
+          <button
+            type="button"
+            className="game-shell__cutscene-btn game-shell__cutscene-btn--port"
+            aria-label="Exit rotated view"
+            aria-pressed={!cutsceneUi.landscapeFullscreen}
+            disabled={!cutsceneUi.landscapeFullscreen}
+            onClick={cutsceneUiExitFullscreen}
+          >
+            port
+          </button>
+        </div>
+        <button
+          type="button"
+          className={`game-shell__cutscene-playpause${
+            cutsceneUi.videoPaused ? ' game-shell__cutscene-playpause--glow' : ''
+          }`}
+          aria-label={cutsceneUi.videoPaused ? 'Play video' : 'Pause video'}
+          aria-pressed={cutsceneUi.videoPaused}
+          onClick={cutsceneUiTogglePlayPause}
+        >
+          {cutsceneUi.videoPaused ? '▶' : '❚❚'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function GameShellMusicBar() {
+  const cutsceneUi = useSyncExternalStore(
+    subscribeCutsceneUiStore,
+    getCutsceneUiSnapshot,
+    getCutsceneUiSnapshot,
+  )
   const playerGranted = useSyncExternalStore(
     subscribeMusicStore,
     getMusicPlayerGrantedSnapshot,
@@ -288,6 +373,34 @@ function GameShellMusicBar() {
     toggleSoundtrackPlaying()
   }, [])
 
+  if (cutsceneUi.active) {
+    const progressPct = Math.round(cutsceneUi.progress * 10_000) / 100
+    return (
+      <div className="game-shell__music game-shell__music--cutscene" aria-live="polite">
+        <div className="game-shell__album-art game-shell__album-art--cutscene" aria-hidden>
+          <span className="game-shell__album-hole" />
+        </div>
+        <div className="game-shell__track">
+          <div className="game-shell__track-title">{cutsceneUi.title}</div>
+          <div className="game-shell__track-artist">{cutsceneUi.subtitle}</div>
+          <div
+            className="game-shell__progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPct}
+            aria-label="Cutscene progress"
+          >
+            <div className="game-shell__progress-fill" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+        <div className="game-shell__transport" aria-hidden>
+          <span className="game-shell__cutscene-badge">▶</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={`game-shell__music${
@@ -303,7 +416,7 @@ function GameShellMusicBar() {
           {!playerGranted ? 'no player yet' : hasTrackMeta ? trackTitle : 'no track'}
         </div>
         <div className="game-shell__track-artist">
-          {!playerGranted ? '—' : hasTrackMeta ? trackArtist : '—'}
+          {!playerGranted ? '-' : hasTrackMeta ? trackArtist : '-'}
         </div>
         <div
           className="game-shell__progress"
@@ -349,98 +462,121 @@ export function GameShell({
 }: Props) {
   const clock = useLiveClock()
   const musicEnabled = isMusicEnabled()
+  const cutsceneUi = useSyncExternalStore(
+    subscribeCutsceneUiStore,
+    getCutsceneUiSnapshot,
+    getCutsceneUiSnapshot,
+  )
+  const videoMode = cutsceneUi.active
 
   return (
-    <div className={`game-shell${musicEnabled ? '' : ' game-shell--no-music'}`}>
-      <header className="game-shell__topbar">
-        <CultSigil />
-        <span className="game-shell__brand">ALIWORLD</span>
-        <time className="game-shell__clock" aria-label="Local time">
-          {clock}
-        </time>
-      </header>
+    <ScaledDesignStage>
+      <AccountSaveIndicator />
+        <div
+          className={`game-shell${musicEnabled ? '' : ' game-shell--no-music'}${
+            videoMode ? ' game-shell--video-mode' : ''
+          }${videoMode && !cutsceneUi.landscapeFullscreen ? ' game-shell--video-portrait' : ''}`}
+        >
+          <header className="game-shell__topbar">
+            <CultSigil />
+            <div className="game-shell__topbar-music">
+              {musicEnabled || videoMode ? <GameShellMusicBar /> : null}
+            </div>
+            <time className="game-shell__clock" aria-label="Local time">
+              {clock}
+            </time>
+          </header>
 
-      <div className="game-shell__bezel">
-        <div className="game-shell__viewport">
-          <div className="game-shell__viewport-inner">{children}</div>
+          <div className="game-shell__bezel">
+            <div className="game-shell__viewport">
+              <div className="game-shell__viewport-inner">{children}</div>
+            </div>
+          </div>
+
+          <div className="game-shell__controls">
+            {videoMode ? (
+              <GameShellCutsceneControls />
+            ) : (
+              <>
+                <GameShellJoystick />
+
+                <div className="game-shell__center-btns">
+                  <button
+                    type="button"
+                    ref={startButtonRef}
+                    className="game-shell__pill-btn"
+                    onClick={() => {
+                      console.log('[tutorial-start] GameShell START click')
+                      onStart()
+                    }}
+                  >
+                    START
+                  </button>
+                </div>
+
+                <div className="game-shell__actions">
+                  <button
+                    type="button"
+                    ref={interactButtonRef}
+                    className="game-shell__action game-shell__action--interact"
+                    aria-label="INTERACT"
+                    title="INTERACT"
+                    onClick={onInteract}
+                  >
+                    <svg width="12" height="10" viewBox="0 0 12 10" aria-hidden>
+                      <polygon points="6,1 11,9 1,9" fill="#AFA9EC" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    ref={scriptButtonRef}
+                    className="game-shell__action game-shell__action--script"
+                    aria-label="SCRIPT"
+                    title="SCRIPT"
+                    onClick={onScript}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+                      <path
+                        d="M2 10 L2 2 L7 2 L10 5 L10 10 Z"
+                        fill="none"
+                        stroke="#378ADD"
+                        strokeWidth="1.2"
+                      />
+                      <line x1="4" y1="6" x2="8" y2="6" stroke="#378ADD" strokeWidth="1" />
+                      <line x1="4" y1="8" x2="7" y2="8" stroke="#378ADD" strokeWidth="1" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    ref={fannyPackButtonRef}
+                    className="game-shell__action game-shell__action--pack"
+                    aria-label="FANNY PACK"
+                    title="FANNY PACK"
+                    onClick={onFannyPack}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+                      <rect
+                        x="2"
+                        y="3"
+                        width="8"
+                        height="7"
+                        rx="1"
+                        fill="none"
+                        stroke="#534AB7"
+                        strokeWidth="1.2"
+                      />
+                      <path d="M4 3 V2 H8 V3" fill="none" stroke="#534AB7" strokeWidth="1" />
+                    </svg>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <footer className="game-shell__footer">
+            <span className="game-shell__brand">ALIWORLD</span>
+          </footer>
         </div>
-      </div>
-
-      <div className="game-shell__controls">
-        <GameShellJoystick />
-
-        <div className="game-shell__center-btns">
-          <button
-            type="button"
-            ref={startButtonRef}
-            className="game-shell__pill-btn"
-            onClick={() => {
-              console.log('[tutorial-start] GameShell START click')
-              onStart()
-            }}
-          >
-            START
-          </button>
-        </div>
-
-        <div className="game-shell__actions">
-          <button
-            type="button"
-            ref={interactButtonRef}
-            className="game-shell__action game-shell__action--interact"
-            aria-label="INTERACT"
-            title="INTERACT"
-            onClick={onInteract}
-          >
-            <svg width="12" height="10" viewBox="0 0 12 10" aria-hidden>
-              <polygon points="6,1 11,9 1,9" fill="#AFA9EC" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            ref={scriptButtonRef}
-            className="game-shell__action game-shell__action--script"
-            aria-label="SCRIPT"
-            title="SCRIPT"
-            onClick={onScript}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-              <path
-                d="M2 10 L2 2 L7 2 L10 5 L10 10 Z"
-                fill="none"
-                stroke="#378ADD"
-                strokeWidth="1.2"
-              />
-              <line x1="4" y1="6" x2="8" y2="6" stroke="#378ADD" strokeWidth="1" />
-              <line x1="4" y1="8" x2="7" y2="8" stroke="#378ADD" strokeWidth="1" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            ref={fannyPackButtonRef}
-            className="game-shell__action game-shell__action--pack"
-            aria-label="FANNY PACK"
-            title="FANNY PACK"
-            onClick={onFannyPack}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-              <rect
-                x="2"
-                y="3"
-                width="8"
-                height="7"
-                rx="1"
-                fill="none"
-                stroke="#534AB7"
-                strokeWidth="1.2"
-              />
-              <path d="M4 3 V2 H8 V3" fill="none" stroke="#534AB7" strokeWidth="1" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {musicEnabled ? <GameShellMusicBar /> : null}
-    </div>
+    </ScaledDesignStage>
   )
 }

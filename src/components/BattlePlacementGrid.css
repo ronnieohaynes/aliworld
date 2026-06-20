@@ -138,3 +138,29 @@
   color: #ffb8b8;
   border-color: rgba(255, 184, 184, 0.45);
 }
+
+.battle-placement-grid__plate {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  line-height: 1.15;
+  color: #ffdca0;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 220, 160, 0.45);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.battle-placement-grid__plate--enemy-plate {
+  color: #ffb8b8;
+  border-color: rgba(255, 184, 184, 0.45);
+}
+
+.battle-placement-grid__plate--player-plate {
+  color: #7dffb8;
+  border-color: rgba(125, 255, 184, 0.45);
+}

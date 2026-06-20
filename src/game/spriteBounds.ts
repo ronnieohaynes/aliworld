@@ -20,7 +20,7 @@ export function isInvalidVisibleBounds(bounds: VisibleBounds, h: number, w: numb
   return false
 }
 
-/** ~65% of frame height, feet at bottom — safe fallback when scan fails. */
+/** ~65% of frame height, feet at bottom, safe fallback when scan fails. */
 export function saneDefaultVisibleBounds(w: number, h: number): VisibleBounds {
   const visH = Math.max(1, Math.floor(h * 0.65))
   const top = Math.max(0, h - visH)

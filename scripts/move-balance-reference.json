@@ -1,0 +1,987 @@
+{
+  "meta": {
+    "sources": [
+      "moveDefinitions.ts",
+      "moveBalance.ts",
+      "enemyMoves.ts",
+      "moveResolver.ts",
+      "moveUnlock.ts"
+    ],
+    "ladderUnlockLevels": {
+      "rung1": 0,
+      "rung2": 10,
+      "rung3": 22,
+      "rung4": 38,
+      "rung5": 52,
+      "rung6": 65
+    },
+    "statusDefaultTurns": {
+      "bleed": 2,
+      "shake": 2,
+      "stun": 1,
+      "brace": 1,
+      "slow": 2,
+      "miss": 1,
+      "double": 1,
+      "reflect": 1
+    },
+    "bleedChip": "enemy maxHp * 0.09 per turn (potency mult applies)",
+    "crossScaleSecondaryShare": 0.25
+  },
+  "playerMoves": [
+    {
+      "id": "STRIKE",
+      "name": "STRIKE",
+      "skillLadder": "attack",
+      "ladderRung": 1,
+      "unlockAtSkillLevel": 0,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "attack",
+      "secondaryStat": "luck",
+      "secondaryHooks": [
+        {
+          "key": "STRIKE_CRIT_CHANCE_PER_LCK_LVL",
+          "perLevel": 0.4,
+          "cap": null,
+          "effect": "+crit chance % (luck); cap = luckLevel * perLevel",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "damage",
+        "damageMult": 1.3,
+        "openingBonusMult": 1.5,
+        "takeEnemyHit": true,
+        "crit": {
+          "base": 6,
+          "lckMult": 2,
+          "damageMult": 1.6,
+          "onCrit": [
+            "bleed"
+          ]
+        },
+        "primaryFormula": "jitter(floor(atk * damageMult * earlyStrikeScale)); openingBonus if !enemyAttacks",
+        "statusesFromCrit": [
+          "bleed"
+        ]
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "bleed-on-crit"
+      ],
+      "uiDescription": "hit the opening. trade if they swing."
+    },
+    {
+      "id": "FURY_SWEEP",
+      "name": "FURY SWEEP",
+      "skillLadder": "attack",
+      "ladderRung": 2,
+      "unlockAtSkillLevel": 10,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "attack",
+      "secondaryStat": "luck",
+      "secondaryHooks": [
+        {
+          "key": "FURY_BLEED_TURNS_PER_LCK_LVL",
+          "perLevel": 0.1,
+          "cap": 2,
+          "effect": "+bleed turns on crit (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        },
+        {
+          "key": "FURY_BLEED_POTENCY_PER_LCK_LVL",
+          "perLevel": 0.015,
+          "cap": 0.35,
+          "effect": "+bleed chip mult on crit (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "fury-sweep",
+        "damageMult": 1.15,
+        "damageFloor": 6,
+        "takeEnemyHit": true,
+        "crit": {
+          "base": 8,
+          "lckMult": 2,
+          "damageMult": 1.2,
+          "extraCritRolls": 1,
+          "onCrit": [
+            "bleed"
+          ],
+          "bleedOnCritOnly": true
+        },
+        "primaryFormula": "jitter(max(damageFloor, floor(atk * damageMult))); bleed on crit only"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "bleed-on-crit"
+      ],
+      "uiDescription": "wild sweep. crit applies bleed, chip each turn."
+    },
+    {
+      "id": "DARK_BREAK",
+      "name": "DARK BREAK",
+      "skillLadder": "attack",
+      "ladderRung": 3,
+      "unlockAtSkillLevel": 22,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "attack",
+      "secondaryStat": "speed",
+      "secondaryHooks": [
+        {
+          "key": "DARK_BREAK_EXTRA_TURNS_PER_SPD_LVL",
+          "perLevel": 0.06,
+          "cap": 1,
+          "effect": "+accuracy-down turns (speed)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "dark-break",
+        "damageMult": 0.45,
+        "enemyAccuracyMult": 0.5,
+        "enemyAccuracyTurns": "2–3 + spd hook",
+        "debuff": "enemy accuracy reduced (multiplicative on their hits)"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [],
+      "uiDescription": "break their aim. low damage, high control."
+    },
+    {
+      "id": "CANNON",
+      "name": "CANNON",
+      "skillLadder": "attack",
+      "ladderRung": 4,
+      "unlockAtSkillLevel": 38,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "attack",
+      "secondaryStat": "luck",
+      "secondaryHooks": [
+        {
+          "key": "CANNON_CRIT_DMG_PER_LCK_LVL",
+          "perLevel": 0.022,
+          "cap": 0.35,
+          "effect": "+crit damage mult (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "cannon",
+        "damageMult": 1.1,
+        "crit": {
+          "base": 28,
+          "lckMult": 2.5,
+          "damageMult": 1.5,
+          "onCrit": []
+        },
+        "defShatterChance": 0.05,
+        "defShatterEffect": "enemyDefShattered flag on crit proc"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [],
+      "uiDescription": "high crit. might shatter their defense."
+    },
+    {
+      "id": "BLACKOUT",
+      "name": "BLACKOUT",
+      "skillLadder": "attack",
+      "ladderRung": 5,
+      "unlockAtSkillLevel": 52,
+      "cost": {
+        "kind": "loadTurn"
+      },
+      "primaryStat": "attack",
+      "secondaryStat": "speed",
+      "secondaryHooks": [
+        {
+          "key": "BLACKOUT_MOMENTUM_PER_SPD_LVL",
+          "perLevel": 0.014,
+          "cap": 0.28,
+          "effect": "+armed release hit damage (speed)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "blackout",
+        "cost": "loadTurn",
+        "phases": [
+          "idle→loading (exposed)",
+          "armed→release",
+          "recharging"
+        ],
+        "releaseDamageMult": 3.2,
+        "releaseDodge": "speedDodgeSuccess * 0.62",
+        "interruptible": true
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "charge-move",
+        "cap-move"
+      ],
+      "uiDescription": "load. exposed. then the biggest hit."
+    },
+    {
+      "id": "SLIP",
+      "name": "SLIP",
+      "skillLadder": "speed",
+      "ladderRung": 1,
+      "unlockAtSkillLevel": 0,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "speed",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "SLIP_COUNTER_ATK_PER_ATK_LVL",
+          "perLevel": 0.016,
+          "cap": 0.32,
+          "effect": "+counter damage (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "dodge",
+        "dodgeSuccess": "speedDodgeSuccessChance(spd) = min(0.99, SPD_DODGE_BASE_CHANCE(0.68) + spd*0.02)",
+        "counterMult": 0.7,
+        "weakMult": 0.4,
+        "stunOnDodge": {
+          "formula": "roll < base + lck*lckMult",
+          "base": 20,
+          "lckMult": 2
+        },
+        "counterFormula": "jitter(floor(atk * counterMult * (1 + spd dodge + spd counter + slip atk hook)))",
+        "whiffFormula": "jitter(floor(atk * weakMult)); take full incoming"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "dodge",
+        "counter"
+      ],
+      "uiDescription": "dodge and counter. avoid their incoming hit."
+    },
+    {
+      "id": "PARRY",
+      "name": "PARRY",
+      "skillLadder": "speed",
+      "ladderRung": 2,
+      "unlockAtSkillLevel": 10,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "speed",
+      "secondaryStat": "defense",
+      "secondaryHooks": [
+        {
+          "key": "PARRY_REFLECT_DEF_PER_DEF_LVL",
+          "perLevel": 0.012,
+          "cap": 0.28,
+          "effect": "+dodge reflect % (defense)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "dodge",
+        "dodgeSuccess": "speedDodgeSuccessChance(spd) = min(0.99, SPD_DODGE_BASE_CHANCE(0.68) + spd*0.02)",
+        "counterMult": 0.72,
+        "weakMult": 0.35,
+        "stunOnDodge": {
+          "formula": "roll < base + lck*lckMult",
+          "base": 8,
+          "lckMult": 1
+        },
+        "onDodgeReflectPct": 0.02,
+        "counterFormula": "jitter(floor(atk * counterMult * (1 + spd dodge + spd counter + slip atk hook)))",
+        "whiffFormula": "jitter(floor(atk * weakMult)); take full incoming"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "dodge",
+        "counter",
+        "reflect"
+      ],
+      "uiDescription": "deflect and sting. tiny reflect on dodge."
+    },
+    {
+      "id": "GRAVITY_SHIFT",
+      "name": "GRAVITY SHIFT",
+      "skillLadder": "speed",
+      "ladderRung": 3,
+      "unlockAtSkillLevel": 22,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "speed",
+      "secondaryStat": "luck",
+      "secondaryHooks": [
+        {
+          "key": "GRAVITY_SLOW_TURNS_PER_LCK_LVL",
+          "perLevel": 0.08,
+          "cap": 1.5,
+          "effect": "+slow turns (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "gravity-shift",
+        "chipDamageMult": 0.35,
+        "slowTurns": "2–5 + luck hook",
+        "enemySlowOutgoingMult": 0.56
+      },
+      "statusOnResolve": [
+        {
+          "effect": "slow",
+          "turns": 3
+        }
+      ],
+      "specialBehavior": [],
+      "uiDescription": "slow them down. you set the tempo."
+    },
+    {
+      "id": "REFRACT",
+      "name": "REFRACT",
+      "skillLadder": "speed",
+      "ladderRung": 4,
+      "unlockAtSkillLevel": 38,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "speed",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "REFRACT_ATK_PER_ATK_LVL",
+          "perLevel": 0.018,
+          "cap": 0.32,
+          "effect": "+mirrored damage (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "refract",
+        "mirrors": "floor(lastEnemyDamage * REFRACT_DAMAGE_MULT * atk hook)",
+        "REFRACT_DAMAGE_MULT": 1
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "reflect-mirror"
+      ],
+      "uiDescription": "mirror their last hit back."
+    },
+    {
+      "id": "HYPERDRIVE",
+      "name": "HYPERDRIVE",
+      "skillLadder": "speed",
+      "ladderRung": 5,
+      "unlockAtSkillLevel": 52,
+      "cost": {
+        "kind": "rechargeTurn"
+      },
+      "primaryStat": "speed",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "HYPERDRIVE_SETUP_ATK_PER_ATK_LVL",
+          "perLevel": 0.014,
+          "cap": 0.3,
+          "effect": "+setup hit damage (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "hyperdrive",
+        "cost": "rechargeTurn",
+        "setupDamageMult": 0.25,
+        "effect": "hyperdriveArmed=true → next STRIKE damage x2; player skip next turn (exposed)"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "charge-move",
+        "buff-next-strike"
+      ],
+      "uiDescription": "double next turn. then you skip, exposed."
+    },
+    {
+      "id": "HOLD",
+      "name": "HOLD",
+      "skillLadder": "defense",
+      "ladderRung": 1,
+      "unlockAtSkillLevel": 0,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "defense",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "HOLD_BRACE_CHIP_PER_ATK_LVL",
+          "perLevel": 0.22,
+          "cap": 3,
+          "effect": "+brace chip damage on hit (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "brace",
+        "incomingMult": 0.3,
+        "incomingFormula": "floor(eDmg * braceIncomingMultiplier(incomingMult, def))",
+        "perfectGuard": true,
+        "holdChip": "crossSecondaryFlat(atk skill) on incoming hit"
+      },
+      "statusOnResolve": [
+        {
+          "effect": "brace",
+          "turns": 1
+        }
+      ],
+      "specialBehavior": [
+        "brace",
+        "block"
+      ],
+      "uiDescription": "brace. take a fraction of the next hit."
+    },
+    {
+      "id": "ANCHOR",
+      "name": "ANCHOR",
+      "skillLadder": "defense",
+      "ladderRung": 2,
+      "unlockAtSkillLevel": 10,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "defense",
+      "secondaryStat": "luck",
+      "secondaryHooks": [
+        {
+          "key": "ANCHOR_BRACE_HEAL_PER_LCK_LVL",
+          "perLevel": 0.18,
+          "cap": 3,
+          "effect": "+heal HP on brace (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "brace",
+        "incomingMult": 0.3,
+        "blockStatus": true,
+        "incomingFormula": "floor(eDmg * braceIncomingMultiplier(incomingMult, def))",
+        "perfectGuard": true,
+        "anchorHeal": "crossSecondaryFlat(luck) HP on incoming hit"
+      },
+      "statusOnResolve": [
+        {
+          "effect": "brace",
+          "turns": 1
+        }
+      ],
+      "specialBehavior": [
+        "brace",
+        "block"
+      ],
+      "uiDescription": "brace and shrug off status this turn."
+    },
+    {
+      "id": "SECOND_WIND",
+      "name": "SECOND WIND",
+      "skillLadder": "defense",
+      "ladderRung": 3,
+      "unlockAtSkillLevel": 22,
+      "cost": {
+        "kind": "oncePerBattle"
+      },
+      "primaryStat": "defense",
+      "secondaryStat": "luck",
+      "secondaryHooks": [
+        {
+          "key": "SECOND_WIND_LCK_HEAL_PER_LVL",
+          "perLevel": 0.004,
+          "cap": 0.08,
+          "effect": "+heal % of maxHp (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "second-wind",
+        "cost": "oncePerBattle",
+        "healPct": "min(0.4, 0.2 + def*0.01 + luck hook) of maxHp"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "heal",
+        "once-per-battle",
+        "cap-move"
+      ],
+      "uiDescription": "breathe. get some back. once a fight."
+    },
+    {
+      "id": "COUNTERWEIGHT",
+      "name": "COUNTERWEIGHT",
+      "skillLadder": "defense",
+      "ladderRung": 4,
+      "unlockAtSkillLevel": 38,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "defense",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "COUNTERWEIGHT_REFLECT_ATK_PER_ATK_LVL",
+          "perLevel": 0.012,
+          "cap": 0.05,
+          "effect": "+reflect % on proc (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "counterweight",
+        "blockPct": "0.5–0.8",
+        "reflectChance": 0.35,
+        "reflectPct": "0.02–0.1 + atk hook",
+        "effect": "arms block % for next heavy; chance to reflect portion"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "block",
+        "reflect"
+      ],
+      "uiDescription": "block heavy. chance to send some back."
+    },
+    {
+      "id": "BRICK_WALL",
+      "name": "BRICK WALL",
+      "skillLadder": "defense",
+      "ladderRung": 5,
+      "unlockAtSkillLevel": 52,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "defense",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "BRICK_WALL_FOLLOWUP_ATK_PER_ATK_LVL",
+          "perLevel": 0.012,
+          "cap": 0.22,
+          "effect": "+next player hit damage after nullify (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "brick-wall",
+        "effect": "nullify next incoming hit; next player damage gets atk followup mult"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "nullify",
+        "cap-move"
+      ],
+      "uiDescription": "nullify the next hit entirely."
+    },
+    {
+      "id": "INVINCIBLE",
+      "name": "INVINCIBLE",
+      "skillLadder": "defense",
+      "ladderRung": 6,
+      "unlockAtSkillLevel": 65,
+      "cost": {
+        "kind": "oncePerBattle"
+      },
+      "primaryStat": "defense",
+      "secondaryStat": "luck",
+      "secondaryHooks": [
+        {
+          "key": "INVINCIBLE_SACRIFICE_RELIEF_PER_LCK_LVL",
+          "perLevel": 0.009,
+          "cap": 0.14,
+          "effect": "-sacrifice HP % (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "invincible",
+        "cost": "oncePerBattle",
+        "sacrificePct": "max(0.01, 0.5 - luck hook) of current HP",
+        "blockCount": 3
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "nullify",
+        "once-per-battle",
+        "cap-move"
+      ],
+      "uiDescription": "half your hp. block the next 3 hits. once per fight."
+    },
+    {
+      "id": "WHISPER",
+      "name": "WHISPER",
+      "skillLadder": "luck",
+      "ladderRung": 1,
+      "unlockAtSkillLevel": 0,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "luck",
+      "secondaryStat": "speed",
+      "secondaryHooks": [
+        {
+          "key": "WHISPER_SHAKE_WEAKEN_PER_SPD_LVL",
+          "perLevel": 0.012,
+          "cap": 0.12,
+          "effect": "+shake weaken (lower enemy outgoing mult; speed)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "damage",
+        "damageMult": 0.5,
+        "takeEnemyHit": true,
+        "primaryFormula": "jitter(floor(atk * damageMult * earlyStrikeScale)); openingBonus if !enemyAttacks",
+        "statusesFromCrit": []
+      },
+      "statusOnResolve": [
+        {
+          "effect": "shake",
+          "turns": 2
+        }
+      ],
+      "specialBehavior": [
+        "shake"
+      ],
+      "uiDescription": "rattle them. their next hit lands softer."
+    },
+    {
+      "id": "LOOP",
+      "name": "LOOP",
+      "skillLadder": "luck",
+      "ladderRung": 2,
+      "unlockAtSkillLevel": 10,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "luck",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "LOOP_REPEAT_ATK_PER_ATK_LVL",
+          "perLevel": 0.016,
+          "cap": 0.3,
+          "effect": "+loop strike damage (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "loop",
+        "damageMult": 0.55,
+        "effect": "forceEnemyMove = lastEnemyMove"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "force-repeat"
+      ],
+      "uiDescription": "make them repeat their last move."
+    },
+    {
+      "id": "DEVILS_CUT",
+      "name": "DEVIL'S CUT",
+      "skillLadder": "luck",
+      "ladderRung": 3,
+      "unlockAtSkillLevel": 22,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "luck",
+      "secondaryStat": "attack",
+      "secondaryHooks": [
+        {
+          "key": "DEVILS_CUT_LIFESTEAL_ATK_PER_ATK_LVL",
+          "perLevel": 0.0022,
+          "cap": 0.06,
+          "effect": "+lifesteal % (attack)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "devils-cut",
+        "damageMult": 0.42,
+        "lifestealPct": "min(0.2, 0.1 + lck*0.0035 + atk hook)",
+        "lifestealTurns": "2–3"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "lifesteal"
+      ],
+      "uiDescription": "take your cut. hits feed you for a few turns."
+    },
+    {
+      "id": "SNAG",
+      "name": "SNAG",
+      "skillLadder": "luck",
+      "ladderRung": 4,
+      "unlockAtSkillLevel": 38,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "luck",
+      "secondaryStat": null,
+      "secondaryHooks": [
+        {
+          "key": "SNAG_STOLEN_PER_NATIVE_LVL",
+          "perLevel": 0.014,
+          "cap": 0.28,
+          "effect": "+stolen move power (native skill of stolen enemy move)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "snag",
+        "stealFrom": "npc move pool",
+        "nonAttackFallback": "jitter(floor(atk * 0.3))",
+        "stolenAttack": "floor(atk * enemy.damageMult * stolenScale)",
+        "stolenNonAttack": "jitter(floor(atk * 0.4 * stolenScale))"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "steal-move"
+      ],
+      "uiDescription": "steal one of their moves for this fight."
+    },
+    {
+      "id": "PHENOMENA",
+      "name": "PHENOMENA",
+      "skillLadder": "luck",
+      "ladderRung": 5,
+      "unlockAtSkillLevel": 52,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "luck",
+      "secondaryStat": "defense",
+      "secondaryHooks": [
+        {
+          "key": "PHENOMENA_ROLL_BIAS_PER_LCK_LVL",
+          "perLevel": 0.12,
+          "cap": null,
+          "effect": "+chance to bump roll toward better outcome (luck)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        },
+        {
+          "key": "PHENOMENA_DEF_FLOOR_PER_DEF_LVL",
+          "perLevel": 0.01,
+          "cap": 0.12,
+          "effect": "+chaos damage floor (defense)",
+          "secondaryShare": 0.25,
+          "bonusFormula": "min(cap, secondaryLevel * perLevel) * SECONDARY_SHARE (0.25)",
+          "multFormula": "1 + bonus (for damage/counter mult hooks)"
+        }
+      ],
+      "behavior": {
+        "kind": "phenomena",
+        "rollOutcomes": [
+          "bleed",
+          "shake",
+          "stun",
+          "slow",
+          "miss",
+          "double",
+          "reflect",
+          "chaos dmg atk * 0.35–1.25",
+          "heal maxHp * 0.08–0.22"
+        ],
+        "rollChanceEach": "1/9 uniform (+ luck bias chance)"
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "rng",
+        "cap-move"
+      ],
+      "uiDescription": "pure rng from the known pool."
+    },
+    {
+      "id": "SEALED_FATE",
+      "name": "SEALED FATE",
+      "skillLadder": "luck",
+      "ladderRung": 6,
+      "unlockAtSkillLevel": 65,
+      "cost": {
+        "kind": "none"
+      },
+      "primaryStat": "luck",
+      "secondaryStat": null,
+      "secondaryHooks": [],
+      "behavior": {
+        "kind": "sealed-fate",
+        "deathClockDamage": "floor(atk * 3)",
+        "deathClockTurns": "1–3",
+        "hitChance": 0.99,
+        "missSelfDamagePct": 0.8
+      },
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "death-clock",
+        "cap-move"
+      ],
+      "uiDescription": "death clock. huge hit soon or you pay."
+    }
+  ],
+  "enemyMoves": [
+    {
+      "id": "STRIKE",
+      "name": "STRIKE",
+      "skillType": "attack",
+      "telegraphLine": "lines up a strike.",
+      "isAttacking": true,
+      "primaryStat": "attack",
+      "damageFormula": "jitter(floor(npcAtk * 1))",
+      "damageMult": 1,
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "attack"
+      ]
+    },
+    {
+      "id": "LOOP",
+      "name": "LOOP",
+      "skillType": "attack",
+      "telegraphLine": "draws back, a heavy loop is coming.",
+      "isAttacking": true,
+      "primaryStat": "attack",
+      "damageFormula": "jitter(floor(npcAtk * 2))",
+      "damageMult": 2,
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "attack"
+      ],
+      "notes": "heavy telegraph; mult = ENEMY_LOOP_STRIKE_MULT (2)"
+    },
+    {
+      "id": "HAYMAKER",
+      "name": "HAYMAKER",
+      "skillType": "attack",
+      "telegraphLine": "winds up, HAYMAKER incoming.",
+      "isAttacking": true,
+      "primaryStat": "attack",
+      "damageFormula": "jitter(floor(npcAtk * 2))",
+      "damageMult": 2,
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "attack"
+      ],
+      "notes": "heavy telegraph; mult = ENEMY_LOOP_STRIKE_MULT (2)"
+    },
+    {
+      "id": "SLIP",
+      "name": "SLIP",
+      "skillType": "speed",
+      "telegraphLine": "feints a slip to your blind side.",
+      "isAttacking": true,
+      "primaryStat": "speed",
+      "damageFormula": "jitter(floor(npcAtk * 0.7))",
+      "damageMult": 0.7,
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "attack"
+      ]
+    },
+    {
+      "id": "WHISPER",
+      "name": "WHISPER",
+      "skillType": "luck",
+      "telegraphLine": "murmurs something that crawls under your skin.",
+      "isAttacking": false,
+      "primaryStat": "luck",
+      "damageFormula": null,
+      "damageMult": 0,
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "non-attack",
+        "shake-not-yet-implemented-on-enemy-side"
+      ],
+      "notes": "Enemy-side shake debuff not implemented yet (player WHISPER applies shake)"
+    },
+    {
+      "id": "HOLD",
+      "name": "HOLD",
+      "skillType": "defense",
+      "telegraphLine": "plants his feet and braces.",
+      "isAttacking": false,
+      "primaryStat": "defense",
+      "damageFormula": null,
+      "damageMult": 0,
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "brace",
+        "guard-counter-if-npc-has-guardCounter"
+      ],
+      "notes": "NPC guardCounter (per-fighter): chance riposte when player attacks into HOLD"
+    },
+    {
+      "id": "BAIT",
+      "name": "BAIT",
+      "skillType": "speed",
+      "telegraphLine": "invites you in, waiting for you to swing.",
+      "isAttacking": false,
+      "primaryStat": "speed",
+      "damageFormula": null,
+      "damageMult": 0,
+      "statusOnResolve": [],
+      "specialBehavior": [
+        "feint",
+        "invites-player-swing"
+      ]
+    }
+  ]
+}

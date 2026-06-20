@@ -14,7 +14,7 @@
   height: 100%;
 }
 
-/* Inside GameShell — fill viewport play area (desktop + mobile, no 390px cap) */
+/* Inside GameShell, fill viewport play area (desktop + mobile, no 390px cap) */
 .game-shell__viewport .game-canvas-wrap {
   width: 100%;
   height: 100%;

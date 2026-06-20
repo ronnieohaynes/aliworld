@@ -238,7 +238,7 @@ export function formatJoinedDate(iso: string): string {
 }
 
 export function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
   return date.toLocaleString(undefined, {

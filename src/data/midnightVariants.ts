@@ -13,7 +13,7 @@ export type { MidnightVariantId }
 
 const CHARACTERS_DIR = publicAsset('Assets/Characters')
 
-/** Full variant MAP — id → walk sheet URL (every renderable sprite). */
+/** Full variant MAP, id → walk sheet URL (every renderable sprite). */
 const WALK_SRC = Object.fromEntries(
   Object.entries(MIDNIGHT_VARIANT_SHEET).map(([id, { folder, file }]) => [
     id,
@@ -72,52 +72,13 @@ export const MIDNIGHT_DEFAULT_VARIANT_ID: MidnightVariantId = 'default'
 
 const BASELINE_RENDER = MIDNIGHT_DEFAULT_RENDER_TUNING
 
-/** Creation carousel only — subset of the full MAP. */
+/** Creation carousel only, subset of the full MAP. All use baseline crop/feet (same as cencere-test / player-riley-m). */
 export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   { id: 'default', render: BASELINE_RENDER },
-  {
-    id: 'asian-f',
-    render: {
-      ...BASELINE_RENDER,
-      frameInsetTopUp: 4,
-    },
-  },
-  {
-    id: 'latino-m',
-    render: {
-      ...BASELINE_RENDER,
-      frameInsetTopDown: 4,
-      frameInsetTopUp: 20,
-      frameInsetTopLeft: 17,
-      frameInsetTopRight: 4,
-      rowPaddingDown: 0,
-      rowPaddingUp: 0,
-      rowPaddingLeft: 0,
-      rowPaddingRight: 0,
-      cropHeightDown: 262,
-      cropHeightUp: 260,
-      cropHeightLeft: 244,
-      cropHeightRight: 252,
-    },
-  },
-  {
-    id: 'white-f',
-    render: {
-      ...BASELINE_RENDER,
-      rowPaddingDown: 6,
-      rowPaddingUp: 6,
-      rowPaddingRight: 4,
-    },
-  },
-  {
-    id: 'filipino-m',
-    render: {
-      ...BASELINE_RENDER,
-      frameInsetTopUp: 6,
-      cropHeightDown: 260,
-      cropHeightUp: 252,
-    },
-  },
+  { id: 'asian-f', render: BASELINE_RENDER },
+  { id: 'latino-m', render: BASELINE_RENDER },
+  { id: 'white-f', render: BASELINE_RENDER },
+  { id: 'filipino-m', render: BASELINE_RENDER },
 ] as const
 
 const RENDER_BY_ID = (() => {
@@ -140,7 +101,7 @@ export function isSelectableMidnightVariantId(value: string): boolean {
   return isMidnightVariantId(value) && SELECTABLE_IDS.has(value)
 }
 
-/** Admin + assign — every id in the full MAP; hidden = not on creation carousel. */
+/** Admin + assign, every id in the full MAP; hidden = not on creation carousel. */
 export function listAllMidnightVariantOptions() {
   return listAllAdminMidnightVariantOptions()
 }

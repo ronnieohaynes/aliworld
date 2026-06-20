@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { isComingSoonMode } from './config/comingSoon'
-import { track } from './lib/analytics'
+import { trackProgressEvent } from './lib/analytics'
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -37,17 +37,17 @@ function AnalyticsBootstrap() {
   useEffect(() => {
     if (bootedRef.current) return
     bootedRef.current = true
-    track('app_open')
+    trackProgressEvent('app_open')
 
     const heartbeatMs = 60_000
     const heartbeatId = window.setInterval(() => {
       if (document.visibilityState === 'hidden') return
-      track('session_heartbeat')
+      trackProgressEvent('session_heartbeat')
     }, heartbeatMs)
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
-        track('session_heartbeat')
+        trackProgressEvent('session_heartbeat')
       }
     }
     document.addEventListener('visibilitychange', onVisibility)

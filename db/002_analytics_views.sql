@@ -1,7 +1,7 @@
 -- =============================================================================
--- ALIWORLD analytics aggregate views (optional — run after 001 migration)
+-- ALIWORLD analytics aggregate views (optional, run after 001 migration)
 -- =============================================================================
--- These views expose ONLY aggregated counts — no raw user rows.
+-- These views expose ONLY aggregated counts, no raw user rows.
 -- Player app (anon/authenticated) cannot read aw_events (no SELECT policy),
 -- so invoker-rights views return empty for players. Service role / SQL editor
 -- bypass RLS and see full aggregates.
@@ -115,7 +115,7 @@ from public.aw_events
 where event_type = 'external_link_click'
 group by 1;
 
--- Restrict direct API access — service role + postgres only
+-- Restrict direct API access, service role + postgres only
 revoke all on public.aw_analytics_events_daily from public, anon, authenticated;
 revoke all on public.aw_analytics_dau_daily from public, anon, authenticated;
 revoke all on public.aw_analytics_battles from public, anon, authenticated;

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-/** Admin mothership — built into dist/admin for play.dannyali.com/admin */
+/** Admin mothership, built into dist/admin for play.dannyali.com/admin */
 export default defineConfig({
   base: '/admin/',
   root: 'admin',

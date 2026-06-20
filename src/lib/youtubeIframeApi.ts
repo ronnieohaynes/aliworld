@@ -7,6 +7,7 @@ export type YTPlayer = {
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
   mute?: () => void
   unMute?: () => void
+  getVideoData?: () => { title?: string; author?: string; video_id?: string }
 }
 
 export type YTPlayerReadyEvent = { target: YTPlayer }

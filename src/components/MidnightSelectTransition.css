@@ -1,7 +1,7 @@
 /**
  * Shared enter/exit motion for the Choose MIDNIGHT screen.
- * Entrance: midnight-select-enter — used by MidnightVariantSelectScreen.
- * Exit: midnight-select-exit — reverse of enter; used when leaving for the world.
+ * Entrance: midnight-select-enter, used by MidnightVariantSelectScreen.
+ * Exit: midnight-select-exit, reverse of enter; used when leaving for the world.
  */
 
 :root {

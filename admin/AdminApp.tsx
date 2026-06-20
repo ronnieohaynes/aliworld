@@ -30,7 +30,7 @@ export function AdminApp() {
         if (!ok) {
           sessionStorage.removeItem(UNLOCK_KEY)
           setAdminSecret('')
-          setError('wrong password — locked.')
+          setError('wrong password, locked.')
           return
         }
         sessionStorage.setItem(UNLOCK_KEY, trimmed)

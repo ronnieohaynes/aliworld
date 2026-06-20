@@ -12,6 +12,8 @@ export type StartMenuAction =
   | 'resume'
   | 'fanny-pack'
   | 'loadout'
+  | 'champions'
+  | 'ghost-training'
   | 'refresh'
   | 'report-bug'
   | 'new-game'
@@ -19,6 +21,8 @@ export type StartMenuAction =
 
 const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'resume', label: 'resume' },
+  { id: 'champions', label: 'champions board' },
+  { id: 'ghost-training', label: 'ghost training' },
   { id: 'refresh', label: 'refresh' },
   { id: 'report-bug', label: 'report bug' },
   { id: 'new-game', label: 'new game', danger: true },

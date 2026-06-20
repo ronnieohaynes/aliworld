@@ -30,38 +30,37 @@ import { unlockLevelForRung } from './moveUnlock'
 import type { MoveDefinition, MoveXpContext } from './moveTypes'
 
 /**
- * Counter-web audit — every big move needs an answer (see behavior + comments on caps).
- * STRIKE — answered by: enemy skip/stun, HOLD/SLIP
- * FURY_SWEEP — answered by: burst before bleed stacks, ANCHOR/bleed out-sustain
- * DARK_BREAK — answered by: kill before accuracy debuff stacks, tempo
- * CANNON — answered by: brace, dodge, def shatter is rng
- * BLACKOUT — answered by: HOLD/ANCHOR/BRICK_WALL on load exposed + release; SLIP/PARRY exposed; release dodge (reduced)
- * SLIP/PARRY — answered by: enemy skip, trade damage
- * GRAVITY_SHIFT — answered by: burst while slowed, ANCHOR
- * REFRACT — answered by: don't heavy-hit before refract, stun/skip
- * HYPERDRIVE — answered by: punish recharge exposed turn (brace/dodge/skip)
- * HOLD/ANCHOR — answered by: skip turns, burst through brace, ANCHOR vs status
- * SECOND_WIND — answered by: burst before heal, once/fight limits stall
- * COUNTERWEIGHT/BRICK_WALL — answered by: skip/feint, multi-hit, wait out wall
- * INVINCIBLE — answered by: burst before pop, once/fight
- * WHISPER/LOOP — answered by: ANCHOR cleanses shake, kill before loop value
- * DEVILS_CUT — answered by: burst through modest lifesteal window
- * SNAG — answered by: deny value by killing fast
- * PHENOMENA — answered by: ANCHOR vs status procs, rng
- * SEALED_FATE — answered by: kill before clock, SECOND_WIND/out-sustain, clock miss gamble
- * Enemy status on player (stun/bleed/shake) — not implemented yet; future enemy-design lever.
- *   When added: ANCHOR cleanses, brace reduces chip.
+ * Counter-web audit, every big move needs an answer (see behavior + comments on caps).
+ * STRIKE, answered by: enemy skip/stun, HOLD/SLIP
+ * FURY_SWEEP, answered by: burst before bleed stacks, ANCHOR/bleed out-sustain
+ * DARK_BREAK, answered by: kill before accuracy debuff stacks, tempo
+ * CANNON, answered by: brace, dodge, def shatter is rng
+ * BLACKOUT, answered by: HOLD/ANCHOR/BRICK_WALL on load exposed + release; SLIP/PARRY exposed; release dodge (reduced)
+ * SLIP/PARRY, answered by: enemy skip, trade damage
+ * GRAVITY_SHIFT, answered by: burst while slowed, ANCHOR
+ * REFRACT, answered by: don't heavy-hit before refract, stun/skip
+ * HYPERDRIVE, answered by: punish recharge exposed turn (brace/dodge/skip)
+ * HOLD/ANCHOR, answered by: skip turns, burst through brace, ANCHOR vs status
+ * SECOND_WIND, answered by: burst before heal, once/fight limits stall
+ * COUNTERWEIGHT/BRICK_WALL, answered by: skip/feint, multi-hit, wait out wall
+ * INVINCIBLE, answered by: burst before pop, once/fight
+ * WHISPER/LOOP, answered by: ANCHOR cleanses shake, kill before loop value
+ * DEVILS_CUT, answered by: burst through modest lifesteal window
+ * SNAG, answered by: deny value by killing fast
+ * PHENOMENA, answered by: ANCHOR vs status procs, rng
+ * SEALED_FATE, answered by: kill before clock, SECOND_WIND/out-sustain, clock miss gamble
+ * Status effects apply symmetrically via applyStatusToCombat(target); ANCHOR blocks incoming status.
  */
 
 function defenseMoveXp(r: MoveXpContext): number {
   // Flat floor so a turn where the enemy doesn't attack (nothing to block)
-  // doesn't zero out — same treatment as the utility moves.
+  // doesn't zero out, same treatment as the utility moves.
   return r.damageBlocked * XP_DAMAGE_BLOCKED_MULT + XP_UTILITY_MOVE_BONUS
 }
 
 function speedDodgeMoveXp(r: MoveXpContext): number {
   // Flat floor so a clean whiff (nothing to dodge, no counter landed) doesn't
-  // zero out — same treatment as the utility moves.
+  // zero out, same treatment as the utility moves.
   return (
     r.damageAvoided * XP_DAMAGE_AVOIDED_MULT +
     Math.floor(r.playerDmg * XP_SPEED_DAMAGE_MULT) +
@@ -134,7 +133,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     xpGrants: [
       { skill: 'speed', amount: (r) => r.playerDmg * XP_DAMAGE_DEALT_MULT },
     ],
-    uiDescription: 'wild sweep. crit applies bleed — chip each turn.',
+    uiDescription: 'wild sweep. crit applies bleed, chip each turn.',
     uiClassName: 'battle-screen__move--fury-sweep',
     playerLogLine: (r) =>
       `fury sweep. ${r.playerDmg}!${r.crit ? ' crit bleed.' : ''}`,
@@ -223,7 +222,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
       profile: {
         counterMult: 0.7,
         weakMult: 0.4,
-        stunChance: { base: 20, lckMult: 2 },
+        stunChance: { base: 14, lckMult: 1.5 },
       },
     },
     onResolve: [],
@@ -249,23 +248,23 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   PARRY: def({
     id: 'PARRY',
     displayName: 'PARRY',
-    skill: 'attack',
-    ladderRung: 2,
+    skill: 'defense',
+    ladderRung: 1,
     cost: { kind: 'none' },
     behavior: {
       kind: 'dodge',
       profile: {
         counterMult: PARRY_DODGE_COUNTER_MULT,
         weakMult: PARRY_DODGE_WEAK_MULT,
-        stunChance: { base: 22, lckMult: 2.5 },
+        stunChance: { base: 18, lckMult: 2 },
         onDodgeReflectPct: PARRY_ON_DODGE_REFLECT_PCT,
       },
     },
     onResolve: [],
     xpGrants: [
-      { skill: 'attack', amount: speedDodgeMoveXp },
+      { skill: 'defense', amount: speedDodgeMoveXp },
     ],
-    uiDescription: 'read and punish. counter-hit with reflect.',
+    uiDescription: 'read and punish. counter scales with def.',
     uiClassName: 'battle-screen__move--parry',
     playerLogLine: (r) =>
       r.dodged
@@ -322,7 +321,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     xpGrants: [
       { skill: 'speed', amount: (r) => Math.floor(r.playerDmg * XP_SPEED_DAMAGE_MULT) + XP_UTILITY_MOVE_BONUS },
     ],
-    uiDescription: 'double next turn. then you skip — exposed.',
+    uiDescription: 'double next turn. then you skip, exposed.',
     uiClassName: 'battle-screen__move--hyperdrive',
     playerLogLine: (r) =>
       r.playerDmg > 0
@@ -372,7 +371,7 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
   }),
 
   SECOND_WIND: def({
-    // answered by: burst before heal; once/fight — not an infinite stall loop
+    // answered by: burst before heal; once/fight, not an infinite stall loop
     id: 'SECOND_WIND',
     displayName: 'SECOND WIND',
     skill: 'defense',

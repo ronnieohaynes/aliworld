@@ -35,27 +35,26 @@ function aiTierForLevel(level: number): number {
 }
 
 const COUNTER_MAP: Record<string, PlayerMoveId[]> = {
-  STRIKE: ['SLIP', 'HOLD'],
-  FURY_SWEEP: ['HOLD', 'SLIP'],
+  STRIKE: ['SLIP', 'ANCHOR'],
+  FURY_SWEEP: ['ANCHOR', 'SLIP'],
   DARK_BREAK: ['STRIKE', 'CANNON'],
-  CANNON: ['HOLD', 'SLIP'],
+  CANNON: ['ANCHOR', 'SLIP'],
   BLACKOUT: ['STRIKE', 'CANNON'],
   SLIP: ['PARRY', 'WHISPER'],
   PARRY: ['PARRY', 'WHISPER'],
-  HOLD: ['WHISPER', 'PARRY'],
   ANCHOR: ['WHISPER', 'PARRY'],
   SECOND_WIND: ['CANNON', 'LOOP'],
   COUNTERWEIGHT: ['PARRY', 'WHISPER'],
   BRICK_WALL: ['PARRY', 'WHISPER'],
   INVINCIBLE: ['PARRY', 'WHISPER'],
   WHISPER: ['STRIKE', 'CANNON'],
-  LOOP: ['HOLD', 'SLIP'],
+  LOOP: ['ANCHOR', 'SLIP'],
   DEVILS_CUT: ['CANNON', 'LOOP'],
   SNAG: ['STRIKE', 'CANNON'],
-  PHENOMENA: ['HOLD', 'STRIKE'],
+  PHENOMENA: ['ANCHOR', 'STRIKE'],
   SEALED_FATE: ['CANNON', 'LOOP'],
   GRAVITY_SHIFT: ['STRIKE', 'CANNON'],
-  REFRACT: ['HOLD', 'PARRY'],
+  REFRACT: ['ANCHOR', 'PARRY'],
   HYPERDRIVE: ['STRIKE', 'CANNON'],
 }
 
@@ -68,7 +67,7 @@ function applyTier1Weights(weights: MoveWeight[], ctx: BattleContext): void {
     if (ctx.playerIsExposed && (w.move === 'CANNON' || w.move === 'LOOP')) {
       w.weight *= 2.5
     }
-    if (ctx.enemyHpPct < 0.3 && w.move === 'HOLD') {
+    if (ctx.enemyHpPct < 0.3 && w.move === 'ANCHOR') {
       w.weight *= 2
     }
     if (ctx.turn === 1 && (w.move === 'STRIKE' || w.move === 'CANNON')) {
@@ -93,10 +92,10 @@ function applyTier2Weights(weights: MoveWeight[], ctx: BattleContext): void {
     if (ctx.playerIsBracing && (w.move === 'STRIKE' || w.move === 'CANNON')) {
       w.weight *= 0.3
     }
-    if (ctx.enemyIsSlowed && w.move === 'HOLD') {
+    if (ctx.enemyIsSlowed && w.move === 'ANCHOR') {
       w.weight *= 1.5
     }
-    if (ctx.enemyIsShaken && w.move === 'HOLD') {
+    if (ctx.enemyIsShaken && w.move === 'ANCHOR') {
       w.weight *= 1.8
     }
     if (w.move === ctx.lastEnemyMove && ctx.turn > 2) {

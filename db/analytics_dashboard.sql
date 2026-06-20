@@ -1,8 +1,8 @@
 -- =============================================================================
--- ALIWORLD analytics — aggregate queries for Supabase SQL Editor
+-- ALIWORLD analytics, aggregate queries for Supabase SQL Editor
 -- =============================================================================
 -- Run these in: Supabase Dashboard → SQL Editor → New query → Save
--- Access: SQL Editor runs as postgres (bypasses RLS). Safe — outputs counts only.
+-- Access: SQL Editor runs as postgres (bypasses RLS). Safe, outputs counts only.
 --
 -- aw_events columns:
 --   event_id, user_id, event_type, metadata (jsonb), created_at
@@ -17,7 +17,7 @@
 -- =============================================================================
 
 
--- ── 1. OVERVIEW — last 7 days ───────────────────────────────────────────────
+-- ── 1. OVERVIEW, last 7 days ───────────────────────────────────────────────
 
 -- Daily active users (logged-in) + anonymous sessions
 select
@@ -33,7 +33,7 @@ group by 1
 order by 1 desc;
 
 
--- ── 2. EVENT VOLUME — by type, last 14 days ─────────────────────────────────
+-- ── 2. EVENT VOLUME, by type, last 14 days ─────────────────────────────────
 
 select
   date_trunc('day', created_at at time zone 'utc')::date as day,
@@ -115,7 +115,7 @@ group by 1
 order by 1 desc;
 
 
--- ── 5. WORLD — city enters ──────────────────────────────────────────────────
+-- ── 5. WORLD, city enters ──────────────────────────────────────────────────
 
 select
   metadata->>'city' as city,
@@ -141,7 +141,7 @@ group by 1, 2
 order by 1 desc, enters desc;
 
 
--- ── 6. COMBAT — battles ─────────────────────────────────────────────────────
+-- ── 6. COMBAT, battles ─────────────────────────────────────────────────────
 
 -- Win rate + avg turns by enemy
 select
@@ -177,7 +177,7 @@ group by 1
 order by 1 desc;
 
 
--- ── 7. PROGRESSION — NPCs, episodes, quests ───────────────────────────────────
+-- ── 7. PROGRESSION, NPCs, episodes, quests ───────────────────────────────────
 
 -- NPC conversions
 select
@@ -218,7 +218,7 @@ order by quest_id, advances desc;
 
 select
   event_type,
-  coalesce(metadata->>'skill', metadata->>'moveId', metadata->>'slot', '—') as detail,
+  coalesce(metadata->>'skill', metadata->>'moveId', metadata->>'slot', '-') as detail,
   count(*) as events
 from public.aw_events
 where event_type in ('skill_levelup', 'move_equipped', 'build_name_changed')
@@ -261,7 +261,7 @@ group by 1
 order by 1 desc;
 
 
--- ── 10. HEALTH CHECK — events in last hour ───────────────────────────────────
+-- ── 10. HEALTH CHECK, events in last hour ───────────────────────────────────
 
 select
   event_type,

@@ -1,5 +1,6 @@
 import { publicAsset } from '../utils/publicAsset'
 import { FIVE_GYM1_ID } from '../store/gymStore'
+import { isGymGauntletCombatId } from './gymWeeks'
 import type { NpcData } from './npcs'
 
 export { FIVE_GYM1_ID }
@@ -11,7 +12,7 @@ const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const JASON_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 
-/** Week 1 head — east of the ring (native 1224 gym map pixels; scaled in cityConfig). */
+/** Week 1 head, east of the ring (native 1224 gym map pixels; scaled in cityConfig). */
 export const FIVE_GYM1_HEAD_NPC: NpcData = {
   id: FIVE_GYM1_ID,
   name: 'Jerome',
@@ -25,7 +26,7 @@ export const FIVE_GYM1_HEAD_NPC: NpcData = {
   fixedFacing: 'left',
 }
 
-/** Ambient — heavy bags (left wall). Sheet: npc2-idle-sheet. */
+/** Ambient, heavy bags (left wall). Sheet: npc2-idle-sheet. */
 const GYM_AMBIENT_BAGS: NpcData = {
   id: 'gym-ambient-bags',
   name: '',
@@ -38,7 +39,7 @@ const GYM_AMBIENT_BAGS: NpcData = {
   fixedFacing: 'right',
 }
 
-/** Ambient — bench (southwest). Sheet: jason-idle. */
+/** Ambient, bench (southwest). Sheet: jason-idle. */
 const GYM_AMBIENT_BENCH: NpcData = {
   id: 'gym-ambient-bench',
   name: '',
@@ -51,7 +52,7 @@ const GYM_AMBIENT_BENCH: NpcData = {
   fixedFacing: 'up',
 }
 
-/** Ambient — ring side (north). Sheet: jaclyn-idle. */
+/** Ambient, ring side (north). Sheet: jaclyn-idle. */
 const GYM_AMBIENT_RING: NpcData = {
   id: 'gym-ambient-ring',
   name: '',
@@ -75,7 +76,7 @@ export const FIVE_GYM_AMBIENT_NPCS: readonly NpcData[] = [
 ]
 
 export function isGymHeadCombatId(npcId: string): boolean {
-  return npcId === FIVE_GYM1_ID
+  return npcId === FIVE_GYM1_ID || isGymGauntletCombatId(npcId)
 }
 
 export const FIVE_GYM1_INTERIOR_NPCS: readonly NpcData[] = [

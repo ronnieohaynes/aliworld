@@ -5,7 +5,7 @@ import type { NpcTelegraphFlavor } from './npcRegistry'
 /** Wins required to clear week-one head; losses never reset this count. */
 export const FIVE_GYM1_WINS_TO_CLEAR = 3
 
-/** Round-3 guard riposte — punishes blind aggression into HOLD. */
+/** Round-3 guard riposte, punishes blind aggression into HOLD. */
 export type FiveGym1GuardCounter = {
   chance: number
   damageMult: number
@@ -21,7 +21,7 @@ export type FiveGym1RoundConfig = {
   enemyGuardPierce?: number
 }
 
-/** Per-round tuning — one block for difficulty passes. Index = wins before fight (0–2). */
+/** Per-round tuning, one block for difficulty passes. Index = wins before fight (0–2). */
 export const FIVE_GYM1_ROUNDS: readonly FiveGym1RoundConfig[] = [
   {
     level: 4,

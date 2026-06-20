@@ -1,4 +1,4 @@
-/** Server-side build name derivation — keep aligned with src/data/buildName.ts */
+/** Server-side build name derivation, keep aligned with src/data/buildName.ts */
 
 export type SkillProgress = { level: number; xp: number }
 export type SkillsState = Record<'attack' | 'speed' | 'defense' | 'luck' | 'hp', SkillProgress>
@@ -6,6 +6,8 @@ export type SkillsState = Record<'attack' | 'speed' | 'defense' | 'luck' | 'hp',
 export type BuildName = { name: string; color: string }
 
 type CombatSkill = 'attack' | 'speed' | 'defense' | 'luck'
+
+export type BuildLoopSkill = CombatSkill
 
 const BALANCED: BuildName = { name: 'blank slate', color: '#f4e8c1' }
 const PURE_THRESHOLD = 2
@@ -39,7 +41,6 @@ const COMBO_NAMES: Record<string, string> = {
 
 const LOW_STAT_BUILDS: Record<string, BuildName> = {
   'attack+defense': { name: 'glass cannon', color: '#cc4444' },
-  'attack+!defense': { name: 'heavy hands', color: '#cc4444' },
   'defense+attack': { name: 'deadbolt', color: '#4488cc' },
   'speed+defense': { name: 'paper ghost', color: '#44cc66' },
   luck: { name: 'longshot', color: '#c084fc' },
@@ -94,7 +95,7 @@ function deriveLowStatBuild(skills: SkillsState): BuildName | null {
 
   if (top.skill === 'attack') {
     if (isLowSkill(skills, 'defense')) return LOW_STAT_BUILDS['attack+defense']!
-    return LOW_STAT_BUILDS['attack+!defense']!
+    return null
   }
   if (top.skill === 'defense' && isLowSkill(skills, 'attack')) return LOW_STAT_BUILDS['defense+attack']!
   if (top.skill === 'speed' && isLowSkill(skills, 'defense')) return LOW_STAT_BUILDS['speed+defense']!
@@ -132,4 +133,22 @@ export function deriveBuildName(skills: SkillsState): BuildName {
   }
 
   return BALANCED
+}
+
+/** Dominant skill for matchup counters; null when still blank slate. Keep aligned with src/data/buildName.ts */
+export function deriveBuildLoopType(skills: SkillsState): BuildLoopSkill | null {
+  const ranked = rankedCombatSkills(skills)
+  const top = ranked[0]!
+  const second = ranked[1]!
+  const third = ranked[2]!
+
+  if (top.level - second.level >= PURE_THRESHOLD) {
+    return top.skill
+  }
+
+  if (second.level - third.level >= COMBO_THRESHOLD) {
+    return top.skill
+  }
+
+  return null
 }

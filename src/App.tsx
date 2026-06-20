@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { ScaledDesignStage } from './components/ScaledDesignStage'
 import { AuthScreen } from './components/AuthScreen'
 import { ComingSoon } from './components/ComingSoon'
 import { GameScreen } from './components/GameScreen'
@@ -18,9 +19,11 @@ import { clearAuthParamsFromUrl, isPasswordResetPath } from './utils/authRoutes'
 
 function LoadingSplash() {
   return (
-    <div className="app-loading" aria-live="polite" aria-busy="true">
-      loading…
-    </div>
+    <ScaledDesignStage>
+      <div className="app-loading app-loading--stage" aria-live="polite" aria-busy="true">
+        loading…
+      </div>
+    </ScaledDesignStage>
   )
 }
 
@@ -70,7 +73,11 @@ function GameApp() {
   }, [auth.passwordRecoveryPending, auth.status])
 
   if (!started) {
-    return <TitleCard onStart={() => setStarted(true)} />
+    return (
+      <ScaledDesignStage>
+        <TitleCard onStart={() => setStarted(true)} />
+      </ScaledDesignStage>
+    )
   }
 
   if (auth.status === 'loading') {
@@ -78,19 +85,29 @@ function GameApp() {
   }
 
   if (auth.status === 'signed-in' && auth.passwordRecoveryPending) {
-    return <PasswordResetScreen />
+    return (
+      <ScaledDesignStage>
+        <PasswordResetScreen />
+      </ScaledDesignStage>
+    )
   }
 
   if (resetRoute && auth.status === 'signed-out') {
     return (
-      <div className="app-loading" aria-live="polite">
-        open the reset link from your email to continue.
-      </div>
+      <ScaledDesignStage>
+        <div className="app-loading app-loading--stage" aria-live="polite">
+          open the reset link from your email to continue.
+        </div>
+      </ScaledDesignStage>
     )
   }
 
   if (auth.status === 'signed-out') {
-    return <AuthScreen />
+    return (
+      <ScaledDesignStage>
+        <AuthScreen />
+      </ScaledDesignStage>
+    )
   }
 
   if (variant === null) {
@@ -98,7 +115,11 @@ function GameApp() {
   }
 
   if (!auth.profile) {
-    return <HandlePickScreen />
+    return (
+      <ScaledDesignStage>
+        <HandlePickScreen />
+      </ScaledDesignStage>
+    )
   }
 
   return <GameScreen />

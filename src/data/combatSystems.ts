@@ -109,7 +109,7 @@ export function scheduleDeathClock(
   ]
 }
 
-/** Call at turn start — fires clocks at 0 and ticks the rest. */
+/** Call at turn start, fires clocks at 0 and ticks the rest. */
 export function resolveDeathClocksAtTurnStart(clocks: DeathClock[]): {
   clocks: DeathClock[]
   hits: DeathClockHit[]
@@ -177,7 +177,43 @@ export function splitIncomingWithReflect(
   }
 }
 
-/** Player's next hit lands twice — returns total damage to apply. */
+export function splitOutgoingWithReflect(
+  outgoing: number,
+  reflect: CombatStatusState['enemyReflect'],
+): ReflectResult {
+  if (!reflect || outgoing <= 0) {
+    return { damageToPlayer: 0, damageToEnemy: outgoing }
+  }
+  const reflected = Math.floor(outgoing * reflect.percent)
+  return {
+    damageToPlayer: reflected,
+    damageToEnemy: Math.max(0, outgoing - reflected),
+  }
+}
+
+/** Crit rolls happen before enemy mitigation; strip crit effects when no damage lands. */
+export function invalidateCritWhenNoDamage(
+  out: {
+    playerDmg: number
+    crit: boolean
+    bleedApplied: boolean
+    bleedTurns?: number
+    bleedPotencyMult?: number
+  },
+  battleMove: Pick<BattleMoveState, 'enemyDefShattered'>,
+  enemyDefShatteredBefore: boolean,
+): void {
+  if (out.playerDmg > 0 || !out.crit) return
+  out.crit = false
+  out.bleedApplied = false
+  out.bleedTurns = undefined
+  out.bleedPotencyMult = undefined
+  if (!enemyDefShatteredBefore && battleMove.enemyDefShattered) {
+    battleMove.enemyDefShattered = false
+  }
+}
+
+/** Player's next hit lands twice, returns total damage to apply. */
 export function applyDoubleHit(playerDmg: number, playerDouble: number): {
   totalDamage: number
   consumedDouble: boolean
@@ -215,7 +251,11 @@ export function computeEnemyIncomingDamage(
     damageMult = 0
   }
   const base = Math.floor(ctx.eAtk * damageMult)
-  return Math.floor(base * enemyOutgoingDamageMult(ctx.status))
+  let dmg = Math.floor(base * enemyOutgoingDamageMult(ctx.status))
+  if (ctx.status.enemyDouble > 0) {
+    dmg *= 2
+  }
+  return dmg
 }
 
 export type ExposedResolveInput = {
@@ -249,6 +289,12 @@ export function buildExposedResolveInput(input: ExposedResolveInput) {
         ? `you're exposed. ${incoming} taken.`
         : `you're exposed. nothing comes.`,
   }
+}
+
+/** Clamp strike damage so it cannot exceed the target's remaining HP. */
+export function capDamageToRemainingHp(damage: number, remainingHp: number): number {
+  if (damage <= 0) return damage
+  return Math.min(damage, Math.max(0, remainingHp))
 }
 
 export function deathClockHitLogLine(hit: DeathClockHit, enemyName: string): string {

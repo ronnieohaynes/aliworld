@@ -12,7 +12,7 @@ export interface CollisionZone {
 
 export const BLUE_STORE_INTERIOR_MAP_SIZE = { width: 1254, height: 1254 };
 
-/** Bitmap draw scale — environment is authored at native 1254; shrink to match Midnight. */
+/** Bitmap draw scale, environment is authored at native 1254; shrink to match Midnight. */
 export const BLUE_STORE_INTERIOR_MAP_DRAW_SCALE = 0.55;
 
 function scaleInteriorCoord(value: number): number {
@@ -44,41 +44,29 @@ export const BLUE_STORE_INTERIOR_ENTRY = { x: 60, y: 506 };
 
 // Exit door trigger in scaled world coordinates (map draw scale 0.55).
 // Walking into this returns the player to the exterior Blue Store map.
-export const BLUE_STORE_EXIT_ZONE = { x: 10, y: 555, width: 71, height: 88 };
+export const BLUE_STORE_EXIT_ZONE = { x: 248, y: 521, width: 62, height: 52 };
 
+/** Outer shell + equipment rows + front desk (native map pixels, scale via `scaleBlueStoreInteriorZone`). */
 export const BLUE_STORE_INTERIOR_COLLISION_ZONES: CollisionZone[] = [
-  { x: 0, y: 320, width: 1254, height: 112 },
-  { x: 1072, y: 448, width: 8, height: 72 },
-  { x: 1080, y: 448, width: 168, height: 80 },
-  { x: 0, y: 456, width: 136, height: 88 },
-  { x: 136, y: 456, width: 8, height: 80 },
-  { x: 216, y: 520, width: 776, height: 152 },
-  { x: 1096, y: 544, width: 152, height: 16 },
-  { x: 1120, y: 560, width: 48, height: 16 },
-  { x: 1200, y: 560, width: 40, height: 16 },
-  { x: 1112, y: 576, width: 136, height: 24 },
-  { x: 1136, y: 616, width: 112, height: 24 },
-  { x: 1160, y: 648, width: 24, height: 24 },
-  { x: 1184, y: 648, width: 24, height: 56 },
-  { x: 1216, y: 656, width: 32, height: 152 },
-  { x: 0, y: 688, width: 88, height: 264 },
-  { x: 1200, y: 712, width: 16, height: 16 },
-  { x: 1248, y: 728, width: 6, height: 80 },
-  { x: 1200, y: 736, width: 16, height: 72 },
-  { x: 184, y: 752, width: 864, height: 96 },
-  { x: 1048, y: 760, width: 8, height: 88 },
-  { x: 0, y: 952, width: 80, height: 8 },
-  { x: 160, y: 952, width: 40, height: 8 },
-  { x: 320, y: 952, width: 128, height: 8 },
-  { x: 456, y: 952, width: 104, height: 8 },
-  { x: 568, y: 952, width: 40, height: 8 },
-  { x: 648, y: 952, width: 32, height: 8 },
-  { x: 704, y: 952, width: 104, height: 8 },
-  { x: 824, y: 952, width: 64, height: 8 },
-  { x: 992, y: 952, width: 64, height: 8 },
-  { x: 144, y: 960, width: 8, height: 112 },
-  { x: 152, y: 960, width: 936, height: 120 },
-  { x: 0, y: 1104, width: 72, height: 136 },
+  { x: 0,    y: 0,    width: 258,  height: 248  }, // top-left wall block
+  { x: 680,  y: 118,  width: 574,  height: 100  }, // top-right wall block (extends to right edge)
+  // front desk counter (U-shape around the desk furniture)
+  { x: 345,  y: 170,  width: 40,   height: 160  }, // desk left wall
+  { x: 345,  y: 280,  width: 320,  height: 50   }, // desk counter front
+  { x: 620,  y: 170,  width: 45,   height: 160  }, // desk right wall
+  { x: 25,   y: 248,  width: 105,  height: 712  }, // left wall
+  { x: 888,  y: 118,  width: 366,  height: 1136 }, // right wall (extends to right + bottom edges)
+  // equipment rows, top row
+  { x: 258,  y: 378,  width: 100,  height: 210  },
+  { x: 465,  y: 378,  width: 100,  height: 232  },
+  { x: 665,  y: 378,  width: 113,  height: 210  },
+  // equipment rows, bottom row
+  { x: 252,  y: 645,  width: 106,  height: 233  },
+  { x: 462,  y: 645,  width: 103,  height: 175  },
+  { x: 665,  y: 645,  width: 113,  height: 233  },
+  // bottom wall, split around the door gap (x 452-565), extends to right edge
+  { x: 0,    y: 935,  width: 452,  height: 319  },
+  { x: 565,  y: 935,  width: 689,  height: 319  },
 ];
 
 // Generic AABB test. Reuse your existing helper if one exists.

@@ -1,9 +1,9 @@
 /**
- * Shared combat vocabulary — player moves, enemy moves, and cap-tier systems
+ * Shared combat vocabulary, player moves, enemy moves, and cap-tier systems
  * all reference these types only (no ad-hoc status names elsewhere).
  */
 
-/** Fixed status set — do not add effects outside this list. */
+/** Fixed status set, do not add effects outside this list. */
 export type StatusEffectId =
   | 'bleed'
   | 'shake'
@@ -29,7 +29,7 @@ export type StatusTarget = 'player' | 'enemy'
 
 /** Default duration (turns) when a move applies a status without an explicit value. */
 export const STATUS_DEFAULT_TURNS: Record<StatusEffectId, number> = {
-  bleed: 2,
+  bleed: 2, // fallback only; applied bleed rolls 1–3 via rollBleedTurns()
   shake: 2,
   stun: 1,
   brace: 1,
@@ -50,10 +50,24 @@ export type CombatStatusState = {
   /** Next successful player hit strikes twice (damage applied twice). */
   playerDouble: number
   playerReflect: ReflectBuff | null
+  playerBleed: number
+  playerBleedPotencyMult: number
+  playerShake: number
+  playerShakePotency: number
+  playerStun: number
+  playerSlow: number
+  playerMiss: number
   /** Player's outgoing damage reduced while active (enemy WHISPER). */
   playerWeaken: number
+  enemyBrace: number
+  enemyDouble: number
+  enemyReflect: ReflectBuff | null
   enemyBleed: number
+  /** Bleed chip multiplier while bleeding (1 = default). */
+  enemyBleedPotencyMult: number
   enemyShake: number
+  /** Shake outgoing damage mult while shaken (0 = use default). */
+  enemyShakePotency: number
   enemyStun: number
   /** Enemy acts later/weaker while active (damage mult + initiative). */
   enemySlow: number
@@ -66,9 +80,21 @@ export function createEmptyCombatStatus(): CombatStatusState {
     playerBrace: 0,
     playerDouble: 0,
     playerReflect: null,
+    playerBleed: 0,
+    playerBleedPotencyMult: 1,
+    playerShake: 0,
+    playerShakePotency: 0,
+    playerStun: 0,
+    playerSlow: 0,
+    playerMiss: 0,
     playerWeaken: 0,
+    enemyBrace: 0,
+    enemyDouble: 0,
+    enemyReflect: null,
     enemyBleed: 0,
+    enemyBleedPotencyMult: 1,
     enemyShake: 0,
+    enemyShakePotency: 0,
     enemyStun: 0,
     enemySlow: 0,
     enemyMiss: 0,
@@ -91,7 +117,7 @@ export type DeathClock = {
 
 export type MoveCost =
   | { kind: 'none' }
-  /** Charge turn — schedules an exposed follow-up (blackout). */
+  /** Charge turn, schedules an exposed follow-up (blackout). */
   | { kind: 'loadTurn' }
   /** Player does not act; enemy gets a free swing this turn. */
   | { kind: 'exposedTurn' }

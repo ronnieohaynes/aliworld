@@ -9,7 +9,7 @@
  */
 import type { BattleLocationId } from './battleBackgrounds'
 
-export type HometownId = 'five' | 'san_bruno' | 'hillside' | 'five_gym'
+export type HometownId = 'five' | 'san_bruno' | 'hillside' | 'five_gym' | 'blue_store'
 
 export type HometownDef = {
   id: HometownId
@@ -46,6 +46,12 @@ export const HOMETOWNS: Record<HometownId, HometownDef> = {
     battleLocationId: 'five_gym',
     tagline: '5ive\'s home gym',
   },
+  blue_store: {
+    id: 'blue_store',
+    name: 'BLUE STORE',
+    battleLocationId: 'blue_store',
+    tagline: 'Southside stockroom',
+  },
 }
 
 export const DEFAULT_HOMETOWN_ID: HometownId = 'five'
@@ -67,6 +73,8 @@ export function battleLocationToHometownId(locationId: BattleLocationId): Hometo
     san_bruno: 'san_bruno',
     hillside: 'hillside',
     five_gym: 'five_gym',
+    blue_store: 'blue_store',
+    theater: 'five',
   }
   return map[locationId] ?? DEFAULT_HOMETOWN_ID
 }

@@ -9,8 +9,12 @@ import {
 import {
   formatMidnightVariantTuningDebug,
   getMidnightVariantRenderTuning,
-  getMidnightWalkSrc,
 } from '../data/midnightVariants'
+import {
+  getCosmeticsRevision,
+  resolvePlayerWalkSrc,
+  subscribeCosmeticsStore,
+} from '../store/cosmeticsStore'
 import {
   drawSheetFrame,
   loadSpriteSheetWithFallback,
@@ -39,6 +43,11 @@ import {
   resolveQuestPulseWorldPoint,
 } from '../data/questObjectives'
 import { drawWorldForegroundOverlay, drawWorldMap } from '../game/drawWorldBackground'
+import {
+  MAP_NPC_DISPLAY_H,
+  MAP_NPC_DISPLAY_W,
+  scaleNpcMapBoundary,
+} from '../game/worldSpriteRender'
 import { useGameCanvas } from '../game/GameCanvasContext'
 import { playerScreenAnchor } from '../game/playerScreenAnchor'
 import { isDevModeEnabled } from '../lib/devMode'
@@ -73,8 +82,8 @@ const NPC_SPRITE_COL: Record<Direction, number> = {
   right: 3,
 }
 
-const NPC_DISPLAY_W = 48
-const NPC_DISPLAY_H = 120
+const NPC_DISPLAY_W = MAP_NPC_DISPLAY_W
+const NPC_DISPLAY_H = MAP_NPC_DISPLAY_H
 const NPC_INTERACT_DEBUG_RADIUS = NPC_INTERACT_RANGE
 
 function getNpcRosterKey(city: CityConfig): string {
@@ -101,6 +110,8 @@ function seedStandingMapTransitionTriggers(
 
 // ─── Overworld status plate helpers ──────────────────────────────────────────
 
+/** Horizontal nudge for the player status card above the sprite (positive = right). */
+const OVERWORLD_PLAYER_PLATE_OFFSET_X = 5
 
 /**
  * Draw a compact status plate (name · lv X · archetype) centered at `cx`
@@ -192,7 +203,7 @@ function spritesOverlap(a: CollisionZone, b: CollisionZone): boolean {
   )
 }
 
-/** Player is close below an NPC and sprites overlap — draw Midnight on top. */
+/** Player is close below an NPC and sprites overlap, draw Midnight on top. */
 function shouldPlayerDrawOverNpc(
   playerDrawX: number,
   playerDrawY: number,
@@ -293,7 +304,7 @@ function resolveNpcFacingTowardPlayer(
   return bestFacing
 }
 
-/** Feet hitbox size — tweak for how tight collision feels (world pixels). */
+/** Feet hitbox size, tweak for how tight collision feels (world pixels). */
 const FEET_HITBOX_WIDTH = 30
 const FEET_HITBOX_HEIGHT = 20
 
@@ -562,7 +573,7 @@ function formatDebugText(
       `Zoom: ${coords.zoom.toFixed(2)}`,
       coords.pointer.active
         ? `Pointer: (${coords.pointer.x.toFixed(1)}, ${coords.pointer.y.toFixed(1)})`
-        : 'Pointer: —',
+        : 'Pointer:',
     )
   }
   return lines.join('\n')
@@ -604,18 +615,18 @@ function getNpcCollisionRect(npc: {
 }): CollisionZone {
   if (npc.collisionWidth == null && npc.collisionHeight == null) {
     return {
-      x: npc.x - NPC_COLLISION_RADIUS + 15,
-      y: npc.y - NPC_COLLISION_RADIUS - 20,
-      width: 45,
-      height: NPC_COLLISION_RADIUS * 2 + 15,
+      x: npc.x - scaleNpcMapBoundary(NPC_COLLISION_RADIUS) + scaleNpcMapBoundary(15),
+      y: npc.y - scaleNpcMapBoundary(NPC_COLLISION_RADIUS) - scaleNpcMapBoundary(20),
+      width: scaleNpcMapBoundary(45),
+      height: scaleNpcMapBoundary(NPC_COLLISION_RADIUS * 2 + 15),
     }
   }
-  const width = npc.collisionWidth ?? 45
-  const height = npc.collisionHeight ?? NPC_COLLISION_RADIUS * 2 + 15
+  const width = scaleNpcMapBoundary(npc.collisionWidth ?? 45)
+  const height = scaleNpcMapBoundary(npc.collisionHeight ?? NPC_COLLISION_RADIUS * 2 + 15)
   const feetX = npc.x
   const feetY = getNpcFeetY(npc)
-  const offsetY = npc.collisionOffsetY ?? 0
-  const offsetX = npc.collisionOffsetX ?? 0
+  const offsetY = scaleNpcMapBoundary(npc.collisionOffsetY ?? 0)
+  const offsetX = scaleNpcMapBoundary(npc.collisionOffsetX ?? 0)
   return {
     x: feetX - width / 2 + offsetX,
     y: feetY - height - offsetY,
@@ -669,9 +680,14 @@ function drawTransitionZonesDebug(
     const y = Math.floor(zone.y)
     const w = Math.floor(zone.width)
     const h = Math.floor(zone.height)
-    ctx.fillStyle = 'rgba(255, 220, 0, 0.35)'
+    const blueStore =
+      zone.action === 'OPEN_BLUE_STORE' ||
+      zone.action === 'OPEN_BLUE_STORE_EXIT' ||
+      zone.action === 'OPEN_THEATER' ||
+      zone.action === 'OPEN_THEATER_EXIT'
+    ctx.fillStyle = blueStore ? 'rgba(140, 0, 220, 0.35)' : 'rgba(255, 220, 0, 0.35)'
     ctx.fillRect(x, y, w, h)
-    ctx.strokeStyle = 'rgba(255, 235, 60, 0.95)'
+    ctx.strokeStyle = blueStore ? 'rgba(180, 60, 255, 0.95)' : 'rgba(255, 235, 60, 0.95)'
     ctx.lineWidth = 2
     ctx.strokeRect(x, y, w, h)
   }
@@ -792,6 +808,8 @@ type PlayerProps = {
   dialogueNpcId?: string | null
   questPulseDescriptor?: QuestPulseTargetDescriptor | null
   showQuestPulse?: boolean
+  /** Hide dev collision/coordinate HUD while battle overlays are up. */
+  suppressDebugOverlay?: boolean
 }
 
 export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
@@ -803,11 +821,15 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     dialogueNpcId,
     questPulseDescriptor = null,
     showQuestPulse = false,
+    suppressDebugOverlay = false,
   },
   ref,
 ) {
   const { canvas, ctx, width, height, registerLoop, unregisterLoop, setDebugHud } =
     useGameCanvas()
+  const suppressDebugOverlayRef = useRef(suppressDebugOverlay)
+  suppressDebugOverlayRef.current = suppressDebugOverlay
+
   const onTriggerRef = useRef(onTrigger)
   const onTriggerExitRef = useRef(onTriggerExit)
   const activeTriggerIds = useRef(new Set<string>())
@@ -817,6 +839,11 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
     subscribeCharacterStore,
     getSelectedMidnightVariant,
     getSelectedMidnightVariant,
+  )
+  const cosmeticsRevision = useSyncExternalStore(
+    subscribeCosmeticsStore,
+    getCosmeticsRevision,
+    getCosmeticsRevision,
   )
   const selectedMidnightVariantRef = useRef(selectedMidnightVariant)
 
@@ -1058,7 +1085,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
   useEffect(() => {
     let cancelled = false
     midnightSheetRef.current = null
-    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
+    const walkSrc = resolvePlayerWalkSrc(selectedMidnightVariant)
 
     void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
       if (cancelled) return
@@ -1069,7 +1096,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
       cancelled = true
       midnightSheetRef.current = null
     }
-  }, [selectedMidnightVariant])
+  }, [selectedMidnightVariant, cosmeticsRevision])
 
   useEffect(() => {
     void loadWorldBackgroundForSrc(cityConfig.mapSrc).catch((err) => console.error(err))
@@ -1422,7 +1449,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         cfg.mapDrawScale ?? 1,
       )
 
-      if (isDevModeEnabled() && showCollisionDebug.current) {
+      if (isDevModeEnabled() && showCollisionDebug.current && !suppressDebugOverlayRef.current) {
         drawCollisionZonesDebug(ctx, getMapCollisionZones(cfg), cfg.npcs)
         drawOcclusionZonesDebug(ctx, cfg.occlusionZones)
         drawTransitionZonesDebug(ctx, cfg.triggerZones)
@@ -1549,7 +1576,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
             if (handle) {
               const playerBuildName = deriveBuildName(skills)
               const archetype = playerBuildName.name
-              const plateCenterX = worldDrawX + drawDw / 2
+              const plateCenterX = worldDrawX + drawDw / 2 + OVERWORLD_PLAYER_PLATE_OFFSET_X
               const plateBottomY = worldDrawY - 4
               drawOverworldStatusPlate(ctx, handle, pLevel, archetype, plateCenterX, plateBottomY, playerBuildName.color)
             }
@@ -1558,8 +1585,8 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
           const npc = entry.npc
           const half = NPC_SIZE / 2
           const npcFacing = npc.fixedFacing ?? npcFacingMap.current.get(npc.id) ?? 'down'
-          const displayW = 48
-          const displayH = 120
+          const displayW = NPC_DISPLAY_W
+          const displayH = NPC_DISPLAY_H
           const dx = Math.floor(npc.x - displayW / 2)
           const dy = Math.floor(npc.y + half - displayH)
           const npcFeetY = getNpcFeetY(npc)
@@ -1679,7 +1706,7 @@ export const Player = forwardRef<PlayerHandle, PlayerProps>(function Player(
         )
       }
 
-      const devMode = isDevModeEnabled()
+      const devMode = isDevModeEnabled() && !suppressDebugOverlayRef.current
       if (devMode && showCoordinateOverlay.current) {
         drawCoordinateGrid(ctx, zoom, focus.x, focus.y, width, height, cfg.worldWidth, cfg.worldHeight)
         drawMidnightCrosshair(ctx, worldX, worldY, zoom)

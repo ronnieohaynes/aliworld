@@ -1,5 +1,5 @@
 -- ============================================================
--- ALIWORLD v1.1 — initial database migration
+-- ALIWORLD v1.1, initial database migration
 -- creates all tables for v1.1 + v2 hook tables (empty in v1.1)
 -- run this once in the supabase SQL editor
 -- ============================================================
@@ -22,7 +22,7 @@ create table if not exists public.aw_users (
 create index if not exists aw_users_handle_idx on public.aw_users(handle);
 create index if not exists aw_users_last_played_idx on public.aw_users(last_played_at desc);
 
--- aw_profiles: the public-facing vault — avatar config, accessories, moves, progress
+-- aw_profiles: the public-facing vault, avatar config, accessories, moves, progress
 create table if not exists public.aw_profiles (
   user_id uuid primary key references public.aw_users(user_id) on delete cascade,
   avatar_config jsonb default '{}'::jsonb not null,
@@ -95,7 +95,7 @@ create table if not exists public.aw_transactions (
 create index if not exists aw_transactions_user_idx on public.aw_transactions(user_id, created_at desc);
 
 -- ============================================================
--- events / analytics (lightweight — supabase as the event log)
+-- events / analytics (lightweight, supabase as the event log)
 -- ============================================================
 
 create table if not exists public.aw_events (

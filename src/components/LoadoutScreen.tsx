@@ -6,7 +6,12 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
-import { getMidnightVariantRenderTuning, getMidnightWalkSrc } from '../data/midnightVariants'
+import { getMidnightVariantRenderTuning } from '../data/midnightVariants'
+import {
+  getCosmeticsRevision,
+  resolvePlayerWalkSrc,
+  subscribeCosmeticsStore,
+} from '../store/cosmeticsStore'
 import { loadSpriteSheetWithFallback } from '../game/characterLayers'
 import type { SpriteSheet } from '../game/SpriteSheet'
 import {
@@ -51,6 +56,7 @@ import {
   sumSkillLevels,
   computePlayerLevel,
 } from '../store/skillStore'
+import { HandleWithEmblem } from './HandleWithEmblem'
 import { generateIdentityCard } from '../lib/identityCard'
 import { IdentityCardPreview } from './IdentityCardPreview'
 import { GuidedTutorialOverlay } from './GuidedTutorialOverlay'
@@ -64,11 +70,11 @@ import { getAuthState } from '../store/authStore'
 
 const FADE_MS = 150
 
-const SKILL_ROWS: { id: MoveSkill; label: string }[] = [
-  { id: 'attack', label: 'ATK' },
-  { id: 'speed', label: 'SPD' },
-  { id: 'defense', label: 'DEF' },
-  { id: 'luck', label: 'LCK' },
+const SKILL_ROWS: { id: MoveSkill; label: string; tagline: string }[] = [
+  { id: 'attack', label: 'ATK', tagline: '(scales all damage)' },
+  { id: 'speed', label: 'SPD', tagline: '(dodge chance · counter damage · initiative)' },
+  { id: 'defense', label: 'DEF', tagline: '(passive damage reduction · parry counter)' },
+  { id: 'luck', label: 'LCK', tagline: '(crit chance · parry dodge · stun chance)' },
 ]
 
 const SKILL_SHORT: Record<MoveSkill, string> = {
@@ -101,6 +107,7 @@ type MoveLadderEntry = {
 type SkillSection = {
   skill: MoveSkill
   label: string
+  tagline: string
   level: number
   xp: number
   atMax: boolean
@@ -134,7 +141,7 @@ function buildSkillSections(
   skills: ReturnType<typeof getPlayerSkills>,
   equipped: ReturnType<typeof getEquippedMoves>,
 ): SkillSection[] {
-  return SKILL_ROWS.map(({ id, label }) => {
+  return SKILL_ROWS.map(({ id, label, tagline }) => {
     const { level, xp } = skills[id]
     const atMax = level >= MAX_SKILL_LEVEL
     const floor = cumulativeXpForLevel(level)
@@ -153,7 +160,7 @@ function buildSkillSections(
         unlockRequirement: `${SKILL_SHORT[id]} ${def.unlockAtSkillLevel}`,
       }
     })
-    return { skill: id, label, level, xp, atMax, pct, floor, ceil, moves }
+    return { skill: id, label, tagline, level, xp, atMax, pct, floor, ceil, moves }
   })
 }
 
@@ -176,12 +183,15 @@ export function LoadoutScreen({
   const statSpeedRef = useRef<HTMLDivElement>(null)
   const statDefenseRef = useRef<HTMLDivElement>(null)
   const statLuckRef = useRef<HTMLDivElement>(null)
+  const skillXpRef = useRef<HTMLSpanElement>(null)
   const buildNameRef = useRef<HTMLParagraphElement>(null)
   const shareCardRef = useRef<HTMLButtonElement>(null)
   const scrollRootRef = useRef<HTMLDivElement>(null)
 
   const showLoadoutTutorial =
-    loadoutTutorialStep != null && loadoutTutorialStep >= 2 && loadoutTutorialStep <= 8
+    loadoutTutorialStep != null &&
+    ((loadoutTutorialStep >= 2 && loadoutTutorialStep <= 8) ||
+      loadoutTutorialStep === 11)
 
   const skills = usePlayerStore(getPlayerSkills)
   const equipped = usePlayerStore(getEquippedMoves)
@@ -194,6 +204,11 @@ export function LoadoutScreen({
   const playerLevel = useMemo(() => getPlayerLevel(), [skills])
   const build = useMemo(() => deriveBuildName(skills), [skills])
   const grantsRevision = useSyncExternalStore(subscribeGrantsStore, getGrantsRevision, getGrantsRevision)
+  const cosmeticsRevision = useSyncExternalStore(
+    subscribeCosmeticsStore,
+    getCosmeticsRevision,
+    getCosmeticsRevision,
+  )
   const badgeLabels = useMemo(() => {
     void grantsRevision
     return getBadgeGrantLabels()
@@ -228,7 +243,7 @@ export function LoadoutScreen({
 
   useEffect(() => {
     let cancelled = false
-    const walkSrc = getMidnightWalkSrc(selectedMidnightVariant)
+    const walkSrc = resolvePlayerWalkSrc(selectedMidnightVariant)
     const tuning = getMidnightVariantRenderTuning(selectedMidnightVariant)
 
     void loadSpriteSheetWithFallback(walkSrc).then((sheet) => {
@@ -239,7 +254,7 @@ export function LoadoutScreen({
     return () => {
       cancelled = true
     }
-  }, [selectedMidnightVariant])
+  }, [selectedMidnightVariant, cosmeticsRevision])
 
   const handleSlotClick = (slot: EquipSlot) => {
     setSelectedSlot(slot)
@@ -329,7 +344,12 @@ export function LoadoutScreen({
               </p>
             ) : null}
             <p className="loadout-screen__level">
-              {playerHandle ? `@${playerHandle} · ` : ''}lvl {playerLevel}
+              {playerHandle ? (
+                <>
+                  <HandleWithEmblem handle={playerHandle} /> ·{' '}
+                </>
+              ) : null}
+              lvl {playerLevel}
             </p>
             <button
               ref={shareCardRef}
@@ -402,7 +422,7 @@ export function LoadoutScreen({
               )
             })()}
 
-            {/* HP — first, stat-only, no move ladder */}
+            {/* HP, first, stat-only, no move ladder */}
             {(() => {
               const { level, xp } = skills.hp
               const atMax = level >= MAX_SKILL_LEVEL
@@ -466,7 +486,10 @@ export function LoadoutScreen({
                     onClick={() => toggleSkillExpand(section.skill)}
                   >
                     <div className="loadout-screen__skill-head">
-                      <span className="loadout-screen__skill-label">{section.label}</span>
+                      <div className="loadout-screen__skill-label-stack">
+                        <span className="loadout-screen__skill-label">{section.label}</span>
+                        <span className="loadout-screen__skill-tagline">{section.tagline}</span>
+                      </div>
                       <span className="loadout-screen__skill-level">lvl {section.level}</span>
                     </div>
                     <div className="loadout-screen__bar-row">
@@ -478,7 +501,10 @@ export function LoadoutScreen({
                         />
                       </div>
                     </div>
-                    <span className="loadout-screen__skill-xp">
+                    <span
+                      ref={section.skill === 'attack' ? skillXpRef : undefined}
+                      className="loadout-screen__skill-xp"
+                    >
                       {section.atMax
                         ? 'MAX'
                         : `${section.xp - section.floor} / ${section.ceil - section.floor} xp to next level`}
@@ -542,6 +568,7 @@ export function LoadoutScreen({
             stat_speed: statSpeedRef,
             stat_defense: statDefenseRef,
             stat_luck: statLuckRef,
+            skill_xp: skillXpRef,
             build: buildNameRef,
             share_card: shareCardRef,
           }}

@@ -1,8 +1,8 @@
 /**
- * Skill XP curve — single tunable source for per-skill level costs (levels 1–65).
+ * Skill XP curve, single tunable source for per-skill level costs (levels 1–65).
  * Reshape the curve here only; never touch combat formulas or move unlock levels.
  *
- * Move ladder unlocks are level-gated (10 / 22 / 38 / 52 / 65) — this file only
+ * Move ladder unlocks are level-gated (10 / 22 / 38 / 52 / 65), this file only
  * controls how much XP each skill level costs, not when moves unlock.
  */
 
@@ -10,7 +10,7 @@
 export type SkillXpCurveBands = {
   /** Levels 1–5: small, fast (session-one onboarding). */
   onboarding: { throughFromLevel: number; start: number; step: number }
-  /** Levels 6–10: still quick — last easy band before the wall. */
+  /** Levels 6–10: still quick, last easy band before the wall. */
   warmup: { throughFromLevel: number; start: number; step: number }
   /** Levels 11–20: steep ramp (curve gets tremendously harder after 10). */
   ramp: { throughFromLevel: number; start: number; step: number }

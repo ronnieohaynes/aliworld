@@ -1,4 +1,4 @@
-/** Public production hosts where dev mode must never register — hard block. */
+/** Public production hosts where dev mode must never register, hard block. */
 export const DEV_BLOCKED_HOSTS = ['play.dannyali.com'] as const
 
 export const DEV_MODE_SESSION_KEY = 'aliworld-dev-mode'

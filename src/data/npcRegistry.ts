@@ -1,16 +1,23 @@
 import { publicAsset } from '../utils/publicAsset'
+import {
+  CLERK_IDLE_SPRITE,
+  RESTOCKER_IDLE_SPRITE,
+  TOWN_CRIER_IDLE_SPRITE,
+} from './npcs'
 import { buildDevSpar, isDevSparNpcId } from './devSpar'
+import { isGhostCombatId, resolveGhostCombatEntry } from './ghostCombat'
+import { chooseGhostMove } from './ghostMoveAi'
 import type { BattleLocationId } from './battleBackgrounds'
 import { computeNpcCombatStats, npcMoveUnlockSkills } from './npcCombatStats'
 import type { LeanSkill } from './skillCounter'
 import type { UpcomingMove } from './enemyMoves'
 import type { PlayerMoveId } from './moveIds'
 import { MOVES } from './moveDefinitions'
-import { FIVE_GYM1_ID, getGymHeadWins } from '../store/gymStore'
 import {
-  fiveGym1RoundIndexForWins,
-  FIVE_GYM1_ROUNDS,
-} from './fiveGym1Gauntlet'
+  findGymWeekForCombatId,
+  isGymGauntletCombatId,
+  type GymFighterConfig,
+} from './gymWeeks'
 import { chooseMoveAI, type BattleContext } from './enemyAI'
 import { getNpcMemory } from '../store/enemyMemoryStore'
 
@@ -30,7 +37,7 @@ export type CombatStats = {
 export type NpcTelegraphFlavor = Partial<Record<PlayerMoveId, string>>
 
 export type NpcGuardCounter = {
-  /** Chance to riposte when player attacks into HOLD (0–1). */
+  /** Chance to riposte when player attacks into ANCHOR (0–1). */
   chance: number
   damageMult: number
 }
@@ -45,11 +52,11 @@ export type NpcCombatEntry = {
   losingLine: string
   /** Line shown when the NPC wins (player loses). Empty = no narration. */
   winningLine?: string
-  /** Optional per-move telegraph flavor (e.g. "winds up —"). */
+  /** Optional per-move telegraph flavor (e.g. "winds up"). */
   telegraphFlavor?: NpcTelegraphFlavor
-  /** Punishes attacking into HOLD — round-tuned on gym heads. */
+  /** Punishes attacking into ANCHOR, round-tuned on gym heads. */
   guardCounter?: NpcGuardCounter
-  /** Fraction of mitigated damage that pierces player HOLD/SLIP (0–1). */
+  /** Fraction of mitigated damage that pierces player ANCHOR/SLIP (0–1). */
   enemyGuardPierce?: number
   spriteSrc?: string
   /** Location key for city battle backdrop when `battleBg` is unset. */
@@ -58,12 +65,13 @@ export type NpcCombatEntry = {
   battleBg?: string
   /** Scales enemy visible body height in battle (default 1). */
   battleSizeMult?: number
+  /** Midnight variant sheet — battle draws down-facing frame (ghost / player-style sheets). */
+  midnightVariantId?: string
 }
 
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
-const ADAM_SPRITE = publicAsset('Assets/Characters/npcs/Adam-idle.PNG')
 
 
 function filterMovesForNpcLevel(moves: PlayerMoveId[], level: number, lean: LeanSkill): PlayerMoveId[] {
@@ -91,17 +99,17 @@ function entry(
   return { ...rest, stats, moves }
 }
 
-/** Tutorial — level 2, teaches brace/dodge vs heavy. atk=10 → FURY_SWEEP. */
+/** Tutorial — level 2, teaches brace/dodge vs heavy. */
 const WALKER: NpcCombatEntry = entry({
   id: 'walker',
   displayName: 'walker',
   level: 2,
-  moves: ['STRIKE', 'FURY_SWEEP', 'HOLD'],
+  moves: ['STRIKE', 'FURY_SWEEP', 'ANCHOR'],
   leanSkill: 'none',
   telegraphFlavor: {
     STRIKE: 'lines up',
     FURY_SWEEP: 'winds up —',
-    HOLD: 'plants his feet —',
+    ANCHOR: 'plants his feet —',
   },
   losingLine: 'i get it now. tell me where to go.',
   winningLine: "not yet. keep going.",
@@ -110,7 +118,7 @@ const WALKER: NpcCombatEntry = entry({
   battleSizeMult: 1.02,
 })
 
-/** Status check — speed lean, slip + telegraphed heavy. spd=15 → PARRY. */
+/** Status check — speed lean, slip + telegraphed heavy. */
 const JACLYN: NpcCombatEntry = entry({
   id: 'jaclyn',
   displayName: 'jaclyn',
@@ -130,16 +138,15 @@ const JACLYN: NpcCombatEntry = entry({
   battleSizeMult: 0.92,
 })
 
-/** Boss wall — defense lean, full kit. def=25 → SECOND_WIND, ANCHOR. */
+/** Boss wall — defense lean, full kit. */
 const MARK: NpcCombatEntry = entry({
   id: 'mark',
   displayName: 'mark',
   level: 5,
-  moves: ['HOLD', 'ANCHOR', 'DARK_BREAK', 'STRIKE', 'SLIP', 'WHISPER'],
+  moves: ['ANCHOR', 'ANCHOR', 'DARK_BREAK', 'STRIKE', 'SLIP', 'WHISPER'],
   leanSkill: 'defense',
   telegraphFlavor: {
-    HOLD: 'roots in —',
-    ANCHOR: 'digs in —',
+    ANCHOR: 'roots in —',
     DARK_BREAK: 'draws back —',
     STRIKE: 'swings —',
     SLIP: 'feints —',
@@ -152,60 +159,104 @@ const MARK: NpcCombatEntry = entry({
   battleSizeMult: 1.04,
 })
 
-/** E2 gate — blue store clerk; attack-lean scrapper. atk=20 → FURY_SWEEP. */
+/** E2, town crier at the 5ive; luck-lean rhetorical fight. */
+const TOWN_CRIER: NpcCombatEntry = entry({
+  id: 'town-crier',
+  displayName: 'town crier',
+  level: 3,
+  moves: ['WHISPER', 'STRIKE', 'SLIP', 'WHISPER'],
+  leanSkill: 'luck',
+  telegraphFlavor: {
+    WHISPER: 'spreads the word',
+    STRIKE: 'points',
+    SLIP: 'sidesteps',
+  },
+  losingLine: "...no. no, you're right. you were always right.",
+  winningLine: "the crowd's not buying it.",
+  spriteSrc: TOWN_CRIER_IDLE_SPRITE,
+  battleLocation: 'five',
+  battleSizeMult: 0.98,
+})
+
+/** E2 gate — blue store clerk; attack-lean scrapper. */
 const CLERK: NpcCombatEntry = entry({
   id: 'clerk',
   displayName: 'clerk',
   level: 4,
   moves: ['STRIKE', 'STRIKE', 'WHISPER', 'FURY_SWEEP'],
   leanSkill: 'attack',
+  telegraphFlavor: {
+    STRIKE: 'swings',
+    WHISPER: 'lowers his voice',
+    FURY_SWEEP: 'commits —',
+  },
   losingLine: "the gift... it's priceless.",
   winningLine: "you're not taking this from me.",
-  spriteSrc: ADAM_SPRITE,
-  battleLocation: 'five',
+  spriteSrc: CLERK_IDLE_SPRITE,
+  battleLocation: 'blue_store',
   battleSizeMult: 1,
 })
 
-/** E2 boss — restocker in the back room; defense wall. def=30 → SECOND_WIND, ANCHOR. */
+/** E2 finale — restocker in the back room; defense wall + restock heals. */
 const RESTOCKER: NpcCombatEntry = entry({
   id: 'restocker',
   displayName: 'restocker',
-  level: 6,
-  moves: ['HOLD', 'ANCHOR', 'DARK_BREAK', 'STRIKE'],
+  level: 9,
+  hpScale: 1.72,
+  moves: ['ANCHOR', 'ANCHOR', 'ANCHOR', 'CANNON', 'STRIKE', 'SLIP', 'LOOP', 'WHISPER'],
   leanSkill: 'defense',
-  losingLine: "it CAN stop...",
-  winningLine: "this floor belongs to me.",
-  spriteSrc: MARK_SPRITE,
-  battleLocation: 'five',
-  battleSizeMult: 1.08,
+  telegraphFlavor: {
+    ANCHOR: 'restocks',
+    CANNON: 'heaves —',
+    STRIKE: 'swings',
+    SLIP: 'feints',
+    LOOP: 'draws back',
+    WHISPER: 'murmurs',
+  },
+  guardCounter: { chance: 0.5, damageMult: 2.4 },
+  enemyGuardPierce: 0.14,
+  losingLine: 'it CAN stop...',
+  winningLine: 'this floor belongs to me.',
+  spriteSrc: RESTOCKER_IDLE_SPRITE,
+  battleLocation: 'blue_store',
+  battleSizeMult: 1.12,
 })
 
-/** Oceanview Gym week 1 head — gauntlet rounds built from fiveGym1Gauntlet.ts. */
-function buildFiveGym1CombatEntry(): NpcCombatEntry {
-  const wins = getGymHeadWins(FIVE_GYM1_ID)
-  const round = FIVE_GYM1_ROUNDS[fiveGym1RoundIndexForWins(wins)]!
+function buildGymFighterCombatEntry(fighter: GymFighterConfig): NpcCombatEntry {
   return entry({
-    id: FIVE_GYM1_ID,
-    displayName: 'Jerome',
-    level: round.level,
-    fixedHp: round.fixedHp,
-    moves: [...round.moves],
-    leanSkill: round.leanSkill,
-    telegraphFlavor: round.telegraphFlavor,
-    guardCounter: round.guardCounter,
-    enemyGuardPierce: round.enemyGuardPierce,
+    id: fighter.combatId,
+    displayName: fighter.displayName,
+    level: fighter.level,
+    fixedHp: fighter.fixedHp,
+    moves: [...fighter.moves],
+    leanSkill: fighter.leanSkill,
+    telegraphFlavor: fighter.telegraphFlavor,
+    guardCounter: fighter.guardCounter,
+    enemyGuardPierce: fighter.enemyGuardPierce,
     losingLine: '',
-    spriteSrc: publicAsset('Assets/Characters/npcs/5ive-gym1.png'),
+    spriteSrc: fighter.spriteSrc,
     battleLocation: 'five',
-    battleBg: publicAsset('Assets/battle-bg/5ive-gym.png'),
-    battleSizeMult: 1.02,
+    battleBg: fighter.battleBg,
+    battleSizeMult: fighter.battleSizeMult,
   })
+}
+
+function buildGymGauntletCombatEntry(combatId: string): NpcCombatEntry | undefined {
+  const week = findGymWeekForCombatId(combatId)
+  if (!week) return undefined
+  if (week.leader.combatId === combatId) {
+    return buildGymFighterCombatEntry(week.leader)
+  }
+  const henchman = week.henchmen.find((h) => h.combatId === combatId)
+  if (henchman) return buildGymFighterCombatEntry(henchman)
+  return undefined
 }
 
 const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   walker: WALKER,
   jaclyn: JACLYN,
   mark: MARK,
+  'town-crier': TOWN_CRIER,
   clerk: CLERK,
   restocker: RESTOCKER,
 }
@@ -223,7 +274,12 @@ export function isAttackingMove(move: EnemyMove): boolean {
 }
 
 export function getNpcCombatEntry(npcId: string): NpcCombatEntry | undefined {
-  if (npcId === FIVE_GYM1_ID) return buildFiveGym1CombatEntry()
+  if (isGhostCombatId(npcId)) {
+    return resolveGhostCombatEntry(npcId)
+  }
+  if (isGymGauntletCombatId(npcId)) {
+    return buildGymGauntletCombatEntry(npcId)
+  }
   return NPC_REGISTRY[npcId]
 }
 
@@ -276,8 +332,20 @@ export function chooseMove(
   )
   if (tutorialForced) return tutorialForced
   if (forced) return forced
-  const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
+  const npc = isDevSparNpcId(npcId)
+    ? buildDevSpar()
+    : isGhostCombatId(npcId)
+      ? resolveGhostCombatEntry(npcId)
+      : getNpcCombatEntry(npcId)
   if (!npc || npc.moves.length === 0) return 'STRIKE'
+
+  if (isGhostCombatId(npcId)) {
+    return chooseGhostMove(npc.moves, {
+      enemyHpRatio: options?.enemyHpPct ?? 1,
+      lastMove: options?.lastEnemyMove ?? null,
+      leanSkill: npc.leanSkill,
+    })
+  }
 
   const ctx: BattleContext = {
     turn,
@@ -307,7 +375,11 @@ function isHeavyMove(moveId: PlayerMoveId): boolean {
 }
 
 export function telegraphFor(npcId: string, move: EnemyMove): string {
-  const npc = isDevSparNpcId(npcId) ? buildDevSpar() : getNpcCombatEntry(npcId)
+  const npc = isDevSparNpcId(npcId)
+    ? buildDevSpar()
+    : isGhostCombatId(npcId)
+      ? resolveGhostCombatEntry(npcId)
+      : getNpcCombatEntry(npcId)
   const flavor = npc?.telegraphFlavor?.[move]
   if (flavor) return flavor
   const def = MOVES[move]
@@ -338,16 +410,8 @@ export function formatTelegraphDisplay(
   const flavor = npc.telegraphFlavor?.[moveId]
   if (flavor) {
     const trimmed = flavor.trim()
-    if (trimmed.endsWith('—')) {
-      return {
-        prefix: `${lower} ${trimmed} `,
-        moveName,
-        suffix: heavy ? ' incoming.' : '.',
-        heavy,
-      }
-    }
     return {
-      prefix: `${lower} ${trimmed} — `,
+      prefix: `${lower} ${trimmed} `,
       moveName,
       suffix: heavy ? ' incoming.' : '.',
       heavy,
@@ -373,3 +437,6 @@ export function formatTelegraph(
   const line = telegraphFor('', upcomingMove as PlayerMoveId)
   return line ? `${lower}: ${line}` : ''
 }
+
+/** Re-export for snag / steal mechanics, full enemy move vocabulary. */
+export { ENEMY_MOVE_IDS, ENEMY_MOVES, getEnemyMoveDef } from './enemyMoves'

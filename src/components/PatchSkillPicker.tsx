@@ -12,7 +12,7 @@ export function PatchSkillPicker({ xpAmount, skills, onPick }: Props) {
     <div className="patch-picker" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
       <p className="patch-picker__name">b.stax</p>
       <p className="patch-picker__text">
-        pick a skill for this patch — it's worth {xpAmount} xp.
+        pick a skill for this patch, it's worth {xpAmount} xp.
       </p>
       <div className="patch-picker__options">
         {skills.map((skill) => (

@@ -8,7 +8,7 @@ import './AccountSaveIndicator.css'
 
 const STATUS_LABEL: Record<Exclude<AccountSaveStatus, 'idle'>, string> = {
   saving: 'saving…',
-  offline: 'offline — will retry',
+  offline: 'offline, will retry',
 }
 
 export function AccountSaveIndicator() {

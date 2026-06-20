@@ -34,6 +34,6 @@ export async function submitEmailSignup(rawEmail: string): Promise<EmailSignupRe
 
   return {
     status: 'error',
-    message: error.message || 'something went wrong — try again in a moment.',
+    message: error.message || 'something went wrong, try again in a moment.',
   }
 }

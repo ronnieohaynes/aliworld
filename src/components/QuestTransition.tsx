@@ -13,7 +13,12 @@ const FADE_IN_MS = 200
 const FADE_OUT_MS = 200
 const HOLD_MS = 1000
 
-/** "Midnight's Story" quest_start card — 2× default duration. */
+/** Episode start / complete cards — 2× story card duration. */
+const EPISODE_FADE_IN_MS = 400
+const EPISODE_FADE_OUT_MS = 400
+const EPISODE_HOLD_MS = 2000
+
+/** "Midnight's Story" quest_start card, 2× default duration. */
 const QUEST_START_FADE_IN_MS = 400
 const QUEST_START_FADE_OUT_MS = 400
 const QUEST_START_HOLD_MS = 2000
@@ -34,6 +39,13 @@ function getTransitionTiming(type: QuestTransitionType): {
       fadeInMs: QUEST_START_FADE_IN_MS,
       fadeOutMs: QUEST_START_FADE_OUT_MS,
       holdMs: QUEST_START_HOLD_MS,
+    }
+  }
+  if (type === 'episode_start' || type === 'episode_complete') {
+    return {
+      fadeInMs: EPISODE_FADE_IN_MS,
+      fadeOutMs: EPISODE_FADE_OUT_MS,
+      holdMs: EPISODE_HOLD_MS,
     }
   }
   return { fadeInMs: FADE_IN_MS, fadeOutMs: FADE_OUT_MS, holdMs: HOLD_MS }

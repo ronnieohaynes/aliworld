@@ -85,7 +85,7 @@ export function AdminUserDetail({ adminSecret, userId, onClose, onChanged, showT
   const handleSaveVariant = async () => {
     if (!detail || !variantDraft) return
     if (!isRegisteredMidnightVariantId(variantDraft)) {
-      showToast('unknown variant id — not in the sprite MAP')
+      showToast('unknown variant id, not in the sprite MAP')
       return
     }
     setSavingVariant(true)

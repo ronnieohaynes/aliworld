@@ -1,4 +1,4 @@
--- Prize grants (badges, skins, prints) — admin-created via edge function only.
+-- Prize grants (badges, skins, prints), admin-created via edge function only.
 -- Run in Supabase SQL Editor.
 
 create table if not exists public.aw_grants (
@@ -20,4 +20,4 @@ create policy "own grants readable" on public.aw_grants
   for select
   using (auth.uid() = user_id);
 
--- No client inserts/updates/deletes — grants via service role in analytics-summary edge function.
+-- No client inserts/updates/deletes, grants via service role in analytics-summary edge function.

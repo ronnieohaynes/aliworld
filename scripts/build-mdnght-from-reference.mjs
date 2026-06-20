@@ -61,7 +61,7 @@ function isOutline(r, g, b, L, S) {
   const mx = Math.max(r, g, b)
   if (mx < 22) return true
   if (L < 26) return true
-  // Very dark neutrals only — not navy (high blue, sat ~25+)
+  // Very dark neutrals only, not navy (high blue, sat ~25+)
   if (L < 38 && S < 16 && !isBlueish(r, g, b)) return true
   return false
 }

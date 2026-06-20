@@ -1,5 +1,5 @@
 /**
- * Character appearance store — MDNGHT variant (V1) + skin tone stubs (V2 CustomizationScreen).
+ * Character appearance store, MDNGHT variant (V1) + skin tone stubs (V2 CustomizationScreen).
  */
 
 import {
@@ -95,7 +95,7 @@ export function hasSelectedMidnightVariant(): boolean {
   return state.midnightVariant !== null
 }
 
-/** Persist selection and enter the game (V1 — no in-game re-pick). */
+/** Persist selection and enter the game (V1, no in-game re-pick). */
 export function setMidnightVariant(id: MidnightVariantId): void {
   state = { ...state, midnightVariant: id }
   saveMidnightVariantToStorage(id)

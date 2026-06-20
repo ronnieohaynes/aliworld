@@ -133,6 +133,9 @@ function getFrameInsetTop(direction: Direction, tuning: MidnightVariantRenderTun
   }
 }
 
+/** Up-facing only: fraction of source crop height trimmed from the top (display dw/dh unchanged). */
+export const PLAYER_UP_FACING_TOP_TRIM_RATIO = 0.03
+
 export function getSourceCrop(
   direction: Direction,
   tuning: MidnightVariantRenderTuning = MIDNIGHT_DEFAULT_RENDER_TUNING,
@@ -145,10 +148,15 @@ export function getSourceCrop(
   const rowIndex = SPRITE_SHEET_ROW[direction]
   const rowPad = getRowPadding(direction, tuning)
   const srcH = getCropHeight(direction, tuning)
-  const sy = Math.floor(
+  let sy = Math.floor(
     rowIndex * MIDNIGHT_WALK_FRAME_HEIGHT + rowPad + getFrameInsetTop(direction, tuning),
   )
-  const sh = Math.max(1, Math.floor(srcH - tuning.frameInsetBottom))
+  let sh = Math.max(1, Math.floor(srcH - tuning.frameInsetBottom))
+  if (direction === 'up') {
+    const topTrim = Math.floor(sh * PLAYER_UP_FACING_TOP_TRIM_RATIO)
+    sy += topTrim
+    sh = Math.max(1, sh - topTrim)
+  }
   return {
     sx: 0,
     sy,

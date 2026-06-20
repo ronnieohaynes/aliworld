@@ -12,7 +12,8 @@
     "predeploy": "npm run build && cp dist/index.html dist/404.html",
     "deploy": "gh-pages -d dist",
     "build-mdnght": "node scripts/build-mdnght-from-reference.mjs",
-    "generate-placeholders": "node scripts/generate-placeholder-sprites.mjs"
+    "generate-placeholders": "node scripts/generate-placeholder-sprites.mjs",
+    "register-variants": "node scripts/register-variant-sheets.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",

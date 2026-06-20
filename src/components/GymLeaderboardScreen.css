@@ -1,0 +1,241 @@
+.gym-leaderboard {
+  position: absolute;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.gym-leaderboard__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.gym-leaderboard__panel {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  max-width: 720px;
+  margin: 12px;
+  padding: 16px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #0a0a12;
+  border: 1px solid #2a2a3e;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  overflow-y: auto;
+}
+
+.gym-leaderboard__countdown {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #534ab7;
+  background: rgba(83, 74, 183, 0.14);
+  color: #d4b87a;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.gym-leaderboard__countdown--completed {
+  border-color: #7a7a96;
+  background: rgba(42, 42, 62, 0.85);
+  color: #f4e8c1;
+  line-height: 1.45;
+}
+
+.gym-leaderboard__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gym-leaderboard__eyebrow {
+  margin: 0 0 4px;
+  color: #534ab7;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gym-leaderboard__title {
+  margin: 0;
+  color: #f4e8c1;
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.gym-leaderboard__sub {
+  margin: 6px 0 0;
+  color: #9696b0;
+  font-size: 0.78rem;
+}
+
+.gym-leaderboard__header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gym-leaderboard__btn {
+  padding: 6px 12px;
+  border: 1px solid #534ab7;
+  background: rgba(26, 26, 46, 0.92);
+  color: #f4e8c1;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-transform: lowercase;
+}
+
+.gym-leaderboard__btn:hover:not(:disabled) {
+  border-color: #7f77dd;
+  color: #fff;
+}
+
+.gym-leaderboard__btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.gym-leaderboard__you {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid #534ab7;
+  background: rgba(83, 74, 183, 0.12);
+  color: #afa9ec;
+  font-size: 0.85rem;
+}
+
+.gym-leaderboard__status {
+  margin: 24px 0;
+  text-align: center;
+  color: #b8b8d0;
+  font-size: 0.92rem;
+}
+
+.gym-leaderboard__status--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #cc8888;
+}
+
+.gym-leaderboard__podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  min-height: 200px;
+  padding: 8px 0 4px;
+}
+
+.gym-leaderboard__podium-slot {
+  flex: 1;
+  max-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  background: rgba(26, 26, 46, 0.92);
+  border: 1px solid #2a2a3e;
+  border-bottom: 4px solid #534ab7;
+}
+
+.gym-leaderboard__podium-slot--first {
+  min-height: 190px;
+  border-bottom-width: 6px;
+  border-bottom-color: #d4b87a;
+}
+
+.gym-leaderboard__podium-slot--second {
+  min-height: 150px;
+}
+
+.gym-leaderboard__podium-slot--third {
+  min-height: 130px;
+}
+
+.gym-leaderboard__podium-slot--empty {
+  opacity: 0.25;
+  border-style: dashed;
+}
+
+.gym-leaderboard__podium-slot--you {
+  box-shadow: 0 0 0 1px #534ab7 inset;
+}
+
+.gym-leaderboard__rank {
+  color: #7f77dd;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.gym-leaderboard__sprite {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.gym-leaderboard__handle {
+  color: #f4e8c1;
+  font-size: 0.82rem;
+  text-align: center;
+  word-break: break-word;
+}
+
+.gym-leaderboard__wins {
+  color: #9696b0;
+  font-size: 0.72rem;
+}
+
+.gym-leaderboard__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #2a2a3e;
+}
+
+.gym-leaderboard__list-row {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #1a1a2e;
+  color: #b8b8d0;
+  font-size: 0.84rem;
+}
+
+.gym-leaderboard__list-row--you {
+  background: rgba(83, 74, 183, 0.1);
+  color: #f4e8c1;
+}
+
+.gym-leaderboard__list-rank {
+  color: #7f77dd;
+  font-size: 0.75rem;
+}
+
+.gym-leaderboard__list-handle {
+  color: inherit;
+}
+
+.gym-leaderboard__list-wins {
+  color: #9696b0;
+  font-variant-numeric: tabular-nums;
+}
+
+.gym-leaderboard__list-row--you .gym-leaderboard__list-wins {
+  color: #afa9ec;
+}

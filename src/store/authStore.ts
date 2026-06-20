@@ -3,8 +3,9 @@ import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { isNetworkAuthError, toFriendlyAuthError } from '../utils/authErrors'
 import { getPasswordResetRedirectUrl, isPasswordRecoveryUrl } from '../utils/authRoutes'
-import { track } from '../lib/analytics'
+import { trackProgressEvent } from '../lib/analytics'
 import { resetCharacterForSignOut } from './characterStore'
+import { resetCosmeticsEquipForSignOut } from './cosmeticsStore'
 import { refreshPlayerGrants, resetGrantsStore } from './grantsStore'
 import { hydrateFromAccount, resetProgression } from './playerStore'
 
@@ -94,7 +95,7 @@ function handleSignedIn(session: Session | null, recoveryPending: boolean): void
 }
 
 function handleSignedOut(): void {
-  track('logout')
+  trackProgressEvent('logout')
   setState({
     session: null,
     status: 'signed-out',
@@ -103,6 +104,7 @@ function handleSignedOut(): void {
   })
   resetProgression()
   resetCharacterForSignOut()
+  resetCosmeticsEquipForSignOut()
   resetGrantsStore()
 }
 
@@ -122,7 +124,7 @@ supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
     const recovery = isPasswordRecoveryUrl() && session != null
     handleSignedIn(session, recovery)
     if (event === 'SIGNED_IN' && !recovery) {
-      track('login_success')
+      trackProgressEvent('login_success')
     }
     return
   }
@@ -157,7 +159,7 @@ export async function signUp(email: string, password: string): Promise<AuthResul
   try {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) return { error: wrapAuthError(error.message) }
-    track('signup_success')
+    trackProgressEvent('signup_success')
     if (!data.session) return { needsEmailConfirmation: true }
     return {}
   } catch (err) {
@@ -257,7 +259,7 @@ export async function createProfile(handle: string): Promise<AuthResult> {
       .maybeSingle()
 
     if (error) return { error: friendlyDbError(error) }
-    if (!data?.handle) return { error: 'profile not found — try signing in again.' }
+    if (!data?.handle) return { error: 'profile not found, try signing in again.' }
 
     setState({ profile: { handle: data.handle } })
     return {}

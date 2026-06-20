@@ -113,7 +113,7 @@ export class SpriteSheet {
     return this.image
   }
 
-  /** Source rectangle for `drawImage(image, sx, sy, sw, sh, ...)` — all values floored. */
+  /** Source rectangle for `drawImage(image, sx, sy, sw, sh, ...)`, all values floored. */
   getFrameRect(direction: Direction, frameIndex: number): FrameRect {
     const row = DIRECTION_ROW[direction]
     const col = Math.max(0, Math.min(frameIndex, this.framesPerDirection - 1))
