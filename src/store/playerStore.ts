@@ -51,6 +51,7 @@ import {
   type WorldMemoryState,
 } from './worldMemory'
 import { applyMidnightVariantFromAccount, getMidnightVariant } from './characterStore'
+import { GHOST_TRAINING_ENABLED } from '../config/ghostTrainingGate'
 import { syncGhostTraining } from '../lib/ghostTrainingApi'
 import { isMidnightVariantId, type MidnightVariantId } from '../data/midnightVariants'
 import {
@@ -364,9 +365,11 @@ async function runAccountSaveLoop(): Promise<void> {
     }
 
     setAccountSaveStatus('idle')
-    void syncGhostTraining().catch(() => {
-      // harvest is best-effort
-    })
+    if (GHOST_TRAINING_ENABLED) {
+      void syncGhostTraining().catch(() => {
+        // harvest is best-effort
+      })
+    }
   }
 }
 

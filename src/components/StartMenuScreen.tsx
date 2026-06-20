@@ -6,6 +6,7 @@ import {
   useState,
   type RefObject,
 } from 'react'
+import { GHOST_TRAINING_ENABLED } from '../config/ghostTrainingGate'
 import './StartMenuScreen.css'
 
 export type StartMenuAction =
@@ -19,7 +20,7 @@ export type StartMenuAction =
   | 'new-game'
   | 'sign-out'
 
-const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
+const ALL_MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'resume', label: 'resume' },
   { id: 'champions', label: 'champions board' },
   { id: 'ghost-training', label: 'ghost training' },
@@ -28,6 +29,10 @@ const MENU_ITEMS: { id: StartMenuAction; label: string; danger?: boolean }[] = [
   { id: 'new-game', label: 'new game', danger: true },
   { id: 'sign-out', label: 'sign out' },
 ]
+
+const MENU_ITEMS = ALL_MENU_ITEMS.filter(
+  (item) => item.id !== 'ghost-training' || GHOST_TRAINING_ENABLED,
+)
 
 export type StartMenuHandle = {
   activate: () => void

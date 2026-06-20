@@ -143,6 +143,7 @@ import { GymLeaderboardScreen } from './GymLeaderboardScreen'
 import { GhostTrainingScreen } from './GhostTrainingScreen'
 import { TheaterScreen } from './TheaterScreen'
 import { ShopScreen } from './ShopScreen'
+import { GHOST_TRAINING_ENABLED } from '../config/ghostTrainingGate'
 import { COSMETICS_SHOP_ENABLED } from '../config/printsGate'
 import { LoadoutScreen } from './LoadoutScreen'
 import { BattleEntryWipe, type BattleWipeMode } from './BattleEntryWipe'
@@ -545,7 +546,7 @@ export function GameScreen() {
   )
 
   useEffect(() => {
-    if (!E2_ENABLED) return
+    if (!E2_ENABLED || !GHOST_TRAINING_ENABLED) return
     let cancelled = false
     void whenAccountHydrated().then(() => {
       if (cancelled) return
@@ -912,6 +913,7 @@ export function GameScreen() {
   }, [])
 
   const openGhostTraining = useCallback(() => {
+    if (!GHOST_TRAINING_ENABLED) return
     setShowStartMenu(false)
     setMenuReturnPending(false)
     setShowGhostTraining(true)
@@ -2807,7 +2809,7 @@ export function GameScreen() {
           openGymLeaderboard()
           break
         case 'ghost-training':
-          openGhostTraining()
+          if (GHOST_TRAINING_ENABLED) openGhostTraining()
           break
         case 'new-game':
           break
@@ -3318,7 +3320,7 @@ export function GameScreen() {
               onClose={handleGymLeaderboardClose}
             />
           )}
-          {showGhostTraining && (
+          {GHOST_TRAINING_ENABLED && showGhostTraining && (
             <GhostTrainingScreen
               onClose={handleGhostTrainingClose}
               onFight={startGhostTrainingBattle}
