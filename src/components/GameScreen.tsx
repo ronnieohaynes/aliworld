@@ -192,7 +192,6 @@ import {
   type StartMenuAction,
   type StartMenuHandle,
 } from './StartMenuScreen'
-import { AccountSaveIndicator } from './AccountSaveIndicator'
 import { BugReportScreen } from './BugReportScreen'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
 import { ButtonSpotlightRing, GuidedTutorialOverlay } from './GuidedTutorialOverlay'
@@ -2922,7 +2921,6 @@ export function GameScreen() {
 
   return (
     <div className="game-screen">
-      <AccountSaveIndicator />
       <GameShell
         onFannyPack={handleFannyPack}
         onScript={handleOpenLoadout}

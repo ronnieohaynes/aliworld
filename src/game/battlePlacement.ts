@@ -27,9 +27,6 @@ export const BATTLE_PLAYER_PLATE_OFFSET_X = 3
 /** Gap below sprite visible top where the plate anchor sits (enemy and player). */
 export const BATTLE_PLATE_VISIBLE_TOP_GAP = 5
 
-/** Fixed arena Y for the bottom edge of the player status plate anchor. */
-export const BATTLE_PLAYER_PLATE_BOTTOM_Y = 300
-
 /** Toggle player status plate visibility in battle. */
 export const SHOW_BATTLE_PLAYER_PLATE = true
 

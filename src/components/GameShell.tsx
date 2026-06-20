@@ -27,6 +27,8 @@ import {
   getCutsceneUiSnapshot,
   subscribeCutsceneUiStore,
 } from '../store/cutsceneUiStore'
+import { ScaledDesignStage } from './ScaledDesignStage'
+import { AccountSaveIndicator } from './AccountSaveIndicator'
 import './GameShell.css'
 
 const ARROW_KEYS = {
@@ -468,110 +470,113 @@ export function GameShell({
   const videoMode = cutsceneUi.active
 
   return (
-    <div
-      className={`game-shell${musicEnabled ? '' : ' game-shell--no-music'}${
-        videoMode ? ' game-shell--video-mode' : ''
-      }${videoMode && !cutsceneUi.landscapeFullscreen ? ' game-shell--video-portrait' : ''}`}
-    >
-      <header className="game-shell__topbar">
-        <CultSigil />
-        <div className="game-shell__topbar-music">
-          {musicEnabled || videoMode ? <GameShellMusicBar /> : null}
-        </div>
-        <time className="game-shell__clock" aria-label="Local time">
-          {clock}
-        </time>
-      </header>
-
-      <div className="game-shell__bezel">
-        <div className="game-shell__viewport">
-          <div className="game-shell__viewport-inner">{children}</div>
-        </div>
-      </div>
-
-      <div className="game-shell__controls">
-        {videoMode ? (
-          <GameShellCutsceneControls />
-        ) : (
-          <>
-            <GameShellJoystick />
-
-            <div className="game-shell__center-btns">
-              <button
-                type="button"
-                ref={startButtonRef}
-                className="game-shell__pill-btn"
-                onClick={() => {
-                  console.log('[tutorial-start] GameShell START click')
-                  onStart()
-                }}
-              >
-                START
-              </button>
+    <ScaledDesignStage>
+      <AccountSaveIndicator />
+        <div
+          className={`game-shell${musicEnabled ? '' : ' game-shell--no-music'}${
+            videoMode ? ' game-shell--video-mode' : ''
+          }${videoMode && !cutsceneUi.landscapeFullscreen ? ' game-shell--video-portrait' : ''}`}
+        >
+          <header className="game-shell__topbar">
+            <CultSigil />
+            <div className="game-shell__topbar-music">
+              {musicEnabled || videoMode ? <GameShellMusicBar /> : null}
             </div>
+            <time className="game-shell__clock" aria-label="Local time">
+              {clock}
+            </time>
+          </header>
 
-            <div className="game-shell__actions">
-              <button
-                type="button"
-                ref={interactButtonRef}
-                className="game-shell__action game-shell__action--interact"
-                aria-label="INTERACT"
-                title="INTERACT"
-                onClick={onInteract}
-              >
-                <svg width="12" height="10" viewBox="0 0 12 10" aria-hidden>
-                  <polygon points="6,1 11,9 1,9" fill="#AFA9EC" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                ref={scriptButtonRef}
-                className="game-shell__action game-shell__action--script"
-                aria-label="SCRIPT"
-                title="SCRIPT"
-                onClick={onScript}
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-                  <path
-                    d="M2 10 L2 2 L7 2 L10 5 L10 10 Z"
-                    fill="none"
-                    stroke="#378ADD"
-                    strokeWidth="1.2"
-                  />
-                  <line x1="4" y1="6" x2="8" y2="6" stroke="#378ADD" strokeWidth="1" />
-                  <line x1="4" y1="8" x2="7" y2="8" stroke="#378ADD" strokeWidth="1" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                ref={fannyPackButtonRef}
-                className="game-shell__action game-shell__action--pack"
-                aria-label="FANNY PACK"
-                title="FANNY PACK"
-                onClick={onFannyPack}
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-                  <rect
-                    x="2"
-                    y="3"
-                    width="8"
-                    height="7"
-                    rx="1"
-                    fill="none"
-                    stroke="#534AB7"
-                    strokeWidth="1.2"
-                  />
-                  <path d="M4 3 V2 H8 V3" fill="none" stroke="#534AB7" strokeWidth="1" />
-                </svg>
-              </button>
+          <div className="game-shell__bezel">
+            <div className="game-shell__viewport">
+              <div className="game-shell__viewport-inner">{children}</div>
             </div>
-          </>
-        )}
-      </div>
+          </div>
 
-      <footer className="game-shell__footer">
-        <span className="game-shell__brand">ALIWORLD</span>
-      </footer>
-    </div>
+          <div className="game-shell__controls">
+            {videoMode ? (
+              <GameShellCutsceneControls />
+            ) : (
+              <>
+                <GameShellJoystick />
+
+                <div className="game-shell__center-btns">
+                  <button
+                    type="button"
+                    ref={startButtonRef}
+                    className="game-shell__pill-btn"
+                    onClick={() => {
+                      console.log('[tutorial-start] GameShell START click')
+                      onStart()
+                    }}
+                  >
+                    START
+                  </button>
+                </div>
+
+                <div className="game-shell__actions">
+                  <button
+                    type="button"
+                    ref={interactButtonRef}
+                    className="game-shell__action game-shell__action--interact"
+                    aria-label="INTERACT"
+                    title="INTERACT"
+                    onClick={onInteract}
+                  >
+                    <svg width="12" height="10" viewBox="0 0 12 10" aria-hidden>
+                      <polygon points="6,1 11,9 1,9" fill="#AFA9EC" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    ref={scriptButtonRef}
+                    className="game-shell__action game-shell__action--script"
+                    aria-label="SCRIPT"
+                    title="SCRIPT"
+                    onClick={onScript}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+                      <path
+                        d="M2 10 L2 2 L7 2 L10 5 L10 10 Z"
+                        fill="none"
+                        stroke="#378ADD"
+                        strokeWidth="1.2"
+                      />
+                      <line x1="4" y1="6" x2="8" y2="6" stroke="#378ADD" strokeWidth="1" />
+                      <line x1="4" y1="8" x2="7" y2="8" stroke="#378ADD" strokeWidth="1" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    ref={fannyPackButtonRef}
+                    className="game-shell__action game-shell__action--pack"
+                    aria-label="FANNY PACK"
+                    title="FANNY PACK"
+                    onClick={onFannyPack}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+                      <rect
+                        x="2"
+                        y="3"
+                        width="8"
+                        height="7"
+                        rx="1"
+                        fill="none"
+                        stroke="#534AB7"
+                        strokeWidth="1.2"
+                      />
+                      <path d="M4 3 V2 H8 V3" fill="none" stroke="#534AB7" strokeWidth="1" />
+                    </svg>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <footer className="game-shell__footer">
+            <span className="game-shell__brand">ALIWORLD</span>
+          </footer>
+        </div>
+    </ScaledDesignStage>
   )
 }

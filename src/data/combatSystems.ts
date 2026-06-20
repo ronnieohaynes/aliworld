@@ -291,6 +291,12 @@ export function buildExposedResolveInput(input: ExposedResolveInput) {
   }
 }
 
+/** Clamp strike damage so it cannot exceed the target's remaining HP. */
+export function capDamageToRemainingHp(damage: number, remainingHp: number): number {
+  if (damage <= 0) return damage
+  return Math.min(damage, Math.max(0, remainingHp))
+}
+
 export function deathClockHitLogLine(hit: DeathClockHit, enemyName: string): string {
   const label = hit.clock.label ?? 'sealed fate'
   const lower = enemyName.toLowerCase()
