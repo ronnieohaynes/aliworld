@@ -102,6 +102,18 @@ export type AdminGrantRow = {
   created_at: string
 }
 
+export type AdminMessageRow = {
+  id: string
+  user_id: string
+  handle: string
+  body: string
+  grant_id: string | null
+  created_at: string
+  seen_at: string | null
+  notified_email_at: string | null
+  created_by: string
+}
+
 export type AdminTabId = 'overview' | 'users' | 'emails' | 'events' | 'ops'
 
 export function isAnalyticsEmpty(summary: AnalyticsSummary): boolean {

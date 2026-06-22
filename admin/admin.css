@@ -732,6 +732,20 @@ code {
   text-transform: lowercase;
 }
 
+.admin-ops__textarea {
+  min-height: 96px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.admin-ops__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b8b8d0;
+  font-size: 0.85rem;
+}
+
 .admin-ops .admin-danger {
   margin-top: 0;
 }

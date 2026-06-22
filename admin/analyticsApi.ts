@@ -178,6 +178,30 @@ export async function deleteGrant(adminSecret: string, id: string): Promise<{ de
   return postAction(adminSecret, 'grant_delete', { id })
 }
 
+export async function queuePlayerMessage(
+  adminSecret: string,
+  payload: {
+    user_id?: string
+    handle?: string
+    body: string
+    grant?: {
+      kind: 'badge' | 'skin' | 'prints'
+      value: string
+      label?: string
+      note?: string
+    }
+  },
+): Promise<import('./types').AdminMessageRow> {
+  return postAction(adminSecret, 'message_queue', payload)
+}
+
+export async function fetchUserMessages(
+  adminSecret: string,
+  userId: string,
+): Promise<import('./types').AdminMessageRow[]> {
+  return postAction(adminSecret, 'messages_list', { user_id: userId })
+}
+
 export async function verifyAdminSecret(adminSecret: string): Promise<boolean> {
   try {
     await fetchAnalyticsSummary(adminSecret, 7)

@@ -79,6 +79,8 @@ const POST_ACTIONS = new Set([
   'grant_create',
   'grants_list',
   'grant_delete',
+  'message_queue',
+  'messages_list',
 ])
 
 const GET_ACTIONS = new Set([
@@ -659,7 +661,7 @@ async function handleClearEventsAction(supabase: SupabaseClient): Promise<Respon
   return jsonResponse({
     cleared: count ?? 0,
     scope: 'aw_events_only',
-    durableProgressUnaffected: ['aw_lifetime_progress', 'aw_lifetime_daily_activity', 'aw_ghost_training_state', 'aw_grants'],
+    durableProgressUnaffected: ['aw_lifetime_progress', 'aw_lifetime_daily_activity', 'aw_ghost_training_state', 'aw_grants', 'aw_messages'],
   })
 }
 
@@ -801,6 +803,97 @@ async function handleGrantDeleteAction(
   return jsonResponse({ deleted: true })
 }
 
+async function insertGrantForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  grant: Record<string, unknown>,
+): Promise<{ id: string } | Response> {
+  const kind = typeof grant.kind === 'string' ? grant.kind : ''
+  if (!GRANT_KINDS.has(kind)) return badRequest('grant.kind must be badge, skin, or prints')
+
+  const value = typeof grant.value === 'string' ? grant.value.trim() : ''
+  if (!value) return badRequest('grant.value required')
+
+  const label = typeof grant.label === 'string' ? grant.label.trim() || null : null
+  const note = typeof grant.note === 'string' ? grant.note.trim() || null : null
+
+  const { data, error } = await supabase
+    .from('aw_grants')
+    .insert({ user_id: userId, kind, value, label, note })
+    .select('id')
+    .single()
+
+  if (error) return jsonResponse({ error: error.message }, 500)
+  if (!data?.id) return jsonResponse({ error: 'Grant insert failed' }, 500)
+  return { id: data.id }
+}
+
+async function handleMessageQueueAction(
+  supabase: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const userId = await resolveUserIdFromBody(supabase, body)
+  if (!userId) return badRequest('user_id or valid handle required')
+
+  const messageBody = typeof body.body === 'string' ? body.body.trim() : ''
+  if (!messageBody) return badRequest('body required')
+
+  const { data: userRow, error: userError } = await supabase
+    .from('aw_users')
+    .select('handle')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (userError) return jsonResponse({ error: userError.message }, 500)
+
+  const handle =
+    (typeof userRow?.handle === 'string' ? userRow.handle.trim() : '') ||
+    (typeof body.handle === 'string' ? validateHandle(body.handle) : null)
+
+  if (!handle) return badRequest('handle not found for user')
+
+  let grantId: string | null = null
+  if (body.grant != null) {
+    if (typeof body.grant !== 'object') return badRequest('grant must be an object')
+    const grantResult = await insertGrantForUser(supabase, userId, body.grant as Record<string, unknown>)
+    if (grantResult instanceof Response) return grantResult
+    grantId = grantResult.id
+  }
+
+  const { data, error } = await supabase
+    .from('aw_messages')
+    .insert({
+      user_id: userId,
+      handle,
+      body: messageBody,
+      grant_id: grantId,
+      created_by: 'mothership',
+    })
+    .select('id, user_id, handle, body, grant_id, created_at, seen_at, notified_email_at, created_by')
+    .single()
+
+  if (error) return jsonResponse({ error: error.message }, 500)
+  return jsonResponse(data)
+}
+
+async function handleMessagesListAction(
+  supabase: SupabaseClient,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const userId = await resolveUserIdFromBody(supabase, body)
+  if (!userId) return badRequest('user_id or valid handle required')
+
+  const { data, error } = await supabase
+    .from('aw_messages')
+    .select('id, user_id, handle, body, grant_id, created_at, seen_at, notified_email_at, created_by')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) return jsonResponse({ error: error.message }, 500)
+  return jsonResponse(data ?? [])
+}
+
 async function handleMilestonesAction(supabase: SupabaseClient): Promise<Response> {
   const { data, error } = await supabase
     .from('aw_milestone_firsts')
@@ -927,6 +1020,10 @@ Deno.serve(async (req) => {
         return await handleGrantCreateAction(supabase, body)
       case 'grant_delete':
         return await handleGrantDeleteAction(supabase, body)
+      case 'message_queue':
+        return await handleMessageQueueAction(supabase, body)
+      case 'messages_list':
+        return await handleMessagesListAction(supabase, body)
       default: {
         const daysRaw = url.searchParams.get('days')
         const days = daysRaw ? Math.min(90, Math.max(7, Number(daysRaw) || 30)) : 30
