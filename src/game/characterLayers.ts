@@ -208,6 +208,37 @@ export function getIdleFrameIndex(): number {
   return MIDNIGHT_WALK_IDLE_FRAME
 }
 
+/** Thumbnail: front-facing (down row) idle frame, full 256×256 cell — no crop tuning. */
+export function drawVariantThumbnailFrame(
+  ctx: CanvasRenderingContext2D,
+  sheet: SpriteSheet,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+): void {
+  const source = getSheetDrawSource(sheet)
+  if (!source) return
+
+  const sx = MIDNIGHT_WALK_IDLE_FRAME * MIDNIGHT_WALK_FRAME_WIDTH
+  const sy = SPRITE_SHEET_ROW.down * MIDNIGHT_WALK_FRAME_HEIGHT
+
+  ctx.save()
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(
+    source,
+    sx,
+    sy,
+    MIDNIGHT_WALK_FRAME_WIDTH,
+    MIDNIGHT_WALK_FRAME_HEIGHT,
+    Math.floor(dx),
+    Math.floor(dy),
+    Math.floor(dw),
+    Math.floor(dh),
+  )
+  ctx.restore()
+}
+
 /* ── V2 body tone stubs (keep CustomizationScreen.tsx compiling) ── */
 
 const BODY_WALK_SHEET_OPTIONS = {

@@ -108,6 +108,12 @@ export const MIDNIGHT_VARIANT_SHEET = {
     displayName: 'Cencere Test',
     hidden: true,
   },
+  'week1-champion': {
+    folder: 'variants',
+    file: 'reward skins/week1-champion.png',
+    displayName: 'Week 1 Champion',
+    hidden: true,
+  },
 } as const satisfies Record<string, MidnightVariantRegistryEntry>
 
 export type MidnightVariantId = keyof typeof MIDNIGHT_VARIANT_SHEET
