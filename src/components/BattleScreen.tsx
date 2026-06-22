@@ -36,6 +36,7 @@ import {
   BATTLE_PLATE_VISIBLE_TOP_GAP,
   BATTLE_PLAYER_FIGHTER_NUDGE_Y,
   BATTLE_PLAYER_PLATE_OFFSET_X,
+  BATTLE_PLAYER_PLATE_OFFSET_Y,
   SHOW_BATTLE_PLAYER_PLATE,
   BATTLE_PLAYER_SOURCE_H,
   BATTLE_PLAYER_SOURCE_W,
@@ -1305,7 +1306,8 @@ export function BattleScreen({
   const playerPlateTop =
     playerPlacement.visibleDrawY +
     BATTLE_PLATE_VISIBLE_TOP_GAP +
-    BATTLE_PLAYER_FIGHTER_NUDGE_Y
+    BATTLE_PLAYER_FIGHTER_NUDGE_Y +
+    BATTLE_PLAYER_PLATE_OFFSET_Y
   const [settleCoverGone, setSettleCoverGone] = useState(false)
   useEffect(() => {
     if (!battleSettled || settleCoverGone) return

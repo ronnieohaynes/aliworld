@@ -192,6 +192,10 @@
 }
 
 /* ── Sprite plate: floats above the anchor point (= above sprite top) ── */
+.battle-screen__plate-anchor--player .battle-screen__sprite-plate {
+  margin-bottom: 10px;
+}
+
 .battle-screen__sprite-plate {
   position: absolute;
   bottom: 0;
