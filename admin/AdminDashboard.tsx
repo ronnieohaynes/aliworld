@@ -120,7 +120,7 @@ export function AdminDashboard({ adminSecret }: Props) {
   }, [loadSummary])
 
   useEffect(() => {
-    if (tab === 'users') void loadUsers()
+    if (tab === 'users' || tab === 'ops') void loadUsers()
     if (tab === 'emails') void loadEmails()
     if (tab === 'events') void loadEvents()
   }, [tab, loadUsers, loadEmails, loadEvents])
@@ -209,6 +209,8 @@ export function AdminDashboard({ adminSecret }: Props) {
       {tab === 'ops' ? (
         <AdminOpsTab
           adminSecret={adminSecret}
+          users={users}
+          usersLoading={usersLoading}
           onEventsCleared={() => {
             void loadSummary()
             void loadEvents()

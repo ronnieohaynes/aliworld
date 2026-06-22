@@ -105,6 +105,8 @@ type Props = {
 
 type EquipSlot = 0 | 1 | 2 | 3
 
+type LoadoutTab = 'loadout' | 'skins'
+
 type MoveLadderEntry = {
   moveId: PlayerMoveId
   rung: number
@@ -184,6 +186,7 @@ export function LoadoutScreen({
   onLoadoutTutorialSkip,
 }: Props) {
   const [closing, setClosing] = useState(false)
+  const [activeTab, setActiveTab] = useState<LoadoutTab>('loadout')
   const [selectedSlot, setSelectedSlot] = useState<EquipSlot>(0)
   const [expandedSkill, setExpandedSkill] = useState<MoveSkill | null>(null)
   const [alreadyEquippedNote, setAlreadyEquippedNote] = useState<string | null>(null)
@@ -331,6 +334,11 @@ export function LoadoutScreen({
     [selectedMidnightVariant],
   )
 
+  const switchTab = useCallback((tab: LoadoutTab) => {
+    setActiveTab(tab)
+    scrollRootRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
   const playerHandle = getAuthState().profile?.handle?.toLowerCase()
 
   return (
@@ -349,6 +357,25 @@ export function LoadoutScreen({
             close
           </button>
         </header>
+
+        <nav className="loadout-screen__tabs" aria-label="Loadout sections">
+          <button
+            type="button"
+            className={`loadout-screen__tab${activeTab === 'loadout' ? ' loadout-screen__tab--active' : ''}`}
+            aria-selected={activeTab === 'loadout'}
+            onClick={() => switchTab('loadout')}
+          >
+            loadout
+          </button>
+          <button
+            type="button"
+            className={`loadout-screen__tab${activeTab === 'skins' ? ' loadout-screen__tab--active' : ''}`}
+            aria-selected={activeTab === 'skins'}
+            onClick={() => switchTab('skins')}
+          >
+            skins
+          </button>
+        </nav>
 
         <div ref={scrollRootRef} className="loadout-screen__scroll">
           <section className="loadout-screen__hero" aria-label="Player portrait">
@@ -398,51 +425,39 @@ export function LoadoutScreen({
             ) : null}
           </section>
 
-          <section className="loadout-screen__equipped" aria-label="Equipped move slots">
-            <h2 className="loadout-screen__section-label">equipped</h2>
-            {alreadyEquippedNote && (
-              <p className="loadout-screen__note" role="status">
-                {alreadyEquippedNote}
-              </p>
-            )}
-            <div className="loadout-screen__equipped-row">
-              {equipped.map((moveId, index) => {
-                const slot = index as EquipSlot
-                const { label } = getMoveUiMeta(moveId)
-                const def = getMoveDef(moveId)
-                const selected = selectedSlot === slot
-                return (
-                  <button
-                    key={`equipped-${slot}`}
-                    type="button"
-                    className={`loadout-screen__slot loadout-screen__slot--${def.skill}${
-                      selected ? ' loadout-screen__slot--selected' : ''
-                    }`}
-                    aria-pressed={selected}
-                    onClick={() => handleSlotClick(slot)}
-                  >
-                    <span className="loadout-screen__slot-name">{label}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
+          {activeTab === 'loadout' ? (
+            <>
+              <section className="loadout-screen__equipped" aria-label="Equipped move slots">
+                <h2 className="loadout-screen__section-label">equipped</h2>
+                {alreadyEquippedNote && (
+                  <p className="loadout-screen__note" role="status">
+                    {alreadyEquippedNote}
+                  </p>
+                )}
+                <div className="loadout-screen__equipped-row">
+                  {equipped.map((moveId, index) => {
+                    const slot = index as EquipSlot
+                    const { label } = getMoveUiMeta(moveId)
+                    const def = getMoveDef(moveId)
+                    const selected = selectedSlot === slot
+                    return (
+                      <button
+                        key={`equipped-${slot}`}
+                        type="button"
+                        className={`loadout-screen__slot loadout-screen__slot--${def.skill}${
+                          selected ? ' loadout-screen__slot--selected' : ''
+                        }`}
+                        aria-pressed={selected}
+                        onClick={() => handleSlotClick(slot)}
+                      >
+                        <span className="loadout-screen__slot-name">{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
 
-          {ownedSkins.length > 0 ? (
-            <section className="loadout-screen__skins" aria-label="Equipped skin">
-              <h2 className="loadout-screen__section-label">skin</h2>
-              <VariantThumbnailGallery
-                variants={ownedSkins}
-                selectedId={selectedMidnightVariant}
-                onSelect={handleSkinSelect}
-                ariaLabel="Owned skins — tap to equip"
-                thumbnailSize={80}
-                emptyMessage="no skins owned yet"
-              />
-            </section>
-          ) : null}
-
-          <section className="loadout-screen__skills" aria-label="Skill ladders">
+              <section className="loadout-screen__skills" aria-label="Skill ladders">
             <h2 className="loadout-screen__section-label">skills</h2>
 
             {/* Overall level XP progress bar */}
@@ -593,6 +608,21 @@ export function LoadoutScreen({
               )
             })}
           </section>
+            </>
+          ) : (
+            <section className="loadout-screen__skins" aria-label="Skins">
+              <h2 className="loadout-screen__section-label">skins</h2>
+              <p className="loadout-screen__skins-hint">owned this run — tap to equip</p>
+              <VariantThumbnailGallery
+                variants={ownedSkins}
+                selectedId={selectedMidnightVariant}
+                onSelect={handleSkinSelect}
+                ariaLabel="Owned skins — tap to equip"
+                thumbnailSize={80}
+                emptyMessage="no skins unlocked this run yet"
+              />
+            </section>
+          )}
         </div>
       </div>
 

@@ -1,18 +1,28 @@
 import { useCallback, useState } from 'react'
 import { clearAnalyticsEvents, createGrant, queuePlayerMessage, sweepOrphans } from './analyticsApi'
+import { AdminHandleSelect } from './AdminHandleSelect'
 import { AdminSkinGrantPicker } from './AdminSkinGrantPicker'
 import { skinGrantValueForVariant } from '../src/data/skinGrants'
 import { getMidnightVariantSheetEntry, type MidnightVariantId } from '../src/data/midnightVariants'
+import type { AdminUserRow } from './types'
 
 const PRINT_GRANT_PRESETS = ['50', '100', '250', '500', '1000'] as const
 
 type Props = {
   adminSecret: string
+  users: AdminUserRow[]
+  usersLoading: boolean
   onEventsCleared: () => void
   showToast: (message: string) => void
 }
 
-export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) {
+export function AdminOpsTab({
+  adminSecret,
+  users,
+  usersLoading,
+  onEventsCleared,
+  showToast,
+}: Props) {
   const [clearOpen, setClearOpen] = useState(false)
   const [clearText, setClearText] = useState('')
   const [clearing, setClearing] = useState(false)
@@ -192,11 +202,11 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
         <div className="admin-grants__fields">
           <label>
             handle
-            <input
-              className="admin-modal__input"
+            <AdminHandleSelect
               value={grantHandle}
-              onChange={(e) => setGrantHandle(e.target.value)}
-              placeholder="player handle"
+              onChange={setGrantHandle}
+              users={users}
+              loading={usersLoading}
             />
           </label>
           <label>
@@ -294,11 +304,11 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
         <div className="admin-grants__fields">
           <label>
             handle
-            <input
-              className="admin-modal__input"
+            <AdminHandleSelect
               value={messageHandle}
-              onChange={(e) => setMessageHandle(e.target.value)}
-              placeholder="player handle"
+              onChange={setMessageHandle}
+              users={users}
+              loading={usersLoading}
             />
           </label>
           <label>

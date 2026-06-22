@@ -61,8 +61,47 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: 4px;
+  pointer-events: auto;
+}
+
+.loadout-screen__tabs {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   margin-bottom: 6px;
   pointer-events: auto;
+}
+
+.loadout-screen__tab {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #2a2a3e;
+  border-radius: 4px;
+  background: rgba(26, 26, 46, 0.72);
+  color: #9696b0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.loadout-screen__tab--active {
+  border-color: #d4b87a;
+  color: #f4e8c1;
+  box-shadow: 0 0 0 1px #d4b87a inset;
+}
+
+.loadout-screen__skins-hint {
+  margin: 0 0 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  color: #9696b0;
+  text-transform: lowercase;
 }
 
 .loadout-screen__title {
