@@ -1,5 +1,10 @@
 import { useCallback, useState } from 'react'
 import { clearAnalyticsEvents, createGrant, queuePlayerMessage, sweepOrphans } from './analyticsApi'
+import { AdminSkinGrantPicker } from './AdminSkinGrantPicker'
+import { skinGrantValueForVariant } from '../src/data/skinGrants'
+import { getMidnightVariantSheetEntry, type MidnightVariantId } from '../src/data/midnightVariants'
+
+const PRINT_GRANT_PRESETS = ['50', '100', '250', '500', '1000'] as const
 
 type Props = {
   adminSecret: string
@@ -14,6 +19,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
   const [sweeping, setSweeping] = useState(false)
   const [grantHandle, setGrantHandle] = useState('')
   const [grantKind, setGrantKind] = useState<'badge' | 'skin' | 'prints'>('badge')
+  const [grantSkinId, setGrantSkinId] = useState<MidnightVariantId | null>(null)
   const [grantValue, setGrantValue] = useState('')
   const [grantLabel, setGrantLabel] = useState('')
   const [grantNote, setGrantNote] = useState('')
@@ -22,6 +28,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
   const [messageBody, setMessageBody] = useState('')
   const [messageAttachGrant, setMessageAttachGrant] = useState(false)
   const [messageGrantKind, setMessageGrantKind] = useState<'badge' | 'skin' | 'prints'>('skin')
+  const [messageGrantSkinId, setMessageGrantSkinId] = useState<MidnightVariantId | null>(null)
   const [messageGrantValue, setMessageGrantValue] = useState('')
   const [messageGrantLabel, setMessageGrantLabel] = useState('')
   const [messageGrantNote, setMessageGrantNote] = useState('')
@@ -59,18 +66,28 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
 
   const handleGrantByHandle = useCallback(async () => {
     const handle = grantHandle.trim()
-    if (!handle || !grantValue.trim()) return
+    const resolvedValue =
+      grantKind === 'skin'
+        ? grantSkinId
+          ? skinGrantValueForVariant(grantSkinId)
+          : ''
+        : grantValue.trim()
+    if (!handle || !resolvedValue) return
     setGranting(true)
     try {
       await createGrant(adminSecret, {
         handle,
         kind: grantKind,
-        value: grantValue.trim(),
-        label: grantLabel.trim() || undefined,
+        value: resolvedValue,
+        label:
+          grantKind === 'skin' && grantSkinId
+            ? grantLabel.trim() || getMidnightVariantSheetEntry(grantSkinId).displayName
+            : grantLabel.trim() || undefined,
         note: grantNote.trim() || undefined,
       })
       showToast(`granted ${grantKind} to @${handle}`)
       setGrantHandle('')
+      setGrantSkinId(null)
       setGrantValue('')
       setGrantLabel('')
       setGrantNote('')
@@ -79,24 +96,44 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
     } finally {
       setGranting(false)
     }
-  }, [adminSecret, grantHandle, grantKind, grantLabel, grantNote, grantValue, showToast])
+  }, [
+    adminSecret,
+    grantHandle,
+    grantKind,
+    grantLabel,
+    grantNote,
+    grantSkinId,
+    grantValue,
+    showToast,
+  ])
 
   const handleQueueMessage = useCallback(async () => {
     const handle = messageHandle.trim()
     const body = messageBody.trim()
     if (!handle || !body) return
-    if (messageAttachGrant && !messageGrantValue.trim()) return
+    if (messageAttachGrant) {
+      if (messageGrantKind === 'skin' && !messageGrantSkinId) return
+      if (messageGrantKind !== 'skin' && !messageGrantValue.trim()) return
+    }
 
     setQueuingMessage(true)
     try {
+      const grantValueResolved =
+        messageGrantKind === 'skin' && messageGrantSkinId
+          ? skinGrantValueForVariant(messageGrantSkinId)
+          : messageGrantValue.trim()
+
       const row = await queuePlayerMessage(adminSecret, {
         handle,
         body,
         grant: messageAttachGrant
           ? {
               kind: messageGrantKind,
-              value: messageGrantValue.trim(),
-              label: messageGrantLabel.trim() || undefined,
+              value: grantValueResolved,
+              label:
+                messageGrantKind === 'skin' && messageGrantSkinId
+                  ? messageGrantLabel.trim() || getMidnightVariantSheetEntry(messageGrantSkinId).displayName
+                  : messageGrantLabel.trim() || undefined,
               note: messageGrantNote.trim() || undefined,
             }
           : undefined,
@@ -109,6 +146,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
       setMessageHandle('')
       setMessageBody('')
       setMessageAttachGrant(false)
+      setMessageGrantSkinId(null)
       setMessageGrantValue('')
       setMessageGrantLabel('')
       setMessageGrantNote('')
@@ -124,6 +162,7 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
     messageGrantKind,
     messageGrantLabel,
     messageGrantNote,
+    messageGrantSkinId,
     messageGrantValue,
     messageHandle,
     showToast,
@@ -165,22 +204,54 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
             <select
               className="admin-modal__input"
               value={grantKind}
-              onChange={(e) => setGrantKind(e.target.value as 'badge' | 'skin' | 'prints')}
+              onChange={(e) => {
+                const next = e.target.value as 'badge' | 'skin' | 'prints'
+                setGrantKind(next)
+                if (next !== 'skin') setGrantSkinId(null)
+              }}
             >
               <option value="badge">badge</option>
               <option value="skin">skin</option>
               <option value="prints">prints</option>
             </select>
           </label>
-          <label>
-            value
-            <input
-              className="admin-modal__input"
-              value={grantValue}
-              onChange={(e) => setGrantValue(e.target.value)}
-              placeholder="week1-champion"
+          {grantKind === 'skin' ? (
+            <AdminSkinGrantPicker
+              selectedId={grantSkinId}
+              onSelect={(id) => {
+                setGrantSkinId(id)
+                if (!grantLabel.trim()) {
+                  setGrantLabel(getMidnightVariantSheetEntry(id).displayName)
+                }
+              }}
             />
-          </label>
+          ) : grantKind === 'prints' ? (
+            <label>
+              prints amount
+              <select
+                className="admin-modal__input"
+                value={grantValue}
+                onChange={(e) => setGrantValue(e.target.value)}
+              >
+                <option value="">select amount</option>
+                {PRINT_GRANT_PRESETS.map((amount) => (
+                  <option key={amount} value={amount}>
+                    {amount} prints
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label>
+              badge value
+              <input
+                className="admin-modal__input"
+                value={grantValue}
+                onChange={(e) => setGrantValue(e.target.value)}
+                placeholder="gym-week-1"
+              />
+            </label>
+          )}
           <label>
             label
             <input
@@ -203,7 +274,11 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
         <button
           type="button"
           className="admin-users__export"
-          disabled={granting || !grantHandle.trim() || !grantValue.trim()}
+          disabled={
+            granting ||
+            !grantHandle.trim() ||
+            (grantKind === 'skin' ? !grantSkinId : !grantValue.trim())
+          }
           onClick={() => void handleGrantByHandle()}
         >
           {granting ? 'granting…' : 'grant prize'}
@@ -251,22 +326,55 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
                 <select
                   className="admin-modal__input"
                   value={messageGrantKind}
-                  onChange={(e) => setMessageGrantKind(e.target.value as 'badge' | 'skin' | 'prints')}
+                  onChange={(e) => {
+                    const next = e.target.value as 'badge' | 'skin' | 'prints'
+                    setMessageGrantKind(next)
+                    if (next !== 'skin') setMessageGrantSkinId(null)
+                  }}
                 >
                   <option value="badge">badge</option>
                   <option value="skin">skin</option>
                   <option value="prints">prints</option>
                 </select>
               </label>
-              <label>
-                grant value
-                <input
-                  className="admin-modal__input"
-                  value={messageGrantValue}
-                  onChange={(e) => setMessageGrantValue(e.target.value)}
-                  placeholder="week1-champion"
+              {messageGrantKind === 'skin' ? (
+                <AdminSkinGrantPicker
+                  selectedId={messageGrantSkinId}
+                  onSelect={(id) => {
+                    setMessageGrantSkinId(id)
+                    if (!messageGrantLabel.trim()) {
+                      setMessageGrantLabel(getMidnightVariantSheetEntry(id).displayName)
+                    }
+                  }}
+                  ariaLabel="Select skin grant to attach"
                 />
-              </label>
+              ) : messageGrantKind === 'prints' ? (
+                <label>
+                  prints amount
+                  <select
+                    className="admin-modal__input"
+                    value={messageGrantValue}
+                    onChange={(e) => setMessageGrantValue(e.target.value)}
+                  >
+                    <option value="">select amount</option>
+                    {PRINT_GRANT_PRESETS.map((amount) => (
+                      <option key={amount} value={amount}>
+                        {amount} prints
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label>
+                  badge value
+                  <input
+                    className="admin-modal__input"
+                    value={messageGrantValue}
+                    onChange={(e) => setMessageGrantValue(e.target.value)}
+                    placeholder="gym-week-1"
+                  />
+                </label>
+              )}
               <label>
                 grant label
                 <input
@@ -295,7 +403,8 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
             queuingMessage ||
             !messageHandle.trim() ||
             !messageBody.trim() ||
-            (messageAttachGrant && !messageGrantValue.trim())
+            (messageAttachGrant &&
+              (messageGrantKind === 'skin' ? !messageGrantSkinId : !messageGrantValue.trim()))
           }
           onClick={() => void handleQueueMessage()}
         >

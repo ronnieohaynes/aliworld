@@ -7,7 +7,12 @@ import {
   type MidnightVariantId,
 } from '../../supabase/functions/analytics-summary/variantRegistry.ts'
 
-export { isRegisteredMidnightVariantId, listRegisteredMidnightVariantIds } from '../../supabase/functions/analytics-summary/variantRegistry.ts'
+export {
+  getMidnightVariantSheetEntry,
+  isRegisteredMidnightVariantId,
+  listRegisteredMidnightVariantIds,
+  MIDNIGHT_VARIANT_SHEET,
+} from '../../supabase/functions/analytics-summary/variantRegistry.ts'
 
 export type { MidnightVariantId }
 

@@ -209,6 +209,15 @@
   margin-bottom: 10px;
 }
 
+.loadout-screen__skins {
+  margin-bottom: 12px;
+  pointer-events: auto;
+}
+
+.loadout-screen__skins .variant-thumb-gallery {
+  margin-top: 4px;
+}
+
 .loadout-screen__equipped-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

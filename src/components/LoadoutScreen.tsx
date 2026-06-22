@@ -33,8 +33,13 @@ import { deriveBuildName } from '../data/buildName'
 import type { MoveSkill } from '../data/moveTypes'
 import {
   getSelectedMidnightVariant,
+  setMidnightVariant,
   subscribeCharacterStore,
 } from '../store/characterStore'
+import { listOwnedSkinVariants } from '../data/skinGrants'
+import type { MidnightVariantId } from '../data/midnightVariants'
+import { VariantThumbnailGallery } from './VariantThumbnailGallery'
+import './VariantThumbnailGallery.css'
 import {
   getBadgeGrantLabels,
   getGrantsRevision,
@@ -217,6 +222,10 @@ export function LoadoutScreen({
     void grantsRevision
     return getBadgeGrantLabels()
   }, [grantsRevision])
+  const ownedSkins = useMemo(() => {
+    void grantsRevision
+    return listOwnedSkinVariants()
+  }, [grantsRevision])
   const skillSections = useMemo(
     () => buildSkillSections(skills, equipped),
     [skills, equipped],
@@ -303,6 +312,14 @@ export function LoadoutScreen({
       setCardGenerating(false)
     }
   }, [cardGenerating])
+
+  const handleSkinSelect = useCallback(
+    (id: MidnightVariantId) => {
+      if (id === selectedMidnightVariant) return
+      setMidnightVariant(id)
+    },
+    [selectedMidnightVariant],
+  )
 
   const playerHandle = getAuthState().profile?.handle?.toLowerCase()
 
@@ -400,6 +417,20 @@ export function LoadoutScreen({
               })}
             </div>
           </section>
+
+          {ownedSkins.length > 0 ? (
+            <section className="loadout-screen__skins" aria-label="Equipped skin">
+              <h2 className="loadout-screen__section-label">skin</h2>
+              <VariantThumbnailGallery
+                variants={ownedSkins}
+                selectedId={selectedMidnightVariant}
+                onSelect={handleSkinSelect}
+                ariaLabel="Owned skins — tap to equip"
+                thumbnailSize={80}
+                emptyMessage="no skins owned yet"
+              />
+            </section>
+          ) : null}
 
           <section className="loadout-screen__skills" aria-label="Skill ladders">
             <h2 className="loadout-screen__section-label">skills</h2>

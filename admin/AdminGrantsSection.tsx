@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createGrant, deleteGrant, fetchUserGrants, formatDateTime } from './analyticsApi'
+import { AdminSkinGrantPicker } from './AdminSkinGrantPicker'
+import { skinGrantValueForVariant } from '../src/data/skinGrants'
+import { getMidnightVariantSheetEntry, type MidnightVariantId } from '../src/data/midnightVariants'
 import type { AdminGrantRow } from './types'
+
+const GRANT_KINDS = ['badge', 'skin', 'prints'] as const
+const PRINT_GRANT_PRESETS = ['50', '100', '250', '500', '1000'] as const
 
 type Props = {
   adminSecret: string
@@ -8,12 +14,11 @@ type Props = {
   showToast: (message: string) => void
 }
 
-const GRANT_KINDS = ['badge', 'skin', 'prints'] as const
-
 export function AdminGrantsSection({ adminSecret, userId, showToast }: Props) {
   const [grants, setGrants] = useState<AdminGrantRow[]>([])
   const [loading, setLoading] = useState(true)
   const [kind, setKind] = useState<(typeof GRANT_KINDS)[number]>('badge')
+  const [skinId, setSkinId] = useState<MidnightVariantId | null>(null)
   const [value, setValue] = useState('')
   const [label, setLabel] = useState('')
   const [note, setNote] = useState('')
@@ -36,18 +41,27 @@ export function AdminGrantsSection({ adminSecret, userId, showToast }: Props) {
     void load()
   }, [load])
 
+  const canSubmit =
+    kind === 'skin' ? skinId !== null : value.trim().length > 0
+
   const handleCreate = async () => {
-    if (!value.trim()) return
+    if (!canSubmit) return
+    const resolvedValue =
+      kind === 'skin' && skinId ? skinGrantValueForVariant(skinId) : value.trim()
     setSubmitting(true)
     try {
       await createGrant(adminSecret, {
         user_id: userId,
         kind,
-        value: value.trim(),
-        label: label.trim() || undefined,
+        value: resolvedValue,
+        label:
+          kind === 'skin' && skinId
+            ? label.trim() || getMidnightVariantSheetEntry(skinId).displayName
+            : label.trim() || undefined,
         note: note.trim() || undefined,
       })
       showToast('grant created.')
+      setSkinId(null)
       setValue('')
       setLabel('')
       setNote('')
@@ -107,7 +121,11 @@ export function AdminGrantsSection({ adminSecret, userId, showToast }: Props) {
             <select
               className="admin-modal__input"
               value={kind}
-              onChange={(e) => setKind(e.target.value as (typeof GRANT_KINDS)[number])}
+              onChange={(e) => {
+                const next = e.target.value as (typeof GRANT_KINDS)[number]
+                setKind(next)
+                if (next !== 'skin') setSkinId(null)
+              }}
             >
               {GRANT_KINDS.map((k) => (
                 <option key={k} value={k}>
@@ -116,15 +134,43 @@ export function AdminGrantsSection({ adminSecret, userId, showToast }: Props) {
               ))}
             </select>
           </label>
-          <label>
-            value
-            <input
-              className="admin-modal__input"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="week1-champion"
+          {kind === 'skin' ? (
+            <AdminSkinGrantPicker
+              selectedId={skinId}
+              onSelect={(id) => {
+                setSkinId(id)
+                if (!label.trim()) {
+                  setLabel(getMidnightVariantSheetEntry(id).displayName)
+                }
+              }}
             />
-          </label>
+          ) : kind === 'prints' ? (
+            <label>
+              prints amount
+              <select
+                className="admin-modal__input"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              >
+                <option value="">select amount</option>
+                {PRINT_GRANT_PRESETS.map((amount) => (
+                  <option key={amount} value={amount}>
+                    {amount} prints
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label>
+              badge value
+              <input
+                className="admin-modal__input"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="gym-week-1"
+              />
+            </label>
+          )}
           <label>
             label
             <input
@@ -147,7 +193,7 @@ export function AdminGrantsSection({ adminSecret, userId, showToast }: Props) {
         <button
           type="button"
           className="admin-users__export"
-          disabled={submitting || !value.trim()}
+          disabled={submitting || !canSubmit}
           onClick={() => void handleCreate()}
         >
           {submitting ? 'granting…' : 'grant prize'}

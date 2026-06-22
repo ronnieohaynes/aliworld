@@ -3,6 +3,15 @@
   "include": [
     "admin",
     "src/data/midnightVariants.ts",
+    "src/data/skinGrants.ts",
+    "src/data/cosmeticsCatalog.ts",
+    "src/components/VariantThumbnail.tsx",
+    "src/components/VariantThumbnailGallery.tsx",
+    "src/game/characterLayers.ts",
+    "src/game/SpriteSheet.ts",
+    "src/game/worldSpriteRender.ts",
+    "src/game/gameAssets.ts",
+    "src/store/grantsStore.ts",
     "supabase/functions/analytics-summary/variantRegistry.ts"
   ]
 }
