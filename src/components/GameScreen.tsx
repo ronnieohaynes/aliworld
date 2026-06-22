@@ -57,6 +57,11 @@ import {
 } from '../data/gymWeeks'
 import { isGymWeekScoringOpen } from '../data/gymWeekSchedule'
 import { claimGymWeekReward } from '../lib/gymWeekRewardApi'
+import {
+  fetchUnseenPlayerMessages,
+  markPlayerMessagesSeen,
+  type PlayerMessage,
+} from '../lib/playerMessagesApi'
 import { refreshPlayerGrants } from '../store/grantsStore'
 import { resolveGymBattleOptions, restartWeeklyGymRun, startWeeklyGymRun } from '../lib/weeklyGymBattle'
 import { resolveGhostBattleOptions } from '../lib/ghostTrainingBattle'
@@ -333,6 +338,9 @@ export function GameScreen() {
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
   const pendingGymWelcomeRef = useRef(false)
   const pendingGymLeaderboardAutoPopRef = useRef(false)
+  const pendingPlayerMessagesRef = useRef<PlayerMessage[] | null>(null)
+  const playerMessagesFetchedRef = useRef(false)
+  const playerMessagesShowingRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
   const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'return-five' | 'cards'>('idle')
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
@@ -1252,6 +1260,98 @@ export function GameScreen() {
       onComplete,
     })
   }, [])
+
+  const tryShowPendingPlayerMessages = useCallback(() => {
+    if (playerMessagesShowingRef.current) return
+    const queue = pendingPlayerMessagesRef.current
+    if (!queue || queue.length === 0) return
+    if (
+      dialogue ||
+      battleNpcId ||
+      battleWipePhase ||
+      cutsceneFlowActive ||
+      questTransitionActive ||
+      worldEntryActive ||
+      introActive ||
+      showGymLeaderboard ||
+      showGhostTraining ||
+      showTheater ||
+      showShop ||
+      mapTransitionPending
+    ) {
+      return
+    }
+
+    playerMessagesShowingRef.current = true
+    pendingPlayerMessagesRef.current = null
+
+    const showAt = (index: number) => {
+      if (index >= queue.length) {
+        playerMessagesShowingRef.current = false
+        void refreshPlayerGrants()
+        return
+      }
+      const msg = queue[index]!
+      showNarration([msg.body], () => {
+        void markPlayerMessagesSeen([msg.id])
+          .catch((err) => {
+            console.error('[messages]', err instanceof Error ? err.message : String(err))
+          })
+          .finally(() => showAt(index + 1))
+      })
+    }
+    showAt(0)
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    cutsceneFlowActive,
+    dialogue,
+    introActive,
+    mapTransitionPending,
+    questTransitionActive,
+    showGhostTraining,
+    showGymLeaderboard,
+    showNarration,
+    showShop,
+    showTheater,
+    worldEntryActive,
+  ])
+
+  useEffect(() => {
+    if (playerMessagesFetchedRef.current) return
+    if (worldEntryActive || !locationReady || introActive) return
+
+    playerMessagesFetchedRef.current = true
+    void (async () => {
+      await whenAccountHydrated()
+      try {
+        const messages = await fetchUnseenPlayerMessages()
+        if (messages.length === 0) return
+        pendingPlayerMessagesRef.current = messages
+        if (messages.some((m) => m.grant)) {
+          void refreshPlayerGrants()
+        }
+        tryShowPendingPlayerMessages()
+      } catch (err) {
+        console.error('[messages]', err instanceof Error ? err.message : String(err))
+        playerMessagesFetchedRef.current = false
+      }
+    })()
+  }, [introActive, locationReady, tryShowPendingPlayerMessages, worldEntryActive])
+
+  useEffect(() => {
+    tryShowPendingPlayerMessages()
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    cutsceneFlowActive,
+    dialogue,
+    introActive,
+    mapTransitionPending,
+    questTransitionActive,
+    tryShowPendingPlayerMessages,
+    worldEntryActive,
+  ])
 
   const showWeeklyGauntletExplainerIfNeeded = useCallback(
     (onDone: () => void) => {

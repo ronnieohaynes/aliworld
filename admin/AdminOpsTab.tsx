@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { clearAnalyticsEvents, createGrant, sweepOrphans } from './analyticsApi'
+import { clearAnalyticsEvents, createGrant, queuePlayerMessage, sweepOrphans } from './analyticsApi'
 
 type Props = {
   adminSecret: string
@@ -18,6 +18,14 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
   const [grantLabel, setGrantLabel] = useState('')
   const [grantNote, setGrantNote] = useState('')
   const [granting, setGranting] = useState(false)
+  const [messageHandle, setMessageHandle] = useState('')
+  const [messageBody, setMessageBody] = useState('')
+  const [messageAttachGrant, setMessageAttachGrant] = useState(false)
+  const [messageGrantKind, setMessageGrantKind] = useState<'badge' | 'skin' | 'prints'>('skin')
+  const [messageGrantValue, setMessageGrantValue] = useState('')
+  const [messageGrantLabel, setMessageGrantLabel] = useState('')
+  const [messageGrantNote, setMessageGrantNote] = useState('')
+  const [queuingMessage, setQueuingMessage] = useState(false)
 
   const handleClear = useCallback(async () => {
     if (clearText !== 'CLEAR') return
@@ -72,6 +80,54 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
       setGranting(false)
     }
   }, [adminSecret, grantHandle, grantKind, grantLabel, grantNote, grantValue, showToast])
+
+  const handleQueueMessage = useCallback(async () => {
+    const handle = messageHandle.trim()
+    const body = messageBody.trim()
+    if (!handle || !body) return
+    if (messageAttachGrant && !messageGrantValue.trim()) return
+
+    setQueuingMessage(true)
+    try {
+      const row = await queuePlayerMessage(adminSecret, {
+        handle,
+        body,
+        grant: messageAttachGrant
+          ? {
+              kind: messageGrantKind,
+              value: messageGrantValue.trim(),
+              label: messageGrantLabel.trim() || undefined,
+              note: messageGrantNote.trim() || undefined,
+            }
+          : undefined,
+      })
+      showToast(
+        row.seen_at
+          ? `message queued for @${handle} (already seen — unusual)`
+          : `message queued for @${handle}`,
+      )
+      setMessageHandle('')
+      setMessageBody('')
+      setMessageAttachGrant(false)
+      setMessageGrantValue('')
+      setMessageGrantLabel('')
+      setMessageGrantNote('')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Queue failed')
+    } finally {
+      setQueuingMessage(false)
+    }
+  }, [
+    adminSecret,
+    messageAttachGrant,
+    messageBody,
+    messageGrantKind,
+    messageGrantLabel,
+    messageGrantNote,
+    messageGrantValue,
+    messageHandle,
+    showToast,
+  ])
 
   return (
     <div className="admin-ops">
@@ -151,6 +207,99 @@ export function AdminOpsTab({ adminSecret, onEventsCleared, showToast }: Props) 
           onClick={() => void handleGrantByHandle()}
         >
           {granting ? 'granting…' : 'grant prize'}
+        </button>
+      </section>
+
+      <section className="admin-ops__grant">
+        <h2 className="admin-danger__title">Queue player message</h2>
+        <p className="admin-danger__lede">
+          durable in-game note — surfaces on the player&apos;s next login. optional grant attaches through{' '}
+          <code>aw_grants</code> (silent grants still use grant-by-handle above).
+        </p>
+        <div className="admin-grants__fields">
+          <label>
+            handle
+            <input
+              className="admin-modal__input"
+              value={messageHandle}
+              onChange={(e) => setMessageHandle(e.target.value)}
+              placeholder="player handle"
+            />
+          </label>
+          <label>
+            message
+            <textarea
+              className="admin-modal__input admin-ops__textarea"
+              value={messageBody}
+              onChange={(e) => setMessageBody(e.target.value)}
+              placeholder="you won week 3 — champion skin unlocked."
+              rows={4}
+            />
+          </label>
+          <label className="admin-ops__checkbox">
+            <input
+              type="checkbox"
+              checked={messageAttachGrant}
+              onChange={(e) => setMessageAttachGrant(e.target.checked)}
+            />
+            attach grant
+          </label>
+          {messageAttachGrant ? (
+            <>
+              <label>
+                grant kind
+                <select
+                  className="admin-modal__input"
+                  value={messageGrantKind}
+                  onChange={(e) => setMessageGrantKind(e.target.value as 'badge' | 'skin' | 'prints')}
+                >
+                  <option value="badge">badge</option>
+                  <option value="skin">skin</option>
+                  <option value="prints">prints</option>
+                </select>
+              </label>
+              <label>
+                grant value
+                <input
+                  className="admin-modal__input"
+                  value={messageGrantValue}
+                  onChange={(e) => setMessageGrantValue(e.target.value)}
+                  placeholder="week1-champion"
+                />
+              </label>
+              <label>
+                grant label
+                <input
+                  className="admin-modal__input"
+                  value={messageGrantLabel}
+                  onChange={(e) => setMessageGrantLabel(e.target.value)}
+                  placeholder="WEEK 3 CHAMPION"
+                />
+              </label>
+              <label>
+                grant note
+                <input
+                  className="admin-modal__input"
+                  value={messageGrantNote}
+                  onChange={(e) => setMessageGrantNote(e.target.value)}
+                  placeholder="optional"
+                />
+              </label>
+            </>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="admin-users__export"
+          disabled={
+            queuingMessage ||
+            !messageHandle.trim() ||
+            !messageBody.trim() ||
+            (messageAttachGrant && !messageGrantValue.trim())
+          }
+          onClick={() => void handleQueueMessage()}
+        >
+          {queuingMessage ? 'queuing…' : 'queue message'}
         </button>
       </section>
 
