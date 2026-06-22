@@ -2105,6 +2105,10 @@ export function BattleScreen({
       setPostDamageMoveDelayActive(false)
       return
     }
+    if (TURN_POST_DAMAGE_MOVE_DELAY_MS <= 0) {
+      setPostDamageMoveDelayActive(false)
+      return
+    }
 
     setPostDamageMoveDelayActive(true)
     const timer = window.setTimeout(() => {

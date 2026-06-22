@@ -97,17 +97,17 @@ export type LevelUpNotification = {
 export const BATTLE_MOVE_GAP_MS = 1400
 
 /** Pause after both actors resolve before the next turn telegraph. */
-export const BATTLE_ROUND_END_GAP_MS = 600
+export const BATTLE_ROUND_END_GAP_MS = 80
 
 /** Run-it-back mode: more dramatic inter-phase pauses (slower). */
 export const RIB_MOVE_GAP_MS = 2100
 export const RIB_ROUND_END_GAP_MS = 1800
 
 /** Extra pause after turn damage feedback finishes before move selection unlocks. */
-export const TURN_POST_DAMAGE_MOVE_DELAY_MS = 350
+export const TURN_POST_DAMAGE_MOVE_DELAY_MS = 0
 
 /** Pause after action-log result text before the next resolve-phase animation. */
-export const BATTLE_LOG_RESULT_SETTLE_MS = 220
+export const BATTLE_LOG_RESULT_SETTLE_MS = 50
 
 export type BattleResolveStep = 'idle' | 'pause_after_first' | 'pause_after_second'
 
