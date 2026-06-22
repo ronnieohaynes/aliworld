@@ -21,11 +21,17 @@ export const BATTLE_ENEMY_PLATE_OFFSET_X = 3
 /** Screen point where the player's feet land (bottom-center of visible sprite). */
 export const BATTLE_PLAYER_FEET = { x: 165 + BATTLE_FIGHTER_NUDGE_X + 10, y: 224 } as const
 
-/** Vertical nudge for the player status plate (negative = up). */
-export const BATTLE_PLAYER_PLATE_OFFSET_Y = -35
-
 /** Horizontal nudge for the player status plate (positive = right). */
 export const BATTLE_PLAYER_PLATE_OFFSET_X = 3
+
+/** Gap below sprite visible top where the plate anchor sits (enemy and player). */
+export const BATTLE_PLATE_VISIBLE_TOP_GAP = 5
+
+/** Toggle player status plate visibility in battle. */
+export const SHOW_BATTLE_PLAYER_PLATE = true
+
+/** Vertical nudge applied to the player fighter container (matches enemy +5). */
+export const BATTLE_PLAYER_FIGHTER_NUDGE_Y = 5
 
 /** @deprecated Use BATTLE_ENEMY_FEET.y */
 export const BATTLE_GROUND_Y = BATTLE_ENEMY_FEET.y

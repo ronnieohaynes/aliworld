@@ -19,6 +19,7 @@ import {
 } from './moveResolver'
 import type { SkillsState, SkillId } from '../store/skillStore'
 import type { MoveXpContext } from './moveTypes'
+import { getMoveLogDisplayName } from '../game/moveHighlightColors'
 
 export type {
   MoveCost,
@@ -184,6 +185,120 @@ export function previewEnemyStatusOnPlayer(
     if (effect === 'miss') flags.playerMissApplied = true
   }
   return flags
+}
+
+const PLAYER_INCOMING_DEFENSE_KINDS = new Set([
+  'brace',
+  'dodge',
+  'brick-wall',
+  'counterweight',
+  'invincible',
+])
+
+export type DefensiveBlockLogContext = {
+  pMove: PlayerMoveId
+  eMove: UpcomingMove
+  playerActed: boolean
+  playerDmg: number
+  incoming: number
+  rawIncoming: number
+  dodged: boolean
+  braced: boolean
+  damageBlocked: number
+  damageAvoided: number
+  enemyDodged: boolean
+  enemyBraced: boolean
+  enemyDamageBlocked: number
+  stunApplied: boolean
+}
+
+function playerIncomingDefenseKind(pMove: PlayerMoveId): string | null {
+  const kind = getMoveDef(pMove).behavior.kind
+  return PLAYER_INCOMING_DEFENSE_KINDS.has(kind) ? kind : null
+}
+
+function enemyOutgoingDefenseKind(eMove: UpcomingMove): 'brace' | 'dodge' | null {
+  if (eMove === 'STUNNED') return null
+  const def = MOVES[eMove as PlayerMoveId]
+  if (!def) return null
+  const kind = def.behavior.kind
+  return kind === 'brace' || kind === 'dodge' ? kind : null
+}
+
+/** Player used a defensive move that blocked or mitigated the enemy's hit. */
+export function playerDefendedAgainstIncoming(r: DefensiveBlockLogContext): boolean {
+  if (!r.playerActed || r.rawIncoming <= 0 || r.eMove === 'STUNNED') return false
+  if (!playerIncomingDefenseKind(r.pMove)) return false
+  return (
+    r.dodged ||
+    r.braced ||
+    r.damageBlocked > 0 ||
+    r.damageAvoided > 0
+  )
+}
+
+/** Enemy used HOLD/ANCHOR/SLIP/PARRY-style defense against the player's hit. */
+export function enemyDefendedAgainstOutgoing(r: DefensiveBlockLogContext): boolean {
+  if (!r.playerActed || r.eMove === 'STUNNED') return false
+  if (!enemyOutgoingDefenseKind(r.eMove)) return false
+  return r.enemyDodged || r.enemyBraced || r.enemyDamageBlocked > 0
+}
+
+export function combinedPlayerDefenseLogLine(
+  r: DefensiveBlockLogContext,
+  displayName: string,
+): string {
+  const lower = displayName.toLowerCase()
+  const enemyMove = getMoveLogDisplayName(r.eMove)
+  const playerMove = getMoveLogDisplayName(r.pMove)
+  const prefix = `${lower}'s ${enemyMove} vs ${playerMove}.`
+
+  if (r.dodged) {
+    if (r.pMove === 'SLIP') {
+      return `${prefix} counter for ${r.playerDmg}.${r.stunApplied ? ` ${lower} reels.` : ''}`
+    }
+    if (r.pMove === 'PARRY') {
+      return `${prefix} ${r.playerDmg} back.`
+    }
+    return `${prefix} dodged.${r.playerDmg > 0 ? ` ${r.playerDmg} back.` : ''}`
+  }
+
+  if (r.pMove === 'ANCHOR') {
+    if (r.incoming > 0) return `${prefix} ${r.incoming} chip. status blocked.`
+    return `${prefix} blocked.`
+  }
+
+  if (r.braced || r.pMove === 'HOLD') {
+    if (r.incoming > 0) return `${prefix} ${r.incoming} chip.`
+    return `${prefix} blocked.`
+  }
+
+  if (r.incoming > 0) return `${prefix} ${r.incoming} taken.`
+  return `${prefix} blocked.`
+}
+
+export function combinedEnemyDefenseLogLine(
+  r: DefensiveBlockLogContext,
+  displayName: string,
+): string {
+  const lower = displayName.toLowerCase()
+  const playerMove = getMoveLogDisplayName(r.pMove)
+  const enemyMove = getMoveLogDisplayName(r.eMove)
+  const prefix = `${playerMove} vs ${lower}'s ${enemyMove}.`
+
+  if (r.enemyDodged && r.playerDmg === 0) return `${prefix} whiff.`
+  return `${prefix} ${r.playerDmg}.`
+}
+
+export function combinedGuardCounterLogLine(
+  r: DefensiveBlockLogContext,
+  displayName: string,
+  playerHit: number,
+): string {
+  const lower = displayName.toLowerCase()
+  const playerMove = getMoveLogDisplayName(r.pMove)
+  const enemyMove = getMoveLogDisplayName(r.eMove)
+  return `${playerMove} vs ${lower}'s ${enemyMove}. counters. ${playerHit}.`
 }
 
 export function playerLogLineForMove(

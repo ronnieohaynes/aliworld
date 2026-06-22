@@ -33,8 +33,10 @@ import {
   BATTLE_ENEMY_SOURCE_H,
   BATTLE_ENEMY_SOURCE_W,
   BATTLE_PLAYER_FEET,
+  BATTLE_PLATE_VISIBLE_TOP_GAP,
+  BATTLE_PLAYER_FIGHTER_NUDGE_Y,
   BATTLE_PLAYER_PLATE_OFFSET_X,
-  BATTLE_PLAYER_PLATE_OFFSET_Y,
+  SHOW_BATTLE_PLAYER_PLATE,
   BATTLE_PLAYER_SOURCE_H,
   BATTLE_PLAYER_SOURCE_W,
   BATTLE_PLAYER_VISIBLE_MULT,
@@ -51,14 +53,20 @@ import {
 } from '../game/spriteBounds'
 import {
   applyBattleEndHealing,
+  BATTLE_LOG_MAX_ENTRIES,
+  BATTLE_LOG_RESULT_SETTLE_MS,
   BATTLE_MOVE_GAP_MS,
   BATTLE_ROUND_END_GAP_MS,
   RIB_MOVE_GAP_MS,
   RIB_ROUND_END_GAP_MS,
+  TURN_POST_DAMAGE_MOVE_DELAY_MS,
   battleReducer,
+  combatStatusForDisplay,
   createInitialBattleState,
   getTelegraphDisplay,
+  shouldPreviewEnemyTelegraph,
   type LevelUpNotification,
+  type PendingResolve,
   type PlayerMove,
 } from '../store/battleStore'
 import {
@@ -87,10 +95,8 @@ import {
   WALKER_NPC_ID,
 } from '../store/quest1Store'
 import { getMoveUiMeta, getMoveDef } from '../data/moves'
-import { MoveScaleTag } from './MoveScaleTag'
-import './MoveScaleTag.css'
 import { trackProgressEvent } from '../lib/analytics'
-import type { BattleFeedbackTone } from '../data/battleFeedback'
+import type { BattleFeedbackEvent, BattleFeedbackTone } from '../data/battleFeedback'
 import {
   getPlayerCounterRelation,
   leanSkillAccentColor,
@@ -98,11 +104,14 @@ import {
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
 import type { PlayerMoveId } from '../data/moveIds'
 import { MOVES } from '../data/moveDefinitions'
-import {
-  STATUS_EFFECT_HINTS,
-  STATUS_EFFECT_LEGEND,
-} from '../data/statusEffectCopy'
+import { STATUS_EFFECT_HINTS } from '../data/statusEffectCopy'
 import type { CombatStatusState } from '../data/combatTypes'
+import { renderHighlightedLogLine } from '../game/battleLogHighlight'
+import {
+  getMoveLogDisplayName,
+  moveHighlightColor,
+  type BattleMoveId,
+} from '../game/moveHighlightColors'
 import { BattlePlacementGrid } from './BattlePlacementGrid'
 import {
   BATTLE_TUTORIAL_STEPS,
@@ -110,19 +119,6 @@ import {
 } from './BattleTutorialOverlay'
 import './BattleScreen.css'
 import './PlayerLevelBadge.css'
-
-const SKILL_TYPE_COLOR: Record<string, string> = {
-  attack: '#cc4444',
-  speed: '#44cc66',
-  defense: '#4488cc',
-  luck: '#c084fc',
-}
-
-function moveSkillColor(moveId: PlayerMoveId): string {
-  const def = MOVES[moveId]
-  if (def) return SKILL_TYPE_COLOR[def.skill] ?? '#e8c878'
-  return '#e8c878'
-}
 
 function isHeavyPlayerMove(moveId: PlayerMoveId): boolean {
   const def = MOVES[moveId]
@@ -142,17 +138,23 @@ const HP_TICK_MAX_STEPS = 20
 
 /**
  * Steps a displayed HP value down from `from` to `to` in small ticks rather
- * than jumping straight to the final value.
+ * than jumping straight to the final value. Never raises displayed HP during
+ * a damage countdown — uses `getCurrent` so stale `from` values cannot bounce
+ * the bar upward mid-animation.
  */
 function animateHpTicks(
+  schedule: (fn: () => void, delayMs: number) => void,
   setDisplayed: (value: number) => void,
   from: number,
   to: number,
+  getCurrent?: () => number,
   durationMs: number = HP_TICK_DURATION_MS,
 ): void {
-  const delta = from - to
+  const current = getCurrent?.() ?? from
+  const start = Math.min(current, from)
+  const delta = start - to
   if (delta <= 0) {
-    setDisplayed(to)
+    setDisplayed(Math.max(current, to))
     return
   }
   const steps = Math.min(delta, HP_TICK_MAX_STEPS)
@@ -160,11 +162,12 @@ function animateHpTicks(
   let i = 0
   const tick = () => {
     i += 1
-    const value = i < steps ? from - Math.round((delta * i) / steps) : to
+    const raw = i < steps ? start - Math.round((delta * i) / steps) : to
+    const value = Math.min(raw, getCurrent?.() ?? raw)
     setDisplayed(value)
-    if (i < steps) window.setTimeout(tick, stepMs)
+    if (i < steps) schedule(tick, stepMs)
   }
-  window.setTimeout(tick, stepMs)
+  schedule(tick, stepMs)
 }
 
 const WALKER_HEAVY_TEACH_STEPS = [
@@ -239,6 +242,105 @@ const FLOATER_TONE_CLASS: Record<BattleFeedbackTone | 'attack', string> = {
   stun: 'stun',
 }
 
+/** Block/dodge outcomes live in the action log only — no floating callouts. */
+const FLOATER_SKIP_KINDS = new Set<BattleFeedbackEvent['kind']>([
+  'blocked',
+  'dodged',
+  'perfect-guard',
+])
+
+function feedbackTargetsPlayer(events: BattleFeedbackEvent[]): boolean {
+  return events.some((e) => e.target === 'player' && e.kind !== 'xp-bonus')
+}
+
+function feedbackTargetsEnemy(events: BattleFeedbackEvent[]): boolean {
+  return events.some((e) => e.target === 'enemy')
+}
+
+const PLAYER_ATTACK_ANIM_KINDS = new Set([
+  'damage',
+  'fury-sweep',
+  'dark-break',
+  'cannon',
+  'blackout',
+  'loop',
+  'gravity-shift',
+  'refract',
+  'hyperdrive',
+  'devils-cut',
+  'phenomena',
+  'sealed-fate',
+  'snag',
+])
+
+function isPlayerAttackAnimMove(pMove: PlayerMove | undefined): boolean {
+  if (!pMove) return false
+  const def = MOVES[pMove]
+  return def ? PLAYER_ATTACK_ANIM_KINDS.has(def.behavior.kind) : false
+}
+
+function isEnemyAttackAnimMove(eMove: PendingResolve['r']['eMove']): boolean {
+  if (eMove === 'STUNNED') return false
+  const def = MOVES[eMove as PlayerMoveId]
+  return def ? PLAYER_ATTACK_ANIM_KINDS.has(def.behavior.kind) : false
+}
+
+function resolveIndicatesPlayerAttackMove(pending: PendingResolve | null): boolean {
+  if (!pending?.r.playerActed) return false
+  return isPlayerAttackAnimMove(pending.r.pMove)
+}
+
+function resolveIndicatesEnemyAttack(pending: PendingResolve | null): boolean {
+  const r = pending?.r
+  if (!r || r.enemyStunned) return false
+  return r.enemyAttacks || r.rawIncoming > 0 || isEnemyAttackAnimMove(r.eMove)
+}
+
+/** WHISPER uses luck skill but should lunge like other hit moves. */
+function playerAtkFxForMove(
+  pMove: PlayerMove | undefined,
+  skill: string,
+): 'attack' | 'speed' | 'defense' | 'luck' {
+  if (pMove === 'WHISPER') return 'attack'
+  if (skill === 'speed' || skill === 'defense' || skill === 'luck') return skill
+  return 'attack'
+}
+
+/** True when the player side should play an attack/defense lunge this turn (even at 0 damage). */
+function playerPhaseAnimates(opts: {
+  attackDelta: number
+  wasEnemyDodge: boolean
+  feedbackEvents: BattleFeedbackEvent[]
+  pendingResolve: PendingResolve | null
+}): boolean {
+  if (opts.wasEnemyDodge) {
+    return (
+      resolveIndicatesPlayerAttackMove(opts.pendingResolve) ||
+      feedbackTargetsEnemy(opts.feedbackEvents)
+    )
+  }
+  return (
+    opts.attackDelta > 0 ||
+    feedbackTargetsEnemy(opts.feedbackEvents) ||
+    resolveIndicatesPlayerAttackMove(opts.pendingResolve)
+  )
+}
+
+/** True when the enemy side should play an attack lunge this turn (even at 0 damage). */
+function enemyPhaseAnimates(opts: {
+  playerDelta: number
+  wasEnemyDodge: boolean
+  feedbackEvents: BattleFeedbackEvent[]
+  pendingResolve: PendingResolve | null
+}): boolean {
+  if (opts.wasEnemyDodge) return false
+  return (
+    opts.playerDelta > 0 ||
+    feedbackTargetsPlayer(opts.feedbackEvents) ||
+    resolveIndicatesEnemyAttack(opts.pendingResolve)
+  )
+}
+
 type StatusTag = {
   label: string
   turns: number
@@ -303,6 +405,218 @@ const BATTLE_LUNGE_DEFENSE_MS = 600
 const BATTLE_HIT_FLASH_MS = 40
 const BATTLE_HIT_MS = 840
 const BATTLE_DODGE_MS = 420
+const BLEED_DAMAGE_DELAY_MS = 2000
+const FEEDBACK_STATUS_SETTLE_MS = 120
+const FEEDBACK_CRIT_EXTRA_MS = 500
+
+function battleRoundEndGapMs(runItBack: boolean): number {
+  return runItBack ? RIB_ROUND_END_GAP_MS : BATTLE_ROUND_END_GAP_MS
+}
+
+/** When to reveal a single-phase log batch (turn ended before the second resolve pause). */
+function computeInstantPhaseLogRevealDelay(opts: {
+  enemyActedFirst: boolean
+  phase2Only: boolean
+  playerLungeMs: number
+  enemyLungeMs: number
+  runItBack: boolean
+  attackDelta: number
+  playerDelta: number
+  bleedDelta: number
+  wasEnemyDodge: boolean
+  playerPhaseAnimates: boolean
+  enemyPhaseAnimates: boolean
+}): number {
+  const schedule = computeDamageRevealSchedule({
+    playerLungeMs: opts.playerLungeMs,
+    enemyLungeMs: opts.enemyLungeMs,
+    enemyActedFirst: opts.enemyActedFirst,
+    attackDelta: opts.attackDelta,
+    playerDelta: opts.playerDelta,
+    bleedDelta: opts.phase2Only ? opts.bleedDelta : 0,
+    wasEnemyDodge: opts.wasEnemyDodge,
+    playerPhaseAnimates: opts.playerPhaseAnimates,
+    enemyPhaseAnimates: opts.enemyPhaseAnimates,
+  })
+  const impacts = computeImpactTimings({
+    playerLungeMs: opts.playerLungeMs,
+    enemyLungeMs: opts.enemyLungeMs,
+    enemyActedFirst: opts.enemyActedFirst,
+    runItBack: opts.runItBack,
+    hasEnemyTargetEvents: opts.playerPhaseAnimates,
+    hasPlayerTargetEvents: opts.enemyPhaseAnimates,
+    playerDealsDirectDamage: opts.playerPhaseAnimates,
+    enemyDealsDamage: opts.enemyPhaseAnimates,
+  })
+
+  if (opts.phase2Only) {
+    if (opts.enemyActedFirst) {
+      return Math.max(
+        schedule.enemyDirectAt ?? 0,
+        schedule.bleedAt ?? 0,
+        impacts.playerImpact,
+      )
+    }
+    return Math.max(schedule.playerDirectAt ?? 0, impacts.enemyImpact)
+  }
+
+  if (opts.enemyActedFirst) {
+    return Math.max(schedule.playerDirectAt ?? 0, impacts.enemyImpact)
+  }
+  return Math.max(schedule.enemyDirectAt ?? 0, impacts.playerImpact)
+}
+
+function battleMoveGapMs(runItBack: boolean): number {
+  return runItBack ? RIB_MOVE_GAP_MS : BATTLE_MOVE_GAP_MS
+}
+
+/** When the dodge flash animation starts (aligned with HP / pause_after_first FX). */
+function computeDodgeAnimationStart(opts: {
+  target: 'enemy' | 'player'
+  playerLungeMs: number
+  enemyLungeMs: number
+  enemyActedFirst: boolean
+  runItBack: boolean
+}): number {
+  if (opts.target === 'enemy') {
+    const playerPhaseStart = opts.enemyActedFirst ? battleMoveGapMs(opts.runItBack) : 0
+    return playerPhaseStart + opts.playerLungeMs
+  }
+  if (opts.enemyActedFirst) {
+    return opts.enemyLungeMs + BATTLE_HIT_FLASH_MS
+  }
+  return battleMoveGapMs(opts.runItBack) + opts.enemyLungeMs + BATTLE_HIT_FLASH_MS
+}
+
+/** When dodge callout text should appear — after the dodge flash begins. */
+function computeDodgeRevealDelay(opts: {
+  target: 'enemy' | 'player'
+  playerLungeMs: number
+  enemyLungeMs: number
+  enemyActedFirst: boolean
+  runItBack: boolean
+}): number {
+  return computeDodgeAnimationStart(opts) + FEEDBACK_STATUS_SETTLE_MS
+}
+
+/** When the enemy lunge begins on player-first turns (after move gap + optional player phase). */
+function computePlayerFirstEnemyAttackStart(opts: {
+  playerLungeMs: number
+  runItBack: boolean
+  playerDealsDirectDamage: boolean
+}): number {
+  const playerPhaseLen = opts.playerDealsDirectDamage
+    ? floaterDelayAfterLungeStart(opts.playerLungeMs)
+    : 0
+  return battleMoveGapMs(opts.runItBack) + playerPhaseLen
+}
+
+/** When the player lunge begins on enemy-first turns (after move gap + optional enemy phase). */
+function computeEnemyFirstPlayerAttackStart(opts: {
+  enemyLungeMs: number
+  runItBack: boolean
+  playerDealsDirectDamage: boolean
+}): number {
+  const enemyPhaseLen = opts.playerDealsDirectDamage
+    ? floaterDelayAfterLungeStart(opts.enemyLungeMs)
+    : 0
+  return battleMoveGapMs(opts.runItBack) + enemyPhaseLen
+}
+
+/** Block flash moment — attack contact, aligned with dodge timing and resolve-step gaps. */
+function computeBlockAnimationStart(opts: {
+  target: 'enemy' | 'player'
+  playerLungeMs: number
+  enemyLungeMs: number
+  enemyActedFirst: boolean
+  runItBack: boolean
+  playerDealsDirectDamage: boolean
+}): number {
+  if (opts.target === 'player') {
+    if (opts.enemyActedFirst) {
+      return opts.enemyLungeMs + BATTLE_HIT_FLASH_MS
+    }
+    return (
+      computePlayerFirstEnemyAttackStart({
+        playerLungeMs: opts.playerLungeMs,
+        runItBack: opts.runItBack,
+        playerDealsDirectDamage: opts.playerDealsDirectDamage,
+      })
+      + opts.enemyLungeMs
+      + BATTLE_HIT_FLASH_MS
+    )
+  }
+  if (opts.enemyActedFirst) {
+    return (
+      computeEnemyFirstPlayerAttackStart({
+        enemyLungeMs: opts.enemyLungeMs,
+        runItBack: opts.runItBack,
+        playerDealsDirectDamage: opts.playerDealsDirectDamage,
+      })
+      + opts.playerLungeMs
+      + BATTLE_HIT_FLASH_MS
+    )
+  }
+  return opts.playerLungeMs + BATTLE_HIT_FLASH_MS
+}
+
+/** When block / perfect-guard callout text should appear — after the block moment. */
+function computeBlockRevealDelay(opts: {
+  target: 'enemy' | 'player'
+  playerLungeMs: number
+  enemyLungeMs: number
+  enemyActedFirst: boolean
+  runItBack: boolean
+  playerDealsDirectDamage: boolean
+}): number {
+  return computeBlockAnimationStart(opts) + FEEDBACK_STATUS_SETTLE_MS
+}
+
+function computeFeedbackEventDelay(
+  event: BattleFeedbackEvent,
+  opts: {
+    evtIdx: number
+    playerImpact: number
+    enemyImpact: number
+    playerLungeMs: number
+    enemyLungeMs: number
+    enemyActedFirst: boolean
+    runItBack: boolean
+    bleedAt: number | null
+    playerDealsDirectDamage: boolean
+  },
+): number {
+  if (event.kind === 'damage' && event.tone === 'bleed') {
+    return opts.bleedAt ?? 0
+  }
+  if (event.kind === 'dodged') {
+    return computeDodgeRevealDelay({
+      target: event.target,
+      playerLungeMs: opts.playerLungeMs,
+      enemyLungeMs: opts.enemyLungeMs,
+      enemyActedFirst: opts.enemyActedFirst,
+      runItBack: opts.runItBack,
+    })
+  }
+  if (event.kind === 'blocked' || event.kind === 'perfect-guard') {
+    return (
+      computeBlockRevealDelay({
+        target: event.target,
+        playerLungeMs: opts.playerLungeMs,
+        enemyLungeMs: opts.enemyLungeMs,
+        enemyActedFirst: opts.enemyActedFirst,
+        runItBack: opts.runItBack,
+        playerDealsDirectDamage: opts.playerDealsDirectDamage,
+      })
+      + opts.evtIdx * 500
+    )
+  }
+  const isEnemyTarget = event.target === 'enemy'
+  const baseDelay = isEnemyTarget ? opts.playerImpact : opts.enemyImpact
+  const critOffset = event.kind === 'crit' ? FEEDBACK_CRIT_EXTRA_MS : 0
+  const statusOffset = event.kind === 'status' ? FEEDBACK_STATUS_SETTLE_MS : 0
+  return baseDelay + opts.evtIdx * 500 + critOffset + statusOffset
+}
 
 function playerLungeMsForSkill(skill: string): number {
   if (skill === 'speed') return BATTLE_LUNGE_SPEED_MS
@@ -310,9 +624,110 @@ function playerLungeMsForSkill(skill: string): number {
   return BATTLE_LUNGE_ATTACK_MS
 }
 
-/** Floaters appear only after lunge finishes and the hit reaction plays out. */
+/** Floaters and HP ticks appear only after lunge + hit reaction finish. */
 function floaterDelayAfterLungeStart(lungeMs: number): number {
   return lungeMs + BATTLE_HIT_FLASH_MS + BATTLE_HIT_MS
+}
+
+type DamageRevealSchedule = {
+  playerPhaseStart: number
+  enemyPhaseStart: number
+  enemyDirectAt: number | null
+  playerDirectAt: number | null
+  bleedAt: number | null
+  lastDamageAt: number
+}
+
+function computeDamageRevealSchedule(opts: {
+  playerLungeMs: number
+  enemyLungeMs: number
+  enemyActedFirst: boolean
+  attackDelta: number
+  playerDelta: number
+  bleedDelta: number
+  wasEnemyDodge: boolean
+  playerPhaseAnimates?: boolean
+  enemyPhaseAnimates?: boolean
+}): DamageRevealSchedule {
+  const playerAnimates =
+    opts.playerPhaseAnimates ?? (opts.attackDelta > 0 && !opts.wasEnemyDodge)
+  const enemyAnimates =
+    opts.enemyPhaseAnimates ?? (opts.playerDelta > 0 && !opts.wasEnemyDodge)
+  const playerRevealOffset = floaterDelayAfterLungeStart(opts.playerLungeMs)
+  const enemyRevealOffset = floaterDelayAfterLungeStart(opts.enemyLungeMs)
+
+  let playerPhaseStart = 0
+  let enemyPhaseStart = 0
+  if (playerAnimates && enemyAnimates) {
+    if (opts.enemyActedFirst) {
+      enemyPhaseStart = 0
+      playerPhaseStart = enemyRevealOffset
+    } else {
+      playerPhaseStart = 0
+      enemyPhaseStart = playerRevealOffset
+    }
+  } else if (playerAnimates) {
+    playerPhaseStart = 0
+  } else if (enemyAnimates) {
+    enemyPhaseStart = opts.enemyActedFirst ? 0 : 0
+  }
+
+  const playerPhaseLen = playerPhaseStart + (playerAnimates ? playerRevealOffset : 0)
+  const enemyPhaseLen = enemyPhaseStart + (enemyAnimates ? enemyRevealOffset : 0)
+
+  const enemyDirectAt =
+    playerAnimates && !opts.wasEnemyDodge ? playerPhaseStart + playerRevealOffset : null
+
+  let playerDirectAt: number | null = null
+  if (opts.wasEnemyDodge && opts.playerDelta > 0) {
+    const counterStart = opts.playerLungeMs + BATTLE_DODGE_MS
+    playerDirectAt = counterStart + floaterDelayAfterLungeStart(opts.enemyLungeMs)
+  } else if (enemyAnimates) {
+    playerDirectAt = enemyPhaseStart + enemyRevealOffset
+  }
+
+  let bleedAt: number | null = null
+  if (opts.bleedDelta > 0) {
+    const lastPhaseEnd = Math.max(
+      playerAnimates ? playerPhaseLen : 0,
+      enemyAnimates ? enemyPhaseLen : 0,
+      opts.wasEnemyDodge && opts.playerDelta > 0
+        ? opts.playerLungeMs + BATTLE_DODGE_MS + floaterDelayAfterLungeStart(opts.enemyLungeMs)
+        : 0,
+    )
+    const bleedHitStart = lastPhaseEnd + BLEED_DAMAGE_DELAY_MS
+    bleedAt = bleedHitStart + BATTLE_HIT_FLASH_MS + BATTLE_HIT_MS
+  }
+
+  const lastDamageAt = Math.max(
+    enemyDirectAt ?? 0,
+    playerDirectAt ?? 0,
+    bleedAt ?? 0,
+  )
+
+  return {
+    playerPhaseStart,
+    enemyPhaseStart,
+    enemyDirectAt,
+    playerDirectAt,
+    bleedAt,
+    lastDamageAt,
+  }
+}
+
+/** True when damage floaters, HP tick animations, and log holds have all finished. */
+function isTurnDamagePresentationComplete(opts: {
+  floaterCount: number
+  pendingFloaterSchedules: number
+  hpAnimTimeoutCount: number
+  logRevealPending: boolean
+}): boolean {
+  return (
+    opts.floaterCount === 0 &&
+    opts.pendingFloaterSchedules === 0 &&
+    opts.hpAnimTimeoutCount === 0 &&
+    !opts.logRevealPending
+  )
 }
 
 function computePhaseGaps(
@@ -642,7 +1057,6 @@ export function BattleScreen({
   const playerPlateAnchorRef = useRef<HTMLDivElement>(null)
   const playerPlateRef = useRef<HTMLDivElement>(null)
   const xpBarRef = useRef<HTMLDivElement>(null)
-  const statusLegendRef = useRef<HTMLParagraphElement>(null)
   const playerCanvasRef = useRef<HTMLCanvasElement>(null)
   const enemyWrapRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLElement>(null)
@@ -766,11 +1180,60 @@ export function BattleScreen({
   // Displayed HP lags real HP, only updates after the lunge animation finishes
   const [displayedEnemyHp, setDisplayedEnemyHp] = useState(state.enemyHp)
   const [displayedPlayerHp, setDisplayedPlayerHp] = useState(state.playerHp)
+  const displayedEnemyHpRef = useRef(state.enemyHp)
+  const displayedPlayerHpRef = useRef(state.playerHp)
+  const enemyHpAnimTimeoutsRef = useRef<number[]>([])
+  const playerHpAnimTimeoutsRef = useRef<number[]>([])
+  displayedEnemyHpRef.current = displayedEnemyHp
+  displayedPlayerHpRef.current = displayedPlayerHp
+  const stateEnemyHpRef = useRef(state.enemyHp)
+  stateEnemyHpRef.current = state.enemyHp
+  const [hpAnimRevision, setHpAnimRevision] = useState(0)
+  const bumpHpAnimRevision = useCallback(() => setHpAnimRevision((v) => v + 1), [])
+
+  const scheduleEnemyAttackLunge = useCallback((delayMs: number, lungeMs: number) => {
+    if (stateEnemyHpRef.current <= 0) return
+    window.setTimeout(() => {
+      if (stateEnemyHpRef.current <= 0) return
+      setEnemyAtkFx(true)
+      window.setTimeout(() => setEnemyAtkFx(false), lungeMs)
+    }, delayMs)
+  }, [])
+
+  useEffect(() => {
+    if (state.enemyHp <= 0) setEnemyAtkFx(false)
+  }, [state.enemyHp])
+
+  const clearHpAnimTimeouts = useCallback((side?: 'enemy' | 'player') => {
+    const clearSide = (ids: number[]) => {
+      if (ids.length === 0) return
+      for (const id of ids) window.clearTimeout(id)
+      ids.length = 0
+      bumpHpAnimRevision()
+    }
+    if (!side || side === 'enemy') clearSide(enemyHpAnimTimeoutsRef.current)
+    if (!side || side === 'player') clearSide(playerHpAnimTimeoutsRef.current)
+  }, [bumpHpAnimRevision])
+
+  const scheduleHpTimeout = useCallback((side: 'enemy' | 'player', fn: () => void, delayMs: number) => {
+    const ids = side === 'enemy' ? enemyHpAnimTimeoutsRef : playerHpAnimTimeoutsRef
+    bumpHpAnimRevision()
+    const id = window.setTimeout(() => {
+      const list = ids.current
+      const idx = list.indexOf(id)
+      if (idx >= 0) list.splice(idx, 1)
+      bumpHpAnimRevision()
+      fn()
+    }, delayMs)
+    ids.current.push(id)
+  }, [bumpHpAnimRevision])
+
+  useEffect(() => () => clearHpAnimTimeouts(), [clearHpAnimTimeouts])
   // Displayed log lags state.log for moves that produced crit/status feedback
   // (e.g. a Fury Sweep crit applying bleed), the log line is held back until
   // those callouts have actually appeared, so the text doesn't spoil the
   // attack animation by reporting the result before it plays.
-  // appendLog caps state.log at 3 entries (shifting the oldest off), so its
+  // appendLog caps state.log at BATTLE_LOG_MAX_ENTRIES (shifting the oldest off), so its
   // .length stops changing once full, track the array reference instead,
   // since appendLog always returns a new array when a line is added.
   const prevLogRef = useRef(state.log)
@@ -778,9 +1241,10 @@ export function BattleScreen({
   // While a turn resolves, the telegraph line is replaced with the name of
   // whichever move goes first. Reverts to the enemy telegraph once the turn
   // fully settles (same moment the result log line updates).
-  const [turnAnnounce, setTurnAnnounce] = useState<string | null>(null)
+  const [turnAnnounce, setTurnAnnounce] = useState<{ name: string; color: string } | null>(null)
   const prevPendingResolveRef = useRef(state.pendingResolve)
   const prevResolveStepRef = useRef(state.resolveStep)
+  const firstPhaseLogLenRef = useRef(0)
   // Single battle-log line cycles through these, telegraph and the last
   // action result are never shown at the same time.
   const [logLineMode, setLogLineMode] = useState<'telegraph' | 'announce' | 'result'>('telegraph')
@@ -793,6 +1257,11 @@ export function BattleScreen({
   const [enemyDodgeFx, setEnemyDodgeFx] = useState(false)
   const [enemyCritFx, setEnemyCritFx] = useState(false)
   const [floaters, setFloaters] = useState<BattleFloater[]>([])
+  const [pendingFloaterSchedules, setPendingFloaterSchedules] = useState(0)
+  const [logRevealPending, setLogRevealPending] = useState(false)
+  const turnHadDamageRef = useRef(false)
+  const turnDamagePresentationCompleteRef = useRef(true)
+  const [postDamageMoveDelayActive, setPostDamageMoveDelayActive] = useState(false)
   const [knockoutPopup, setKnockoutPopup] = useState<'win' | 'lose' | null>(null)
   const [narrationVisible, setNarrationVisible] = useState(false)
   const [loseNarrationVisible, setLoseNarrationVisible] = useState(false)
@@ -809,11 +1278,11 @@ export function BattleScreen({
     }
   }, [])
 
-  const busy = state.phase !== 'player'
   const playerHpPct = Math.max(0, (displayedPlayerHp / state.playerStats.maxHp) * 100)
   const enemyHpPct = Math.max(0, (displayedEnemyHp / state.enemyMaxHp) * 100)
-  const enemyStatusTags = getFighterStatusTags('enemy', state.combatStatus)
-  const playerStatusTags = getFighterStatusTags('player', state.combatStatus)
+  const displayCombatStatus = combatStatusForDisplay(state)
+  const enemyStatusTags = getFighterStatusTags('enemy', displayCombatStatus)
+  const playerStatusTags = getFighterStatusTags('player', displayCombatStatus)
   const playerLevel = getPlayerLevel()
   const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
   // Split stage backgrounds, enemy uses their battleLocation, player uses chosen hometown
@@ -833,6 +1302,10 @@ export function BattleScreen({
     payoffNpc.losingLine.trim().length > 0 &&
     narrationVisible
   const battleSettled = battleRevealed && playerLayoutReady && enemyLayoutReady
+  const playerPlateTop =
+    playerPlacement.visibleDrawY +
+    BATTLE_PLATE_VISIBLE_TOP_GAP +
+    BATTLE_PLAYER_FIGHTER_NUDGE_Y
   const [settleCoverGone, setSettleCoverGone] = useState(false)
   useEffect(() => {
     if (!battleSettled || settleCoverGone) return
@@ -849,6 +1322,11 @@ export function BattleScreen({
     setKnockoutPopup(null)
     setNarrationVisible(false)
     setLoseNarrationVisible(false)
+    setPendingFloaterSchedules(0)
+    setLogRevealPending(false)
+    turnHadDamageRef.current = false
+    firstPhaseLogLenRef.current = 0
+    setPostDamageMoveDelayActive(false)
   }, [npcId])
 
   useLayoutEffect(() => {
@@ -884,12 +1362,13 @@ export function BattleScreen({
   useEffect(() => {
     encounterRecordedRef.current = false
   }, [npcId])
-  const logLines = displayedLog.slice(-2)
+  const logLines = displayedLog.slice(-BATTLE_LOG_MAX_ENTRIES)
+  const logBoxHeightPx = Math.max(56, 12 + logLines.length * 22)
   const telegraphDisplay = getTelegraphDisplay(state)
   const leanAccent = leanSkillAccentColor(state.npc.leanSkill)
   const telegraphMoveColor =
     state.upcomingMove !== 'STUNNED'
-      ? moveSkillColor(state.upcomingMove as PlayerMoveId)
+      ? moveHighlightColor(state.upcomingMove as BattleMoveId)
       : leanAccent
   const heavyTelegraph =
     state.upcomingMove !== 'STUNNED' &&
@@ -993,6 +1472,8 @@ export function BattleScreen({
     (move: PlayerMove, slot: number) => {
       if (inputBlocked && walkerHeavyBeat !== 'acting') return
       if (state.phase !== 'player') return
+      if (postDamageMoveDelayActive) return
+      if (turnHadDamageRef.current && !turnDamagePresentationCompleteRef.current) return
       const moveDef = getMoveDef(move)
       const skill = moveDef?.skill
       if (skill === 'attack' || skill === 'speed' || skill === 'defense' || skill === 'luck') {
@@ -1001,7 +1482,7 @@ export function BattleScreen({
       movesUsedRef.current.push(move)
       dispatch({ type: 'PLAYER_MOVE', move, slot })
     },
-    [inputBlocked, walkerHeavyBeat, state.phase],
+    [inputBlocked, walkerHeavyBeat, state.phase, postDamageMoveDelayActive],
   )
 
   const handleNarrationContinue = useCallback(() => {
@@ -1022,7 +1503,8 @@ export function BattleScreen({
   }, [finishBattle, knockoutPopup])
 
   // After the final blow animation completes, show the appropriate end screen.
-  const KNOCKOUT_POPUP_DELAY_MS = 2400  // animation (1300ms) + 1s pause before popup
+  const KNOCKOUT_POPUP_DELAY_MS = 2400  // draw popup only (fixed beat)
+  const POST_ZERO_HP_DIALOGUE_DELAY_MS = 1000
   useEffect(() => {
     if (state.phase !== 'ended' || state.result !== 'draw') return
     if (state.pendingLevelUpNotification) return
@@ -1034,25 +1516,33 @@ export function BattleScreen({
     if (state.phase !== 'ended') return
     if (state.result === 'draw') return  // handled by draw effect above
     if (state.pendingLevelUpNotification) return
-    const hasNarration = payoffNpc.losingLine.trim().length > 0
-    if (state.result === 'lose') {
-      const hasWinNarration = (payoffNpc.winningLine ?? '').trim().length > 0
-      if (hasWinNarration) {
-        const timer = window.setTimeout(() => setLoseNarrationVisible(true), KNOCKOUT_POPUP_DELAY_MS)
-        return () => window.clearTimeout(timer)
+
+    const hasWinNarration = payoffNpc.losingLine.trim().length > 0
+    const hasLoseNarration = (payoffNpc.winningLine ?? '').trim().length > 0
+
+    if (state.result === 'win' && displayedEnemyHp !== 0) return
+    if (state.result === 'lose' && displayedPlayerHp !== 0) return
+
+    const timer = window.setTimeout(() => {
+      if (state.result === 'lose') {
+        if (hasLoseNarration) setLoseNarrationVisible(true)
+        else setKnockoutPopup('lose')
+        return
       }
-      const timer = window.setTimeout(() => setKnockoutPopup('lose'), KNOCKOUT_POPUP_DELAY_MS)
-      return () => window.clearTimeout(timer)
-    }
-    if (state.result === 'win' && hasNarration) {
-      const timer = window.setTimeout(() => setNarrationVisible(true), KNOCKOUT_POPUP_DELAY_MS)
-      return () => window.clearTimeout(timer)
-    }
-    if (state.result === 'win' && !hasNarration) {
-      const timer = window.setTimeout(() => setKnockoutPopup('win'), KNOCKOUT_POPUP_DELAY_MS)
-      return () => window.clearTimeout(timer)
-    }
-  }, [state.phase, state.result, state.pendingLevelUpNotification, payoffNpc.losingLine, payoffNpc.winningLine])
+      if (hasWinNarration) setNarrationVisible(true)
+      else setKnockoutPopup('win')
+    }, POST_ZERO_HP_DIALOGUE_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    state.phase,
+    state.result,
+    state.pendingLevelUpNotification,
+    displayedEnemyHp,
+    displayedPlayerHp,
+    payoffNpc.losingLine,
+    payoffNpc.winningLine,
+  ])
 
   useEffect(() => {
     winMatchupCalloutRef.current = false
@@ -1076,6 +1566,7 @@ export function BattleScreen({
 
     const { r } = pending
     if (!r.enemyAttacks && r.rawIncoming <= 0) return
+    if (state.enemyHp <= 0) return
 
     const ENEMY_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
     const HIT_FLASH_MS = BATTLE_HIT_FLASH_MS
@@ -1096,64 +1587,109 @@ export function BattleScreen({
       window.clearTimeout(enemyAtkOff)
       if (dodgeOff) window.clearTimeout(dodgeOff)
     }
-  }, [state.resolveStep, state.pendingResolve])
+  }, [state.resolveStep, state.pendingResolve, state.enemyHp])
 
   useEffect(() => {
+    const hpUnchanged =
+      prevEnemyHpRef.current === state.enemyHp &&
+      prevPlayerHpRef.current === state.playerHp
+    const wasEnemyDodgeEarly = state.feedbackEvents.some(
+      (e) => e.kind === 'dodged' && e.target === 'enemy',
+    )
+    const wouldAnimateWithoutHpChange =
+      playerPhaseAnimates({
+        attackDelta: 0,
+        wasEnemyDodge: wasEnemyDodgeEarly,
+        feedbackEvents: state.feedbackEvents,
+        pendingResolve: state.pendingResolve,
+      }) ||
+      enemyPhaseAnimates({
+        playerDelta: 0,
+        wasEnemyDodge: wasEnemyDodgeEarly,
+        feedbackEvents: state.feedbackEvents,
+        pendingResolve: state.pendingResolve,
+      })
+    if (hpUnchanged && state.feedbackEvents.length === 0 && !wouldAnimateWithoutHpChange) {
+      return
+    }
+
     const enemyDelta = prevEnemyHpRef.current - state.enemyHp
     const playerDelta = prevPlayerHpRef.current - state.playerHp
+    const wasEnemyDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const playerAnimates = playerPhaseAnimates({
+      attackDelta: Math.max(0, enemyDelta - Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))),
+      wasEnemyDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
+    const enemyAnimates = enemyPhaseAnimates({
+      playerDelta,
+      wasEnemyDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
+    if (enemyDelta > 0 || playerDelta > 0 || playerAnimates || enemyAnimates) {
+      turnHadDamageRef.current = true
+    }
+    if (enemyDelta !== 0) clearHpAnimTimeouts('enemy')
+    if (playerDelta !== 0) clearHpAnimTimeouts('player')
+
     // Capture pre-update HP now; refs get overwritten before scheduled animations run.
     const fromEnemyHp = prevEnemyHpRef.current
     const fromPlayerHp = prevPlayerHpRef.current
 
-    const wasEnemyDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const scheduleEnemyHp = (fn: () => void, delayMs: number) => scheduleHpTimeout('enemy', fn, delayMs)
+    const schedulePlayerHp = (fn: () => void, delayMs: number) => scheduleHpTimeout('player', fn, delayMs)
+
     const enemyActedFirst = state.feedbackEnemyActedFirst
 
     const skill = lastPlayerMoveSkillRef.current
-    const PLAYER_LUNGE_MS = playerLungeMsForSkill(skill)
+    const atkFx = playerAtkFxForMove(state.pendingResolve?.r.pMove, skill)
+    const PLAYER_LUNGE_MS = playerLungeMsForSkill(atkFx === 'attack' ? 'attack' : skill)
     const ENEMY_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
     const HIT_FLASH_MS = BATTLE_HIT_FLASH_MS
     const HIT_MS = BATTLE_HIT_MS
-    const BLEED_DAMAGE_DELAY_MS = 2000
-    const damageFloaterAt = floaterDelayAfterLungeStart
 
     const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
     const attackDelta = Math.max(0, enemyDelta - bleedDelta)
     const afterAttackHp = fromEnemyHp - attackDelta
-    const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
-    const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
 
-    const playerFloaterAt = floaterDelayAfterLungeStart(PLAYER_LUNGE_MS)
-    const enemyFloaterAt = floaterDelayAfterLungeStart(ENEMY_LUNGE_MS)
+    const schedule = computeDamageRevealSchedule({
+      playerLungeMs: PLAYER_LUNGE_MS,
+      enemyLungeMs: ENEMY_LUNGE_MS,
+      enemyActedFirst,
+      attackDelta,
+      playerDelta,
+      bleedDelta,
+      wasEnemyDodge,
+      playerPhaseAnimates: playerAnimates,
+      enemyPhaseAnimates: enemyAnimates,
+    })
+    const { playerPhaseStart, enemyPhaseStart } = schedule
 
-    // When both sides damage on the same HP tick, stagger the second attack.
-    let playerPhaseStart = 0
-    let enemyPhaseStart = 0
-    if (playerDealsDirectDamage && enemyDealsDamage) {
-      if (enemyActedFirst) {
-        enemyPhaseStart = 0
-        playerPhaseStart = enemyFloaterAt
-      } else {
-        playerPhaseStart = 0
-        enemyPhaseStart = playerFloaterAt
-      }
-    }
-    const playerPhaseLen = playerPhaseStart + playerFloaterAt
-    const enemyPhaseLen = enemyPhaseStart + enemyFloaterAt
-
-    // --- Player attacks enemy (direct damage, not dodge) ---
-    if (playerDealsDirectDamage) {
+    // --- Player attacks enemy (including 0-damage hits and blocks) ---
+    if (playerAnimates && !wasEnemyDodge && schedule.enemyDirectAt != null) {
       const t = playerPhaseStart
+      const revealAt = schedule.enemyDirectAt
       const id = Date.now() + Math.random()
       window.setTimeout(() => {
-        setPlayerAtkFx(skill)
+        setPlayerAtkFx(atkFx)
         window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
       }, t)
       window.setTimeout(() => {
         setEnemyHitFx(true)
         window.setTimeout(() => setEnemyHitFx(false), HIT_MS)
       }, t + PLAYER_LUNGE_MS + HIT_FLASH_MS)
-      window.setTimeout(() => {
-        animateHpTicks(setDisplayedEnemyHp, fromEnemyHp, afterAttackHp)
+      scheduleEnemyHp(() => {
+        if (attackDelta > 0) {
+          animateHpTicks(
+            scheduleEnemyHp,
+            setDisplayedEnemyHp,
+            fromEnemyHp,
+            afterAttackHp,
+            () => displayedEnemyHpRef.current,
+          )
+        }
         if (attackDelta > 0) {
           setFloaters((f) => [
             ...f,
@@ -1161,97 +1697,127 @@ export function BattleScreen({
           ])
           window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
         }
-      }, t + damageFloaterAt(PLAYER_LUNGE_MS))
+      }, revealAt)
       clampBattleScrollDrift()
     }
 
-    // --- Enemy dodged → counter sequence ---
-    if (playerDelta > 0 && wasEnemyDodge) {
+    // --- Enemy dodged → optional counter sequence ---
+    if (wasEnemyDodge && playerAnimates && fromEnemyHp > 0 && state.enemyHp > 0) {
       const DODGE_DURATION = BATTLE_DODGE_MS
       const COUNTER_LUNGE_MS = BATTLE_LUNGE_ATTACK_MS
+      const t = playerPhaseStart
       const id = Date.now() + Math.random()
 
-      setPlayerAtkFx(skill)
-      window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
-
+      window.setTimeout(() => {
+        setPlayerAtkFx(atkFx)
+        window.setTimeout(() => setPlayerAtkFx(null), PLAYER_LUNGE_MS)
+      }, t)
       window.setTimeout(() => {
         setEnemyDodgeFx(true)
         window.setTimeout(() => setEnemyDodgeFx(false), DODGE_DURATION)
-      }, PLAYER_LUNGE_MS)
+      }, t + PLAYER_LUNGE_MS)
 
-      const counterStart = PLAYER_LUNGE_MS + DODGE_DURATION
-      window.setTimeout(() => {
-        setEnemyAtkFx(true)
-        window.setTimeout(() => setEnemyAtkFx(false), COUNTER_LUNGE_MS)
-      }, counterStart)
-      window.setTimeout(() => {
-        setPlayerHitFx(true)
-        window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
-      }, counterStart + COUNTER_LUNGE_MS + HIT_FLASH_MS)
-      window.setTimeout(() => {
-        animateHpTicks(setDisplayedPlayerHp, fromPlayerHp, state.playerHp)
-        setFloaters((f) => [
-          ...f,
-          { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
-        ])
-        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
-      }, counterStart + damageFloaterAt(COUNTER_LUNGE_MS))
+      if (playerDelta > 0 && schedule.playerDirectAt != null) {
+        const revealAt = schedule.playerDirectAt
+        const counterStart = t + PLAYER_LUNGE_MS + DODGE_DURATION
+        scheduleEnemyAttackLunge(counterStart, COUNTER_LUNGE_MS)
+        window.setTimeout(() => {
+          setPlayerHitFx(true)
+          window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
+        }, counterStart + COUNTER_LUNGE_MS + HIT_FLASH_MS)
+        schedulePlayerHp(() => {
+          animateHpTicks(
+            schedulePlayerHp,
+            setDisplayedPlayerHp,
+            fromPlayerHp,
+            state.playerHp,
+            () => displayedPlayerHpRef.current,
+          )
+          setFloaters((f) => [
+            ...f,
+            { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+          ])
+          window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+        }, revealAt)
+      }
       clampBattleScrollDrift()
-    } else if (enemyDealsDamage) {
+    } else if (
+      enemyAnimates &&
+      schedule.playerDirectAt != null &&
+      fromEnemyHp > 0 &&
+      state.enemyHp > 0
+    ) {
       // --- Enemy attacks player (normal) ---
       const t = enemyPhaseStart
+      const revealAt = schedule.playerDirectAt
       const id = Date.now() + Math.random()
-      window.setTimeout(() => {
-        setEnemyAtkFx(true)
-        window.setTimeout(() => setEnemyAtkFx(false), ENEMY_LUNGE_MS)
-      }, t)
+      scheduleEnemyAttackLunge(t, ENEMY_LUNGE_MS)
       window.setTimeout(() => {
         setPlayerHitFx(true)
         window.setTimeout(() => setPlayerHitFx(false), HIT_MS)
       }, t + ENEMY_LUNGE_MS + HIT_FLASH_MS)
-      window.setTimeout(() => {
-        animateHpTicks(setDisplayedPlayerHp, fromPlayerHp, state.playerHp)
-        setFloaters((f) => [
-          ...f,
-          { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
-        ])
-        window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
-      }, t + damageFloaterAt(ENEMY_LUNGE_MS))
+      schedulePlayerHp(() => {
+        if (playerDelta > 0) {
+          animateHpTicks(
+            schedulePlayerHp,
+            setDisplayedPlayerHp,
+            fromPlayerHp,
+            state.playerHp,
+            () => displayedPlayerHpRef.current,
+          )
+          setFloaters((f) => [
+            ...f,
+            { id, text: `-${playerDelta}`, target: 'player', tone: 'attack' },
+          ])
+          window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 900)
+        }
+      }, revealAt)
       clampBattleScrollDrift()
     }
 
     // --- Bleed ticks: only the bleeding character animates ---
-    if (bleedDelta > 0) {
-      const bothAttacked = playerDealsDirectDamage && enemyDealsDamage
-      const lastPhaseEnd = bothAttacked
-        ? Math.max(playerPhaseStart + playerPhaseLen, enemyPhaseStart + enemyPhaseLen)
-        : playerDealsDirectDamage
-          ? playerPhaseStart + playerPhaseLen
-          : enemyDealsDamage
-            ? enemyPhaseStart + enemyPhaseLen
-            : 0
-      const bleedDelay = lastPhaseEnd + BLEED_DAMAGE_DELAY_MS
+    if (bleedDelta > 0 && schedule.bleedAt != null) {
+      const bleedHitStart = schedule.bleedAt - HIT_FLASH_MS - HIT_MS
       window.setTimeout(() => {
         setEnemyHitFx(true)
         window.setTimeout(() => setEnemyHitFx(false), HIT_MS)
-      }, bleedDelay)
-      window.setTimeout(() => {
-        animateHpTicks(setDisplayedEnemyHp, afterAttackHp, state.enemyHp)
-      }, bleedDelay + HIT_FLASH_MS)
+      }, bleedHitStart)
+      scheduleEnemyHp(() => {
+        animateHpTicks(
+          scheduleEnemyHp,
+          setDisplayedEnemyHp,
+          afterAttackHp,
+          state.enemyHp,
+          () => displayedEnemyHpRef.current,
+        )
+      }, schedule.bleedAt)
     }
 
-    // Healing or no-damage change: sync displayed HP immediately
-    if (enemyDelta <= 0) setDisplayedEnemyHp(state.enemyHp)
-    if (playerDelta <= 0 && !wasEnemyDodge) setDisplayedPlayerHp(state.playerHp)
+    // Healing only: sync displayed HP immediately; skip zero-delta re-runs.
+    if (enemyDelta < 0) setDisplayedEnemyHp(state.enemyHp)
+    if (playerDelta < 0) setDisplayedPlayerHp(state.playerHp)
 
     lastHpDeltasRef.current = { enemyDelta, playerDelta }
     prevEnemyHpRef.current = state.enemyHp
     prevPlayerHpRef.current = state.playerHp
-  }, [state.enemyHp, state.playerHp, state.feedbackBleedDamage, state.feedbackEvents, clampBattleScrollDrift])
+  }, [
+    state.enemyHp,
+    state.playerHp,
+    state.feedbackBleedDamage,
+    state.feedbackEvents,
+    state.feedbackSeq,
+    state.pendingResolve,
+    clampBattleScrollDrift,
+    clearHpAnimTimeouts,
+    scheduleHpTimeout,
+    scheduleEnemyAttackLunge,
+  ])
 
   useEffect(() => {
     if (state.feedbackSeq === prevFeedbackSeqRef.current) return
     prevFeedbackSeqRef.current = state.feedbackSeq
+
+    setPostDamageMoveDelayActive(false)
 
     const events = state.feedbackEvents
     if (events.length === 0) return
@@ -1265,37 +1831,76 @@ export function BattleScreen({
     const bleedDelta = Math.min(state.feedbackBleedDamage, Math.max(0, enemyDelta))
     const attackDelta = Math.max(0, enemyDelta - bleedDelta)
     const wasEnemyDodge = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
-    const hasEnemyTargetEvents = events.some((e) => e.target === 'enemy')
-    const hasPlayerTargetEvents = events.some((e) => e.target === 'player')
-    const playerDealsDirectDamage = attackDelta > 0 && !wasEnemyDodge
-    const enemyDealsDamage = playerDelta > 0 && !wasEnemyDodge
+    const playerAnimates = playerPhaseAnimates({
+      attackDelta,
+      wasEnemyDodge,
+      feedbackEvents: events,
+      pendingResolve: state.pendingResolve,
+    })
+    const enemyAnimates = enemyPhaseAnimates({
+      playerDelta,
+      wasEnemyDodge,
+      feedbackEvents: events,
+      pendingResolve: state.pendingResolve,
+    })
+
+    const damageSchedule = computeDamageRevealSchedule({
+      playerLungeMs: playerLunge,
+      enemyLungeMs: enemyLunge,
+      enemyActedFirst,
+      attackDelta,
+      playerDelta,
+      bleedDelta,
+      wasEnemyDodge,
+      playerPhaseAnimates: playerAnimates,
+      enemyPhaseAnimates: enemyAnimates,
+    })
 
     const { playerImpact, enemyImpact } = computeImpactTimings({
       playerLungeMs: playerLunge,
       enemyLungeMs: enemyLunge,
       enemyActedFirst,
       runItBack: state.runItBackMode,
-      hasEnemyTargetEvents,
-      hasPlayerTargetEvents,
-      playerDealsDirectDamage: playerDealsDirectDamage || hasEnemyTargetEvents,
-      enemyDealsDamage: enemyDealsDamage || hasPlayerTargetEvents,
+      hasEnemyTargetEvents: playerAnimates,
+      hasPlayerTargetEvents: enemyAnimates,
+      playerDealsDirectDamage: playerAnimates,
+      enemyDealsDamage: enemyAnimates,
     })
 
     if (events.some((e) => e.kind === 'dodged' && e.target === 'player') && !enemyActedFirst) {
+      const dodgeStart = computeDodgeAnimationStart({
+        target: 'player',
+        playerLungeMs: playerLunge,
+        enemyLungeMs: enemyLunge,
+        enemyActedFirst,
+        runItBack: state.runItBackMode,
+      })
       window.setTimeout(() => {
         setPlayerDodgeFx(true)
         window.setTimeout(() => setPlayerDodgeFx(false), BATTLE_DODGE_MS)
-      }, enemyImpact)
+      }, dodgeStart)
+    }
+    const playerBlocked = events.some(
+      (e) => (e.kind === 'blocked' || e.kind === 'perfect-guard') && e.target === 'player',
+    )
+    if (playerBlocked && !enemyActedFirst && !enemyAnimates && state.enemyHp > 0) {
+      const attackStart = computePlayerFirstEnemyAttackStart({
+        playerLungeMs: playerLunge,
+        runItBack: state.runItBackMode,
+        playerDealsDirectDamage: playerAnimates,
+      })
+      scheduleEnemyAttackLunge(attackStart, enemyLunge)
+      window.setTimeout(() => {
+        setPlayerHitFx(true)
+        window.setTimeout(() => setPlayerHitFx(false), BATTLE_HIT_MS)
+      }, attackStart + enemyLunge + BATTLE_HIT_FLASH_MS)
     }
     // Enemy dodge flash is handled in the HP-change useEffect's dodge sequence
-    const CRIT_EXTRA_MS = 500
-    const STATUS_SETTLE_MS = 120
-    const BLEED_DAMAGE_DELAY_MS = 2000
     if (events.some((e) => e.kind === 'crit')) {
       window.setTimeout(() => {
         setEnemyCritFx(true)
         window.setTimeout(() => setEnemyCritFx(false), 480)
-      }, playerImpact + CRIT_EXTRA_MS)
+      }, playerImpact + FEEDBACK_CRIT_EXTRA_MS)
     }
 
     // Use separate stagger indices per target so enemy-side and player-side
@@ -1303,22 +1908,26 @@ export function BattleScreen({
     let enemyEvtIdx = 0
     let playerEvtIdx = 0
     events.forEach((event) => {
+      if (!event.text) return
       const isEnemyTarget = event.target === 'enemy'
       const evtIdx = isEnemyTarget ? enemyEvtIdx++ : playerEvtIdx++
+      if (FLOATER_SKIP_KINDS.has(event.kind)) return
       const id = Date.now() + Math.random() + evtIdx
       const durationMs = event.kind === 'crit' ? 1200 : 900
-      const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
-      const statusOffset = event.kind === 'status' ? STATUS_SETTLE_MS : 0
-      // Events targeting the enemy come from the player's attack, use playerImpact.
-      // Events targeting the player come from the enemy's attack, use enemyImpact.
-      const baseDelay = isEnemyTarget ? playerImpact : enemyImpact
-      const isBleedDamage = event.kind === 'damage' && event.tone === 'bleed'
-      // Bleed renders last, after BOTH attacks have landed this turn, even if the
-      // bleed status was applied on this same turn's hit.
-      const delay = isBleedDamage
-        ? Math.max(playerImpact, enemyImpact) + BLEED_DAMAGE_DELAY_MS
-        : baseDelay + evtIdx * 500 + critOffset + statusOffset
+      const delay = computeFeedbackEventDelay(event, {
+        evtIdx,
+        playerImpact,
+        enemyImpact,
+        playerLungeMs: playerLunge,
+        enemyLungeMs: enemyLunge,
+        enemyActedFirst,
+        runItBack: state.runItBackMode,
+        bleedAt: damageSchedule.bleedAt,
+        playerDealsDirectDamage: playerAnimates,
+      })
+      setPendingFloaterSchedules((n) => n + 1)
       window.setTimeout(() => {
+        setPendingFloaterSchedules((n) => Math.max(0, n - 1))
         setFloaters((f) => [
           ...f,
           { id, text: event.text, target: event.target, tone: event.tone, kind: event.kind },
@@ -1327,78 +1936,98 @@ export function BattleScreen({
       }, delay)
     })
     clampBattleScrollDrift()
-  }, [state.feedbackSeq, state.feedbackEvents, state.feedbackEnemyActedFirst, state.runItBackMode, clampBattleScrollDrift])
+  }, [state.feedbackSeq, state.feedbackEvents, state.feedbackEnemyActedFirst, state.runItBackMode, state.enemyHp, scheduleEnemyAttackLunge, clampBattleScrollDrift])
 
-  // Mirror the floater timing for the battle log line. Plain log lines (no
-  // crit/status feedback) sync immediately; lines describing a crit and/or a
-  // status application (e.g. "fury sweep. 24! crit bleed.") wait until the
-  // last of those callouts would have appeared, using the same delay formula
-  // as the floaters above.
+  // Reveal one side's log lines at the end of each resolve gap (not the full turn at once).
   useEffect(() => {
     if (state.log === prevLogRef.current) return
     prevLogRef.current = state.log
 
-    const events = state.feedbackEvents
-    if (events.length === 0) {
-      setDisplayedLog(state.log)
-      setTurnAnnounce(null)
-      setLogLineMode('result')
+    // Turn resolve clears last turn's log before new lines arrive, keep showing
+    // the prior results until this turn's outcomes are ready to reveal.
+    if (state.phase === 'busy' && state.log.length === 0) {
+      firstPhaseLogLenRef.current = 0
       return
     }
+
+    const moveGapMs = battleMoveGapMs(state.runItBackMode)
+    const roundEndGapMs = battleRoundEndGapMs(state.runItBackMode)
+
+    const reveal = (lines: string[], delayMs: number) => {
+      if (delayMs <= 0) {
+        setLogRevealPending(false)
+        setDisplayedLog(lines)
+        setTurnAnnounce(null)
+        setLogLineMode('result')
+        return () => {}
+      }
+      setLogRevealPending(true)
+      const timer = window.setTimeout(() => {
+        setLogRevealPending(false)
+        setDisplayedLog(lines)
+        setTurnAnnounce(null)
+        setLogLineMode('result')
+      }, delayMs)
+      return () => {
+        window.clearTimeout(timer)
+        setLogRevealPending(false)
+      }
+    }
+
+    if (state.resolveStep === 'pause_after_first') {
+      firstPhaseLogLenRef.current = state.log.length
+      return reveal(state.log, moveGapMs)
+    }
+
+    if (state.resolveStep === 'pause_after_second') {
+      const split = firstPhaseLogLenRef.current
+      const phase2Log = split > 0 ? state.log.slice(split) : state.log
+      return reveal(phase2Log, roundEndGapMs)
+    }
+
+    const split = firstPhaseLogLenRef.current
+    const phase2Only = split > 0 && state.log.length > split
+    const linesToShow = phase2Only ? state.log.slice(split) : state.log
 
     const skill = lastPlayerMoveSkillRef.current
     const pLunge = playerLungeMsForSkill(skill)
     const eLunge = BATTLE_LUNGE_ATTACK_MS
     const enemyActedFirst = state.feedbackEnemyActedFirst
-
     const { enemyDelta: eDelta, playerDelta: pDelta } = lastHpDeltasRef.current
     const bDelta = Math.min(state.feedbackBleedDamage, Math.max(0, eDelta))
     const aDelta = Math.max(0, eDelta - bDelta)
-    const eDodge = events.some((e) => e.kind === 'dodged' && e.target === 'enemy')
-    const hasEnemyTargetEvents = events.some((e) => e.target === 'enemy')
-    const hasPlayerTargetEvents = events.some((e) => e.target === 'player')
-    const pDirect = aDelta > 0 && !eDodge
-    const eDirect = pDelta > 0 && !eDodge
+    const eDodge = state.feedbackEvents.some((e) => e.kind === 'dodged' && e.target === 'enemy')
+    const playerAnimates = playerPhaseAnimates({
+      attackDelta: aDelta,
+      wasEnemyDodge: eDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
+    const enemyAnimates = enemyPhaseAnimates({
+      playerDelta: pDelta,
+      wasEnemyDodge: eDodge,
+      feedbackEvents: state.feedbackEvents,
+      pendingResolve: state.pendingResolve,
+    })
 
-    const { playerImpact, enemyImpact } = computeImpactTimings({
+    const delayMs = computeInstantPhaseLogRevealDelay({
+      enemyActedFirst,
+      phase2Only,
       playerLungeMs: pLunge,
       enemyLungeMs: eLunge,
-      enemyActedFirst,
       runItBack: state.runItBackMode,
-      hasEnemyTargetEvents,
-      hasPlayerTargetEvents,
-      playerDealsDirectDamage: pDirect || hasEnemyTargetEvents,
-      enemyDealsDamage: eDirect || hasPlayerTargetEvents,
+      attackDelta: aDelta,
+      playerDelta: pDelta,
+      bleedDelta: bDelta,
+      wasEnemyDodge: eDodge,
+      playerPhaseAnimates: playerAnimates,
+      enemyPhaseAnimates: enemyAnimates,
     })
 
-    const CRIT_EXTRA_MS = 500
-    const STATUS_SETTLE_MS = 120
-    const BLEED_DAMAGE_DELAY_MS = 2000
-
-    let enemyEvtIdx = 0
-    let playerEvtIdx = 0
-    let maxDelay = 0
-    events.forEach((event) => {
-      const isEnemyTarget = event.target === 'enemy'
-      const evtIdx = isEnemyTarget ? enemyEvtIdx++ : playerEvtIdx++
-      const critOffset = event.kind === 'crit' ? CRIT_EXTRA_MS : 0
-      const statusOffset = event.kind === 'status' ? STATUS_SETTLE_MS : 0
-      const baseDelay = isEnemyTarget ? playerImpact : enemyImpact
-      const isBleedDamage = event.kind === 'damage' && event.tone === 'bleed'
-      const total = isBleedDamage
-        ? Math.max(playerImpact, enemyImpact) + BLEED_DAMAGE_DELAY_MS
-        : baseDelay + evtIdx * 500 + critOffset + statusOffset
-      if (total > maxDelay) maxDelay = total
-    })
-
-    const nextLog = state.log
-    const timer = window.setTimeout(() => {
-      setDisplayedLog(nextLog)
-      setTurnAnnounce(null)
-      setLogLineMode('result')
-    }, maxDelay)
-    return () => window.clearTimeout(timer)
-  }, [state.log, state.feedbackEvents, state.feedbackEnemyActedFirst, state.runItBackMode])
+    return reveal(linesToShow, delayMs)
+  // Do not depend on feedbackEvents: finalizeTurn clears them without changing log,
+  // which would cancel the reveal timer and leave turn 2+ damage stuck off-screen.
+  }, [state.log, state.phase, state.resolveStep, state.feedbackBleedDamage, state.feedbackEnemyActedFirst, state.feedbackEvents, state.pendingResolve, state.runItBackMode])
 
   // When a move is selected, the telegraph line is replaced by the name of
   // whichever side's move resolves first this turn.
@@ -1407,23 +2036,32 @@ export function BattleScreen({
     prevPendingResolveRef.current = state.pendingResolve
     if (state.pendingResolve && state.pendingResolve !== prev) {
       const { r, enemyFirst } = state.pendingResolve
-      const moveName = enemyFirst
-        ? r.eMove !== 'STUNNED'
-          ? MOVES[r.eMove as PlayerMoveId]?.displayName ?? r.eMove
-          : null
-        : getMoveDef(r.pMove).displayName
-      setTurnAnnounce(moveName)
-      if (moveName) setLogLineMode('announce')
+      let announce: { name: string; color: string } | null = null
+      if (enemyFirst) {
+        if (r.eMove !== 'STUNNED') {
+          announce = {
+            name: getMoveLogDisplayName(r.eMove),
+            color: moveHighlightColor(r.eMove as BattleMoveId),
+          }
+        }
+      } else {
+        announce = {
+          name: getMoveDef(r.pMove).displayName,
+          color: moveHighlightColor(r.pMove),
+        }
+      }
+      setTurnAnnounce(announce)
+      if (announce) setLogLineMode('announce')
     }
   }, [state.pendingResolve])
 
-  // Once the player is free to act again, the line reverts to showing the
-  // upcoming enemy telegraph.
+  // Once the player is free to act again, show the enemy telegraph only before
+  // their first committed attack; afterward keep the last action log visible.
   useEffect(() => {
-    if (state.phase === 'player') {
-      setLogLineMode('telegraph')
-    }
-  }, [state.phase])
+    if (state.phase !== 'player') return
+    const previewTelegraph = shouldPreviewEnemyTelegraph(state, { walkerHeavyTutorial })
+    setLogLineMode(previewTelegraph ? 'telegraph' : 'result')
+  }, [state.phase, state.enemyMoveHistory, state.upcomingMove, walkerHeavyTutorial])
 
   useLayoutEffect(() => {
     clampBattleScrollDrift()
@@ -1438,12 +2076,52 @@ export function BattleScreen({
     clampBattleScrollDrift,
   ])
 
+  void hpAnimRevision
+  const hpAnimTimeoutCount =
+    enemyHpAnimTimeoutsRef.current.length + playerHpAnimTimeoutsRef.current.length
+  const turnDamagePresentationComplete = isTurnDamagePresentationComplete({
+    floaterCount: floaters.length,
+    pendingFloaterSchedules,
+    hpAnimTimeoutCount,
+    logRevealPending,
+  })
+  turnDamagePresentationCompleteRef.current = turnDamagePresentationComplete
+
+  const awaitingTurnDamagePresentation =
+    turnHadDamageRef.current && !turnDamagePresentationComplete
+  const busy =
+    state.phase !== 'player' ||
+    awaitingTurnDamagePresentation ||
+    postDamageMoveDelayActive
+
+  useEffect(() => {
+    if (state.phase !== 'player') {
+      setPostDamageMoveDelayActive(false)
+      return
+    }
+    if (!turnHadDamageRef.current || !turnDamagePresentationComplete) {
+      setPostDamageMoveDelayActive(false)
+      return
+    }
+
+    setPostDamageMoveDelayActive(true)
+    const timer = window.setTimeout(() => {
+      setPostDamageMoveDelayActive(false)
+    }, TURN_POST_DAMAGE_MOVE_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [state.phase, turnDamagePresentationComplete, state.feedbackSeq])
+
   useEffect(() => {
     if (state.phase !== 'busy') return
     // Hold resolution while the level-up notification is open, but only after the
-    // full turn has resolved (idle) AND all floaters have finished, so the player
-    // sees the battle animations before the overlay appears.
-    if (state.pendingLevelUpNotification && state.resolveStep === 'idle' && floaters.length === 0) return
+    // full turn has resolved (idle) AND all turn damage feedback has finished.
+    if (
+      state.pendingLevelUpNotification &&
+      state.resolveStep === 'idle' &&
+      turnDamagePresentationComplete
+    ) {
+      return
+    }
 
     const moveGapMs = state.runItBackMode ? RIB_MOVE_GAP_MS : BATTLE_MOVE_GAP_MS
     const roundEndGapMs = state.runItBackMode ? RIB_ROUND_END_GAP_MS : BATTLE_ROUND_END_GAP_MS
@@ -1451,17 +2129,24 @@ export function BattleScreen({
     if (state.resolveStep === 'pause_after_first') {
       const timer = window.setTimeout(() => {
         dispatch({ type: 'RESOLVE_SECOND' })
-      }, moveGapMs)
+      }, moveGapMs + BATTLE_LOG_RESULT_SETTLE_MS)
       return () => window.clearTimeout(timer)
     }
 
     if (state.resolveStep === 'pause_after_second') {
+      if (!turnDamagePresentationComplete) return
       const timer = window.setTimeout(() => {
         dispatch({ type: 'RESOLVE_FINISH' })
-      }, roundEndGapMs)
+      }, roundEndGapMs + BATTLE_LOG_RESULT_SETTLE_MS)
       return () => window.clearTimeout(timer)
     }
-  }, [state.phase, state.resolveStep, state.pendingLevelUpNotification, state.runItBackMode, floaters.length])
+  }, [
+    state.phase,
+    state.resolveStep,
+    state.pendingLevelUpNotification,
+    state.runItBackMode,
+    turnDamagePresentationComplete,
+  ])
 
   useEffect(() => {
     let cancelled = false
@@ -1611,7 +2296,7 @@ export function BattleScreen({
                 ref={enemyPlateAnchorRef}
                 className="battle-screen__plate-anchor battle-screen__plate-anchor--enemy"
                 style={{
-                  top: enemyPlacement.visibleDrawY + 5,
+                  top: enemyPlacement.visibleDrawY + BATTLE_PLATE_VISIBLE_TOP_GAP,
                   transform: `translateX(${BATTLE_ENEMY_PLATE_OFFSET_X + BATTLE_FIGHTER_NUDGE_X}px)`,
                 }}
               >
@@ -1663,23 +2348,28 @@ export function BattleScreen({
 
               {/* ── Telegraph / announce / last-action, only one shown at a time ── */}
               {!showWinNarration && (
-                <section className="battle-screen__log" ref={telegraphRowRef} aria-live="polite">
+                <section
+                  className="battle-screen__log"
+                  ref={telegraphRowRef}
+                  aria-live="polite"
+                  style={{ height: logBoxHeightPx }}
+                >
                   {logLineMode === 'announce' && turnAnnounce ? (
                     <div
                       className={`battle-screen__log-line battle-screen__log-line--telegraph${heavyTelegraph ? ' battle-screen__log-line--heavy' : ''}`}
                     >
                       <span
                         className="battle-screen__telegraph-move"
-                        style={{ color: telegraphMoveColor }}
+                        style={{ color: turnAnnounce.color }}
                       >
-                        {turnAnnounce}
+                        {turnAnnounce.name}
                       </span>
                     </div>
                   ) : logLineMode === 'result' ? (
                     logLines.length > 0 ? (
                       logLines.map((line, i) => (
                         <div className="battle-screen__log-line" key={i}>
-                          {line}
+                          {renderHighlightedLogLine(line)}
                         </div>
                       ))
                     ) : (
@@ -1712,47 +2402,55 @@ export function BattleScreen({
 
 
 
-              {/* Player plate, fixed anchor, never animates */}
-              <div
-                ref={playerPlateAnchorRef}
-                className="battle-screen__plate-anchor battle-screen__plate-anchor--player battle-screen__plate-anchor--anchored"
-                style={{
-                  top: playerPlacement.visibleDrawY + BATTLE_PLAYER_PLATE_OFFSET_Y,
-                  left: playerPlacement.feetX + BATTLE_PLAYER_PLATE_OFFSET_X,
-                }}
-              >
-                <div ref={playerPlateRef} className="battle-screen__sprite-plate">
-                  <span className="battle-screen__plate-name">
-                    {playerHandle.toUpperCase()}
-                    <span className="battle-screen__plate-level">
-                      {' · LVL '}{playerLevel}
+              {SHOW_BATTLE_PLAYER_PLATE ? (
+                <div
+                  ref={playerPlateAnchorRef}
+                  className="battle-screen__plate-anchor battle-screen__plate-anchor--player battle-screen__plate-anchor--anchored"
+                  style={{
+                    top: playerPlateTop,
+                    left: playerPlacement.feetX + BATTLE_PLAYER_PLATE_OFFSET_X,
+                  }}
+                >
+                  <div ref={playerPlateRef} className="battle-screen__sprite-plate">
+                    <span className="battle-screen__plate-name">
+                      {playerHandle.toUpperCase()}
+                      <span className="battle-screen__plate-level">
+                        {' · LVL '}{playerLevel}
+                      </span>
                     </span>
-                  </span>
-                  <span className="battle-screen__plate-archetype" style={{ color: playerLeanAccent }}>
-                    {playerBuildLabel}
-                  </span>
-                  <div className="battle-screen__hp-track">
-                    <div
-                      className="battle-screen__hp-fill battle-screen__hp-fill--player"
-                      style={{ width: `${playerHpPct}%` }}
-                    />
-                  </div>
-                  <span className="battle-screen__hp-label">{displayedPlayerHp} / {state.playerStats.maxHp}</span>
-                  {playerStatusTags.length > 0 && (
-                    <div ref={playerStatusRef} className="battle-screen__plate-status-slot">
-                      <FighterStatusTags tags={playerStatusTags} />
+                    <span className="battle-screen__plate-archetype" style={{ color: playerLeanAccent }}>
+                      {playerBuildLabel}
+                    </span>
+                    <div className="battle-screen__hp-track">
+                      <div
+                        className="battle-screen__hp-fill battle-screen__hp-fill--player"
+                        style={{ width: `${playerHpPct}%` }}
+                      />
                     </div>
-                  )}
-                  {battleTutorialBlocking && (
-                    <p ref={statusLegendRef} className="battle-screen__status-legend">{STATUS_EFFECT_LEGEND}</p>
-                  )}
+                    <span className="battle-screen__hp-label">{displayedPlayerHp} / {state.playerStats.maxHp}</span>
+                    {playerStatusTags.length > 0 && !battleTutorialBlocking && (
+                      <div ref={playerStatusRef} className="battle-screen__plate-status-slot">
+                        <FighterStatusTags tags={playerStatusTags} />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="battle-screen__tutorial-ref-stubs" aria-hidden>
+                  <div ref={playerPlateAnchorRef} />
+                  <div ref={playerPlateRef} />
+                  <div ref={playerStatusRef} />
+                  <div ref={xpBarRef} />
+                </div>
+              )}
 
               {/* Player sprite, animates independently */}
               <div
                 className={`battle-screen__fighter battle-screen__fighter--player battle-screen__fighter--anchored${playerHitFx ? ' battle-screen__fighter--hit' : ''}${playerAtkFx ? ` battle-screen__fighter--atk-${playerAtkFx}` : ''}${playerDodgeFx ? ' battle-screen__fighter--dodge' : ''}`}
-                style={{ top: playerPlacement.drawY, left: playerPlacement.x }}
+                style={{
+                  top: playerPlacement.drawY + BATTLE_PLAYER_FIGHTER_NUDGE_Y,
+                  left: playerPlacement.x,
+                }}
               >
                 <canvas
                   ref={playerCanvasRef}
@@ -1800,7 +2498,7 @@ export function BattleScreen({
                 role="group"
                 aria-label="Battle moves"
               >
-                  {battleMoveButtons.map(({ move, label, description, className, scaleParts }, slot) => {
+                  {battleMoveButtons.map(({ move, label, description, className }, slot) => {
                     const stolen = state.battleMove.snagStolen[slot]
                     const displayLabel = stolen
                       ? stolen.replace('_', ' ')
@@ -1835,7 +2533,6 @@ export function BattleScreen({
                           )}
                         </span>
                         <span className="battle-screen__move-desc">{description}</span>
-                        {!stolen && <MoveScaleTag parts={scaleParts} />}
                       </button>
                     )
                   })}
@@ -1845,7 +2542,7 @@ export function BattleScreen({
             {showWinNarration && knockoutPopup === null && (
               <button
                 type="button"
-                className="battle-screen__narration battle-screen__narration--payoff"
+                className="battle-screen__narration battle-screen__narration--payoff battle-screen__narration--payoff-win"
                 onClick={handleNarrationContinue}
               >
                 <span className="battle-screen__narration-label">{payoffNpc.displayName}</span>
@@ -1878,7 +2575,6 @@ export function BattleScreen({
             moves: movesRef,
             status: playerStatusRef,
             plate: playerPlateRef,
-            statuslegend: statusLegendRef,
             xpbar: xpBarRef,
           }}
           onNext={advanceBattleTutorial}
@@ -1895,7 +2591,6 @@ export function BattleScreen({
             moves: movesRef,
             status: playerStatusRef,
             plate: playerPlateRef,
-            statuslegend: statusLegendRef,
             xpbar: xpBarRef,
           }}
           onNext={() => {
@@ -1919,7 +2614,6 @@ export function BattleScreen({
             moves: movesRef,
             status: playerStatusRef,
             plate: playerPlateRef,
-            statuslegend: statusLegendRef,
             xpbar: xpBarRef,
           }}
           onNext={() => setWalkerHeavyBeat(null)}
@@ -1927,7 +2621,9 @@ export function BattleScreen({
           stepsOverride={WALKER_HEAVY_CONFIRM_STEPS}
         />
       )}
-      {state.pendingLevelUpNotification && state.resolveStep === 'idle' && floaters.length === 0 && (
+      {state.pendingLevelUpNotification &&
+        state.resolveStep === 'idle' &&
+        turnDamagePresentationComplete && (
         <LevelUpOverlay
           notification={state.pendingLevelUpNotification}
           onDismiss={() => dispatch({ type: 'DISMISS_LEVEL_UP' })}

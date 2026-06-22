@@ -197,7 +197,6 @@ import {
   type StartMenuAction,
   type StartMenuHandle,
 } from './StartMenuScreen'
-import { AccountSaveIndicator } from './AccountSaveIndicator'
 import { BugReportScreen } from './BugReportScreen'
 import { IntroNarrationScreen } from './IntroNarrationScreen'
 import { ButtonSpotlightRing, GuidedTutorialOverlay } from './GuidedTutorialOverlay'
@@ -1745,6 +1744,8 @@ export function GameScreen() {
     cultDarklinePhase,
   ])
 
+  const canStartTutorialBattle = canSpawnDevSpar
+
   const devModeUi = useDevControls({
     playerRef,
     playCutscene,
@@ -1752,6 +1753,7 @@ export function GameScreen() {
     canToggleDevMode: canSpawnDevSpar,
     spawnDevSpar: startDevSparBattle,
     canSpawnDevSpar,
+    canStartTutorialBattle,
     startTutorialBattle,
     openShop: openCosmeticsShop,
   })
@@ -2804,11 +2806,26 @@ export function GameScreen() {
   }, [beginResumeTransition, menuReturnPending])
 
   const handleOpenLoadout = useCallback(() => {
-    if (worldEntryActive || showStartMenu || showGymLeaderboard || showGhostTraining || showTheater || showShop) return
-    if (showLoadout) {
-      handleLoadoutClose()
+    if (
+      menuTransition ||
+      worldEntryActive ||
+      showStartMenu ||
+      showGymLeaderboard ||
+      showGhostTraining ||
+      showTheater ||
+      showShop
+    ) {
       return
     }
+    if (showLoadout) {
+      if (menuReturnPending) {
+        beginResumeTransition()
+      } else {
+        setShowLoadout(false)
+      }
+      return
+    }
+    setMenuReturnPending(false)
     setShowLoadout(true)
     // Script button tap completes the waitForAction step.
     if (loadoutTutorialStep === 1) {
@@ -2816,15 +2833,28 @@ export function GameScreen() {
     } else if (loadoutTutorialStep === XP_TUTORIAL_START_STEP + 1) {
       setLoadoutTutorialStep(XP_TUTORIAL_START_STEP + 2)
     }
-  }, [handleLoadoutClose, loadoutTutorialStep, showLoadout, showStartMenu, worldEntryActive])
+  }, [
+    beginResumeTransition,
+    loadoutTutorialStep,
+    menuReturnPending,
+    menuTransition,
+    showGhostTraining,
+    showGymLeaderboard,
+    showLoadout,
+    showShop,
+    showStartMenu,
+    showTheater,
+    worldEntryActive,
+  ])
 
   const beginMenuEntryTransition = useCallback(
     (screen: 'fanny-pack' | 'loadout') => {
+      if (menuTransition) return
       setShowStartMenu(false)
       setMenuReturnPending(true)
       beginMenuTransition({ kind: 'to-screen', screen })
     },
-    [beginMenuTransition],
+    [beginMenuTransition, menuTransition],
   )
 
   const handleMenuTransitionMidpoint = useCallback(() => {
@@ -2991,7 +3021,6 @@ export function GameScreen() {
 
   return (
     <div className="game-screen">
-      <AccountSaveIndicator />
       <GameShell
         onFannyPack={handleFannyPack}
         onScript={handleOpenLoadout}

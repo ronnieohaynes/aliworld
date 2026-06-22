@@ -3,6 +3,8 @@ export type CutsceneGestureKind = 'play' | null
 export type CutsceneUiSnapshot = {
   active: boolean
   progress: number
+  /** True once clip playback ends naturally (before post-hold teardown). */
+  playbackFinished: boolean
   landscapeFullscreen: boolean
   soundMuted: boolean
   videoPaused: boolean
@@ -14,6 +16,7 @@ export type CutsceneUiSnapshot = {
 const INACTIVE: CutsceneUiSnapshot = {
   active: false,
   progress: 0,
+  playbackFinished: false,
   landscapeFullscreen: true,
   soundMuted: true,
   videoPaused: false,
@@ -55,6 +58,7 @@ export function setCutsceneUiActive(
     ? {
         active: true,
         progress: 0,
+        playbackFinished: false,
         landscapeFullscreen: true,
         soundMuted: true,
         videoPaused: false,

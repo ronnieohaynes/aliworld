@@ -23,7 +23,9 @@ import {
 } from '../data/combatStatus'
 import {
   applyDoubleHit,
+  capDamageToRemainingHp,
   deathClockHitLogLine,
+  invalidateCritWhenNoDamage,
   resolveDeathClocksAtTurnStart,
   resolveEnemyStrike,
   splitIncomingWithReflect,
@@ -33,6 +35,7 @@ import {
 import type { DeathClock } from '../data/combatTypes'
 import type { UpcomingMove } from '../data/enemyMoves'
 import type { PlayerMoveId } from '../data/moveIds'
+import { getMoveLogDisplayName } from '../game/moveHighlightColors'
 import {
   applyPlayerMoveFromDef,
   applyStolenEnemyMove,
@@ -41,6 +44,11 @@ import {
   mergeEnemyMoveIntoCombatStatus,
   previewEnemyStatusOnPlayer,
   playerLogLineForMove,
+  playerDefendedAgainstIncoming,
+  enemyDefendedAgainstOutgoing,
+  combinedPlayerDefenseLogLine,
+  combinedEnemyDefenseLogLine,
+  combinedGuardCounterLogLine,
 } from '../data/moves'
 import {
   chooseMove,
@@ -95,6 +103,12 @@ export const BATTLE_ROUND_END_GAP_MS = 1150
 export const RIB_MOVE_GAP_MS = 2100
 export const RIB_ROUND_END_GAP_MS = 1800
 
+/** Extra pause after turn damage feedback finishes before move selection unlocks. */
+export const TURN_POST_DAMAGE_MOVE_DELAY_MS = 1000
+
+/** Pause after action-log result text before the next resolve-phase animation. */
+export const BATTLE_LOG_RESULT_SETTLE_MS = 500
+
 export type BattleResolveStep = 'idle' | 'pause_after_first' | 'pause_after_second'
 
 export type PendingResolve = {
@@ -131,6 +145,9 @@ export const BATTLE_RESOLVE_DELAY_MS = Math.round(650 * BATTLE_PACE_SCALE)
 export const BATTLE_END_LOSE_DELAY_MS = Math.round(500 * BATTLE_PACE_SCALE)
 export const BATTLE_END_WIN_DELAY_MS = Math.round(600 * BATTLE_PACE_SCALE)
 
+/** Max action-log lines kept per turn (both resolution phases + bleed/reflect/chip). */
+export const BATTLE_LOG_MAX_ENTRIES = 6
+
 export type BattleState = {
   npc: NpcCombatEntry
   playerStats: PlayerCombatStats
@@ -142,6 +159,8 @@ export type BattleState = {
   turn: number
   upcomingMove: UpcomingMove
   combatStatus: CombatStatusState
+  /** Snapshot at turn resolve start, used to tick durations without touching newly applied status. */
+  combatStatusAtTurnStart?: CombatStatusState
   /** Turns where the player does not act (enemy free swing). */
   playerExposedTurns: number
   /** Hyperdrive-style skipped player actions. */
@@ -355,13 +374,21 @@ function isPlayerAggressiveMove(pMove: PlayerMove): boolean {
   return !PLAYER_DEFENSIVE_MOVE_KINDS.has(getMoveDef(pMove).behavior.kind)
 }
 
+function isNpcGuardRiposteMove(actualMove: PlayerMoveId): boolean {
+  if (actualMove === 'ANCHOR' || actualMove === 'HOLD' || actualMove === 'PARRY') {
+    return true
+  }
+  const def = MOVES[actualMove]
+  return def?.behavior.kind === 'brace' && def.behavior.profile.blockStatus === true
+}
+
 function applyNpcGuardCounter(
   state: BattleState,
   out: ResolveResult,
   actualMove: PlayerMoveId,
 ): void {
   const counter = state.npc.guardCounter
-  if (!counter || actualMove !== 'HOLD') return
+  if (!counter || !isNpcGuardRiposteMove(actualMove)) return
   if (!out.playerActed || !isPlayerAggressiveMove(out.pMove)) return
   if (Math.random() >= counter.chance) return
 
@@ -383,9 +410,14 @@ function applyEnemyMoveBehavior(
 
   switch (behavior.kind) {
     case 'brace': {
-      if (out.playerActed && out.playerDmg > 0) {
+      if (behavior.profile.blockStatus) {
+        state.battleMove.anchorBlocksStatus = true
+      }
+      if (out.playerActed) {
         out.enemyBraced = true
-        out.playerDmg = Math.max(1, Math.floor(out.playerDmg * behavior.profile.incomingMult))
+        if (out.playerDmg > 0) {
+          out.playerDmg = Math.max(1, Math.floor(out.playerDmg * behavior.profile.incomingMult))
+        }
       }
       break
     }
@@ -456,7 +488,8 @@ function applyPostResolveEffects(
   post: import('../data/moves').PostResolveEffects,
 ): void {
   if (post.selfDamage > 0) {
-    state.playerHp = Math.max(0, state.playerHp - post.selfDamage)
+    const dealt = capDamageToRemainingHp(post.selfDamage, state.playerHp)
+    state.playerHp = Math.max(0, state.playerHp - dealt)
   }
   if (post.healPlayer > 0) {
     state.playerHp = Math.min(state.playerStats.maxHp, state.playerHp + post.healPlayer)
@@ -466,8 +499,38 @@ function applyPostResolveEffects(
   }
 }
 
+const ENEMY_ATTACK_ANIM_KINDS = new Set([
+  'damage',
+  'fury-sweep',
+  'dark-break',
+  'cannon',
+  'blackout',
+  'loop',
+  'gravity-shift',
+  'refract',
+  'hyperdrive',
+  'devils-cut',
+  'phenomena',
+  'sealed-fate',
+  'snag',
+])
+
+function isEnemyAttackAnimMove(eMove: UpcomingMove): boolean {
+  if (eMove === 'STUNNED') return false
+  const def = MOVES[eMove as PlayerMoveId]
+  return def ? ENEMY_ATTACK_ANIM_KINDS.has(def.behavior.kind) : false
+}
+
 function withResolveFeedback(state: BattleState, r: ResolveResult, enemyActedFirst: boolean): BattleState {
-  const feedbackEvents = appendBattleFeedback([], r)
+  let feedbackEvents = appendBattleFeedback([], r)
+  // Zero-damage swings (e.g. WHISPER jittering to 0) still need presentation hooks.
+  if (feedbackEvents.length === 0) {
+    if (r.playerActed && isPlayerAggressiveMove(r.pMove)) {
+      feedbackEvents = [{ kind: 'status', text: '', target: 'enemy', tone: 'attack' }]
+    } else if (!r.enemyStunned && isEnemyAttackAnimMove(r.eMove)) {
+      feedbackEvents = [{ kind: 'status', text: '', target: 'player', tone: 'attack' }]
+    }
+  }
   if (feedbackEvents.length === 0) return state
   return { ...state, feedbackEvents, feedbackSeq: state.feedbackSeq + 1, feedbackEnemyActedFirst: enemyActedFirst }
 }
@@ -577,12 +640,26 @@ function finalizeEnemyDamageBlocked(out: ResolveResult, rawOutgoing: number): vo
     rawOutgoing > 0 ? Math.max(0, rawOutgoing - out.playerDmg) : 0
 }
 
+function capResolveResultToRemainingHp(
+  r: ResolveResult,
+  enemyHp: number,
+  playerHp: number,
+): void {
+  if (r.playerDmg > 0) {
+    r.playerDmg = capDamageToRemainingHp(r.playerDmg, enemyHp)
+  }
+  if (r.incoming > 0) {
+    r.incoming = capDamageToRemainingHp(r.incoming, playerHp)
+  }
+}
+
 function resolvePlayerMoveBody(
   state: BattleState,
   pMove: PlayerMove,
   eMove: UpcomingMove,
   slot?: number,
 ): { out: ResolveResult; post: import('../data/moves').PostResolveEffects } {
+  const enemyDefShatteredBefore = state.battleMove.enemyDefShattered
   const strike = resolveEnemyIncoming(state, eMove)
   const { enemyStunned, enemyAttacks, eDmg, actualMove } = strike
   const out = emptyResolveResult(eMove, pMove, enemyStunned, enemyAttacks)
@@ -665,7 +742,11 @@ function resolvePlayerMoveBody(
     )
   }
 
+  capResolveResultToRemainingHp(out, state.enemyHp, state.playerHp)
+
   finalizeEnemyDamageBlocked(out, rawOutgoingVsEnemy)
+
+  invalidateCritWhenNoDamage(out, state.battleMove, enemyDefShatteredBefore)
 
   return { out, post }
 }
@@ -701,6 +782,7 @@ export function resolveExposedTurn(
     state.battleMove,
   )
   finalizeIncomingXpMetrics(out, eDmg > 0 ? eDmg : 0)
+  capResolveResultToRemainingHp(out, state.enemyHp, state.playerHp)
 
   if (
     state.battleMove.blackoutPhase === 'loading' &&
@@ -729,8 +811,38 @@ export function resolveMoves(
 
 function appendLog(log: string[], line: string): string[] {
   const next = [...log, line]
-  if (next.length > 3) next.shift()
+  if (next.length > BATTLE_LOG_MAX_ENTRIES) next.shift()
   return next
+}
+
+function withPlayerResolveStatuses(
+  status: CombatStatusState,
+  r: ResolveResult,
+  anchorBlocksStatus: boolean,
+): CombatStatusState {
+  return mergeResolveIntoCombatStatus(status, r, anchorBlocksStatus)
+}
+
+function withEnemyResolveStatuses(
+  status: CombatStatusState,
+  r: ResolveResult,
+  anchorBlocksStatus: boolean,
+): CombatStatusState {
+  return mergeEnemyMoveIntoCombatStatus(status, r.eMove, anchorBlocksStatus)
+}
+
+function applyPlayerResolveStatusesToWorking(
+  working: BattleState,
+  r: ResolveResult,
+): BattleState {
+  return {
+    ...working,
+    combatStatus: withPlayerResolveStatuses(
+      working.combatStatus,
+      r,
+      working.battleMove.anchorBlocksStatus,
+    ),
+  }
 }
 
 function showTelegraph(state: Pick<BattleState, 'npc' | 'turn' | 'combatStatus' | 'battleMove' | 'playerHp' | 'enemyHp' | 'enemyMaxHp' | 'playerStats' | 'playerMoveHistory' | 'enemyMoveHistory' | 'playerExposedTurns'>): UpcomingMove {
@@ -798,18 +910,24 @@ function processTurnStart(state: BattleState): BattleState {
   for (const hit of hits) {
     if (hit.missed) {
       const pct = hit.clock.missSelfDamagePct ?? 0.8
-      const selfDmg = Math.floor(state.playerHp * pct)
+      const selfDmg = capDamageToRemainingHp(
+        Math.floor(state.playerHp * pct),
+        playerHp,
+      )
       playerHp = Math.max(0, playerHp - selfDmg)
       log = appendLog(log, 'sealed fate slips. it cost you.')
       continue
     }
 
     if (hit.target === 'enemy') {
-      enemyHp = Math.max(0, enemyHp - hit.damage)
+      const dealt = capDamageToRemainingHp(hit.damage, enemyHp)
+      enemyHp = Math.max(0, enemyHp - dealt)
+      log = appendLog(log, deathClockHitLogLine({ ...hit, damage: dealt }, state.npc.displayName))
     } else {
-      playerHp = Math.max(0, playerHp - hit.damage)
+      const dealt = capDamageToRemainingHp(hit.damage, playerHp)
+      playerHp = Math.max(0, playerHp - dealt)
+      log = appendLog(log, deathClockHitLogLine({ ...hit, damage: dealt }, state.npc.displayName))
     }
-    log = appendLog(log, deathClockHitLogLine(hit, state.npc.displayName))
   }
 
   return { ...state, deathClocks: clocks, enemyHp, playerHp, log }
@@ -821,6 +939,7 @@ function applyEnemyResolutionPhase(
   playerHp: number,
   enemyHp: number,
   log: string[],
+  options?: { logPlayerDefenseExchange?: boolean },
 ): {
   playerHp: number
   enemyHp: number
@@ -833,37 +952,58 @@ function applyEnemyResolutionPhase(
   let nextHp = playerHp
   let nextEnemyHp = enemyHp
 
+  if (enemyHp <= 0) {
+    return { playerHp, enemyHp, log, ended: false }
+  }
+
   if (r.enemyStunned) {
     nextLog = appendLog(nextLog, `${lower} can't move.`)
-  } else if (r.incoming > 0) {
-    let incoming = r.incoming
+  } else if (r.rawIncoming > 0 || r.incoming > 0) {
+    let incoming = capDamageToRemainingHp(r.incoming, nextHp)
     const battle = state.battleMove
     if (battle.counterweightReflectPct != null) {
-      const reflected = Math.max(1, Math.floor(incoming * battle.counterweightReflectPct))
+      const reflected = capDamageToRemainingHp(
+        Math.max(1, Math.floor(incoming * battle.counterweightReflectPct)),
+        nextEnemyHp,
+      )
       nextEnemyHp = Math.max(0, nextEnemyHp - reflected)
       r.reflectedDmg = reflected
       battle.counterweightReflectPct = null
+      nextLog = appendLog(nextLog, `counterweight. ${reflected}.`)
     }
     const split = splitIncomingWithReflect(incoming, state.combatStatus.playerReflect)
-    nextHp = Math.max(0, nextHp - split.damageToPlayer)
-    if (r.guardCountered && split.damageToPlayer > 0) {
-      nextLog = appendLog(nextLog, `${lower} counters. ${split.damageToPlayer}.`)
-    } else if (r.playerActed && split.damageToPlayer > 0 && r.eMove !== 'STUNNED') {
-      const moveName = MOVES[r.eMove as PlayerMoveId]?.displayName ?? r.eMove
-      nextLog = appendLog(
-        nextLog,
-        `${lower}'s ${moveName}, ${split.damageToPlayer}.`,
-      )
+    const playerHit = capDamageToRemainingHp(split.damageToPlayer, nextHp)
+    nextHp = Math.max(0, nextHp - playerHit)
+    if (r.playerActed && r.eMove !== 'STUNNED') {
+      if (r.guardCountered) {
+        nextLog = appendLog(
+          nextLog,
+          combinedGuardCounterLogLine(r, state.npc.displayName, playerHit),
+        )
+      } else if (options?.logPlayerDefenseExchange && playerDefendedAgainstIncoming(r)) {
+        nextLog = appendLog(
+          nextLog,
+          combinedPlayerDefenseLogLine(r, state.npc.displayName),
+        )
+      } else if (!playerDefendedAgainstIncoming(r)) {
+        const moveName = getMoveLogDisplayName(r.eMove)
+        nextLog = appendLog(
+          nextLog,
+          `${lower}'s ${moveName}, ${playerHit}.`,
+        )
+      }
     }
     if (split.damageToEnemy > 0) {
-      nextEnemyHp = Math.max(0, nextEnemyHp - split.damageToEnemy)
-      r.reflectedDmg = (r.reflectedDmg ?? 0) + split.damageToEnemy
+      const enemyHit = capDamageToRemainingHp(split.damageToEnemy, nextEnemyHp)
+      nextEnemyHp = Math.max(0, nextEnemyHp - enemyHit)
+      r.reflectedDmg = (r.reflectedDmg ?? 0) + enemyHit
+      nextLog = appendLog(nextLog, `reflect. ${enemyHit}.`)
     }
     if (!r.playerActed) {
       nextLog = appendLog(
         nextLog,
-        split.damageToPlayer > 0
-          ? `you're exposed. ${split.damageToPlayer} taken.`
+        playerHit > 0
+          ? `you're exposed. ${playerHit} taken.`
           : `you're exposed. nothing comes.`,
       )
     }
@@ -877,11 +1017,12 @@ function applyEnemyResolutionPhase(
 
   if (state.combatStatus.playerBleed > 0) {
     const potency = state.combatStatus.playerBleedPotencyMult ?? 1
-    const b = Math.max(
+    const rawBleed = Math.max(
       1,
       Math.floor(state.playerStats.maxHp * BLEED_DAMAGE_MAX_HP_PCT * potency),
     )
     if (nextHp > 0) {
+      const b = capDamageToRemainingHp(rawBleed, nextHp)
       nextHp = Math.max(0, nextHp - b)
       nextLog = appendLog(nextLog, `you bleed. ${b} damage.`)
     } else {
@@ -898,6 +1039,7 @@ function applyPlayerResolutionPhase(
   enemyHp: number,
   playerHp: number,
   log: string[],
+  options?: { logPlayerDefenseExchange?: boolean },
 ): {
   enemyHp: number
   playerHp: number
@@ -917,13 +1059,16 @@ function applyPlayerResolutionPhase(
 
   let combatStatus = state.combatStatus
   let damageToEnemy = r.playerDmg
+  let reflectToPlayer = 0
 
   if (r.playerActed && damageToEnemy > 0) {
     const split = splitOutgoingWithReflect(damageToEnemy, combatStatus.enemyReflect)
     damageToEnemy = split.damageToEnemy
     if (split.damageToPlayer > 0) {
-      nextPlayerHp = Math.max(0, nextPlayerHp - split.damageToPlayer)
-      r.reflectedDmg = (r.reflectedDmg ?? 0) + split.damageToPlayer
+      const reflectDealt = capDamageToRemainingHp(split.damageToPlayer, nextPlayerHp)
+      nextPlayerHp = Math.max(0, nextPlayerHp - reflectDealt)
+      r.reflectedDmg = (r.reflectedDmg ?? 0) + reflectDealt
+      reflectToPlayer = reflectDealt
     }
     const doubled = applyDoubleHit(damageToEnemy, combatStatus.playerDouble)
     damageToEnemy = doubled.totalDamage
@@ -933,6 +1078,8 @@ function applyPlayerResolutionPhase(
   }
 
   if (damageToEnemy > 0) {
+    damageToEnemy = capDamageToRemainingHp(damageToEnemy, nextEnemyHp)
+    r.playerDmg = damageToEnemy
     nextEnemyHp = Math.max(0, nextEnemyHp - damageToEnemy)
   }
 
@@ -954,14 +1101,24 @@ function applyPlayerResolutionPhase(
   }
 
   if (r.playerActed) {
-    nextLog = appendLog(
-      nextLog,
-      playerLogLineForMove({
+    let logLine: string | null = null
+    if (playerDefendedAgainstIncoming(r)) {
+      if (options?.logPlayerDefenseExchange !== false) {
+        logLine = combinedPlayerDefenseLogLine(r, state.npc.displayName)
+      }
+    } else if (enemyDefendedAgainstOutgoing(r)) {
+      logLine = combinedEnemyDefenseLogLine(r, state.npc.displayName)
+    } else {
+      logLine = playerLogLineForMove({
         ...r,
         displayName: state.npc.displayName,
         phenomenaLine: r.phenomenaLine,
-      }),
-    )
+      })
+    }
+    if (logLine) nextLog = appendLog(nextLog, logLine)
+    if (reflectToPlayer > 0) {
+      nextLog = appendLog(nextLog, `reflect. ${reflectToPlayer}.`)
+    }
   }
 
   working = { ...working, combatStatus }
@@ -985,6 +1142,7 @@ function applyPlayerResolutionPhase(
   }
 
   if (winLocked) {
+    working = applyPlayerResolveStatusesToWorking(working, r)
     return {
       enemyHp: nextEnemyHp,
       playerHp: nextPlayerHp,
@@ -1000,28 +1158,31 @@ function applyPlayerResolutionPhase(
 
   let bleedDamage = 0
   let bleedActualHpChange = 0
-  if (working.combatStatus.enemyBleed > 0) {
-    const potency = working.combatStatus.enemyBleedPotencyMult ?? 1
-    let b = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT * potency))
-    if (state.runItBackMode) b *= 2
+  if (state.combatStatus.enemyBleed > 0) {
+    const potency = state.combatStatus.enemyBleedPotencyMult ?? 1
+    let rawBleed = Math.max(1, Math.floor(state.enemyMaxHp * BLEED_DAMAGE_MAX_HP_PCT * potency))
+    if (state.runItBackMode) rawBleed *= 2
     if (nextEnemyHp > 0) {
+      const b = capDamageToRemainingHp(rawBleed, nextEnemyHp)
       nextEnemyHp = Math.max(0, nextEnemyHp - b)
       nextLog = appendLog(nextLog, `${lower} bleeds. ${b} damage.`)
       bleedActualHpChange = b
     } else {
       nextLog = appendLog(nextLog, `${lower} bleeds.`)
     }
-    bleedDamage = b
+    bleedDamage = bleedActualHpChange
   }
 
   const braceChip = r.braceChipDmg ?? 0
   if (r.playerActed && braceChip > 0 && nextEnemyHp > 0) {
-    nextEnemyHp = Math.max(0, nextEnemyHp - braceChip)
-    nextLog = appendLog(nextLog, `brace chip. ${braceChip}.`)
+    const chip = capDamageToRemainingHp(braceChip, nextEnemyHp)
+    nextEnemyHp = Math.max(0, nextEnemyHp - chip)
+    nextLog = appendLog(nextLog, `brace chip. ${chip}.`)
   }
 
   if (nextEnemyHp <= 0) {
     nextLog = appendLog(nextLog, `${lower} is finished.`)
+    working = applyPlayerResolveStatusesToWorking(working, r)
     return {
       enemyHp: nextEnemyHp,
       playerHp: nextPlayerHp,
@@ -1034,6 +1195,8 @@ function applyPlayerResolutionPhase(
       xpBonusEvents,
     }
   }
+
+  working = applyPlayerResolveStatusesToWorking(working, r)
 
   return {
     enemyHp: nextEnemyHp,
@@ -1049,7 +1212,7 @@ function applyPlayerResolutionPhase(
 
 function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
   const battleMove = { ...state.battleMove }
-  let combatStatus = tickCombatStatus(state.combatStatus)
+  let combatStatus = tickCombatStatus(state.combatStatusAtTurnStart ?? state.combatStatus)
   combatStatus = mergeResolveIntoCombatStatus(
     combatStatus,
     r,
@@ -1137,6 +1300,7 @@ function finalizeTurn(state: BattleState, r: ResolveResult): BattleState {
     turn,
     upcomingMove,
     combatStatus,
+    combatStatusAtTurnStart: undefined,
     battleMove,
     enemyHp,
     log,
@@ -1207,7 +1371,14 @@ function applySkillXpToState(
 }
 
 function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number): BattleState {
+  const priorLogLen = state.log.length
   let working = processTurnStart(state)
+  working = {
+    ...working,
+    combatStatusAtTurnStart: working.combatStatus,
+  }
+  // Each turn's log should only show this turn's outcomes (keep death-clock lines).
+  working = { ...working, log: working.log.slice(priorLogLen) }
   const eMove = state.upcomingMove !== 'STUNNED' ? state.upcomingMove as PlayerMoveId : null
   working = {
     ...working,
@@ -1269,6 +1440,8 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
     }
   }
 
+  capResolveResultToRemainingHp(r, working.enemyHp, working.playerHp)
+
   const enemyFirst = enemyActsFirstInResolution(working, r)
   working = withResolveFeedback(working, r, enemyFirst)
   const pending: PendingResolve = { r, enemyFirst }
@@ -1280,6 +1453,7 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
       working.playerHp,
       working.enemyHp,
       working.log,
+      { logPlayerDefenseExchange: true },
     )
     if (enemyPhase.ended) {
       // Draw check: enemy killed the player, but would player's attack + bleed also kill enemy?
@@ -1315,6 +1489,11 @@ function beginTurnResolve(state: BattleState, pMove: PlayerMove, slot?: number):
       playerHp: enemyPhase.playerHp,
       enemyHp: enemyPhase.enemyHp,
       log: enemyPhase.log,
+      combatStatus: withEnemyResolveStatuses(
+        working.combatStatus,
+        r,
+        working.battleMove.anchorBlocksStatus,
+      ),
       pendingResolve: pending,
       resolveStep: 'pause_after_first',
       phase: 'busy',
@@ -1402,6 +1581,7 @@ function applySecondResolve(state: BattleState): BattleState {
       state.enemyHp,
       state.playerHp,
       state.log,
+      { logPlayerDefenseExchange: false },
     )
     const playerPhaseWorking = playerPhase.bleedDamage > 0
       ? {
@@ -1440,6 +1620,15 @@ function applySecondResolve(state: BattleState): BattleState {
     }
   }
 
+  if (state.enemyHp <= 0) {
+    return {
+      ...state,
+      pendingResolve: pending,
+      resolveStep: 'pause_after_second',
+      phase: 'busy',
+    }
+  }
+
   const enemyPhase = applyEnemyResolutionPhase(
     state,
     r,
@@ -1464,6 +1653,11 @@ function applySecondResolve(state: BattleState): BattleState {
     playerHp: enemyPhase.playerHp,
     enemyHp: enemyPhase.enemyHp,
     log: enemyPhase.log,
+    combatStatus: withEnemyResolveStatuses(
+      state.combatStatus,
+      r,
+      state.battleMove.anchorBlocksStatus,
+    ),
     pendingResolve: pending,
     resolveStep: 'pause_after_second',
     phase: 'busy',
@@ -1485,6 +1679,21 @@ function finishTurnResolve(state: BattleState): BattleState {
   }
 }
 
+/** Combat status merged with pending resolve for UI tags during busy resolution. */
+export function combatStatusForDisplay(
+  state: Pick<BattleState, 'phase' | 'combatStatus' | 'pendingResolve' | 'battleMove'>,
+): CombatStatusState {
+  if (state.phase !== 'busy' || !state.pendingResolve) {
+    return state.combatStatus
+  }
+  const { r } = state.pendingResolve
+  const anchorBlocksStatus = state.battleMove.anchorBlocksStatus
+  let status = state.combatStatus
+  status = mergeResolveIntoCombatStatus(status, r, anchorBlocksStatus)
+  status = mergeEnemyMoveIntoCombatStatus(status, r.eMove, anchorBlocksStatus)
+  return status
+}
+
 export function getEnemyStatusText(state: BattleState): string {
   return getEnemyStatusLabels(state.combatStatus).join('   ')
 }
@@ -1502,6 +1711,16 @@ export function getTelegraphText(state: BattleState): string {
   if (!display) return ''
   if (!display.moveName) return display.prefix + display.suffix
   return `${display.prefix}${display.moveName}${display.suffix}`
+}
+
+/** Preview upcoming enemy move only before their first committed attack (walker FURY_SWEEP tutorial excepted). */
+export function shouldPreviewEnemyTelegraph(
+  state: Pick<BattleState, 'enemyMoveHistory' | 'upcomingMove'>,
+  options?: { walkerHeavyTutorial?: boolean },
+): boolean {
+  if (state.enemyMoveHistory.length === 0) return true
+  if (options?.walkerHeavyTutorial && state.upcomingMove === 'FURY_SWEEP') return true
+  return false
 }
 
 export function createInitialBattleState(

@@ -191,6 +191,28 @@ export function splitOutgoingWithReflect(
   }
 }
 
+/** Crit rolls happen before enemy mitigation; strip crit effects when no damage lands. */
+export function invalidateCritWhenNoDamage(
+  out: {
+    playerDmg: number
+    crit: boolean
+    bleedApplied: boolean
+    bleedTurns?: number
+    bleedPotencyMult?: number
+  },
+  battleMove: Pick<BattleMoveState, 'enemyDefShattered'>,
+  enemyDefShatteredBefore: boolean,
+): void {
+  if (out.playerDmg > 0 || !out.crit) return
+  out.crit = false
+  out.bleedApplied = false
+  out.bleedTurns = undefined
+  out.bleedPotencyMult = undefined
+  if (!enemyDefShatteredBefore && battleMove.enemyDefShattered) {
+    battleMove.enemyDefShattered = false
+  }
+}
+
 /** Player's next hit lands twice, returns total damage to apply. */
 export function applyDoubleHit(playerDmg: number, playerDouble: number): {
   totalDamage: number
@@ -267,6 +289,12 @@ export function buildExposedResolveInput(input: ExposedResolveInput) {
         ? `you're exposed. ${incoming} taken.`
         : `you're exposed. nothing comes.`,
   }
+}
+
+/** Clamp strike damage so it cannot exceed the target's remaining HP. */
+export function capDamageToRemainingHp(damage: number, remainingHp: number): number {
+  if (damage <= 0) return damage
+  return Math.min(damage, Math.max(0, remainingHp))
 }
 
 export function deathClockHitLogLine(hit: DeathClockHit, enemyName: string): string {
