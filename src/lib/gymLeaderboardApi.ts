@@ -9,9 +9,11 @@ export type GymLeaderboardResponse = {
   trackingSince: string
   trackingUntil: string | null
   weekIndex: number
+  weekId: string
   weekPhase: 'active' | 'completed'
   deadlineMs: number
   frozen: boolean
+  scoreKind: 'wins' | 'clears'
   entries: GymLeaderboardEntry[]
 }
 
@@ -79,6 +81,12 @@ export async function fetchGymLeaderboard(options?: {
   const data = (await res.json()) as GymLeaderboardResponse
   if (!Array.isArray(data.entries)) {
     throw new Error('Invalid leaderboard response')
+  }
+  if (data.scoreKind !== 'wins' && data.scoreKind !== 'clears') {
+    throw new Error('Invalid leaderboard scoreKind')
+  }
+  if (typeof data.weekId !== 'string') {
+    throw new Error('Invalid leaderboard weekId')
   }
 
   for (const entry of data.entries) {

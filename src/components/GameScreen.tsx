@@ -28,15 +28,16 @@ import { refreshTheaterAttendance } from '../store/theaterStore'
 import { SOUTHSIDE_ENTRANCE_ZONE } from '../data/southsideCollision'
 import { E2_CLOSING_CRIER_NPC, E2_CLOSING_MOB_NPCS } from '../data/e2ClosingNpcs'
 import {
-  FIVE_GYM1_HEAD_NPC,
+  getCurrentGymHeadNpc,
+  getScaledGymInteriorNpcs,
   FIVE_GYM1_ID,
 } from '../data/gymNpcs'
 import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
-  getGymRevision,
   getActiveGymRun,
   getActiveGymRunCombatId,
+  canStartScoredGymRun,
   isCurrentWeeklyGymCleared,
   isOceanviewGymVisited,
   isWeeklyGauntletExplainerSeen,
@@ -48,11 +49,16 @@ import {
   setWeeklyGauntletExplainerSeen,
   refreshWeeklyGymCalendar,
   subscribeGymStore,
+  getGymRevision,
 } from '../store/gymStore'
 import {
+  getAbsoluteWeekIndex,
   getCurrentGymWeek,
+  getGymWeekById,
   getRetiredGymWeeks,
+  gymGauntletWelcomeLine,
   gymRunProgressLabel,
+  gymWeekUsesClearCountScoring,
   isGymGauntletCombatId,
 } from '../data/gymWeeks'
 import { isGymWeekScoringOpen } from '../data/gymWeekSchedule'
@@ -308,7 +314,8 @@ type DialogueState = {
   onComplete?: () => void
 }
 
-const GYM_LEADERBOARD_DISMISSED_KEY = 'aliworld:gym-leaderboard-dismissed'
+const gymLeaderboardDismissedKey = (): string =>
+  `aliworld:gym-leaderboard-dismissed:${getAbsoluteWeekIndex()}`
 
 export function GameScreen() {
   const playerRef = useRef<PlayerHandle>(null)
@@ -489,17 +496,18 @@ export function GameScreen() {
     return null
   }, [currentCity, gymRevision, quest1Revision, quest2Revision])
 
-  const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
-    void gymRevision
-    if (currentCity !== 'five-gym-interior') return null
-    if (isCurrentWeeklyGymCleared() || gymHeadPulseDismissed) return null
-    return { kind: 'npc', id: FIVE_GYM1_ID }
-  }, [currentCity, gymHeadPulseDismissed, gymRevision])
-
   const currentGymWeek = useMemo(() => {
     void gymRevision
     return getCurrentGymWeek()
   }, [gymRevision])
+
+  const gymHeadPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
+    void gymRevision
+    if (currentCity !== 'five-gym-interior') return null
+    const headId = currentGymWeek.leader.npcId
+    if (isCurrentWeeklyGymCleared() || gymHeadPulseDismissed) return null
+    return { kind: 'npc', id: headId }
+  }, [currentCity, currentGymWeek, gymHeadPulseDismissed, gymRevision])
 
   const gymActiveRun = useMemo(() => {
     void gymRevision
@@ -704,6 +712,9 @@ export function GameScreen() {
         npcs = npcs.filter((npc) => npc.id !== CLERK_NPC_ID)
       }
       return { ...baseCityConfig, npcs }
+    }
+    if (currentCity === 'five-gym-interior') {
+      return { ...baseCityConfig, npcs: getScaledGymInteriorNpcs() }
     }
     return baseCityConfig
   }, [baseCityConfig, currentCity, markDefeated, quest1Revision, quest2Revision, gymRevision])
@@ -912,7 +923,7 @@ export function GameScreen() {
 
   const handleGymLeaderboardClose = useCallback(() => {
     try {
-      sessionStorage.setItem(GYM_LEADERBOARD_DISMISSED_KEY, '1')
+      sessionStorage.setItem(gymLeaderboardDismissedKey(), '1')
     } catch {
       // ignore quota / private mode
     }
@@ -1504,15 +1515,13 @@ export function GameScreen() {
     setMapTransitionPending(false)
     if (pendingGymWelcomeRef.current) {
       pendingGymWelcomeRef.current = false
-      showNarration([
-        'one run. four fights, three henchmen, then the leader. full heal between each. one loss sends you back to the start.',
-      ])
+      showNarration([gymGauntletWelcomeLine(getCurrentGymWeek())])
     }
     if (pendingGymLeaderboardAutoPopRef.current) {
       pendingGymLeaderboardAutoPopRef.current = false
       let dismissed = false
       try {
-        dismissed = sessionStorage.getItem(GYM_LEADERBOARD_DISMISSED_KEY) === '1'
+        dismissed = sessionStorage.getItem(gymLeaderboardDismissedKey()) === '1'
       } catch {
         dismissed = false
       }
@@ -2167,9 +2176,9 @@ export function GameScreen() {
       return
     }
 
-    if (nearbyId === FIVE_GYM1_ID) {
+    if (nearbyId === FIVE_GYM1_ID || nearbyId === currentGymWeek.leader.npcId) {
       setGymHeadPulseDismissed(true)
-      beginNpcDialogue(FIVE_GYM1_HEAD_NPC, {
+      beginNpcDialogue(getCurrentGymHeadNpc(), {
         onComplete: () => setGymTrainerChoiceOpen(true),
       })
       return
@@ -2188,6 +2197,7 @@ export function GameScreen() {
     startNpcBattle,
     playCrierHeraldDialogue,
     preloadE2CutsceneIfNeeded,
+    currentGymWeek,
   ])
 
   const handleInteract = useCallback(() => {
@@ -2560,7 +2570,7 @@ export function GameScreen() {
     if (pendingGymLossLineRef.current) {
       pendingGymLossLineRef.current = false
       const lossLine = getCurrentGymWeek().leader.dialogue.loss
-      showNotYetDialogue(FIVE_GYM1_HEAD_NPC, lossLine)
+      showNotYetDialogue(getCurrentGymHeadNpc(), lossLine)
     }
 
     if (exit?.result === 'win' && exit.npcId && isGymGauntletCombatId(exit.npcId)) {
@@ -2588,17 +2598,30 @@ export function GameScreen() {
           weekId: clearResult.weekId,
           streak: clearResult.streak,
           cleanRun: gymRunDamageTakenRef.current <= 0,
+          repeatClear: !clearResult.firstClear,
         })
-        void claimGymWeekReward({
-          weekId: clearResult.weekId,
-          streak: clearResult.streak,
-        })
-          .then(() => refreshPlayerGrants())
-          .catch((err) => {
-            console.error('[gym-week-reward]', err instanceof Error ? err.message : String(err))
+        if (clearResult.firstClear) {
+          void claimGymWeekReward({
+            weekId: clearResult.weekId,
+            streak: clearResult.streak,
           })
+            .then(() => refreshPlayerGrants())
+            .catch((err) => {
+              console.error('[gym-week-reward]', err instanceof Error ? err.message : String(err))
+            })
+        }
+        const weekDef = getGymWeekById(clearResult.weekId)
+        const repeatWeek = weekDef && gymWeekUsesClearCountScoring(weekDef)
         showNarration(
-          [`week ${clearResult.weekId} cleared. xp and badge on the board, come back next week.`],
+          repeatWeek && !clearResult.firstClear
+            ? ['another clear on the board. keep stacking.']
+            : repeatWeek
+              ? [
+                  `week ${clearResult.weekId} cleared. seal on the jacket — stack more clears before sunday.`,
+                ]
+              : [
+                  `week ${clearResult.weekId} cleared. xp and badge on the board, come back next week.`,
+                ],
         )
         gymRunDamageTakenRef.current = 0
       } else if (getActiveGymRun()?.practice) {
@@ -2779,7 +2802,10 @@ export function GameScreen() {
         if (advanced && !advanced.completed && advanced.nextCombatId) {
           pendingGymChainRef.current = {
             nextNpcId: advanced.nextCombatId,
-            progressLabel: gymRunProgressLabel(advanced.run.fightIndex),
+            progressLabel: gymRunProgressLabel(
+              advanced.run.fightIndex,
+              getGymWeekById(advanced.run.weekId),
+            ),
           }
         }
       }
@@ -3303,7 +3329,8 @@ export function GameScreen() {
               </p>
               {gymActiveRun && !gymActiveRun.practice ? (
                 <p className="game-screen-gym-choice__progress">
-                  in progress, {gymRunProgressLabel(gymActiveRun.fightIndex)}
+                  in progress,{' '}
+                  {gymRunProgressLabel(gymActiveRun.fightIndex, currentGymWeek)}
                 </p>
               ) : null}
               {gymActiveRun && !gymActiveRun.practice && gymScoringOpen ? (
@@ -3316,7 +3343,7 @@ export function GameScreen() {
                 >
                   continue
                 </button>
-              ) : !isCurrentWeeklyGymCleared() && gymScoringOpen ? (
+              ) : canStartScoredGymRun() && gymScoringOpen && !gymActiveRun ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
@@ -3326,7 +3353,9 @@ export function GameScreen() {
                     )
                   }}
                 >
-                  start gauntlet
+                  {gymWeekUsesClearCountScoring(currentGymWeek) && isCurrentWeeklyGymCleared()
+                    ? 'run again'
+                    : 'start gauntlet'}
                 </button>
               ) : null}
               {!gymScoringOpen && !isCurrentWeeklyGymCleared() ? (
@@ -3415,6 +3444,7 @@ export function GameScreen() {
           {showGymLeaderboard && (
             <GymLeaderboardScreen
               viewerHandle={getAuthState().profile?.handle ?? null}
+              announcement={currentGymWeek.announcement}
               onClose={handleGymLeaderboardClose}
             />
           )}

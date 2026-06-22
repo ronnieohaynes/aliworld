@@ -32,10 +32,16 @@ export type GymFighterConfig = {
   battleSizeMult?: number
 }
 
+export type GymWeekScoringMode = 'one-and-done' | 'clear-count'
+
 export type GymWeekDefinition = {
   /** Stable id, badge value uses `gym-week-${id}`. */
   id: string
   weekNumber: number
+  /** How weekly standings rank players for this week. */
+  scoringMode: GymWeekScoringMode
+  /** Optional all-caps banner on gym entry leaderboard pop. */
+  announcement?: string
   leader: GymFighterConfig & {
     /** Overworld / dialogue npc id (week 1 keeps legacy `5ive-gym1`). */
     npcId: string
@@ -47,7 +53,7 @@ export type GymWeekDefinition = {
       loss: string
     }
   }
-  henchmen: readonly [GymFighterConfig, GymFighterConfig, GymFighterConfig]
+  henchmen: readonly GymFighterConfig[]
 }
 
 const GYM_BATTLE_BG = publicAsset('Assets/battle-bg/5ive-gym.png')
@@ -55,12 +61,16 @@ const JEROME_SPRITE = publicAsset('Assets/Characters/npcs/5ive-gym1.png')
 const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const JASON_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
+const AGENT5_SPRITE = publicAsset('Assets/Characters/npcs/week2-gym.png')
+const DARREN_SPRITE = publicAsset('Assets/Characters/npcs/npc10-idle.png')
+const LYNN_SPRITE = publicAsset('Assets/Characters/npcs/npc11-idle.png')
 
 /** Ordered weekly lineups, author new weeks by appending entries. */
 export const GYM_WEEKS: readonly GymWeekDefinition[] = [
   {
     id: '1',
     weekNumber: 1,
+    scoringMode: 'one-and-done',
     leader: {
       combatId: WEEK1_LEADER_NPC_ID,
       npcId: WEEK1_LEADER_NPC_ID,
@@ -142,6 +152,78 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
       },
     ],
   },
+  {
+    id: '2',
+    weekNumber: 2,
+    scoringMode: 'clear-count',
+    announcement:
+      'GYM CHALLENGE 2 IS LIVE! BEAT AGENT 5 AND HIS MINIONS AS MANY TIMES AS POSSIBLE FOR A PRIZE.',
+    leader: {
+      combatId: 'gym-week-2-leader',
+      npcId: 'agent-5-gym',
+      displayName: 'Agent 5',
+      name: 'Agent 5',
+      level: 14,
+      fixedHp: 145,
+      moves: ['STRIKE', 'WHISPER', 'LOOP', 'CANNON', 'PARRY', 'PARRY'],
+      leanSkill: 'attack',
+      guardCounter: { chance: 0.55, damageMult: 2.6 },
+      enemyGuardPierce: 0.42,
+      telegraphFlavor: {
+        STRIKE: 'cuts lucky',
+        WHISPER: 'whispers odds',
+        LOOP: 'the loop lands',
+        CANNON: 'loads heavy',
+        PARRY: 'dares you in',
+      },
+      spriteSrc: AGENT5_SPRITE,
+      spriteColumns: 4,
+      battleBg: GYM_BATTLE_BG,
+      battleSizeMult: 1.05,
+      dialogue: {
+        intro:
+          'challenge two. three fights, two henchmen, then me. clear as many times as you can before sunday night.',
+        inProgress: "you're mid-run. pick up where you left off or restart from darren.",
+        cleared: 'another clear on the board. keep stacking — first clear got your seal.',
+        loss: 'back to darren. run it again.',
+      },
+    },
+    henchmen: [
+      {
+        combatId: 'gym-week-2-h1',
+        displayName: 'Darren',
+        level: 9,
+        fixedHp: 95,
+        moves: ['STRIKE', 'STRIKE', 'CANNON', 'CANNON', 'LOOP'],
+        leanSkill: 'attack',
+        telegraphFlavor: {
+          STRIKE: 'hammers through',
+          CANNON: 'commits heavy',
+          LOOP: 'spins the loop',
+        },
+        spriteSrc: DARREN_SPRITE,
+        battleBg: GYM_BATTLE_BG,
+        battleSizeMult: 1,
+      },
+      {
+        combatId: 'gym-week-2-h2',
+        displayName: 'Lynn',
+        level: 11,
+        fixedHp: 110,
+        moves: ['SLIP', 'SLIP', 'PARRY', 'PARRY', 'STRIKE', 'WHISPER'],
+        leanSkill: 'speed',
+        telegraphFlavor: {
+          SLIP: 'slips inside',
+          PARRY: 'walls up',
+          STRIKE: 'quick jab',
+          WHISPER: 'feints lucky',
+        },
+        spriteSrc: LYNN_SPRITE,
+        battleBg: GYM_BATTLE_BG,
+        battleSizeMult: 0.98,
+      },
+    ],
+  },
 ] as const
 
 export const GYM_STREAK_MILESTONES = [
@@ -189,20 +271,39 @@ export function getRetiredGymWeeks(nowMs = Date.now()): GymWeekDefinition[] {
   return retired
 }
 
+export function getGymLeaderFightIndex(week: GymWeekDefinition): number {
+  return week.henchmen.length
+}
+
+export function getGymTotalFights(week: GymWeekDefinition): number {
+  return week.henchmen.length + 1
+}
+
+export function gymWeekUsesClearCountScoring(week: GymWeekDefinition): boolean {
+  return week.scoringMode === 'clear-count'
+}
+
 export function getGymRunCombatId(week: GymWeekDefinition, fightIndex: number): string {
-  if (fightIndex < 0 || fightIndex > 3) {
+  const leaderIndex = getGymLeaderFightIndex(week)
+  if (fightIndex < 0 || fightIndex > leaderIndex) {
     throw new Error(`Invalid gym fight index: ${fightIndex}`)
   }
-  if (fightIndex < 3) return week.henchmen[fightIndex]!.combatId
+  if (fightIndex < leaderIndex) return week.henchmen[fightIndex]!.combatId
   return week.leader.combatId
 }
 
 /** UI copy for gauntlet progress within a run. */
-export function gymRunProgressLabel(fightIndex: number): string {
-  if (fightIndex <= 0) return 'henchman 1 of 3'
-  if (fightIndex === 1) return 'henchman 2 of 3'
-  if (fightIndex === 2) return 'henchman 3 of 3'
-  return 'the leader'
+export function gymRunProgressLabel(fightIndex: number, week?: GymWeekDefinition): string {
+  const henchmanCount = week?.henchmen.length ?? 3
+  const leaderIndex = week ? getGymLeaderFightIndex(week) : 3
+  if (fightIndex >= leaderIndex) return 'the leader'
+  return `henchman ${fightIndex + 1} of ${henchmanCount}`
+}
+
+export function gymGauntletWelcomeLine(week: GymWeekDefinition): string {
+  const fights = getGymTotalFights(week)
+  const henchmen = week.henchmen.length
+  return `one run. ${fights} fights, ${henchmen} henchmen, then the leader. full heal between each. one loss sends you back to the start.`
 }
 
 export function isGymGauntletCombatId(combatId: string): boolean {

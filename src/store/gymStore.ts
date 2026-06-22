@@ -5,9 +5,11 @@
 import {
   getAbsoluteWeekIndex,
   getCurrentGymWeek,
+  getGymLeaderFightIndex,
   getGymRunCombatId,
   getGymWeekById,
   getRetiredGymWeeks,
+  gymWeekUsesClearCountScoring,
   isCurrentGymWeek,
   type GymWeekDefinition,
 } from '../data/gymWeeks'
@@ -76,8 +78,10 @@ function normalizeActiveRun(raw: unknown): GymActiveRun | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Partial<GymActiveRun>
   if (typeof o.weekId !== 'string' || !getGymWeekById(o.weekId)) return null
+  const week = getGymWeekById(o.weekId)!
+  const maxFightIndex = getGymLeaderFightIndex(week)
   const fightIndex =
-    typeof o.fightIndex === 'number' && o.fightIndex >= 0 && o.fightIndex <= 3
+    typeof o.fightIndex === 'number' && o.fightIndex >= 0 && o.fightIndex <= maxFightIndex
       ? Math.floor(o.fightIndex)
       : 0
   return {
@@ -280,6 +284,14 @@ export function isCurrentWeeklyGymCleared(nowMs = Date.now()): boolean {
   return state.clearedAbsoluteWeeks.includes(getAbsoluteWeekIndex(nowMs))
 }
 
+export function canStartScoredGymRun(nowMs = Date.now()): boolean {
+  refreshWeeklyGymCalendar(nowMs)
+  if (!isGymWeekScoringOpen(nowMs)) return false
+  const week = getCurrentGymWeek(nowMs)
+  if (gymWeekUsesClearCountScoring(week)) return true
+  return !isCurrentWeeklyGymCleared(nowMs)
+}
+
 /** @deprecated, use isCurrentWeeklyGymCleared */
 export function isGym5ive1Cleared(nowMs = Date.now()): boolean {
   return isCurrentWeeklyGymCleared(nowMs)
@@ -305,7 +317,9 @@ export function beginGymRun(weekId: string, practice: boolean, nowMs = Date.now(
   } else {
     if (!isCurrentGymWeek(weekId, nowMs)) return null
     if (!isGymWeekScoringOpen(nowMs)) return null
-    if (isCurrentWeeklyGymCleared(nowMs)) return null
+    const week = getGymWeekById(weekId)!
+    const alreadyCleared = isCurrentWeeklyGymCleared(nowMs)
+    if (alreadyCleared && !gymWeekUsesClearCountScoring(week)) return null
   }
 
   const run: GymActiveRun = { weekId, fightIndex: 0, practice }
@@ -349,7 +363,8 @@ export function advanceGymRunAfterWin(): {
   const week = getGymWeekById(run.weekId)
   if (!week) return null
 
-  if (run.fightIndex >= 3) {
+  const leaderIndex = getGymLeaderFightIndex(week)
+  if (run.fightIndex >= leaderIndex) {
     return { nextCombatId: null, completed: true, run: { ...run } }
   }
 
@@ -378,37 +393,41 @@ export type GymWeekClearResult = {
   absoluteWeekIndex: number
   streak: number
   practice: boolean
+  /** First scored clear this calendar week (seal + bonus rewards). */
+  firstClear: boolean
 }
 
-/** Mark current-week gauntlet cleared; updates streak. No-op for practice. */
+/** Mark current-week gauntlet cleared; updates streak on first clear. No-op for practice. */
 export function recordWeeklyGymClear(nowMs = Date.now()): GymWeekClearResult | null {
   const run = state.activeRun
   if (!run || run.practice) return null
   if (!isCurrentGymWeek(run.weekId, nowMs)) return null
   if (!isGymWeekScoringOpen(nowMs)) return null
 
+  const week = getGymWeekById(run.weekId)
+  if (!week) return null
+
   const abs = getAbsoluteWeekIndex(nowMs)
-  if (state.clearedAbsoluteWeeks.includes(abs)) {
-    state = { ...state, activeRun: null }
-    saveGymToStorage()
-    emit()
-    return null
-  }
+  const firstClear = !state.clearedAbsoluteWeeks.includes(abs)
 
   let streak = state.weeklyStreak
-  const prevCleared = state.clearedAbsoluteWeeks.filter((w) => w < abs).pop()
-  if (prevCleared == null) {
-    streak = 1
-  } else if (prevCleared === abs - 1) {
-    streak += 1
-  } else {
-    const missed = abs - prevCleared - 1
-    streak = Math.max(0, streak - missed) + 1
+  if (firstClear) {
+    const prevCleared = state.clearedAbsoluteWeeks.filter((w) => w < abs).pop()
+    if (prevCleared == null) {
+      streak = 1
+    } else if (prevCleared === abs - 1) {
+      streak += 1
+    } else {
+      const missed = abs - prevCleared - 1
+      streak = Math.max(0, streak - missed) + 1
+    }
   }
 
   state = {
     ...state,
-    clearedAbsoluteWeeks: [...state.clearedAbsoluteWeeks, abs].sort((a, b) => a - b),
+    clearedAbsoluteWeeks: firstClear
+      ? [...state.clearedAbsoluteWeeks, abs].sort((a, b) => a - b)
+      : state.clearedAbsoluteWeeks,
     weeklyStreak: streak,
     activeRun: null,
   }
@@ -420,6 +439,7 @@ export function recordWeeklyGymClear(nowMs = Date.now()): GymWeekClearResult | n
     absoluteWeekIndex: abs,
     streak,
     practice: false,
+    firstClear,
   }
 }
 
