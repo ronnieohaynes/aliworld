@@ -46,6 +46,10 @@ import {
   subscribeGrantsStore,
 } from '../store/grantsStore'
 import {
+  getRunSkinsRevision,
+  subscribeRunSkinsStore,
+} from '../store/runSkinsStore'
+import {
   getEquippedMoves,
   getPlayerLevel,
   getPlayerSkills,
@@ -213,6 +217,11 @@ export function LoadoutScreen({
   const playerLevel = useMemo(() => getPlayerLevel(), [skills])
   const build = useMemo(() => deriveBuildName(skills), [skills])
   const grantsRevision = useSyncExternalStore(subscribeGrantsStore, getGrantsRevision, getGrantsRevision)
+  const runSkinsRevision = useSyncExternalStore(
+    subscribeRunSkinsStore,
+    getRunSkinsRevision,
+    getRunSkinsRevision,
+  )
   const cosmeticsRevision = useSyncExternalStore(
     subscribeCosmeticsStore,
     getCosmeticsRevision,
@@ -224,8 +233,9 @@ export function LoadoutScreen({
   }, [grantsRevision])
   const ownedSkins = useMemo(() => {
     void grantsRevision
+    void runSkinsRevision
     return listOwnedSkinVariants()
-  }, [grantsRevision])
+  }, [grantsRevision, runSkinsRevision])
   const skillSections = useMemo(
     () => buildSkillSections(skills, equipped),
     [skills, equipped],

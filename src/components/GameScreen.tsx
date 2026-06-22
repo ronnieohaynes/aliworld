@@ -63,6 +63,7 @@ import {
   type PlayerMessage,
 } from '../lib/playerMessagesApi'
 import { refreshPlayerGrants } from '../store/grantsStore'
+import { unlockSkinGrantForRun } from '../data/skinGrants'
 import { resolveGymBattleOptions, restartWeeklyGymRun, startWeeklyGymRun } from '../lib/weeklyGymBattle'
 import { resolveGhostBattleOptions } from '../lib/ghostTrainingBattle'
 import { isGhostCombatId } from '../data/ghostCombat'
@@ -1327,6 +1328,11 @@ export function GameScreen() {
       try {
         const messages = await fetchUnseenPlayerMessages()
         if (messages.length === 0) return
+        for (const msg of messages) {
+          if (msg.grant?.kind === 'skin') {
+            unlockSkinGrantForRun(msg.grant.value)
+          }
+        }
         pendingPlayerMessagesRef.current = messages
         if (messages.some((m) => m.grant)) {
           void refreshPlayerGrants()

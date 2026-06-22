@@ -5,10 +5,16 @@
 import {
   getMidnightWalkSrc,
   isMidnightVariantId,
+  isSelectableMidnightVariantId,
   MIDNIGHT_DEFAULT_VARIANT_ID,
   type MidnightVariantId,
 } from '../data/midnightVariants'
 import { publicAsset } from '../utils/publicAsset'
+import {
+  getRunUnlockedSkinIds,
+  isRunSkinUnlocked,
+  unlockRunSkin,
+} from './runSkinsStore'
 
 export type SkinTone = 1 | 2 | 3 | 4 | 5 | 6
 
@@ -97,8 +103,13 @@ export function hasSelectedMidnightVariant(): boolean {
 
 /** Persist selection and enter the game (V1, no in-game re-pick). */
 export function setMidnightVariant(id: MidnightVariantId): void {
+  const runSkins = getRunUnlockedSkinIds()
+  const isCreationPick = runSkins.length === 0 && isSelectableMidnightVariantId(id)
+  if (!isCreationPick && !isRunSkinUnlocked(id)) return
+
   state = { ...state, midnightVariant: id }
   saveMidnightVariantToStorage(id)
+  unlockRunSkin(id)
   emit()
   void import('./playerStore').then(({ triggerAccountProgressionSave }) => {
     triggerAccountProgressionSave()

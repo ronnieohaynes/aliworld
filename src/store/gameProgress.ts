@@ -7,6 +7,7 @@ import { clearMidnightVariant } from './characterStore'
 import { resetMusicPlayerForNewGame } from '../lib/audioManager'
 import { resetPatchesForDebug } from './patchesStore'
 import { resetPlayerProgressForNewGame } from './playerStore'
+import { resetRunSkinsForNewGame } from './runSkinsStore'
 import { resetQuest1ForDebug } from './quest1Store'
 import { resetQuest2ForDebug } from './quest2Store'
 
@@ -17,6 +18,7 @@ export function performNewGameReset(): void {
   resetQuest2ForDebug()
   resetPatchesForDebug()
   resetPlayerProgressForNewGame()
+  resetRunSkinsForNewGame()
   resetMusicPlayerForNewGame()
   clearMidnightVariant()
 }

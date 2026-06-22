@@ -8,8 +8,7 @@
  *   (96px in gameAssets is on-screen display height after scale, not source frame size)
  *
  * Folders:
- *   midnight/     — base creation-carousel bodies (registered manually)
- *   variants/     — live reward / player / hidden variants (script promotes from staging)
+ *   variants/     — live player / reward / creation sprites (served in-game)
  *   new sprites 2/ — staging only; run `npm run register-variants -- --apply`
  *
  * After editing: redeploy analytics-summary (`supabase functions deploy analytics-summary`).
@@ -37,37 +36,37 @@ export type MidnightVariantRegistryEntry = {
 
 export const MIDNIGHT_VARIANT_SHEET = {
   default: {
-    folder: 'midnight',
+    folder: 'variants',
     file: 'midnight-default.png',
     displayName: 'Default',
     hidden: false,
   },
   'asian-f': {
-    folder: 'midnight',
+    folder: 'variants',
     file: 'midnight-asian-f.png',
     displayName: 'Asian F',
     hidden: false,
   },
   'latino-m': {
-    folder: 'midnight',
+    folder: 'variants',
     file: 'midnight-latino-m.png',
     displayName: 'Latino M',
     hidden: false,
   },
   'white-f': {
-    folder: 'midnight',
+    folder: 'variants',
     file: 'midnight-white-f.png',
     displayName: 'White F',
     hidden: false,
   },
   'filipino-m': {
-    folder: 'midnight',
+    folder: 'variants',
     file: 'midnight-filipino-m.png',
     displayName: 'Filipino M',
     hidden: false,
   },
   'danny-ali': {
-    folder: 'midnight',
+    folder: 'variants',
     file: 'danny-ali.png',
     displayName: 'Danny Ali',
     hidden: true,

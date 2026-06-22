@@ -2,11 +2,11 @@ import { SHOP_CATALOG } from './cosmeticsCatalog'
 import {
   isRegisteredMidnightVariantId,
   listRegisteredMidnightVariantIds,
-  MIDNIGHT_VARIANTS,
   MIDNIGHT_VARIANT_SHEET,
   type MidnightVariantId,
 } from './midnightVariants'
-import { getPlayerGrants } from '../store/grantsStore'
+import { getMidnightVariant } from '../store/characterStore'
+import { getRunUnlockedSkinIds, unlockRunSkin } from '../store/runSkinsStore'
 
 export type SkinVariantOption = {
   id: MidnightVariantId
@@ -32,6 +32,14 @@ export function resolveSkinGrantToVariantId(grantValue: string): MidnightVariant
   return null
 }
 
+/** Unlock a skin grant value for the current run (messages, theater, admin grants). */
+export function unlockSkinGrantForRun(grantValue: string): MidnightVariantId | null {
+  const id = resolveSkinGrantToVariantId(grantValue)
+  if (!id) return null
+  unlockRunSkin(id)
+  return id
+}
+
 /** Every registered skin the mothership can grant (registry-driven). */
 export function listGrantableSkinVariants(): SkinVariantOption[] {
   return listRegisteredMidnightVariantIds()
@@ -42,19 +50,11 @@ export function listGrantableSkinVariants(): SkinVariantOption[] {
     .sort((a, b) => a.displayName.localeCompare(b.displayName))
 }
 
-const CREATION_VARIANT_IDS = new Set(MIDNIGHT_VARIANTS.map((v) => v.id))
-
-/** Skins the player can equip in loadout — creation bases + granted reward skins. */
+/** Skins the player can equip in loadout — unlocked on this run only. */
 export function listOwnedSkinVariants(): SkinVariantOption[] {
-  const owned = new Set<MidnightVariantId>()
-  for (const id of CREATION_VARIANT_IDS) {
-    owned.add(id)
-  }
-  for (const grant of getPlayerGrants()) {
-    if (grant.kind !== 'skin') continue
-    const id = resolveSkinGrantToVariantId(grant.value)
-    if (id) owned.add(id)
-  }
+  const owned = new Set(getRunUnlockedSkinIds())
+  const equipped = getMidnightVariant()
+  if (equipped) owned.add(equipped)
   return listGrantableSkinVariants().filter((opt) => owned.has(opt.id))
 }
 

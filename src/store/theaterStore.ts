@@ -6,6 +6,7 @@ import {
 import { PREMIERE_ATTEND_THRESHOLD_SEC, getPremiereById } from '../data/theaterPremieres'
 import { grantPlayerSkillXp } from './playerStore'
 import { refreshPlayerGrants } from './grantsStore'
+import { unlockSkinGrantForRun } from '../data/skinGrants'
 import { trackPremiereAttend } from '../lib/analytics'
 
 const STORAGE_KEY = 'aliworld:theater:v1'
@@ -149,6 +150,10 @@ export async function tryClaimPremiereAttendance(
 
   if (result.rewardXp > 0) {
     grantPlayerSkillXp('luck', result.rewardXp)
+  }
+
+  if (result.skinGranted) {
+    unlockSkinGrantForRun(result.skinGranted)
   }
 
   trackPremiereAttend(premiereId, {

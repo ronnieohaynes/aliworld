@@ -17,9 +17,9 @@ export const GAME_VIEWPORT_WIDTH = 358
 /** GameShell play viewport height at design scale (flex-filled bezel row). */
 export const GAME_VIEWPORT_HEIGHT = 616
 
-/** Default MDNGHT walk sheet (was midnight-walk.png → midnight-default.png). */
-export const MIDNIGHT_DEFAULT_WALK_SRC = `${CHAR_DIR}/midnight/midnight-default.png`
-export const MIDNIGHT_FULL_SRC = `${CHAR_DIR}/midnight/midnight-full.png`
+/** Default MDNGHT walk sheet (variants/midnight-default.png). */
+export const MIDNIGHT_DEFAULT_WALK_SRC = `${CHAR_DIR}/variants/midnight-default.png`
+export const MIDNIGHT_FULL_SRC = `${CHAR_DIR}/variants/midnight-default.png`
 
 /** Midnight walk sheet: 1024×1024 px, 4×4 grid (down, up, left, right). */
 export const MIDNIGHT_WALK_SHEET_WIDTH = 1024

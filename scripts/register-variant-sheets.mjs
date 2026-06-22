@@ -7,8 +7,7 @@
  *
  * Folder roles under public/Assets/Characters:
  *   new sprites 2/  — STAGING: drop new art here; script copies to variants/ on --apply
- *   variants/       — LIVE: registered player/reward sprites (served + in registry)
- *   midnight/       — LIVE base bodies (creation carousel); register manually, not scanned
+ *   variants/       — LIVE: creation, reward, player sprites (served + in registry)
  *   * (archive)*    — ignored
  *
  * Usage:

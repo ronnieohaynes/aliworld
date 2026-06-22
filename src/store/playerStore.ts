@@ -51,6 +51,12 @@ import {
   type WorldMemoryState,
 } from './worldMemory'
 import { applyMidnightVariantFromAccount, getMidnightVariant } from './characterStore'
+import {
+  applyRunSkinsFromAccount,
+  resetRunSkinsForNewGame,
+  serializeRunSkins,
+  subscribeRunSkinsStore,
+} from './runSkinsStore'
 import { GHOST_TRAINING_ENABLED } from '../config/ghostTrainingGate'
 import { syncGhostTraining } from '../lib/ghostTrainingApi'
 import { isMidnightVariantId, type MidnightVariantId } from '../data/midnightVariants'
@@ -81,6 +87,7 @@ type AccountProgression = {
   lastX?: number
   lastY?: number
   midnightVariant?: MidnightVariantId
+  runUnlockedSkins?: MidnightVariantId[]
   xpCurveV2Migrated?: boolean
 }
 
@@ -96,6 +103,7 @@ type AccountAvatarConfig = {
   lastX?: unknown
   lastY?: unknown
   midnightVariant?: unknown
+  runUnlockedSkins?: unknown
   /** Set after one-time XP curve v2 grandfather migration. */
   xpCurveV2Migrated?: boolean
 }
@@ -205,6 +213,7 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<boo
         worldMemory: worldMemorySerialize(),
         artifacts: artifactSerialize(),
         midnightVariant: getMidnightVariant() ?? undefined,
+        runUnlockedSkins: serializeRunSkins(),
         ...(xpCurveV2Migrated ? { xpCurveV2Migrated: true } : {}),
         ...(lastLocation
           ? {
@@ -247,6 +256,11 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
     const rawVariant = avatarConfig?.midnightVariant
     const midnightVariant =
       typeof rawVariant === 'string' && isMidnightVariantId(rawVariant) ? rawVariant : undefined
+    const runUnlockedSkins = Array.isArray(avatarConfig?.runUnlockedSkins)
+      ? avatarConfig.runUnlockedSkins.filter(
+          (id): id is MidnightVariantId => typeof id === 'string' && isMidnightVariantId(id),
+        )
+      : undefined
 
     return {
       equippedMoves: normalizeEquippedMoves(data.moves_equipped),
@@ -262,6 +276,7 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
         ? { lastCity, lastX, lastY }
         : {}),
       ...(midnightVariant ? { midnightVariant } : {}),
+      ...(runUnlockedSkins && runUnlockedSkins.length > 0 ? { runUnlockedSkins } : {}),
     }
   } catch {
     return null
@@ -410,6 +425,7 @@ subscribeQuest2Store(persistProgressionToAccount)
 subscribeGymStore(persistProgressionToAccount)
 subscribeWorldMemoryStore(persistProgressionToAccount)
 subscribeArtifactStore(persistProgressionToAccount)
+subscribeRunSkinsStore(persistProgressionToAccount)
 
 export async function hydrateFromAccount(): Promise<void> {
   if (accountHydrated) return
@@ -457,7 +473,10 @@ export async function hydrateFromAccount(): Promise<void> {
 
         const rawVariant = data.midnightVariant
         if (typeof rawVariant === 'string' && isMidnightVariantId(rawVariant)) {
+          applyRunSkinsFromAccount(data.runUnlockedSkins, rawVariant)
           applyMidnightVariantFromAccount(rawVariant)
+        } else {
+          applyRunSkinsFromAccount(data.runUnlockedSkins, null)
         }
       }
     } catch (err) {
@@ -508,6 +527,7 @@ export function resetProgression(): void {
   resetGymState()
   resetWorldMemoryState()
   resetArtifactState()
+  resetRunSkinsForNewGame()
   skipAccountSave = false
 }
 
