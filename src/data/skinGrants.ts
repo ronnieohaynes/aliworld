@@ -1,5 +1,6 @@
 import { SHOP_CATALOG } from './cosmeticsCatalog'
 import {
+  getSkinMenuDisplayName,
   isRegisteredMidnightVariantId,
   listRegisteredMidnightVariantIds,
   MIDNIGHT_VARIANT_SHEET,
@@ -55,7 +56,13 @@ export function listOwnedSkinVariants(): SkinVariantOption[] {
   const owned = new Set(getRunUnlockedSkinIds())
   const equipped = getMidnightVariant()
   if (equipped) owned.add(equipped)
-  return listGrantableSkinVariants().filter((opt) => owned.has(opt.id))
+  return listRegisteredMidnightVariantIds()
+    .filter((id) => owned.has(id))
+    .map((id) => ({
+      id,
+      displayName: getSkinMenuDisplayName(id),
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName))
 }
 
 export function isSkinVariantOwned(variantId: MidnightVariantId): boolean {

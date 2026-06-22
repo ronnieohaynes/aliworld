@@ -86,6 +86,14 @@ export const MIDNIGHT_VARIANTS: readonly MidnightVariantDef[] = [
   { id: 'filipino-m', render: BASELINE_RENDER },
 ] as const
 
+/** Player-facing label for creation bases in loadout / carousel (classic, alt 1…). */
+export function getSkinMenuDisplayName(id: MidnightVariantId): string {
+  const creationIndex = MIDNIGHT_VARIANTS.findIndex((variant) => variant.id === id)
+  if (creationIndex === 0) return 'classic'
+  if (creationIndex > 0) return `alt ${creationIndex}`
+  return MIDNIGHT_VARIANT_SHEET[id].displayName
+}
+
 const RENDER_BY_ID = (() => {
   const map = Object.fromEntries(
     listRegisteredMidnightVariantIds().map((id) => [id, BASELINE_RENDER]),

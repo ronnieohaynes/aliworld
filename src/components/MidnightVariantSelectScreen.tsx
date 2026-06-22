@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   getMidnightVariantRenderTuning,
   getMidnightWalkSrc,
+  getSkinMenuDisplayName,
   MIDNIGHT_VARIANTS,
   type MidnightVariantDef,
   type MidnightVariantId,
@@ -27,11 +28,6 @@ const PREVIEW_PIXEL_SCALE = 2
 const PREVIEW_DISPLAY_W = Math.floor(WORLD_PLAYER_DISPLAY_WIDTH * PREVIEW_PIXEL_SCALE)
 const PREVIEW_DISPLAY_H = Math.floor(WORLD_PLAYER_DISPLAY_HEIGHT * PREVIEW_PIXEL_SCALE)
 const PREVIEW_ALPHA_MIN = 12
-
-function formatVariantDisplayName(index: number): string {
-  if (index === 0) return 'classic'
-  return `alt ${index}`
-}
 
 type PreloadedSheets = Partial<Record<MidnightVariantId, SpriteSheet>>
 
@@ -381,7 +377,7 @@ export function MidnightVariantSelectScreen() {
 
           <div className="midnight-select-screen__confirm-block">
             <p className="midnight-select-screen__variant-name">
-              {formatVariantDisplayName(focusedIndex)}
+              {getSkinMenuDisplayName(focusedVariant.id)}
             </p>
             <p className="midnight-select-screen__tagline">ALIWORLD awaits</p>
             <button
