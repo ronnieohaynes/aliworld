@@ -30,6 +30,10 @@ export type GymFighterConfig = {
   spriteColumns?: number
   battleBg: string
   battleSizeMult?: number
+  /** Shown when this fighter is defeated (player win narration). */
+  losingLine?: string
+  /** Shown when this fighter wins (player loss narration). */
+  winningLine?: string
 }
 
 export type GymWeekScoringMode = 'one-and-done' | 'clear-count'
@@ -180,9 +184,9 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
       spriteColumns: 4,
       battleBg: GYM_BATTLE_BG,
       battleSizeMult: 1.05,
+      losingLine: '...',
       dialogue: {
-        intro:
-          'challenge two. three fights, two henchmen, then me. clear as many times as you can before sunday night.',
+        intro: '...',
         inProgress: "you're mid-run. pick up where you left off or restart from darren.",
         cleared: 'another clear on the board. keep stacking — first clear got your seal.',
         loss: 'back to darren. run it again.',
