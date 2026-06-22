@@ -1369,10 +1369,7 @@ export function GameScreen() {
         return
       }
       setWeeklyGauntletExplainerSeen()
-      showNarration(
-        ['one run. four fights, three henchmen, then the leader. lose once and you start over.'],
-        onDone,
-      )
+      showNarration([gymGauntletWelcomeLine(getCurrentGymWeek())], onDone)
     },
     [showNarration],
   )
@@ -3330,10 +3327,16 @@ export function GameScreen() {
               {gymActiveRun && !gymActiveRun.practice ? (
                 <p className="game-screen-gym-choice__progress">
                   in progress,{' '}
-                  {gymRunProgressLabel(gymActiveRun.fightIndex, currentGymWeek)}
+                  {gymRunProgressLabel(
+                    gymActiveRun.fightIndex,
+                    getGymWeekById(gymActiveRun.weekId),
+                  )}
                 </p>
               ) : null}
-              {gymActiveRun && !gymActiveRun.practice && gymScoringOpen ? (
+              {gymActiveRun &&
+              !gymActiveRun.practice &&
+              gymActiveRun.weekId === currentGymWeek.id &&
+              gymScoringOpen ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
@@ -3390,7 +3393,10 @@ export function GameScreen() {
                   practice week {week.weekNumber}
                 </button>
               ))}
-              {gymActiveRun && !gymActiveRun.practice && gymScoringOpen ? (
+              {gymActiveRun &&
+              !gymActiveRun.practice &&
+              gymActiveRun.weekId === currentGymWeek.id &&
+              gymScoringOpen ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn"

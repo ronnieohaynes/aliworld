@@ -50,20 +50,23 @@ function isNpcConverted(npcId: string): boolean {
   if (npcId === CLERK_NPC_ID) return isClerkConverted()
   if (npcId === RESTOCKER_NPC_ID) return isRestockerDefeated()
   if (npcId === CROWD_1_NPC_ID) return isCrowdAddressed()
-  if (npcId === FIVE_GYM1_ID) return isCurrentWeeklyGymCleared()
+  if (npcId === FIVE_GYM1_ID || npcId === getCurrentGymWeek().leader.npcId) {
+    return isCurrentWeeklyGymCleared()
+  }
   return false
 }
 
-function weeklyGymLeaderLine(): string {
+function weeklyGymLeaderLine(npcId: string): string {
   const week = getCurrentGymWeek()
-  if (week.leader.npcId !== FIVE_GYM1_ID) {
+  if (week.leader.npcId === npcId) {
+    if (isCurrentWeeklyGymCleared()) return week.leader.dialogue.cleared
+    const run = getActiveGymRun()
+    if (run && !run.practice && run.weekId === week.id) {
+      return week.leader.dialogue.inProgress
+    }
     return week.leader.dialogue.intro
   }
-  if (isCurrentWeeklyGymCleared()) return week.leader.dialogue.cleared
-  const run = getActiveGymRun()
-  if (run && !run.practice && run.weekId === week.id) {
-    return week.leader.dialogue.inProgress
-  }
+  if (npcId === FIVE_GYM1_ID) return isCurrentWeeklyGymCleared() ? week.leader.dialogue.cleared : week.leader.dialogue.intro
   return week.leader.dialogue.intro
 }
 
@@ -73,8 +76,8 @@ export function resolveNpcDialogueLines(
   options?: ResolveNpcDialogueOptions,
 ): ResolvedDialogueLine[] {
   let raw: NpcDialogueLine[]
-  if (npc.id === FIVE_GYM1_ID && !options?.blocked) {
-    raw = [weeklyGymLeaderLine()]
+  if ((npc.id === FIVE_GYM1_ID || npc.id === getCurrentGymWeek().leader.npcId) && !options?.blocked) {
+    raw = [weeklyGymLeaderLine(npc.id)]
   } else if (options?.blocked && npc.linesBlocked?.length) {
     raw = npc.linesBlocked
   } else if (isNpcConverted(npc.id) && npc.linesConverted?.length) {

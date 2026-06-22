@@ -9,6 +9,7 @@ import {
   clearActiveGymRun,
   getActiveGymRun,
   getActiveGymRunCombatId,
+  invalidateStaleGymRun,
   isCurrentWeeklyGymCleared,
   restartGymRun,
 } from '../store/gymStore'
@@ -50,6 +51,7 @@ export function resolveGymBattleOptions(npcId: string): GymBattleOptions {
 }
 
 export function startWeeklyGymRun(weekId: string, practice: boolean): string | null {
+  invalidateStaleGymRun()
   const week = getGymWeekById(weekId)
   if (!week) return null
 
@@ -65,9 +67,10 @@ export function startWeeklyGymRun(weekId: string, practice: boolean): string | n
     return getActiveGymRunCombatId()
   }
 
+  clearActiveGymRun()
   const run = beginGymRun(weekId, false)
   if (!run) return null
-  return getActiveGymRunCombatId()
+  return getGymRunCombatId(week, 0)
 }
 
 export function restartWeeklyGymRun(): string | null {
