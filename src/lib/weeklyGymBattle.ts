@@ -62,11 +62,6 @@ export function startWeeklyGymRun(weekId: string, practice: boolean): string | n
     return getGymRunCombatId(week, 0)
   }
 
-  const existing = getActiveGymRun()
-  if (existing && !existing.practice && existing.weekId === weekId) {
-    return getActiveGymRunCombatId()
-  }
-
   clearActiveGymRun()
   const run = beginGymRun(weekId, false)
   if (!run) return null
