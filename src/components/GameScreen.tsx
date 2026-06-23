@@ -36,12 +36,14 @@ import { DEV_SPAR_NPC_ID, isDevSparNpcId } from '../data/devSpar'
 import { collectArtifact, getArtifactStoreSnapshot, hasArtifact, subscribeArtifactStore } from '../store/artifactStore'
 import {
   getActiveGymRun,
-  getActiveGymRunCombatId,
   canStartScoredGymRun,
   isCurrentWeeklyGymCleared,
   isOceanviewGymVisited,
   isWeeklyGauntletExplainerSeen,
   advanceGymRunAfterWin,
+  abortGymRunOnLeavingGym,
+  abortGymRunOnInterrupt,
+  hasActiveGymRun,
   clearActiveGymRun,
   recordWeeklyGymClear,
   resetGymRunOnLoss,
@@ -69,7 +71,7 @@ import {
   type PlayerMessage,
 } from '../lib/playerMessagesApi'
 import { refreshPlayerGrants } from '../store/grantsStore'
-import { resolveGymBattleOptions, restartWeeklyGymRun, startWeeklyGymRun } from '../lib/weeklyGymBattle'
+import { resolveGymBattleOptions, startWeeklyGymRun } from '../lib/weeklyGymBattle'
 import { resolveGhostBattleOptions } from '../lib/ghostTrainingBattle'
 import { isGhostCombatId } from '../data/ghostCombat'
 import { completeGhostBattle, refreshGhostTraining } from '../store/ghostTrainingStore'
@@ -342,6 +344,7 @@ export function GameScreen() {
   const pendingPostE1NarrationRef = useRef(false)
   const pendingGymLossLineRef = useRef(false)
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
+  const gymChainInFlightRef = useRef(false)
   const pendingGymWelcomeRef = useRef(false)
   const pendingGymLeaderboardAutoPopRef = useRef(false)
   const pendingPlayerMessagesRef = useRef<PlayerMessage[] | null>(null)
@@ -618,12 +621,41 @@ export function GameScreen() {
 
   useEffect(() => {
     if (!locationReady) return
-    if (prevCityRef.current === currentCity) return
-    if (prevCityRef.current !== null) {
-      trackProgressEvent('city_enter', { city: currentCity })
+    const prev = prevCityRef.current
+    if (prev === 'five-gym-interior' && currentCity !== 'five-gym-interior') {
+      abortGymRunOnLeavingGym()
+      gymChainInFlightRef.current = false
+      pendingGymChainRef.current = null
+    }
+    if (prev !== currentCity) {
+      if (prev !== null) {
+        trackProgressEvent('city_enter', { city: currentCity })
+      }
     }
     prevCityRef.current = currentCity
   }, [currentCity, locationReady])
+
+  const interruptGymRunIfActive = useCallback(() => {
+    if (!hasActiveGymRun()) return
+    abortGymRunOnInterrupt()
+    gymChainInFlightRef.current = false
+    pendingGymChainRef.current = null
+  }, [])
+
+  useEffect(() => {
+    if (currentCity !== 'five-gym-interior') return
+    if (!hasActiveGymRun()) return
+    if (battleNpcId || battleWipePhase || gymChainInFlightRef.current || pendingGymChainRef.current) {
+      return
+    }
+    interruptGymRunIfActive()
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    currentCity,
+    gymRevision,
+    interruptGymRunIfActive,
+  ])
 
   const showQuestTransition = useCallback((params: ShowQuestTransitionParams) => {
     setQuestTransitionActive(true)
@@ -916,10 +948,11 @@ export function GameScreen() {
   }, [beginMenuTransition])
 
   const openGymLeaderboard = useCallback(() => {
+    interruptGymRunIfActive()
     setShowStartMenu(false)
     setMenuReturnPending(false)
     setShowGymLeaderboard(true)
-  }, [])
+  }, [interruptGymRunIfActive])
 
   const handleGymLeaderboardClose = useCallback(() => {
     try {
@@ -931,10 +964,11 @@ export function GameScreen() {
   }, [])
 
   const openGhostTraining = useCallback(() => {
+    interruptGymRunIfActive()
     setShowStartMenu(false)
     setMenuReturnPending(false)
     setShowGhostTraining(true)
-  }, [])
+  }, [interruptGymRunIfActive])
 
   const handleGhostTrainingClose = useCallback(() => {
     setShowGhostTraining(false)
@@ -942,11 +976,12 @@ export function GameScreen() {
 
   const openTheater = useCallback(() => {
     if (!THEATER_ENABLED) return
+    interruptGymRunIfActive()
     setShowStartMenu(false)
     setMenuReturnPending(false)
     setShowTheater(true)
     void refreshTheaterAttendance()
-  }, [])
+  }, [interruptGymRunIfActive])
 
   const handleTheaterClose = useCallback(() => {
     setShowTheater(false)
@@ -954,10 +989,11 @@ export function GameScreen() {
 
   const openCosmeticsShop = useCallback(() => {
     if (!COSMETICS_SHOP_ENABLED) return
+    interruptGymRunIfActive()
     setShowStartMenu(false)
     setMenuReturnPending(false)
     setShowShop(true)
-  }, [])
+  }, [interruptGymRunIfActive])
 
   const handleShopClose = useCallback(() => {
     setShowShop(false)
@@ -1020,9 +1056,11 @@ export function GameScreen() {
       return
     }
     setMenuReturnPending(false)
+    interruptGymRunIfActive()
     setShowFannyPack(true)
   }, [
     beginResumeTransition,
+    interruptGymRunIfActive,
     menuReturnPending,
     menuTransition,
     showFannyPack,
@@ -1167,13 +1205,6 @@ export function GameScreen() {
     },
     [startNpcBattle],
   )
-
-  const continueGymGauntletBattle = useCallback(() => {
-    const combatId = getActiveGymRunCombatId()
-    if (!combatId) return
-    setGymTrainerChoiceOpen(false)
-    startNpcBattle(combatId)
-  }, [startNpcBattle])
 
   // ── DEV ONLY: K spawns the sparring dummy, REMOVE BEFORE LAUNCH ──
   const startDevSparBattle = useCallback(() => {
@@ -2574,8 +2605,10 @@ export function GameScreen() {
       const chain = pendingGymChainRef.current
       pendingGymChainRef.current = null
       if (chain) {
-        showNarration([chain.progressLabel], () => {
-          window.requestAnimationFrame(() => startNpcBattle(chain.nextNpcId))
+        gymChainInFlightRef.current = true
+        window.requestAnimationFrame(() => {
+          gymChainInFlightRef.current = false
+          startNpcBattle(chain.nextNpcId)
         })
         return
       }
@@ -2849,6 +2882,7 @@ export function GameScreen() {
       return
     }
     setMenuReturnPending(false)
+    interruptGymRunIfActive()
     setShowLoadout(true)
     // Script button tap completes the waitForAction step.
     if (loadoutTutorialStep === 1) {
@@ -2859,6 +2893,7 @@ export function GameScreen() {
   }, [
     beginResumeTransition,
     loadoutTutorialStep,
+    interruptGymRunIfActive,
     menuReturnPending,
     menuTransition,
     showGhostTraining,
@@ -3324,29 +3359,7 @@ export function GameScreen() {
               <p className="game-screen-gym-choice__title">
                 week {currentGymWeek.weekNumber} · {currentGymWeek.leader.name}
               </p>
-              {gymActiveRun && !gymActiveRun.practice ? (
-                <p className="game-screen-gym-choice__progress">
-                  in progress,{' '}
-                  {gymRunProgressLabel(
-                    gymActiveRun.fightIndex,
-                    getGymWeekById(gymActiveRun.weekId),
-                  )}
-                </p>
-              ) : null}
-              {gymActiveRun &&
-              !gymActiveRun.practice &&
-              gymActiveRun.weekId === currentGymWeek.id &&
-              gymScoringOpen ? (
-                <button
-                  type="button"
-                  className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
-                  onClick={() => {
-                    showWeeklyGauntletExplainerIfNeeded(() => continueGymGauntletBattle())
-                  }}
-                >
-                  continue
-                </button>
-              ) : canStartScoredGymRun() && gymScoringOpen && !gymActiveRun ? (
+              {canStartScoredGymRun() && gymScoringOpen && !gymActiveRun ? (
                 <button
                   type="button"
                   className="game-screen-gym-choice__btn game-screen-gym-choice__btn--fight"
@@ -3393,26 +3406,13 @@ export function GameScreen() {
                   practice week {week.weekNumber}
                 </button>
               ))}
-              {gymActiveRun &&
-              !gymActiveRun.practice &&
-              gymActiveRun.weekId === currentGymWeek.id &&
-              gymScoringOpen ? (
-                <button
-                  type="button"
-                  className="game-screen-gym-choice__btn"
-                  onClick={() => {
-                    const combatId = restartWeeklyGymRun()
-                    if (combatId) startNpcBattle(combatId)
-                    setGymTrainerChoiceOpen(false)
-                  }}
-                >
-                  restart run
-                </button>
-              ) : null}
               <button
                 type="button"
                 className="game-screen-gym-choice__btn"
-                onClick={() => setGymTrainerChoiceOpen(false)}
+                onClick={() => {
+                  interruptGymRunIfActive()
+                  setGymTrainerChoiceOpen(false)
+                }}
               >
                 not yet
               </button>

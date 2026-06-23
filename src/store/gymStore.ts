@@ -74,26 +74,6 @@ function normalizeClearedWeeks(raw: unknown): number[] {
   return [...new Set(out)].sort((a, b) => a - b)
 }
 
-function normalizeActiveRun(raw: unknown): GymActiveRun | null {
-  if (!raw || typeof raw !== 'object') return null
-  const o = raw as Partial<GymActiveRun>
-  if (typeof o.weekId !== 'string' || !getGymWeekById(o.weekId)) return null
-  const week = getGymWeekById(o.weekId)!
-  const maxFightIndex = getGymLeaderFightIndex(week)
-  const fightIndex =
-    typeof o.fightIndex === 'number' && o.fightIndex >= 0 && o.fightIndex <= maxFightIndex
-      ? Math.floor(o.fightIndex)
-      : 0
-  return sanitizeActiveRunForCalendar(
-    {
-      weekId: o.weekId,
-      fightIndex,
-      practice: o.practice === true,
-    },
-    Date.now(),
-  )
-}
-
 function reconcileActiveRun(nowMs = Date.now()): GymActiveRun | null {
   const run = sanitizeActiveRunForCalendar(state.activeRun, nowMs)
   if (run !== state.activeRun) {
@@ -175,7 +155,7 @@ function loadGymFromStorage(): GymState {
             typeof o.weeklyStreak === 'number' && o.weeklyStreak >= 0
               ? Math.floor(o.weeklyStreak)
               : 0,
-          activeRun: normalizeActiveRun(o.activeRun),
+          activeRun: null,
         })
       }
     }
@@ -204,9 +184,21 @@ function loadGymFromStorage(): GymState {
   return syncWeeklyCalendar(emptyGymState())
 }
 
+function gymPersistedSnapshot(input: GymState): GymSerialized {
+  return {
+    oceanviewGymVisited: input.oceanviewGymVisited,
+    weeklyGauntletExplainerSeen: input.weeklyGauntletExplainerSeen,
+    trackedAbsoluteWeek: input.trackedAbsoluteWeek,
+    clearedAbsoluteWeeks: [...input.clearedAbsoluteWeeks],
+    weeklyStreak: input.weeklyStreak,
+    // Gauntlet progress is session-only — must finish in one go, never restored from disk.
+    activeRun: null,
+  }
+}
+
 function saveGymToStorage(): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(gymPersistedSnapshot(state)))
   } catch {
     // ignore
   }
@@ -490,15 +482,21 @@ export function clearActiveGymRun(): void {
   emit()
 }
 
+/** Leaving the gym or interrupting voids an in-progress gauntlet — one session only. */
+export function abortGymRunOnLeavingGym(): void {
+  clearActiveGymRun()
+}
+
+export function abortGymRunOnInterrupt(): void {
+  clearActiveGymRun()
+}
+
+export function hasActiveGymRun(): boolean {
+  return getActiveGymRun() != null
+}
+
 export function serialize(): GymSerialized {
-  return {
-    oceanviewGymVisited: state.oceanviewGymVisited,
-    weeklyGauntletExplainerSeen: state.weeklyGauntletExplainerSeen,
-    trackedAbsoluteWeek: state.trackedAbsoluteWeek,
-    clearedAbsoluteWeeks: [...state.clearedAbsoluteWeeks],
-    weeklyStreak: state.weeklyStreak,
-    activeRun: state.activeRun ? { ...state.activeRun } : null,
-  }
+  return gymPersistedSnapshot(state)
 }
 
 export function applyState(data: Partial<GymSerialized>): void {
@@ -518,7 +516,7 @@ export function applyState(data: Partial<GymSerialized>): void {
       typeof data.weeklyStreak === 'number' && data.weeklyStreak >= 0
         ? Math.floor(data.weeklyStreak)
         : 0,
-    activeRun: normalizeActiveRun(data.activeRun),
+    activeRun: null,
   })
   saveGymToStorage()
   emit()

@@ -98,7 +98,7 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
       battleSizeMult: 1.02,
       dialogue: {
         intro: 'week one. four fights, one run, three henchmen, then me. one loss sends you back to the start.',
-        inProgress: "you're mid-run. pick up where you left off or restart from the top.",
+        inProgress: 'one run. no breaks — finish the gauntlet or start over.',
         cleared: "week one's yours. come back next week, practice anytime.",
         loss: "come back when you're ready.",
       },
@@ -187,7 +187,7 @@ export const GYM_WEEKS: readonly GymWeekDefinition[] = [
       losingLine: '...',
       dialogue: {
         intro: '...',
-        inProgress: "you're mid-run. pick up where you left off or restart from darren.",
+        inProgress: 'one run. no breaks — finish the gauntlet or start over.',
         cleared: 'another clear on the board. keep stacking — first clear got your seal.',
         loss: 'back to darren. run it again.',
       },
