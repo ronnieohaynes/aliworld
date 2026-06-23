@@ -346,7 +346,6 @@ export function GameScreen() {
   const pendingPostE1NarrationRef = useRef(false)
   const pendingGymLossLineRef = useRef(false)
   const pendingGymChainRef = useRef<{ nextNpcId: string; progressLabel: string } | null>(null)
-  const gymChainInFlightRef = useRef(false)
   const pendingGymWelcomeRef = useRef(false)
   const pendingGymLeaderboardAutoPopRef = useRef(false)
   const pendingPlayerMessagesRef = useRef<PlayerMessage[] | null>(null)
@@ -626,7 +625,6 @@ export function GameScreen() {
     const prev = prevCityRef.current
     if (prev === 'five-gym-interior' && currentCity !== 'five-gym-interior') {
       abortGymRunOnLeavingGym()
-      gymChainInFlightRef.current = false
       pendingGymChainRef.current = null
     }
     if (prev !== currentCity) {
@@ -640,24 +638,8 @@ export function GameScreen() {
   const interruptGymRunIfActive = useCallback(() => {
     if (!hasActiveGymRun()) return
     abortGymRunOnInterrupt()
-    gymChainInFlightRef.current = false
     pendingGymChainRef.current = null
   }, [])
-
-  useEffect(() => {
-    if (currentCity !== 'five-gym-interior') return
-    if (!hasActiveGymRun()) return
-    if (battleNpcId || battleWipePhase || gymChainInFlightRef.current || pendingGymChainRef.current) {
-      return
-    }
-    interruptGymRunIfActive()
-  }, [
-    battleNpcId,
-    battleWipePhase,
-    currentCity,
-    gymRevision,
-    interruptGymRunIfActive,
-  ])
 
   const showQuestTransition = useCallback((params: ShowQuestTransitionParams) => {
     setQuestTransitionActive(true)
@@ -1178,10 +1160,11 @@ export function GameScreen() {
     }
   }, [adamTutorialStep, showFannyPack])
 
-  const startNpcBattle = useCallback((npcId: string) => {
-    if (battleNpcId || battleWipePhase) return
+  const startNpcBattle = useCallback((npcId: string, force = false) => {
+    if (!force && (battleNpcId || battleWipePhase)) return
     setDialogue(null)
     setBattleReady(false)
+    setGymTrainerChoiceOpen(false)
     setBattleNpcId(npcId)
     setBattleWipePhase('enter')
   }, [battleNpcId, battleWipePhase])
@@ -2613,11 +2596,7 @@ export function GameScreen() {
       const chain = pendingGymChainRef.current
       pendingGymChainRef.current = null
       if (chain) {
-        gymChainInFlightRef.current = true
-        window.requestAnimationFrame(() => {
-          gymChainInFlightRef.current = false
-          startNpcBattle(chain.nextNpcId)
-        })
+        startNpcBattle(chain.nextNpcId, true)
         return
       }
 

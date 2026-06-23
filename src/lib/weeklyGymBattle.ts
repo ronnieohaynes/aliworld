@@ -38,13 +38,19 @@ export function resolveGymBattleOptions(npcId: string): GymBattleOptions {
     return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
   }
 
+  const firstGauntletRunOfWeek = !isCurrentWeeklyGymCleared()
   const leaderIndex = getGymLeaderFightIndex(week)
-  if (run.fightIndex >= leaderIndex) {
-    const repeatClear = isCurrentWeeklyGymCleared()
+  const onLeader = run.fightIndex >= leaderIndex
+
+  if (firstGauntletRunOfWeek) {
     return {
-      combatXpPolicy: repeatClear ? 'none' : 'fixed-level',
-      battleEndHealing: 'default',
+      combatXpPolicy: 'fixed-level',
+      battleEndHealing: onLeader ? 'default' : 'full-on-win',
     }
+  }
+
+  if (onLeader) {
+    return { combatXpPolicy: 'none', battleEndHealing: 'default' }
   }
 
   return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
