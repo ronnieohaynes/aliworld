@@ -50,6 +50,19 @@
   line-height: 1.45;
 }
 
+.gym-leaderboard__announcement {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #c084fc;
+  background: rgba(192, 132, 252, 0.1);
+  color: #f3e8ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
 .gym-leaderboard__header {
   display: flex;
   align-items: flex-start;

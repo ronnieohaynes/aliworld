@@ -1,9 +1,16 @@
-import { getGymRunCombatId, getGymWeekById, isGymGauntletCombatId } from '../data/gymWeeks'
+import {
+  getGymLeaderFightIndex,
+  getGymRunCombatId,
+  getGymWeekById,
+  isGymGauntletCombatId,
+} from '../data/gymWeeks'
 import {
   beginGymRun,
   clearActiveGymRun,
   getActiveGymRun,
   getActiveGymRunCombatId,
+  invalidateStaleGymRun,
+  isCurrentWeeklyGymCleared,
   restartGymRun,
 } from '../store/gymStore'
 
@@ -26,14 +33,25 @@ export function resolveGymBattleOptions(npcId: string): GymBattleOptions {
     return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
   }
 
-  if (run.fightIndex >= 3) {
-    return { combatXpPolicy: 'fixed-level', battleEndHealing: 'default' }
+  const week = getGymWeekById(run.weekId)
+  if (!week) {
+    return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
+  }
+
+  const leaderIndex = getGymLeaderFightIndex(week)
+  if (run.fightIndex >= leaderIndex) {
+    const repeatClear = isCurrentWeeklyGymCleared()
+    return {
+      combatXpPolicy: repeatClear ? 'none' : 'fixed-level',
+      battleEndHealing: 'default',
+    }
   }
 
   return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
 }
 
 export function startWeeklyGymRun(weekId: string, practice: boolean): string | null {
+  invalidateStaleGymRun()
   const week = getGymWeekById(weekId)
   if (!week) return null
 
@@ -44,14 +62,10 @@ export function startWeeklyGymRun(weekId: string, practice: boolean): string | n
     return getGymRunCombatId(week, 0)
   }
 
-  const existing = getActiveGymRun()
-  if (existing && !existing.practice && existing.weekId === weekId) {
-    return getActiveGymRunCombatId()
-  }
-
+  clearActiveGymRun()
   const run = beginGymRun(weekId, false)
   if (!run) return null
-  return getActiveGymRunCombatId()
+  return getGymRunCombatId(week, 0)
 }
 
 export function restartWeeklyGymRun(): string | null {

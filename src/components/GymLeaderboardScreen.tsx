@@ -12,6 +12,7 @@ import './GymLeaderboardScreen.css'
 
 type Props = {
   viewerHandle?: string | null
+  announcement?: string
   onClose: () => void
 }
 
@@ -33,15 +34,19 @@ function formatTrackingSince(iso: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
+export function GymLeaderboardScreen({ viewerHandle, announcement, onClose }: Props) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   const [refreshing, setRefreshing] = useState(false)
   const [remainingMs, setRemainingMs] = useState(() => getGymWeekRemainingMs())
+  const [scoreKind, setScoreKind] = useState<'wins' | 'clears'>('wins')
   const weekPhase = getGymWeekPhase()
+
+  const scoreLabel = scoreKind === 'clears' ? 'clears' : 'wins'
 
   const load = useCallback(async (force = false) => {
     try {
       const data = await fetchGymLeaderboard({ force })
+      setScoreKind(data.scoreKind)
       if (data.entries.length === 0) {
         setState({
           kind: 'empty',
@@ -132,6 +137,12 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
         >
           {countdownLabel}
         </div>
+
+        {announcement ? (
+          <p className="gym-leaderboard__announcement" role="status">
+            {announcement}
+          </p>
+        ) : null}
 
         <header className="gym-leaderboard__header">
           <div>
@@ -228,7 +239,9 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
                         <>@{entry.handle}</>
                       )}
                     </span>
-                    <span className="gym-leaderboard__wins">{entry.winCount} wins</span>
+                    <span className="gym-leaderboard__wins">
+                      {entry.winCount} {scoreLabel}
+                    </span>
                   </div>
                 )
               })}
@@ -256,7 +269,9 @@ export function GymLeaderboardScreen({ viewerHandle, onClose }: Props) {
                           <>@{entry.handle}</>
                         )}
                       </span>
-                      <span className="gym-leaderboard__list-wins">{entry.winCount} wins</span>
+                      <span className="gym-leaderboard__list-wins">
+                        {entry.winCount} {scoreLabel}
+                      </span>
                     </li>
                   )
                 })}

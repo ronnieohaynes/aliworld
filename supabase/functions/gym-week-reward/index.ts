@@ -3,7 +3,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { getAbsoluteWeekIndex } from '../_shared/gymWeekSchedule.ts'
 
 /** Must stay in sync with src/data/gymWeeks.ts GYM_WEEKS ids. */
-const LIVE_GYM_WEEK_IDS = ['1'] as const
+const LIVE_GYM_WEEK_IDS = ['1', '2'] as const
 
 const STREAK_MILESTONES = [
   { streak: 2, badgeValue: 'gym-streak-2', label: '2-WEEK STREAK' },

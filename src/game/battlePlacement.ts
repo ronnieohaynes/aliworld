@@ -24,6 +24,9 @@ export const BATTLE_PLAYER_FEET = { x: 165 + BATTLE_FIGHTER_NUDGE_X + 10, y: 224
 /** Horizontal nudge for the player status plate (positive = right). */
 export const BATTLE_PLAYER_PLATE_OFFSET_X = 3
 
+/** Vertical nudge for the player status plate (negative = up, clears the sprite head). */
+export const BATTLE_PLAYER_PLATE_OFFSET_Y = -22
+
 /** Gap below sprite visible top where the plate anchor sits (enemy and player). */
 export const BATTLE_PLATE_VISIBLE_TOP_GAP = 5
 

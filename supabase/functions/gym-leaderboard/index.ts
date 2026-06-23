@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getGymWeekWindow } from '../_shared/gymWeekSchedule.ts'
+import { getCurrentGymWeekEdge } from '../_shared/gymWeeks.ts'
 import {
   isRegisteredMidnightVariantId,
   type MidnightVariantId,
@@ -17,9 +18,12 @@ export type PublicLeaderboardResponse = {
   trackingSince: string
   trackingUntil: string | null
   weekIndex: number
+  weekId: string
   weekPhase: 'active' | 'completed'
   deadlineMs: number
   frozen: boolean
+  /** `clears` for clear-count weeks, otherwise `wins`. */
+  scoreKind: 'wins' | 'clears'
   entries: PublicLeaderboardEntry[]
 }
 
@@ -64,11 +68,14 @@ Deno.serve(async (req) => {
 
   try {
     const window = getGymWeekWindow()
+    const liveWeek = getCurrentGymWeekEdge()
+    const scoreKind = liveWeek.scoringMode === 'clear-count' ? 'clears' : 'wins'
 
     const { data: ranked, error: rankError } = await supabase.rpc('internal_gym_leaderboard_ranked', {
       p_since: window.sinceIso,
       p_until: window.untilIso,
       p_limit: LEADERBOARD_LIMIT,
+      p_enemy_ids: [liveWeek.leaderCombatId],
     })
 
     if (rankError) {
@@ -82,9 +89,11 @@ Deno.serve(async (req) => {
         trackingSince: window.sinceIso,
         trackingUntil: window.untilIso,
         weekIndex: window.weekIndex,
+        weekId: liveWeek.id,
         weekPhase: window.phase,
         deadlineMs: window.deadlineMs,
         frozen: window.frozen,
+        scoreKind,
         entries: [],
       })
     }
@@ -135,9 +144,11 @@ Deno.serve(async (req) => {
       trackingSince: window.sinceIso,
       trackingUntil: window.untilIso,
       weekIndex: window.weekIndex,
+      weekId: liveWeek.id,
       weekPhase: window.phase,
       deadlineMs: window.deadlineMs,
       frozen: window.frozen,
+      scoreKind,
       entries,
     })
   } catch (err) {

@@ -1,6 +1,7 @@
 import { publicAsset } from '../utils/publicAsset'
 import { FIVE_GYM1_ID } from '../store/gymStore'
-import { isGymGauntletCombatId } from './gymWeeks'
+import { getCurrentGymWeek, isGymGauntletCombatId } from './gymWeeks'
+import { scaleFiveGymInteriorPoint } from './gymInteriorCollision'
 import type { NpcData } from './npcs'
 
 export { FIVE_GYM1_ID }
@@ -75,11 +76,37 @@ export const FIVE_GYM_AMBIENT_NPCS: readonly NpcData[] = [
   GYM_AMBIENT_RING,
 ]
 
-export function isGymHeadCombatId(npcId: string): boolean {
-  return npcId === FIVE_GYM1_ID || isGymGauntletCombatId(npcId)
+export function getCurrentGymHeadNpc(nowMs = Date.now()): NpcData {
+  const week = getCurrentGymWeek(nowMs)
+  return {
+    id: week.leader.npcId,
+    name: week.leader.name,
+    x: 920,
+    y: 730,
+    lines: [],
+    linesConverted: [],
+    color: '#afa9ec',
+    spriteSrc: week.leader.spriteSrc,
+    spriteColumns: week.leader.spriteColumns,
+    fixedFacing: 'left',
+  }
+}
+
+export function getScaledGymInteriorNpcs(nowMs = Date.now()): NpcData[] {
+  const headNative = getCurrentGymHeadNpc(nowMs)
+  const allNative = [headNative, ...FIVE_GYM_AMBIENT_NPCS]
+  return allNative.map((npc) => ({
+    ...npc,
+    ...scaleFiveGymInteriorPoint(npc),
+  }))
 }
 
 export const FIVE_GYM1_INTERIOR_NPCS: readonly NpcData[] = [
   FIVE_GYM1_HEAD_NPC,
   ...FIVE_GYM_AMBIENT_NPCS,
 ]
+
+export function isGymHeadCombatId(npcId: string): boolean {
+  if (npcId === FIVE_GYM1_ID || npcId === getCurrentGymWeek().leader.npcId) return true
+  return isGymGauntletCombatId(npcId)
+}
