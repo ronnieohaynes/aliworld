@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
-import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, WALKER_E2_CROWD_NPC, type NpcData } from '../data/npcs'
+import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, WALKER_E2_CROWD_NPC, HILLCREST_MARK_NPC, type NpcData } from '../data/npcs'
 import { isE2QuestUnlocked, QUEST_2_CLOSING_TEXT } from '../data/quest2Objectives'
 import { E2_ENABLED } from '../store/quest2Store'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
@@ -744,6 +744,14 @@ export function GameScreen() {
       }
       return { ...baseCityConfig, npcs }
     }
+    if (currentCity === 'san-bruno') {
+      let npcs = [...baseCityConfig.npcs]
+      const visited = getWorldMemorySnapshot().citiesVisited.includes('san-bruno')
+      if (markDefeated && visited) {
+        npcs = [...npcs, HILLCREST_MARK_NPC]
+      }
+      return { ...baseCityConfig, npcs }
+    }
     if (currentCity === 'blue-store-interior') {
       let npcs = [...baseCityConfig.npcs]
       if (!isClerkConverted()) {
@@ -758,7 +766,7 @@ export function GameScreen() {
       return { ...baseCityConfig, npcs: getScaledGymInteriorNpcs() }
     }
     return baseCityConfig
-  }, [baseCityConfig, currentCity, markDefeated, quest1Revision, quest2Revision, gymRevision])
+  }, [baseCityConfig, currentCity, markDefeated, quest1Revision, quest2Revision, gymRevision, worldRevision])
 
   const canOpenStartMenu = useCallback(() => {
     const tutorialMenuException = allowsStartMenuDuringLoadoutTutorial(loadoutTutorialStep)

@@ -50,7 +50,7 @@ import {
 } from './theaterInteriorCollision'
 import { THEATER_ENABLED } from './theaterPremieres'
 import { BLUE_STORE_INTERIOR_NPCS as BLUE_STORE_INTERIOR_NPCS_NATIVE } from './blueStoreNpcs'
-import { FIVE_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
+import { FIVE_OVERWORLD_NPCS, HILLCREST_OVERWORLD_NPCS, SOUTHSIDE_OVERWORLD_NPCS, type NpcData } from './npcs'
 
 /** Player-facing name for the starting district (internal id is `five`). */
 export const FIVE_DISPLAY_NAME = 'the 5ive'
@@ -229,7 +229,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     collisionZones: HILLCREST_COLLISION_ZONES,
     occlusionZones: getOcclusionZones('san-bruno'),
     triggerZones: SAN_BRUNO_TRIGGER_ZONES,
-    npcs: [],
+    npcs: [...HILLCREST_OVERWORLD_NPCS],
   },
   southside: {
     id: 'southside',
