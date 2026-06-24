@@ -9,3 +9,9 @@ verify_jwt = true
 
 [functions.ghost-training]
 verify_jwt = true
+
+[functions.practice-xp]
+verify_jwt = true
+
+[functions.combat-session]
+verify_jwt = true

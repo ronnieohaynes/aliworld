@@ -48,6 +48,14 @@ export function maxSkillXp(): number {
   return XP_CURVE.maxSkillXp
 }
 
+/** Sum of cumulative level XP + current bar XP across all skills (integrity / practice caps). */
+export function totalAccountedSkillXp(skills: SkillsState): number {
+  return SKILL_IDS.reduce(
+    (sum, id) => sum + cumulativeXpForLevel(skills[id].level) + Math.max(0, skills[id].xp),
+    0,
+  )
+}
+
 const LEVEL_UP_LINES: Record<SkillId, (level: number) => string> = {
   attack: (n) => `attack sharpens. lvl ${n}.`,
   speed: (n) => `you move quicker. speed lvl ${n}.`,

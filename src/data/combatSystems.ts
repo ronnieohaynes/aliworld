@@ -8,6 +8,7 @@ import type { DeathClock } from './combatTypes'
 import type { UpcomingMove } from './enemyMoves'
 import type { PlayerMoveId } from './moveIds'
 import { MOVES } from './moveDefinitions'
+import { getCombatRng } from './combatRng'
 
 const ATTACKING_BEHAVIOR_KINDS = new Set([
   'damage', 'fury-sweep', 'dark-break', 'cannon', 'blackout', 'loop',
@@ -49,7 +50,7 @@ export function resolveEnemyStrike(
 
   if (
     ctx.battleMove.enemyAccuracyTurns > 0 &&
-    Math.random() > ctx.battleMove.enemyAccuracyMult
+    getCombatRng().next() > ctx.battleMove.enemyAccuracyMult
   ) {
     return { actualMove, enemyStunned: false, enemyAttacks: false, eDmg: 0 }
   }
@@ -120,7 +121,7 @@ export function resolveDeathClocksAtTurnStart(clocks: DeathClock[]): {
   for (const clock of clocks) {
     if (clock.turnsRemaining <= 0) {
       const chance = clock.hitChance ?? 1
-      if (Math.random() < chance) {
+      if (getCombatRng().next() < chance) {
         hits.push({ clock, damage: clock.damage, target: clock.target })
       } else {
         hits.push({

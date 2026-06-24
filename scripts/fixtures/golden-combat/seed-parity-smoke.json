@@ -1,0 +1,48 @@
+{
+  "id": "seed-parity-smoke",
+  "npcId": "gym-week-1-h1",
+  "seed": 3735928559,
+  "archetype": "atk",
+  "skills": {
+    "attack": {
+      "level": 5,
+      "xp": 0
+    },
+    "speed": {
+      "level": 5,
+      "xp": 0
+    },
+    "defense": {
+      "level": 5,
+      "xp": 0
+    },
+    "luck": {
+      "level": 5,
+      "xp": 0
+    },
+    "hp": {
+      "level": 5,
+      "xp": 0
+    }
+  },
+  "equippedMoves": [
+    "STRIKE",
+    "SLIP",
+    "HOLD",
+    "WHISPER"
+  ],
+  "playerMoves": [
+    "STRIKE",
+    "STRIKE",
+    "STRIKE"
+  ],
+  "isolateNpcMemory": true,
+  "expected": {
+    "result": "win",
+    "turns": 4,
+    "playerHp": 48,
+    "enemyHp": 0,
+    "rngDraws": 18,
+    "logDigest": "STRIKE vs bag work's PARRY. 2.\nbag work is finished."
+  }
+}

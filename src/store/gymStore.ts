@@ -385,7 +385,7 @@ export function getActiveGymWeek(): GymWeekDefinition | null {
 }
 
 /** After a gauntlet fight win, returns next combat id or null when run complete. */
-export function advanceGymRunAfterWin(): {
+export function advanceGymRunAfterWin(beatenCombatId: string): {
   nextCombatId: string | null
   completed: boolean
   run: GymActiveRun
@@ -395,12 +395,16 @@ export function advanceGymRunAfterWin(): {
   const week = getGymWeekById(run.weekId)
   if (!week) return null
 
-  const leaderIndex = getGymLeaderFightIndex(week)
-  if (run.fightIndex >= leaderIndex) {
+  if (beatenCombatId === week.leader.combatId) {
     return { nextCombatId: null, completed: true, run: { ...run } }
   }
 
+  const leaderIndex = getGymLeaderFightIndex(week)
   const nextIndex = run.fightIndex + 1
+  if (nextIndex > leaderIndex) {
+    return { nextCombatId: null, completed: false, run: { ...run } }
+  }
+
   const nextRun: GymActiveRun = { ...run, fightIndex: nextIndex }
   state = { ...state, activeRun: nextRun }
   saveGymToStorage()

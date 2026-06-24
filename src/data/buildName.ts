@@ -1,4 +1,3 @@
-import { getPlayerSkills } from '../store/playerStore'
 import type { SkillsState } from '../store/skillStore'
 
 export type BuildName = {
@@ -178,10 +177,6 @@ export function deriveBuildName(skills: SkillsState): BuildName {
   }
 
   return BALANCED
-}
-
-export function getBuildName(): BuildName {
-  return deriveBuildName(getPlayerSkills())
 }
 
 /** Dominant skill for matchup counters; null when still blank slate. */

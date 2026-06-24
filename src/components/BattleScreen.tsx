@@ -64,12 +64,14 @@ import {
   battleReducer,
   combatStatusForDisplay,
   createInitialBattleState,
+  getOverworldPlayerHp,
   getTelegraphDisplay,
   shouldPreviewEnemyTelegraph,
   type LevelUpNotification,
   type PendingResolve,
   type PlayerMove,
 } from '../store/battleStore'
+import type { PracticeXpBudget } from '../data/practiceDailyReset'
 import {
   getSelectedMidnightVariant,
   subscribeCharacterStore,
@@ -87,7 +89,7 @@ import {
   getPlayerSkills,
 } from '../store/playerStore'
 import { type SkillId, type SkillsState } from '../store/skillStore'
-import { deriveBuildLoopType, deriveBuildName } from '../data/buildName'
+import { deriveBuildName } from '../data/buildName'
 import { recordEncounter } from '../store/enemyMemoryStore'
 import {
   isBattleTutorialSeen,
@@ -97,9 +99,10 @@ import {
 } from '../store/quest1Store'
 import { getMoveUiMeta, getMoveDef } from '../data/moves'
 import { trackProgressEvent } from '../lib/analytics'
+import { validateCombatFight } from '../lib/combatSessionApi'
 import type { BattleFeedbackEvent, BattleFeedbackTone } from '../data/battleFeedback'
 import {
-  getPlayerCounterRelation,
+  getSkillCounterRelation,
   leanSkillAccentColor,
 } from '../data/skillCounter'
 import { isWalkerHeavyTutorialActive } from '../data/walkerHeavyTutorial'
@@ -928,8 +931,18 @@ type Props = {
   battleRevealed?: boolean
   /** True when this is a "Run it back!" rematch, doubled damage, dramatic pauses. */
   runItBack?: boolean
-  combatXpPolicy?: 'normal' | 'none' | 'fixed-level'
+  combatXpPolicy?: 'normal' | 'none' | 'fixed-level' | 'practice'
   battleEndHealing?: 'default' | 'full-on-win'
+  practiceXpBudget?: PracticeXpBudget | null
+  /** Server-issued combat seed from combat-session (Stage 1c). */
+  combatSeed: number
+  fightId?: string
+  /** When true, fight was started via combat-session (not local fallback). */
+  serverIssued?: boolean
+  /** Scored gym gauntlet — server replay must match before win counts. */
+  requireReplayValidation?: boolean
+  /** Scored gym gauntlet — enemy AI ignores localStorage move memory. */
+  isolateNpcMemory?: boolean
 }
 
 export type BattleEndTelemetry = {
@@ -938,6 +951,7 @@ export type BattleEndTelemetry = {
   damageTaken: number
   countersLanded: number
   movesUsed: PlayerMove[]
+  practiceXpEarned?: number
 }
 
 /**
@@ -1047,6 +1061,12 @@ export function BattleScreen({
   runItBack = false,
   combatXpPolicy = 'normal',
   battleEndHealing = 'default',
+  practiceXpBudget = null,
+  combatSeed,
+  fightId,
+  serverIssued = false,
+  requireReplayValidation = false,
+  isolateNpcMemory = false,
 }: Props) {
   const battleScreenRef = useRef<HTMLDivElement>(null)
   const playfieldRef = useRef<HTMLDivElement>(null)
@@ -1072,14 +1092,6 @@ export function BattleScreen({
   const [winPayoffNpc, setWinPayoffNpc] = useState<NpcCombatEntry | null>(null)
   const showDebug = useSyncExternalStore(subscribePlayerStore, getShowDebug, getShowDebug)
   const playerSkills = useSyncExternalStore(subscribePlayerStore, getPlayerSkills, getPlayerSkills)
-  const playerBuildLabel = useSyncExternalStore(
-    subscribePlayerStore,
-    () => deriveBuildName(getPlayerSkills()).name,
-    () => deriveBuildName(getPlayerSkills()).name,
-  )
-  const playerLeanAccent = leanSkillAccentColor(
-    deriveBuildLoopType(playerSkills) ?? 'none',
-  )
   const authState = useSyncExternalStore(subscribeAuthStore, getAuthState, getAuthState)
   const playerHandle = authState.profile?.handle ?? 'YOU'
   const selectedMidnightVariant = useSyncExternalStore(
@@ -1090,14 +1102,21 @@ export function BattleScreen({
 
   const [state, dispatch] = useReducer(
     battleReducer,
-    { npcId, runItBack, combatXpPolicy, battleEndHealing },
+    { npcId, runItBack, combatXpPolicy, battleEndHealing, practiceXpBudget, combatSeed, isolateNpcMemory },
     (init) =>
       createInitialBattleState(init.npcId, {
         runItBack: init.runItBack,
         combatXpPolicy: init.combatXpPolicy,
         battleEndHealing: init.battleEndHealing,
+        practiceXpBudget: init.practiceXpBudget,
+        carryHp: getOverworldPlayerHp() ?? undefined,
+        combatSeed: init.combatSeed,
+        isolateNpcMemory: init.isolateNpcMemory,
       }),
   )
+
+  const playerBuildLabel = deriveBuildName(state.skillsSnapshot).name
+  const playerLeanAccent = leanSkillAccentColor(state.buildLoop ?? 'none')
 
   // Deep snapshot at battle start so per-turn XP grants don't mutate the baseline.
   const battleStartSkillsRef = useRef<SkillsState | null>(null)
@@ -1128,9 +1147,12 @@ export function BattleScreen({
         opponentType: isGhost ? 'ghost' : isGym ? 'gym' : 'world',
         ghost: isGhost,
         gym: isGym,
+        fightId,
+        combatSeed: state.combatSeed,
+        isolateNpcMemory,
       })
     }
-  }, [npcId])
+  }, [npcId, fightId, state.combatSeed, isolateNpcMemory])
 
   const shouldRunBattleTutorial =
     npcId === WALKER_NPC_ID && !isBattleTutorialSeen()
@@ -1285,7 +1307,7 @@ export function BattleScreen({
   const enemyStatusTags = getFighterStatusTags('enemy', displayCombatStatus)
   const playerStatusTags = getFighterStatusTags('player', displayCombatStatus)
   const playerLevel = getPlayerLevel()
-  const counterRelation = getPlayerCounterRelation(state.npc.leanSkill)
+  const counterRelation = getSkillCounterRelation(state.buildLoop, state.npc.leanSkill)
   // Split stage backgrounds, enemy uses their battleLocation, player uses chosen hometown
   const playerHometownId = useSyncExternalStore(
     subscribeHometownStore,
@@ -1352,14 +1374,16 @@ export function BattleScreen({
     if (encounterRecordedRef.current) return
     if (state.result === 'win' || state.result === 'lose') {
       encounterRecordedRef.current = true
-      recordEncounter(
-        npcId,
-        state.playerMoveHistory,
-        state.enemyMoveHistory,
-        state.result === 'win',
-      )
+      if (!isolateNpcMemory) {
+        recordEncounter(
+          npcId,
+          state.playerMoveHistory,
+          state.enemyMoveHistory,
+          state.result === 'win',
+        )
+      }
     }
-  }, [state.phase, state.result, npcId, state.playerMoveHistory, state.enemyMoveHistory])
+  }, [state.phase, state.result, npcId, state.playerMoveHistory, state.enemyMoveHistory, isolateNpcMemory])
 
   useEffect(() => {
     encounterRecordedRef.current = false
@@ -1392,29 +1416,79 @@ export function BattleScreen({
     (result: 'win' | 'lose' | 'draw') => {
       if (endHandledRef.current) return
       endHandledRef.current = true
-      // Draw heals same as a loss (full HP); run-it-back flag is set by GameScreen
-      const healResult = result === 'draw' ? 'lose' : result
-      const healed = applyBattleEndHealing(
-        healResult,
-        state.playerStats.maxHp,
-        state.playerHp,
-        state.battleEndHealing,
-      )
-      setOverworldPlayerHp(healed)
-      onBattleEnd(
-        result,
-        state.turn,
-        state.playerHp / Math.max(1, state.playerStats.maxHp),
-        {
-          maxHp: state.playerStats.maxHp,
-          hpRemaining: state.playerHp,
-          damageTaken: damageTakenRef.current,
-          countersLanded: countersLandedRef.current,
-          movesUsed: [...movesUsedRef.current],
+
+      const complete = (finalResult: 'win' | 'lose' | 'draw') => {
+        const healResult = finalResult === 'draw' ? 'lose' : finalResult
+        const healed = applyBattleEndHealing(
+          healResult,
+          state.playerStats.maxHp,
+          state.playerHp,
+          state.battleEndHealing,
+        )
+        setOverworldPlayerHp(healed)
+        onBattleEnd(
+          finalResult,
+          state.turn,
+          state.playerHp / Math.max(1, state.playerStats.maxHp),
+          {
+            maxHp: state.playerStats.maxHp,
+            hpRemaining: state.playerHp,
+            damageTaken: damageTakenRef.current,
+            countersLanded: countersLandedRef.current,
+            movesUsed: [...movesUsedRef.current],
+            practiceXpEarned:
+              state.combatXpPolicy === 'practice' ? state.practiceXpSessionEarned : undefined,
+          },
+        )
+      }
+
+      const shouldValidate =
+        requireReplayValidation &&
+        serverIssued &&
+        fightId &&
+        result === 'win'
+
+      if (!shouldValidate) {
+        complete(result)
+        return
+      }
+
+      void validateCombatFight({
+        fightId,
+        playerMoves: movesUsedRef.current,
+        claimed: {
+          result,
+          turns: state.turn,
+          playerHp: state.playerHp,
+          enemyHp: state.enemyHp,
         },
-      )
+      })
+        .then((validation) => {
+          if (validation.valid) {
+            complete(result)
+            return
+          }
+          console.warn('[combat-session] replay rejected', validation.reason)
+          complete('lose')
+        })
+        .catch((err) => {
+          console.warn('[combat-session] validation failed', err)
+          complete('lose')
+        })
     },
-    [onBattleEnd, state.playerHp, state.playerStats.maxHp, state.turn],
+    [
+      fightId,
+      onBattleEnd,
+      requireReplayValidation,
+      serverIssued,
+      state.battleEndHealing,
+      state.combatXpPolicy,
+      state.enemyHp,
+      state.playerHp,
+      state.playerStats.maxHp,
+      state.practiceXpSessionEarned,
+      state.turn,
+    ],
   )
 
   const equippedMoves = useSyncExternalStore(
@@ -2510,7 +2584,7 @@ export function BattleScreen({
                       ? stolen.replace('_', ' ')
                       : label
                     const moveDef = getMoveDef(move)
-                    const skillLevel = moveDef ? (playerSkills[moveDef.skill as keyof typeof playerSkills]?.level ?? null) : null
+                    const skillLevel = moveDef ? (state.skillsSnapshot[moveDef.skill]?.level ?? null) : null
                     const skillTag = moveDef && skillLevel != null ? `${moveDef.skill} · lv ${skillLevel}` : null
                     return (
                       <button

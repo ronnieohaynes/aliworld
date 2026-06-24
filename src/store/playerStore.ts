@@ -544,6 +544,10 @@ export function getPlayerSkills(): SkillsState {
   return state.skills
 }
 
+export function getBuildName() {
+  return deriveBuildName(state.skills)
+}
+
 export function getEquippedMoves(): PlayerStoreState['equippedMoves'] {
   return state.equippedMoves
 }
@@ -628,14 +632,24 @@ export type CombatXpResult = {
 export function applyCombatSkillXp(
   r: ResolveResult,
   timingBonuses: TimingBonusGrant[] = [],
-  options?: { enemyLevel?: number; playerLevel?: number; playerHpAfterHit?: number; forceLevelXpMult?: number },
+  options?: {
+    enemyLevel?: number
+    playerLevel?: number
+    playerHpAfterHit?: number
+    forceLevelXpMult?: number
+    practiceScale?: (raw: number) => number
+  },
 ): CombatXpResult {
   const prevPlayerLevel = computePlayerLevel(state.skills)
   const playerLevelBefore = options?.playerLevel ?? prevPlayerLevel
   const enemyLevel = options?.enemyLevel ?? playerLevelBefore
   const levelXpMult =
     options?.forceLevelXpMult ?? combatXpLevelMultiplier(enemyLevel, playerLevelBefore)
-  const scaleXp = (amount: number) => Math.max(0, Math.round(amount * levelXpMult))
+  const scaleXp = (amount: number) => {
+    const levelScaled = Math.max(0, Math.round(amount * levelXpMult))
+    if (options?.practiceScale) return options.practiceScale(levelScaled)
+    return levelScaled
+  }
 
   const before = state.skills
   const { skills: afterMoveXp, levelUpLines } = awardMoveXp(before, r, scaleXp)

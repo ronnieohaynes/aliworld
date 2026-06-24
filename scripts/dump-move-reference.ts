@@ -84,7 +84,7 @@ function summarizeBehavior(b: MoveBehavior, moveId: string): Record<string, unkn
         stunOnDodge: { formula: 'roll < base + lck*lckMult', ...b.profile.stunChance },
         onDodgeReflectPct: b.profile.onDodgeReflectPct,
         counterFormula: 'jitter(floor(atk * counterMult * (1 + spd dodge + spd counter + slip atk hook)))',
-        whiffFormula: 'jitter(floor(atk * weakMult)); take full incoming',
+        whiffFormula: 'jitter(floor(atk * weakMult)); incoming jitter(floor(eDmg * weakMult))',
       }
     case 'brace':
       return {

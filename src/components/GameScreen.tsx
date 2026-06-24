@@ -72,7 +72,11 @@ import {
 } from '../lib/playerMessagesApi'
 import { refreshPlayerGrants } from '../store/grantsStore'
 import { unlockSkinGrantForRun } from '../data/skinGrants'
+import { startCombatFight, type CombatFightSession } from '../lib/combatSessionApi'
 import { resolveGymBattleOptions, startWeeklyGymRun } from '../lib/weeklyGymBattle'
+import { fetchPracticeXpStatus, recordPracticeBattleXp } from '../lib/practiceXpApi'
+import { practiceXpBudgetFromServer, practiceXpStatusLabel } from '../data/practiceDailyReset'
+import type { PracticeXpBudget } from '../data/practiceDailyReset'
 import { resolveGhostBattleOptions } from '../lib/ghostTrainingBattle'
 import { isGhostCombatId } from '../data/ghostCombat'
 import { completeGhostBattle, refreshGhostTraining } from '../store/ghostTrainingStore'
@@ -367,6 +371,7 @@ export function GameScreen() {
   const [battleWipePhase, setBattleWipePhase] = useState<BattleWipeMode | null>(null)
   const [battleReady, setBattleReady] = useState(false)
   const [battleRunItBack, setBattleRunItBack] = useState(false)
+  const [combatFightSession, setCombatFightSession] = useState<CombatFightSession | null>(null)
   const pendingBattleExitRef = useRef<{
     result: 'win' | 'lose' | 'draw'
     npcId: string | null
@@ -381,6 +386,7 @@ export function GameScreen() {
   const [loadoutTutorialStep, setLoadoutTutorialStep] = useState<number | null>(null)
   const [adamTutorialStep, setAdamTutorialStep] = useState<number | null>(null)
   const [gymTrainerChoiceOpen, setGymTrainerChoiceOpen] = useState(false)
+  const [practiceXpBudget, setPracticeXpBudget] = useState<PracticeXpBudget | null>(null)
   const [gymHeadPulseDismissed, setGymHeadPulseDismissed] = useState(false)
   const [showFannyPack, setShowFannyPack] = useState(false)
   const [showLoadout, setShowLoadout] = useState(false)
@@ -537,12 +543,33 @@ export function GameScreen() {
 
   const gymBattleOptions = useMemo(() => {
     if (!battleNpcId) {
-      return { combatXpPolicy: 'normal' as const, battleEndHealing: 'default' as const }
+      return {
+        combatXpPolicy: 'normal' as const,
+        battleEndHealing: 'default' as const,
+        isolateNpcMemory: false,
+      }
     }
     const ghostOpts = resolveGhostBattleOptions(battleNpcId)
     if (ghostOpts) return ghostOpts
     return resolveGymBattleOptions(battleNpcId)
   }, [battleNpcId])
+
+  useEffect(() => {
+    if (!battleNpcId) {
+      setCombatFightSession(null)
+      return
+    }
+    let cancelled = false
+    void startCombatFight(battleNpcId, {
+      runItBack: battleRunItBack,
+      isolateNpcMemory: gymBattleOptions.isolateNpcMemory,
+    }).then((session) => {
+      if (!cancelled) setCombatFightSession(session)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [battleNpcId, battleRunItBack])
 
   const activePulseDescriptor =
     gymHeadPulseDescriptor ?? gymDoorPulseDescriptor ?? questPulseDescriptor
@@ -1187,6 +1214,16 @@ export function GameScreen() {
         practice,
       })
       setGymTrainerChoiceOpen(false)
+      if (practice) {
+        void fetchPracticeXpStatus()
+          .then((budget) => setPracticeXpBudget(budget))
+          .catch((err) => {
+            console.warn('[practice-xp]', err instanceof Error ? err.message : String(err))
+            setPracticeXpBudget(practiceXpBudgetFromServer(0))
+          })
+      } else {
+        setPracticeXpBudget(null)
+      }
       startNpcBattle(combatId)
     },
     [startNpcBattle],
@@ -2593,10 +2630,30 @@ export function GameScreen() {
     }
 
     if (exit?.result === 'win' && exit.npcId && isGymGauntletCombatId(exit.npcId)) {
+      const activeRun = getActiveGymRun()
+      if (activeRun?.practice) {
+        const earned = exit.telemetry?.practiceXpEarned ?? 0
+        if (earned > 0) {
+          void recordPracticeBattleXp(earned)
+            .then((record) => {
+              setPracticeXpBudget(practiceXpBudgetFromServer(record.xpToday, record.dayKey))
+            })
+            .catch((err) => {
+              console.warn('[practice-xp]', err instanceof Error ? err.message : String(err))
+            })
+        }
+      }
+
       const chain = pendingGymChainRef.current
       pendingGymChainRef.current = null
       if (chain) {
         startNpcBattle(chain.nextNpcId, true)
+        return
+      }
+
+      const weekDef = activeRun ? getGymWeekById(activeRun.weekId) : null
+      const leaderCombatId = weekDef?.leader.combatId
+      if (!activeRun?.practice && leaderCombatId && exit.npcId !== leaderCombatId) {
         return
       }
 
@@ -2655,7 +2712,15 @@ export function GameScreen() {
         }
         clearActiveGymRun()
         gymRunDamageTakenRef.current = 0
-        showNarration(['practice run complete. no rewards — full gauntlet again anytime.'])
+        const statusLine = practiceXpBudget ? practiceXpStatusLabel(practiceXpBudget) : null
+        showNarration(
+          statusLine
+            ? [
+                'practice run complete. bounded training xp — full gauntlet again anytime.',
+                statusLine,
+              ]
+            : ['practice run complete. bounded training xp — full gauntlet again anytime.'],
+        )
       }
     }
 
@@ -2815,7 +2880,7 @@ export function GameScreen() {
         gymRunDamageTakenRef.current = 0
       }
       if (result === 'win' && battleNpcId && isGymGauntletCombatId(battleNpcId)) {
-        const advanced = advanceGymRunAfterWin()
+        const advanced = advanceGymRunAfterWin(battleNpcId)
         if (advanced && !advanced.completed && advanced.nextCombatId) {
           pendingGymChainRef.current = {
             nextNpcId: advanced.nextCombatId,
@@ -3229,9 +3294,9 @@ export function GameScreen() {
             {battleWipePhase === 'enter' && (
               <div className="game-screen-battle-world-fade" aria-hidden />
             )}
-            {battleNpcId && battleReady && (
+            {battleNpcId && battleReady && combatFightSession && (
               <BattleScreen
-                key={`${battleNpcId}-${battleRunItBack ? 'rib' : 'normal'}`}
+                key={`${battleNpcId}-${battleRunItBack ? 'rib' : 'normal'}-${combatFightSession.fightId}`}
                 npcId={battleNpcId}
                 battleRevealed={!battleWipePhase}
                 onBattleEnd={handleBattleEnd}
@@ -3239,6 +3304,14 @@ export function GameScreen() {
                 runItBack={battleRunItBack}
                 combatXpPolicy={gymBattleOptions.combatXpPolicy}
                 battleEndHealing={gymBattleOptions.battleEndHealing}
+                practiceXpBudget={practiceXpBudget}
+                combatSeed={combatFightSession.seed}
+                fightId={combatFightSession.fightId}
+                serverIssued={combatFightSession.serverIssued}
+                requireReplayValidation={
+                  gymBattleOptions.isolateNpcMemory && combatFightSession.serverIssued
+                }
+                isolateNpcMemory={gymBattleOptions.isolateNpcMemory}
               />
             )}
             {battleWipePhase && (

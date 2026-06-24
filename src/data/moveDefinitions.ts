@@ -269,7 +269,9 @@ export const MOVES: Record<PlayerMoveId, MoveDefinition> = {
     playerLogLine: (r) =>
       r.dodged
         ? `parry. ${r.playerDmg} back.`
-        : `parry whiff. ${r.playerDmg}.`,
+        : r.rawIncoming > 0
+          ? `parry whiff. ${r.incoming > 0 ? `${r.incoming} taken. ` : ''}${r.playerDmg > 0 ? `${r.playerDmg} back.` : 'no counter.'}`
+          : `parry whiff. ${r.playerDmg}.`,
   }),
 
   GRAVITY_SHIFT: def({

@@ -1,0 +1,63 @@
+{
+  "id": "gym-h1-atk-baseline",
+  "npcId": "gym-week-1-h1",
+  "seed": 305419896,
+  "archetype": "atk",
+  "skills": {
+    "attack": {
+      "level": 8,
+      "xp": 0
+    },
+    "speed": {
+      "level": 4,
+      "xp": 0
+    },
+    "defense": {
+      "level": 3,
+      "xp": 0
+    },
+    "luck": {
+      "level": 3,
+      "xp": 0
+    },
+    "hp": {
+      "level": 5,
+      "xp": 0
+    }
+  },
+  "equippedMoves": [
+    "STRIKE",
+    "SLIP",
+    "HOLD",
+    "WHISPER"
+  ],
+  "playerMoves": [
+    "STRIKE",
+    "STRIKE",
+    "CANNON",
+    "HOLD",
+    "SLIP",
+    "WHISPER",
+    "STRIKE",
+    "CANNON",
+    "STRIKE",
+    "STRIKE",
+    "CANNON",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE"
+  ],
+  "isolateNpcMemory": true,
+  "expected": {
+    "result": "win",
+    "turns": 2,
+    "playerHp": 50,
+    "enemyHp": 0,
+    "rngDraws": 10,
+    "logDigest": "cannon. 22! crit.\nbag work is finished."
+  }
+}
