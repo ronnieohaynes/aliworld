@@ -1,4 +1,4 @@
-import { getBuildName } from '../data/buildName'
+import { getBuildName } from '../store/playerStore'
 import { getEmblemDef } from '../data/emblemRegistry'
 import { getMidnightVariantRenderTuning } from '../data/midnightVariants'
 import { loadSpriteSheetWithFallback } from '../game/characterLayers'

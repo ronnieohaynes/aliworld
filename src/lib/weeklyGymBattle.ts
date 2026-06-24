@@ -15,27 +15,30 @@ import {
 } from '../store/gymStore'
 
 export type GymBattleOptions = {
-  combatXpPolicy: 'normal' | 'none' | 'fixed-level'
+  combatXpPolicy: 'normal' | 'none' | 'fixed-level' | 'practice'
   battleEndHealing: 'default' | 'full-on-win'
+  isolateNpcMemory: boolean
 }
 
 export function resolveGymBattleOptions(npcId: string): GymBattleOptions {
   if (!isGymGauntletCombatId(npcId)) {
-    return { combatXpPolicy: 'normal', battleEndHealing: 'default' }
+    return { combatXpPolicy: 'normal', battleEndHealing: 'default', isolateNpcMemory: false }
   }
 
   const run = getActiveGymRun()
   if (!run) {
-    return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
+    return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win', isolateNpcMemory: true }
   }
 
+  const isolateNpcMemory = !run.practice
+
   if (run.practice) {
-    return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
+    return { combatXpPolicy: 'practice', battleEndHealing: 'full-on-win', isolateNpcMemory }
   }
 
   const week = getGymWeekById(run.weekId)
   if (!week) {
-    return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
+    return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win', isolateNpcMemory }
   }
 
   const firstGauntletRunOfWeek = !isCurrentWeeklyGymCleared()
@@ -46,14 +49,15 @@ export function resolveGymBattleOptions(npcId: string): GymBattleOptions {
     return {
       combatXpPolicy: 'fixed-level',
       battleEndHealing: onLeader ? 'default' : 'full-on-win',
+      isolateNpcMemory,
     }
   }
 
   if (onLeader) {
-    return { combatXpPolicy: 'none', battleEndHealing: 'default' }
+    return { combatXpPolicy: 'none', battleEndHealing: 'default', isolateNpcMemory }
   }
 
-  return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win' }
+  return { combatXpPolicy: 'none', battleEndHealing: 'full-on-win', isolateNpcMemory }
 }
 
 export function startWeeklyGymRun(weekId: string, practice: boolean): string | null {

@@ -19,7 +19,7 @@ import {
   type GymFighterConfig,
 } from './gymWeeks'
 import { chooseMoveAI, type BattleContext } from './enemyAI'
-import { getNpcMemory } from '../store/enemyMemoryStore'
+import { getNpcMemory, type NpcMemory } from '../store/enemyMemoryStore'
 
 export type EnemyMove = PlayerMoveId
 export type { UpcomingMove }
@@ -317,6 +317,8 @@ export type ChooseMoveOptions = {
   enemyIsBleeding?: boolean
   lastPlayerMove?: string | null
   lastEnemyMove?: PlayerMoveId | null
+  /** When set, ignores localStorage enemy memory (scored gym gauntlet). */
+  memoryOverride?: NpcMemory | null
 }
 
 /** Picks from the NPC move pool — level-scaled AI with cross-fight pattern learning. */
@@ -361,7 +363,7 @@ export function chooseMove(
     lastEnemyMove: options?.lastEnemyMove ?? null,
   }
 
-  const memory = getNpcMemory(npcId)
+  const memory = options?.memoryOverride ?? getNpcMemory(npcId)
   return chooseMoveAI(npcId, npc.level, npc.moves, ctx, memory)
 }
 

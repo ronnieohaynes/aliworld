@@ -1,5 +1,5 @@
 import type { BattleFeedbackEvent, BattleFeedbackTone } from './battleFeedback'
-import { deriveBuildLoopType } from './buildName'
+import type { BuildLoopSkill } from './buildName'
 import type { UpcomingMove } from './enemyMoves'
 import type { PlayerMoveId } from './moveIds'
 import { MOVES } from './moveDefinitions'
@@ -11,7 +11,6 @@ import {
 } from './moveBalance'
 import { getSkillCounterRelation, type LeanSkill } from './skillCounter'
 import type { ResolveResult } from '../store/battleStore'
-import { getPlayerSkills } from '../store/playerStore'
 import type { SkillId } from '../store/skillStore'
 
 export type TimingBonusGrant = {
@@ -55,6 +54,7 @@ function isHeavyTelegraphedMove(move: UpcomingMove): boolean {
 export function computeTimingBonusGrants(
   r: ResolveResult,
   enemyLean: LeanSkill,
+  buildLoop: BuildLoopSkill | null = null,
 ): TimingBonusGrant[] {
   if (!r.playerActed) return []
 
@@ -76,13 +76,12 @@ export function computeTimingBonusGrants(
     })
   }
 
-  const buildSkill = deriveBuildLoopType(getPlayerSkills())
-  const relation = getSkillCounterRelation(buildSkill, enemyLean)
-  if (relation === 'advantage' && r.playerDmg > 0 && buildSkill) {
+  const relation = getSkillCounterRelation(buildLoop, enemyLean)
+  if (relation === 'advantage' && r.playerDmg > 0 && buildLoop) {
     grants.push({
-      skill: buildSkill,
+      skill: buildLoop,
       amount: ADVANTAGE_XP_BONUS,
-      callout: bonusCallout(buildSkill, '+xp advantage!'),
+      callout: bonusCallout(buildLoop, '+xp advantage!'),
     })
   }
 

@@ -274,7 +274,7 @@
           "lckMult": 2
         },
         "counterFormula": "jitter(floor(atk * counterMult * (1 + spd dodge + spd counter + slip atk hook)))",
-        "whiffFormula": "jitter(floor(atk * weakMult)); take full incoming"
+        "whiffFormula": "jitter(floor(atk * weakMult)); incoming jitter(floor(eDmg * weakMult))"
       },
       "statusOnResolve": [],
       "specialBehavior": [
@@ -317,7 +317,7 @@
         },
         "onDodgeReflectPct": 0.02,
         "counterFormula": "jitter(floor(atk * counterMult * (1 + spd dodge + spd counter + slip atk hook)))",
-        "whiffFormula": "jitter(floor(atk * weakMult)); take full incoming"
+        "whiffFormula": "jitter(floor(atk * weakMult)); incoming jitter(floor(eDmg * weakMult))"
       },
       "statusOnResolve": [],
       "specialBehavior": [

@@ -1,0 +1,63 @@
+{
+  "id": "gym-h1-def-counter",
+  "npcId": "gym-week-1-h1",
+  "seed": 2864434397,
+  "archetype": "def",
+  "skills": {
+    "attack": {
+      "level": 3,
+      "xp": 0
+    },
+    "speed": {
+      "level": 3,
+      "xp": 0
+    },
+    "defense": {
+      "level": 9,
+      "xp": 0
+    },
+    "luck": {
+      "level": 4,
+      "xp": 0
+    },
+    "hp": {
+      "level": 6,
+      "xp": 0
+    }
+  },
+  "equippedMoves": [
+    "HOLD",
+    "SLIP",
+    "STRIKE",
+    "WHISPER"
+  ],
+  "playerMoves": [
+    "HOLD",
+    "SLIP",
+    "HOLD",
+    "STRIKE",
+    "HOLD",
+    "SLIP",
+    "HOLD",
+    "STRIKE",
+    "HOLD",
+    "HOLD",
+    "STRIKE",
+    "HOLD",
+    "SLIP",
+    "HOLD",
+    "STRIKE",
+    "HOLD",
+    "HOLD",
+    "STRIKE"
+  ],
+  "isolateNpcMemory": true,
+  "expected": {
+    "result": "win",
+    "turns": 19,
+    "playerHp": 68,
+    "enemyHp": 0,
+    "rngDraws": 42,
+    "logDigest": "you traded blows. 7 dealt, 1 taken.\nbag work is finished."
+  }
+}

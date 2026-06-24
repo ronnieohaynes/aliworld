@@ -2,6 +2,7 @@ import { deriveBuildLoopType, type BuildLoopSkill } from './buildName'
 import type { PlayerMoveId } from './moveIds'
 import { leanThemedMoves } from './ghostArchetypeMoves'
 import type { LeanSkill } from './skillCounter'
+import { getCombatRng } from './combatRng'
 
 export type GhostMovePickOptions = {
   enemyHpRatio: number
@@ -30,24 +31,24 @@ export function chooseGhostMove(
   // Defense-lean: ANCHOR bias when hurt (mirrors restocker heuristics).
   if (lean === 'defense' && candidates.includes('ANCHOR')) {
     const holdChance = enemyHpRatio < 0.35 ? 0.72 : enemyHpRatio < 0.6 ? 0.52 : 0.32
-    if (Math.random() < holdChance) return 'ANCHOR'
+    if (getCombatRng().next() < holdChance) return 'ANCHOR'
   }
 
   // Attack-lean: pressure when ahead.
   if (lean === 'attack' && enemyHpRatio > 0.65) {
     const pressure = candidates.filter((m) => m === 'STRIKE' || m === 'CANNON' || m === 'FURY_SWEEP' || m === 'LOOP')
-    if (pressure.length > 0 && Math.random() < 0.62) {
-      return pressure[Math.floor(Math.random() * pressure.length)]!
+    if (pressure.length > 0 && getCombatRng().next() < 0.62) {
+      return pressure[getCombatRng().nextInt(0, pressure.length - 1)]!
     }
   }
 
   // Lean theme bias (~45% when themed moves exist in pool).
   const themedInPool = candidates.filter((m) => themed.includes(m))
-  if (themedInPool.length > 0 && Math.random() < 0.45) {
-    return themedInPool[Math.floor(Math.random() * themedInPool.length)]!
+  if (themedInPool.length > 0 && getCombatRng().next() < 0.45) {
+    return themedInPool[getCombatRng().nextInt(0, themedInPool.length - 1)]!
   }
 
-  return candidates[Math.floor(Math.random() * candidates.length)]!
+  return candidates[getCombatRng().nextInt(0, candidates.length - 1)]!
 }
 
 /** Dominant combat skill when build type is blank-slate. */

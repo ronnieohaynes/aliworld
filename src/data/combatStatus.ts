@@ -14,6 +14,7 @@ import {
   ENEMY_SLOW_OUTGOING_MULT,
   speedInitiativeBonus,
 } from './moveBalance'
+import { getCombatRng } from './combatRng'
 
 export { createEmptyCombatStatus }
 export type { CombatStatusState, ReflectBuff, StatusEffectId }
@@ -37,7 +38,7 @@ export function isBuffEffect(effect: StatusEffectId): boolean {
 }
 
 export function rollBleedTurns(): number {
-  return BLEED_TURNS_MIN + Math.floor(Math.random() * (BLEED_TURNS_MAX - BLEED_TURNS_MIN + 1))
+  return getCombatRng().nextInt(BLEED_TURNS_MIN, BLEED_TURNS_MAX)
 }
 
 /** @deprecated Use explicit target in applyStatusToCombat. */

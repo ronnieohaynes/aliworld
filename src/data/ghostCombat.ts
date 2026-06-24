@@ -10,8 +10,8 @@ import {
   getSeededGhost,
   type SeededGhostDef,
 } from './seededGhosts'
-import type { ArchetypeId } from '../store/battleStore'
-import { computePlayerStats, DEFAULT_ARCHETYPE } from '../store/battleStore'
+import type { ArchetypeId } from '../../combat-core/battleEngine'
+import { computePlayerStats, DEFAULT_ARCHETYPE } from '../../combat-core/battleEngine'
 import { computePlayerLevel, type SkillsState } from '../store/skillStore'
 import type { LeanSkill } from './skillCounter'
 

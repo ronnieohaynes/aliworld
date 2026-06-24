@@ -42,12 +42,10 @@ import {
   earlyStrikeDamageScale,
   LCK_CRIT_STAT_SCALE,
   perfectGuardDamageBonus,
-  speedCounterBonus,
-  speedDodgeBonus,
   speedDodgeSuccessChance,
-  luckDodgeSuccessChance,
-  defParryCounterBonus,
 } from './moveBalance'
+import { resolvePlayerDodgeMove } from './dodgeResolver'
+import { getCombatRng } from './combatRng'
 import { scheduleDeathClock } from './combatSystems'
 import type { PlayerMoveId } from './moveIds'
 import { MOVES } from './moveDefinitions'
@@ -82,7 +80,7 @@ export type ResolveMoveContext = {
   moveSlot?: number
 }
 
-const jitter = (d: number) => Math.max(0, d + Math.floor((Math.random() - 0.5) * 3))
+const jitter = (d: number) => getCombatRng().jitter(d)
 
 function applyPerfectGuardBonus(
   dmg: number,
@@ -97,16 +95,17 @@ function applyPerfectGuardBonus(
 }
 
 function rollCrit(lck: number, base: number, lckMult: number, extraRolls = 0): boolean {
+  const rng = getCombatRng()
   const chance = lck * lckMult * LCK_CRIT_STAT_SCALE + base
-  let success = Math.random() * 100 < chance
+  let success = rng.next() * 100 < chance
   for (let i = 0; i < extraRolls; i++) {
-    if (Math.random() * 100 < chance) success = true
+    if (rng.next() * 100 < chance) success = true
   }
   return success
 }
 
 function randomInt(min: number, max: number): number {
-  return min + Math.floor(Math.random() * (max - min + 1))
+  return getCombatRng().nextInt(min, max)
 }
 
 function applyMoveResolveStatuses(
@@ -248,8 +247,8 @@ function rollPhenomena(ctx: ResolveMoveContext, out: PlayerMoveResolveOut): stri
     CROSS_SCALE.PHENOMENA_DEF_FLOOR_PER_DEF_LVL,
     CROSS_SCALE.PHENOMENA_DEF_FLOOR_CAP,
   )
-  let roll = Math.floor(Math.random() * 9)
-  if (rollBias > 0 && Math.random() < rollBias) {
+  let roll = getCombatRng().nextInt(0, 8)
+  if (rollBias > 0 && getCombatRng().next() < rollBias) {
     roll = Math.min(8, roll + 1)
   }
   switch (roll) {
@@ -275,10 +274,11 @@ function rollPhenomena(ctx: ResolveMoveContext, out: PlayerMoveResolveOut): stri
       out.reflectApplied = true
       return 'phenomena: reflect.'
     case 7: {
+      const rng = getCombatRng()
       const mult =
         PHENOMENA_DAMAGE_MULT_MIN +
         defFloor +
-        Math.random() * (PHENOMENA_DAMAGE_MULT_MAX - PHENOMENA_DAMAGE_MULT_MIN)
+        rng.next() * (PHENOMENA_DAMAGE_MULT_MAX - PHENOMENA_DAMAGE_MULT_MIN)
       out.playerDmg = jitter(Math.floor(ctx.atk * mult))
       out.incoming = incomingEnemyHit(ctx) ? ctx.eDmg : 0
       return `phenomena: ${out.playerDmg} chaos damage.`
@@ -287,7 +287,7 @@ function rollPhenomena(ctx: ResolveMoveContext, out: PlayerMoveResolveOut): stri
       const heal = Math.floor(
         ctx.playerMaxHp *
           (PHENOMENA_HEAL_PCT_MIN +
-            Math.random() * (PHENOMENA_HEAL_PCT_MAX - PHENOMENA_HEAL_PCT_MIN)),
+            getCombatRng().next() * (PHENOMENA_HEAL_PCT_MAX - PHENOMENA_HEAL_PCT_MIN)),
       )
       out.playerDmg = 0
       out.incoming = 0
@@ -350,53 +350,22 @@ export function applyMoveBehavior(
       break
 
     case 'dodge': {
-      const d = behavior.profile
-      const slipAtkBonus =
-        def.id === 'SLIP'
-          ? crossSecondaryBonus(
-              attackSkillLevel,
-              CROSS_SCALE.SLIP_COUNTER_ATK_PER_ATK_LVL,
-              CROSS_SCALE.SLIP_COUNTER_ATK_CAP,
-            )
-          : 0
-      const parryReflectScale =
-        def.id === 'PARRY'
-          ? crossSecondaryMultiplier(
-              defSkillLevel,
-              CROSS_SCALE.PARRY_REFLECT_DEF_PER_DEF_LVL,
-              CROSS_SCALE.PARRY_REFLECT_DEF_CAP,
-            )
-          : 1
-      const dodgeChance = def.id === 'PARRY'
-        ? luckDodgeSuccessChance(lck)
-        : speedDodgeSuccessChance(ctx.spd)
-      if (incomingEnemyHit(ctx)) {
-        if (Math.random() < dodgeChance) {
-          out.dodged = true
-          out.incoming = 0
-          const counterScale = def.id === 'PARRY'
-            ? 1 + defParryCounterBonus(ctx.def)
-            : 1 + speedDodgeBonus(ctx.spd) + speedCounterBonus(ctx.spd) + slipAtkBonus
-          const counterBase = def.id === 'PARRY' ? ctx.defStat : atk
-          out.playerDmg = jitter(Math.floor(counterBase * d.counterMult * counterScale))
-          if (Math.random() * 100 < d.stunChance.base + lck * d.stunChance.lckMult) {
-            out.stunApplied = true
-          }
-          if (d.onDodgeReflectPct && ctx.eDmg > 0) {
-            out.playerDmg += Math.max(
-              1,
-              Math.floor(ctx.eDmg * d.onDodgeReflectPct * parryReflectScale),
-            )
-          }
-        } else {
-          out.dodged = false
-          out.incoming = ctx.eDmg
-          out.playerDmg = jitter(Math.floor(atk * d.weakMult))
-        }
-      } else {
-        out.incoming = 0
-        out.playerDmg = jitter(Math.floor(atk * d.weakMult))
-      }
+      const dodge = resolvePlayerDodgeMove({
+        moveId: def.id,
+        profile: behavior.profile,
+        incomingHit: incomingEnemyHit(ctx) ? ctx.eDmg : 0,
+        atk,
+        attackSkillLevel,
+        speedSkillLevel: ctx.spd,
+        defenseSkillLevel: defSkillLevel,
+        luckSkillLevel,
+        defStat: ctx.defStat,
+        lckStat: lck,
+      })
+      out.dodged = dodge.dodged
+      out.incoming = dodge.incoming
+      out.playerDmg = dodge.playerDmg
+      if (dodge.stunApplied) out.stunApplied = true
       break
     }
 
@@ -449,7 +418,7 @@ export function applyMoveBehavior(
           CROSS_SCALE.CANNON_CRIT_DMG_CAP,
         ),
       })
-      if (out.crit && Math.random() < behavior.defShatterChance) {
+      if (out.crit && getCombatRng().next() < behavior.defShatterChance) {
         battle.enemyDefShattered = true
       }
       break
@@ -468,7 +437,7 @@ export function applyMoveBehavior(
         )
         out.playerDmg = jitter(Math.floor(atk * BLACKOUT_ARMED_DAMAGE_MULT * momentum))
         if (incomingEnemyHit(ctx)) {
-          if (Math.random() < speedDodgeSuccessChance(ctx.spd) * BLACKOUT_RELEASE_DODGE_MULT) {
+          if (getCombatRng().next() < speedDodgeSuccessChance(ctx.spd) * BLACKOUT_RELEASE_DODGE_MULT) {
             out.dodged = true
             out.incoming = 0
           } else {
@@ -530,17 +499,17 @@ export function applyMoveBehavior(
       out.playerDmg = 0
       battle.counterweightBlockPct =
         COUNTERWEIGHT_BLOCK_PCT_MIN +
-        Math.random() * (COUNTERWEIGHT_BLOCK_PCT_MAX - COUNTERWEIGHT_BLOCK_PCT_MIN)
+        getCombatRng().next() * (COUNTERWEIGHT_BLOCK_PCT_MAX - COUNTERWEIGHT_BLOCK_PCT_MIN)
       const reflectAtkBonus = crossSecondaryBonus(
         attackSkillLevel,
         CROSS_SCALE.COUNTERWEIGHT_REFLECT_ATK_PER_ATK_LVL,
         CROSS_SCALE.COUNTERWEIGHT_REFLECT_ATK_CAP,
       )
-      if (Math.random() < COUNTERWEIGHT_REFLECT_CHANCE) {
+      if (getCombatRng().next() < COUNTERWEIGHT_REFLECT_CHANCE) {
         battle.counterweightReflectPct = Math.min(
           1,
           COUNTERWEIGHT_REFLECT_PCT_MIN +
-            Math.random() * (COUNTERWEIGHT_REFLECT_PCT_MAX - COUNTERWEIGHT_REFLECT_PCT_MIN) +
+            getCombatRng().next() * (COUNTERWEIGHT_REFLECT_PCT_MAX - COUNTERWEIGHT_REFLECT_PCT_MIN) +
             reflectAtkBonus,
         )
       }
@@ -589,7 +558,7 @@ export function applyMoveBehavior(
     case 'snag': {
       const pool = ctx.npcMovePool
       if (pool.length > 0 && ctx.moveSlot != null) {
-        const stolen = pool[Math.floor(Math.random() * pool.length)]!
+        const stolen = pool[getCombatRng().nextInt(0, pool.length - 1)]!
         battle.snagStolen[ctx.moveSlot] = stolen
         const nativeLvl = stolenMoveNativeSkillLevel(stolen, ctx)
         const stolenScale = crossSecondaryMultiplier(

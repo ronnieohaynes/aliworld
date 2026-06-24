@@ -13,7 +13,11 @@
     "deploy": "gh-pages -d dist",
     "build-mdnght": "node scripts/build-mdnght-from-reference.mjs",
     "generate-placeholders": "node scripts/generate-placeholder-sprites.mjs",
-    "register-variants": "node scripts/register-variant-sheets.mjs"
+    "register-variants": "node scripts/register-variant-sheets.mjs",
+    "golden-combat": "npx --yes vite-node scripts/golden-combat.ts",
+    "golden-combat:record": "npx --yes vite-node scripts/record-golden-fixture.ts",
+    "build:combat-edge": "node scripts/build-combat-edge-bundle.mjs",
+    "edge-combat-replay-smoke": "npm run build:combat-edge && npx --yes vite-node scripts/edge-combat-replay-smoke.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
@@ -25,6 +29,7 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "^0.28.1",
     "gh-pages": "^6.3.0",
     "sharp": "^0.34.5",
     "typescript": "~5.7.3",

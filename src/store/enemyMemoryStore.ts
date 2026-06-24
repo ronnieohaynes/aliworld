@@ -14,6 +14,8 @@ export type NpcMemory = {
   totalFights: number
 }
 
+export const EMPTY_NPC_MEMORY: NpcMemory = { encounters: [], totalFights: 0 }
+
 type MemoryState = Record<string, NpcMemory>
 
 function load(): MemoryState {
@@ -54,7 +56,10 @@ export function recordEncounter(
 }
 
 export function getPlayerMoveFrequencies(npcId: string): Record<string, number> {
-  const mem = getNpcMemory(npcId)
+  return moveFrequenciesFromMemory(getNpcMemory(npcId))
+}
+
+export function moveFrequenciesFromMemory(mem: NpcMemory): Record<string, number> {
   const counts: Record<string, number> = {}
   let total = 0
   for (const enc of mem.encounters) {

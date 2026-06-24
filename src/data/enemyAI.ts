@@ -1,6 +1,7 @@
 import type { PlayerMoveId } from './moveIds'
+import { getCombatRng } from './combatRng'
 import type { NpcMemory } from '../store/enemyMemoryStore'
-import { getPlayerMoveFrequencies } from '../store/enemyMemoryStore'
+import { moveFrequenciesFromMemory } from '../store/enemyMemoryStore'
 import { ENEMY_AI_TIER1_LEVEL, ENEMY_AI_TIER2_LEVEL, ENEMY_AI_TIER3_LEVEL } from './moveBalance'
 
 /**
@@ -106,11 +107,11 @@ function applyTier2Weights(weights: MoveWeight[], ctx: BattleContext): void {
 
 function applyPatternLearning(
   weights: MoveWeight[],
-  npcId: string,
+  memory: NpcMemory,
   availableMoves: PlayerMoveId[],
   learnStrength: number,
 ): void {
-  const freqs = getPlayerMoveFrequencies(npcId)
+  const freqs = moveFrequenciesFromMemory(memory)
   if (Object.keys(freqs).length === 0) return
 
   const available = new Set(availableMoves)
@@ -148,7 +149,7 @@ function applyLastMoveCounter(
 
 function selectWeighted(weights: MoveWeight[]): PlayerMoveId {
   const total = weights.reduce((s, w) => s + w.weight, 0)
-  let roll = Math.random() * total
+  let roll = getCombatRng().next() * total
   for (const w of weights) {
     roll -= w.weight
     if (roll <= 0) return w.move
@@ -157,7 +158,7 @@ function selectWeighted(weights: MoveWeight[]): PlayerMoveId {
 }
 
 export function chooseMoveAI(
-  npcId: string,
+  _npcId: string,
   level: number,
   moves: PlayerMoveId[],
   ctx: BattleContext,
@@ -169,7 +170,7 @@ export function chooseMoveAI(
   const tier = aiTierForLevel(level)
 
   if (tier === 0) {
-    return moves[Math.floor(Math.random() * moves.length)]!
+    return moves[getCombatRng().nextInt(0, moves.length - 1)]!
   }
 
   const dedupedMoves = [...new Set(moves)]
@@ -188,7 +189,7 @@ export function chooseMoveAI(
   }
   if (tier >= 3) {
     const learnStrength = Math.min(3, 0.5 + memory.totalFights * 0.25)
-    applyPatternLearning(weights, npcId, dedupedMoves, learnStrength)
+    applyPatternLearning(weights, memory, dedupedMoves, learnStrength)
     applyLastMoveCounter(weights, ctx, dedupedMoves, 1.5)
   }
 
