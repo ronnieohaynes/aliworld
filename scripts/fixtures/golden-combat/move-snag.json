@@ -1,50 +1,41 @@
 {
-  "id": "gym-h1-atk-baseline",
+  "id": "move-snag",
   "coverage": [
-    "gym-h1",
-    "move:cannon",
-    "memory-isolated"
+    "move:snag"
   ],
   "npcId": "gym-week-1-h1",
-  "seed": 305419896,
-  "archetype": "atk",
+  "seed": 0,
   "skills": {
     "attack": {
-      "level": 8,
+      "level": 52,
       "xp": 0
     },
     "speed": {
-      "level": 4,
+      "level": 52,
       "xp": 0
     },
     "defense": {
-      "level": 3,
+      "level": 65,
       "xp": 0
     },
     "luck": {
-      "level": 3,
+      "level": 65,
       "xp": 0
     },
     "hp": {
-      "level": 5,
+      "level": 30,
       "xp": 0
     }
   },
-  "equippedMoves": [
-    "STRIKE",
-    "SLIP",
-    "HOLD",
-    "WHISPER"
-  ],
   "playerMoves": [
+    "SNAG",
     "STRIKE",
     "STRIKE",
-    "CANNON",
-    "HOLD",
-    "SLIP",
-    "WHISPER",
     "STRIKE",
-    "CANNON",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
     "STRIKE",
     "STRIKE",
     "STRIKE",
@@ -65,10 +56,10 @@
   "isolateNpcMemory": true,
   "expected": {
     "result": "win",
-    "turns": 2,
-    "playerHp": 50,
+    "turns": 1,
+    "playerHp": 136,
     "enemyHp": 0,
-    "rngDraws": 10,
-    "logDigest": "you traded blows. 17 dealt, 6 taken.\nbag work's STRIKE, 6.\nyou traded blows. 16 dealt, 6 taken.\nbag work's STRIKE, 6.\ncannon. 22! crit.\nbag work is finished."
+    "rngDraws": 5,
+    "logDigest": "snag. 13. their move is yours now.\nbag work's STRIKE, 1.\nyou traded blows. 42 dealt, 1 taken.\nbag work is finished."
   }
 }

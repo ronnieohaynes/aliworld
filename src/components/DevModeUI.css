@@ -79,6 +79,7 @@
 }
 
 .dev-mode-toolbar__tutorial,
+.dev-mode-toolbar__quest,
 .dev-mode-toolbar__shop {
   padding: 4px 10px;
   border-radius: 4px;
@@ -95,8 +96,17 @@
   color: #c084fc;
 }
 
+.dev-mode-toolbar__quest {
+  border: 1px solid rgba(129, 196, 248, 0.45);
+  color: #81c4f8;
+}
+
 .dev-mode-toolbar__tutorial:hover:not(:disabled) {
   background: rgba(192, 132, 252, 0.12);
+}
+
+.dev-mode-toolbar__quest:hover {
+  background: rgba(129, 196, 248, 0.12);
 }
 
 .dev-mode-toolbar__tutorial:disabled {
@@ -111,6 +121,35 @@
 
 .dev-mode-toolbar__shop:hover {
   background: rgba(212, 184, 122, 0.12);
+}
+
+.dev-mode-quest-picker__list {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dev-mode-quest-picker__btn {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #3a3a52;
+  border-radius: 4px;
+  background: transparent;
+  color: #e8e8f0;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.dev-mode-quest-picker__btn:hover {
+  border-color: #81c4f8;
+  color: #81c4f8;
+  background: rgba(129, 196, 248, 0.08);
 }
 
 .dev-mode-indicator {

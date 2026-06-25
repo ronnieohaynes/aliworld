@@ -43,6 +43,10 @@ const NPC1_SPRITE = publicAsset('Assets/Characters/npcs/npc1-idle-sheet.png')
 const NPC2_SPRITE = publicAsset('Assets/Characters/npcs/npc2-idle-sheet.png')
 const NPC4_SPRITE = publicAsset('Assets/Characters/npcs/npc4-idle-sheet.png')
 const NPC5_IDLE_SPRITE = `${publicAsset('Assets/Characters/npcs/npc5-idle.PNG')}?v=3`
+const NPC6_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/npc6-idle.png')
+const NPC7_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/npc7-idle.png')
+const NPC8_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/npc8-idle.png')
+const NPC9_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/npc9-idle.png')
 
 const ADAM_IDLE_SPRITE = `${publicAsset('Assets/Characters/npcs/Adam-idle.PNG')}?v=2`
 const MARK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
@@ -207,12 +211,12 @@ export const FIVE_OVERWORLD_NPCS: readonly NpcData[] = [
   MARK_NPC,
 ]
 
-/** Quest 2, crowd outside the 5ive after e1. */
+/** Quest 2, crowd outside the 5ive after e1 — south plaza, clear of gym exit (751, 340). */
 export const CROWD_1_NPC: NpcData = {
   id: 'crowd1',
   name: 'crowd',
-  x: 520,
-  y: 420,
+  x: 400,
+  y: 575,
   lines: ["he's back. that's him. that's the one."],
   linesConverted: ['so do something. prove it again. we want to see.'],
   color: '#9696b0',
@@ -223,8 +227,8 @@ export const CROWD_1_NPC: NpcData = {
 export const CROWD_2_NPC: NpcData = {
   id: 'crowd2',
   name: 'crowd',
-  x: 680,
-  y: 440,
+  x: 650,
+  y: 575,
   lines: ["i heard he got walker. i heard he got jaclyn too."],
   color: '#9696b0',
   spriteSrc: NPC4_SPRITE,
@@ -235,8 +239,8 @@ export const CROWD_2_NPC: NpcData = {
 export const WALKER_E2_CROWD_NPC: NpcData = {
   id: 'walker-crowd',
   name: 'walker',
-  x: 760,
-  y: 400,
+  x: 820,
+  y: 545,
   lines: [
     "i told you. i told all of you. exactly like he said.",
     "you're late. you should've listened sooner.",
@@ -246,12 +250,12 @@ export const WALKER_E2_CROWD_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2, town crier at the 5ive. */
+/** Quest 2, town crier at the 5ive — south plaza, away from gym door. */
 export const TOWN_CRIER_NPC: NpcData = {
   id: 'town-crier',
   name: 'town crier',
-  x: 600,
-  y: 380,
+  x: 540,
+  y: 555,
   lines: [
     'who is this guy? a crowd will follow anybody who looks sure.',
     "i don't think you're sure.",
@@ -304,8 +308,71 @@ export const RESTOCKER_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Southside overworld, fights live in blue-store-interior. */
-export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = []
+/** Southside overworld — fights live in blue-store-interior. */
+export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = [
+  {
+    id: 'southside-local-1',
+    name: '',
+    x: 380,
+    y: 720,
+    lines: ['parking lot stays full. always something moving.'],
+    color: '#9696b0',
+    spriteSrc: NPC8_IDLE_SPRITE,
+    spriteLayout: 'horizontal-bbox',
+    fixedFacing: 'right',
+  },
+  {
+    id: 'southside-local-2',
+    name: '',
+    x: 720,
+    y: 620,
+    lines: ['blue store draws a crowd even when nothing happens.'],
+    color: '#9696b0',
+    spriteSrc: NPC9_IDLE_SPRITE,
+    spriteLayout: 'horizontal-bbox',
+    fixedFacing: 'down',
+  },
+]
+
+/** Hillcrest overworld ambient locals (san-bruno). */
+export const HILLCREST_OVERWORLD_NPCS: readonly NpcData[] = [
+  {
+    id: 'hillcrest-local-1',
+    name: '',
+    x: 420,
+    y: 520,
+    lines: ['hillcrest moves slower. you feel it when you stop rushing.'],
+    color: '#9696b0',
+    spriteSrc: NPC6_IDLE_SPRITE,
+    spriteLayout: 'horizontal-bbox',
+    fixedFacing: 'down',
+  },
+  {
+    id: 'hillcrest-local-2',
+    name: '',
+    x: 880,
+    y: 680,
+    lines: ['one love stays loud even on quiet days.'],
+    color: '#9696b0',
+    spriteSrc: NPC7_IDLE_SPRITE,
+    spriteLayout: 'horizontal-bbox',
+    fixedFacing: 'left',
+  },
+]
+
+/** Plot repeat — Mark at Hillcrest Darkline after first travel (GameScreen gates spawn). */
+export const HILLCREST_MARK_NPC: NpcData = {
+  id: 'hillcrest-mark',
+  name: 'mark',
+  x: 565,
+  y: 95,
+  lines: ['goat yoga...where do you want me.'],
+  color: '#c084fc',
+  spriteSrc: MARK_IDLE_SPRITE,
+  spriteLayout: 'horizontal-bbox',
+  fixedFacing: 'up',
+  blocksMovement: true,
+}
 
 /** Mando, renders inside the 13 Gallons interior overlay. */
 export const MANDO_NPC: NpcData = {

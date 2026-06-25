@@ -2004,6 +2004,10 @@ var NPC1_SPRITE = publicAsset("Assets/Characters/npcs/npc1-idle-sheet.png");
 var NPC2_SPRITE = publicAsset("Assets/Characters/npcs/npc2-idle-sheet.png");
 var NPC4_SPRITE = publicAsset("Assets/Characters/npcs/npc4-idle-sheet.png");
 var NPC5_IDLE_SPRITE = `${publicAsset("Assets/Characters/npcs/npc5-idle.PNG")}?v=3`;
+var NPC6_IDLE_SPRITE = publicAsset("Assets/Characters/npcs/npc6-idle.png");
+var NPC7_IDLE_SPRITE = publicAsset("Assets/Characters/npcs/npc7-idle.png");
+var NPC8_IDLE_SPRITE = publicAsset("Assets/Characters/npcs/npc8-idle.png");
+var NPC9_IDLE_SPRITE = publicAsset("Assets/Characters/npcs/npc9-idle.png");
 var ADAM_IDLE_SPRITE = `${publicAsset("Assets/Characters/npcs/Adam-idle.PNG")}?v=2`;
 var MARK_IDLE_SPRITE = publicAsset("Assets/Characters/npcs/mark-idle.png");
 var JACLYN_IDLE_SPRITE = publicAsset("Assets/Characters/npcs/jaclyn-idle.png");
@@ -4975,6 +4979,9 @@ function advanceBusyState(state2) {
   if (state2.resolveStep === "pause_after_second") {
     return battleReducer(state2, { type: "RESOLVE_FINISH" });
   }
+  if (state2.resolveStep === "idle" && state2.pendingResolve) {
+    return battleReducer(state2, { type: "RESOLVE_FINISH" });
+  }
   return state2;
 }
 function runBattle(options) {
@@ -4990,17 +4997,32 @@ function runBattle(options) {
   let moveIndex = 0;
   let guard = 0;
   const maxSteps = 500;
+  const turnLogs = [];
+  let lastCaptured = "";
+  const captureTurnLog = (s) => {
+    const chunk = s.log.join("\n");
+    if (chunk.length > 0 && chunk !== lastCaptured) {
+      turnLogs.push(...s.log);
+      lastCaptured = chunk;
+    }
+  };
   while (state2.phase !== "ended" && guard < maxSteps) {
     guard += 1;
     if (state2.phase === "busy") {
       const next = advanceBusyState(state2);
       if (next === state2) break;
       state2 = next;
+      if (state2.phase === "player" || state2.phase === "ended") {
+        captureTurnLog(state2);
+      }
       continue;
     }
     const move = options.playerMoves[moveIndex] ?? options.playerMoves[options.playerMoves.length - 1] ?? "STRIKE";
     moveIndex += 1;
     state2 = battleReducer(state2, { type: "PLAYER_MOVE", move });
+    if (state2.phase === "player" || state2.phase === "ended") {
+      captureTurnLog(state2);
+    }
   }
   if (state2.phase !== "ended" || state2.result == null) {
     throw new Error(`Combat simulation did not end (phase=${state2.phase}, guard=${guard})`);
@@ -5011,7 +5033,7 @@ function runBattle(options) {
     playerHp: state2.playerHp,
     enemyHp: state2.enemyHp,
     rngDraws: getCombatRng().draws(),
-    logDigest: state2.log.join("\n")
+    logDigest: turnLogs.join("\n")
   };
 }
 export {

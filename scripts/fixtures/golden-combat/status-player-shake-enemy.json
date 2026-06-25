@@ -1,0 +1,67 @@
+{
+  "id": "status-player-shake-enemy",
+  "coverage": [
+    "status-player:shake",
+    "enemy:whisper",
+    "status:enemy-to-player"
+  ],
+  "npcId": "town-crier",
+  "seed": 0,
+  "skills": {
+    "attack": {
+      "level": 52,
+      "xp": 0
+    },
+    "speed": {
+      "level": 52,
+      "xp": 0
+    },
+    "defense": {
+      "level": 65,
+      "xp": 0
+    },
+    "luck": {
+      "level": 65,
+      "xp": 0
+    },
+    "hp": {
+      "level": 30,
+      "xp": 0
+    }
+  },
+  "playerMoves": [
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE"
+  ],
+  "isolateNpcMemory": true,
+  "expected": {
+    "result": "win",
+    "turns": 7,
+    "playerHp": 137,
+    "enemyHp": 0,
+    "rngDraws": 10,
+    "logDigest": "town crier's WHISPER vs HOLD. blocked.\nbrace chip. 2.\ntown crier's STRIKE vs HOLD. blocked.\nbrace chip. 2.\nyou traded blows. 22 dealt, 1 taken.\ntown crier is finished."
+  }
+}

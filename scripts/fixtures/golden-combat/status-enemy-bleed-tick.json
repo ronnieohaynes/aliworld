@@ -1,0 +1,66 @@
+{
+  "id": "status-enemy-bleed-tick",
+  "coverage": [
+    "status-enemy:bleed",
+    "status:bleed-tick"
+  ],
+  "npcId": "gym-week-1-h1",
+  "seed": 6,
+  "skills": {
+    "attack": {
+      "level": 52,
+      "xp": 0
+    },
+    "speed": {
+      "level": 52,
+      "xp": 0
+    },
+    "defense": {
+      "level": 65,
+      "xp": 0
+    },
+    "luck": {
+      "level": 22,
+      "xp": 0
+    },
+    "hp": {
+      "level": 30,
+      "xp": 0
+    }
+  },
+  "playerMoves": [
+    "PHENOMENA",
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "HOLD",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE"
+  ],
+  "isolateNpcMemory": true,
+  "expected": {
+    "result": "win",
+    "turns": 7,
+    "playerHp": 135,
+    "enemyHp": 0,
+    "rngDraws": 17,
+    "logDigest": "phenomena: bleed.\nbag work's STRIKE vs HOLD. 1 chip.\nbag work bleeds. 4 damage.\nbrace chip. 2.\nbag work's STRIKE vs HOLD. blocked.\nbag work bleeds. 4 damage.\nbrace chip. 2.\nyou set your feet. nothing comes.\nbag work's STRIKE vs HOLD. blocked.\nbrace chip. 2.\nSTRIKE vs bag work's PARRY. whiff.\nbag work's PARRY, 1.\nyou traded blows. 41 dealt, 1 taken.\nbag work is finished."
+  }
+}

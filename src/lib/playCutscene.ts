@@ -5,7 +5,7 @@ export type { Caption }
 /** ALIWORLD episode theater ids, respawn-to-5ive after playback when flagged. */
 export const ALIWORLD_EPISODE_VIDEO_IDS = ['6t83Cdmq1fM', 'y4WdKh9cZsM'] as const
 
-/** Episode index for post-clip handoff (1 = cafe → E2 start, 2 = clerk → E3 complete, …). */
+/** Episode index for post-clip handoff (1 = cafe → E2 start, 2 = restocker closing → E3 teaser, …). */
 export type EpisodeCutsceneHandoff = 1 | 2 | 3 | 4 | 5
 
 /** Passed to cutscene {@link PlayCutsceneOptions.onComplete} when playback ends. */

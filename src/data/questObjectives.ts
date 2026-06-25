@@ -30,7 +30,7 @@ import {
   E2_ENABLED,
   RESTOCKER_NPC_ID,
   TOWN_CRIER_NPC_ID,
-  CROWD_2_NPC_ID,
+  CROWD_1_NPC_ID,
 } from '../store/quest2Store'
 import type { TriggerAction } from './triggerZones'
 
@@ -271,7 +271,7 @@ export function getQuestPulseTargetDescriptor(
     case 'e2-gym':
       return { kind: 'zone', action: 'OPEN_OCEANVIEW_GYM' }
     case 'e2-crowd':
-      return ctx.crowdAddressed ? null : { kind: 'npc', id: CROWD_2_NPC_ID }
+      return ctx.crowdAddressed ? null : { kind: 'npc', id: CROWD_1_NPC_ID }
     case 'e2-crier':
       return { kind: 'npc', id: TOWN_CRIER_NPC_ID }
     case 'e2-herald':
@@ -289,7 +289,9 @@ export function getQuestPulseTargetDescriptor(
         ? { kind: 'npc', id: RESTOCKER_NPC_ID }
         : { kind: 'zone', action: 'OPEN_BLUE_STORE' }
     case 'e2-closing-pending':
-      return { kind: 'zone', action: 'OPEN_BLUE_STORE_EXIT' }
+      return ctx.inSouthside
+        ? { kind: 'npc', id: 'e2-closing-crier' }
+        : { kind: 'zone', action: 'OPEN_BLUE_STORE_EXIT' }
     default:
       return null
   }
