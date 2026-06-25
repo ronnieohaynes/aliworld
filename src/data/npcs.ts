@@ -211,12 +211,12 @@ export const FIVE_OVERWORLD_NPCS: readonly NpcData[] = [
   MARK_NPC,
 ]
 
-/** Quest 2, crowd outside the 5ive after e1. */
+/** Quest 2, crowd outside the 5ive after e1 — south plaza, clear of gym exit (751, 340). */
 export const CROWD_1_NPC: NpcData = {
   id: 'crowd1',
   name: 'crowd',
-  x: 520,
-  y: 420,
+  x: 400,
+  y: 575,
   lines: ["he's back. that's him. that's the one."],
   linesConverted: ['so do something. prove it again. we want to see.'],
   color: '#9696b0',
@@ -227,8 +227,8 @@ export const CROWD_1_NPC: NpcData = {
 export const CROWD_2_NPC: NpcData = {
   id: 'crowd2',
   name: 'crowd',
-  x: 680,
-  y: 440,
+  x: 650,
+  y: 575,
   lines: ["i heard he got walker. i heard he got jaclyn too."],
   color: '#9696b0',
   spriteSrc: NPC4_SPRITE,
@@ -239,8 +239,8 @@ export const CROWD_2_NPC: NpcData = {
 export const WALKER_E2_CROWD_NPC: NpcData = {
   id: 'walker-crowd',
   name: 'walker',
-  x: 760,
-  y: 400,
+  x: 820,
+  y: 545,
   lines: [
     "i told you. i told all of you. exactly like he said.",
     "you're late. you should've listened sooner.",
@@ -250,12 +250,12 @@ export const WALKER_E2_CROWD_NPC: NpcData = {
   spriteLayout: 'horizontal-bbox',
 }
 
-/** Quest 2, town crier at the 5ive. */
+/** Quest 2, town crier at the 5ive — south plaza, away from gym door. */
 export const TOWN_CRIER_NPC: NpcData = {
   id: 'town-crier',
   name: 'town crier',
-  x: 600,
-  y: 380,
+  x: 540,
+  y: 555,
   lines: [
     'who is this guy? a crowd will follow anybody who looks sure.',
     "i don't think you're sure.",
