@@ -180,6 +180,7 @@ import type { CutsceneCompleteMeta, PlayCutsceneOptions } from '../lib/playCutsc
 import { preloadYouTubeIframeApi } from '../lib/youtubeIframeApi'
 import { buildEpisodeCutsceneOptions } from '../data/episodeCutscenes'
 import { useDevControls } from '../hooks/useDevControls'
+import { applyDevQuestJump, type DevQuestJumpId } from '../lib/devQuestJump'
 import { CutsceneOverlay } from './CutsceneOverlay'
 import {
   QuestTransition,
@@ -355,6 +356,8 @@ export function GameScreen() {
   const playerMessagesShowingRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
   const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'return-five' | 'cards'>('idle')
+  /** Mob dialogue finished — play E2 video then 5ive return (wired after playCutscene exists). */
+  const beginE2ClosingVideoAfterMobRef = useRef<(() => void) | null>(null)
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
   const [questTransitionActive, setQuestTransitionActive] = useState(false)
   const [episodeWorldReveal, setEpisodeWorldReveal] = useState<
@@ -1486,22 +1489,24 @@ export function GameScreen() {
 
   const runE2ClosingMobDialogue = useCallback(() => {
     if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
+
+    const queueClosingVideo = () => beginE2ClosingVideoAfterMobRef.current?.()
+
     if (isE2ClosingCrowdDismissed()) {
       if (currentCity === 'southside') {
-        e2ClosingPhaseRef.current = 'return-five'
-        queueE2ClosingReturnFive()
+        queueClosingVideo()
       }
       return
     }
+
     e2ClosingPhaseRef.current = 'mob'
     beginNpcDialogue(E2_CLOSING_CRIER_NPC, {
       onComplete: () => {
         setE2ClosingCrowdDismissed()
-        e2ClosingPhaseRef.current = 'return-five'
-        queueE2ClosingReturnFive()
+        queueClosingVideo()
       },
     })
-  }, [beginNpcDialogue, currentCity, queueE2ClosingReturnFive])
+  }, [beginNpcDialogue, currentCity])
 
   const startE2ClosingExitInterior = useCallback(() => {
     if (isE2Complete()) return
@@ -1776,6 +1781,17 @@ export function GameScreen() {
     [clearEpisodeHandoffTimer, runPendingEpisodeHandoff],
   )
 
+  const beginE2ClosingVideoAfterMob = useCallback(() => {
+    if (!isE2CutscenePlayed()) {
+      preloadE2CutsceneIfNeeded()
+      playCutscene(buildEpisodeCutsceneOptions(2))
+      return
+    }
+    e2ClosingPhaseRef.current = 'return-five'
+    queueE2ClosingReturnFive()
+  }, [playCutscene, preloadE2CutsceneIfNeeded, queueE2ClosingReturnFive])
+  beginE2ClosingVideoAfterMobRef.current = beginE2ClosingVideoAfterMob
+
   const handleCutsceneEnded = useCallback(() => {
     if (
       !pendingCafeVideoHandoffRef.current &&
@@ -1811,6 +1827,43 @@ export function GameScreen() {
 
   const canStartTutorialBattle = canSpawnDevSpar
 
+  const jumpToDevQuest = useCallback(
+    (questId: DevQuestJumpId) => {
+      if (!canSpawnDevSpar()) return
+      clearEpisodeHandoffTimer()
+      setEpisodeCutsceneEnding(false)
+      pendingCafeVideoHandoffRef.current = false
+      pendingE2VideoHandoffRef.current = false
+      e2ClosingPhaseRef.current = 'idle'
+      crierHeraldStartedRef.current = false
+      e2VideoHandoffStartedRef.current = false
+      cafeVideoHandoffStartedRef.current = false
+      setCutsceneQuestHelperHidden(false)
+      setBattleNpcId(null)
+      setBattleWipePhase(null)
+      setBattleReady(false)
+      setDialogue(null)
+      setCutscene(null)
+      mapTransitionRef.current = null
+      setMapTransition(null)
+      setMapTransitionReady(false)
+      setMapTransitionPending(false)
+      setQuestTransitionActive(false)
+      setShowFannyPack(false)
+      setCafeFade('none')
+      setCafeSceneLine(0)
+      setEpisodeWorldReveal('visible')
+      applyDevQuestJump(questId)
+      const fiveCfg = CITY_CONFIGS.five
+      setCurrentCity('five')
+      playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
+      playerRef.current?.setFacing('down')
+      setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
+      markCityVisited('five')
+    },
+    [canSpawnDevSpar, clearEpisodeHandoffTimer],
+  )
+
   const devModeUi = useDevControls({
     playerRef,
     playCutscene,
@@ -1821,6 +1874,8 @@ export function GameScreen() {
     canStartTutorialBattle,
     startTutorialBattle,
     openShop: openCosmeticsShop,
+    canJumpToQuest: canSpawnDevSpar,
+    jumpToQuest: jumpToDevQuest,
   })
 
   useEffect(() => {
@@ -2734,12 +2789,6 @@ export function GameScreen() {
       playCrierHeraldDialogue()
     }
 
-    if (exit?.result === 'win' && exit.npcId === CLERK_NPC_ID && !isE2CutscenePlayed()) {
-      preloadE2CutsceneIfNeeded()
-      playCutscene(buildEpisodeCutsceneOptions(2))
-      return
-    }
-
     if (exit?.result === 'win' && exit.npcId === RESTOCKER_NPC_ID && !isE2Complete()) {
       startE2ClosingExitInterior()
       return
@@ -2763,8 +2812,6 @@ export function GameScreen() {
     }
   }, [
     playCrierHeraldDialogue,
-    playCutscene,
-    preloadE2CutsceneIfNeeded,
     reportCurrentLocation,
     showNotYetDialogue,
     showNarration,

@@ -6,9 +6,11 @@ import type { PlayCutsceneOptions } from '../lib/playCutscene'
 import type { PlayerHandle } from '../components/Player'
 import {
   DevModeConfirmModal,
+  DevModeQuestPickerModal,
   DevModeToolbar,
   DevModeToast,
 } from '../components/DevModeUI'
+import { getDevJumpableQuests, type DevQuestJumpId } from '../lib/devQuestJump'
 import {
   isDevAllowedOnHost,
   readDevModeSession,
@@ -86,6 +88,8 @@ export type UseDevControlsOptions = {
   canStartTutorialBattle: () => boolean
   startTutorialBattle: () => void
   openShop: () => void
+  canJumpToQuest: () => boolean
+  jumpToQuest: (questId: DevQuestJumpId) => void
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -115,6 +119,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
     devAllowed ? readDevModeSession() : false,
   )
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null)
+  const [questPickerOpen, setQuestPickerOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const shiftEChordArmedRef = useRef(false)
   const shiftEChordTimerRef = useRef<number | null>(null)
@@ -157,6 +162,29 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
     startTutorialBattle()
     showToast('walker tutorial battle…')
   }, [showToast])
+
+  const tryOpenQuestPicker = useCallback(() => {
+    const { canJumpToQuest } = optionsRef.current
+    if (!canJumpToQuest()) {
+      showToast('cannot jump to quest here.')
+      return
+    }
+    setQuestPickerOpen(true)
+  }, [showToast])
+
+  const handleQuestPick = useCallback(
+    (questId: DevQuestJumpId) => {
+      setQuestPickerOpen(false)
+      optionsRef.current.jumpToQuest(questId)
+      const label = getDevJumpableQuests().find((q) => q.id === questId)?.label ?? questId
+      showToast(`${label} — from the start.`)
+    },
+    [showToast],
+  )
+
+  const handleCancelQuestPicker = useCallback(() => {
+    setQuestPickerOpen(false)
+  }, [])
 
   useEffect(() => {
     if (!devAllowed) return
@@ -230,6 +258,13 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         return
       }
 
+      if (e.shiftKey && (e.code === 'Digit5' || e.key === '%' || e.key === '5')) {
+        e.preventDefault()
+        if (questPickerOpen) return
+        tryOpenQuestPicker()
+        return
+      }
+
       if (e.shiftKey && (e.code === 'Digit3' || e.key === '#' || e.key === '3')) {
         e.preventDefault()
         optionsRef.current.openShop()
@@ -290,7 +325,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
       window.removeEventListener('keydown', onKeyDown, true)
       clearShiftEChord()
     }
-  }, [confirmKind, devAllowed, devModeEnabled, showToast])
+  }, [confirmKind, devAllowed, devModeEnabled, questPickerOpen, showToast, tryOpenQuestPicker])
 
   if (!devAllowed) return null
 
@@ -310,11 +345,19 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
           onCancel={handleCancelConfirm}
         />
       ) : null}
+      {questPickerOpen ? (
+        <DevModeQuestPickerModal
+          quests={getDevJumpableQuests()}
+          onSelect={handleQuestPick}
+          onCancel={handleCancelQuestPicker}
+        />
+      ) : null}
       {devModeEnabled ? (
         <DevModeToolbar
           onOpenShop={() => optionsRef.current.openShop()}
           onStartTutorial={tryStartTutorialBattle}
           canStartTutorial={() => optionsRef.current.canStartTutorialBattle()}
+          onOpenQuestPicker={tryOpenQuestPicker}
         />
       ) : null}
       {toastMessage ? <DevModeToast message={toastMessage} /> : null}
