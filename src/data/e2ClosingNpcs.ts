@@ -4,6 +4,7 @@ import {
   CLERK_NPC,
   GATING_NPC_1,
   GATING_NPC_3,
+  INVADER_IDLE_SPRITE,
   JACLYN_NPC,
   MARK_NPC,
   TOWN_CRIER_IDLE_SPRITE,
@@ -13,7 +14,6 @@ import {
 
 const NPC6_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/npc6-idle.png')
 const NPC7_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/npc7-idle.png')
-const NPC8_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/npc8-idle.png')
 
 /** Blue-store exterior spawn — crowd rings this point when closing dialogue queues. */
 const MOB_ANCHOR_X = SOUTHSIDE_EXTERIOR_RETURN.x
@@ -121,7 +121,7 @@ const E2_CLOSING_MOB_5 = closingMobNpc({
   id: 'e2-mob-5',
   x: MOB_ANCHOR_X - 45,
   y: MOB_ANCHOR_Y + 18,
-  spriteSrc: NPC8_IDLE_SPRITE,
+  spriteSrc: INVADER_IDLE_SPRITE,
 })
 
 /** Ten unique NPCs — story cast + extras — around the blue-store exterior spawn. */

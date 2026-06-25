@@ -56,8 +56,9 @@ const JASON_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/jason-idle.png')
 const CLERK_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/clerk-idle.png')
 const RESTOCKER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/restocker-idle.png')
 const TOWN_CRIER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/towncrier-idle.png')
+const INVADER_IDLE_SPRITE = publicAsset('Assets/Characters/npcs/invader-idle.png')
 /** Story art on disk; Jason is dialogue-only on Mark's lines (no overworld spawn). */
-export { JASON_IDLE_SPRITE, TOWN_CRIER_IDLE_SPRITE, CLERK_IDLE_SPRITE, RESTOCKER_IDLE_SPRITE }
+export { JASON_IDLE_SPRITE, TOWN_CRIER_IDLE_SPRITE, CLERK_IDLE_SPRITE, RESTOCKER_IDLE_SPRITE, INVADER_IDLE_SPRITE }
 
 /** Quest 1 gating NPC, Bayview Grocery sidewalk (upper-left). */
 export const GATING_NPC_1: NpcData = {
@@ -331,6 +332,17 @@ export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = [
     spriteSrc: NPC9_IDLE_SPRITE,
     spriteLayout: 'horizontal-bbox',
     fixedFacing: 'down',
+  },
+  {
+    id: 'invader',
+    name: 'invader',
+    x: 540,
+    y: 840,
+    lines: ['southside watches everybody. even the ones who think they blend in.'],
+    color: '#9696b0',
+    spriteSrc: INVADER_IDLE_SPRITE,
+    spriteLayout: 'horizontal-bbox',
+    fixedFacing: 'left',
   },
 ]
 
