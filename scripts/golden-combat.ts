@@ -8,6 +8,8 @@ import type { SkillsState } from '../src/store/skillStore.ts'
 
 type GoldenFixture = {
   id: string
+  /** Coverage tags for reporting — not asserted by the runner. */
+  coverage?: string[]
   npcId: string
   seed: number
   archetype?: 'lck' | 'atk' | 'def' | 'spd'

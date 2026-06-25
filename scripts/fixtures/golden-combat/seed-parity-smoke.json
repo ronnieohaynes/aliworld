@@ -1,5 +1,11 @@
 {
   "id": "seed-parity-smoke",
+  "coverage": [
+    "gym-h1",
+    "move:strike",
+    "enemy:parry",
+    "memory-isolated"
+  ],
   "npcId": "gym-week-1-h1",
   "seed": 3735928559,
   "archetype": "atk",
@@ -43,6 +49,6 @@
     "playerHp": 48,
     "enemyHp": 0,
     "rngDraws": 18,
-    "logDigest": "STRIKE vs bag work's PARRY. 2.\nbag work is finished."
+    "logDigest": "STRIKE vs bag work's PARRY. whiff.\nbag work's PARRY, 6.\nyou traded blows. 14 dealt, 4 taken.\nbag work's STRIKE, 4.\nyou traded blows. 24 dealt, 4 taken.\nbag work's STRIKE, 4.\nSTRIKE vs bag work's PARRY. 15.\nSTRIKE vs bag work's PARRY. 2.\nbag work is finished."
   }
 }

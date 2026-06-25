@@ -1,5 +1,11 @@
 {
   "id": "gym-h1-def-counter",
+  "coverage": [
+    "gym-h1",
+    "move:hold",
+    "move:slip",
+    "memory-isolated"
+  ],
   "npcId": "gym-week-1-h1",
   "seed": 2864434397,
   "archetype": "def",
@@ -40,24 +46,30 @@
     "SLIP",
     "HOLD",
     "STRIKE",
-    "HOLD",
-    "HOLD",
     "STRIKE",
-    "HOLD",
-    "SLIP",
-    "HOLD",
     "STRIKE",
-    "HOLD",
-    "HOLD",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
     "STRIKE"
   ],
   "isolateNpcMemory": true,
   "expected": {
     "result": "win",
-    "turns": 19,
+    "turns": 15,
     "playerHp": 68,
     "enemyHp": 0,
-    "rngDraws": 42,
-    "logDigest": "you traded blows. 7 dealt, 1 taken.\nbag work is finished."
+    "rngDraws": 45,
+    "logDigest": "bag work's STRIKE vs HOLD. 1 chip.\nSLIP vs bag work's PARRY. whiff.\nbag work's PARRY, 1.\nbag work's STRIKE vs HOLD. 1 chip.\nSTRIKE vs bag work's PARRY. 9.\nbag work's STRIKE vs HOLD. 1 chip.\nnothing to slip. 1.\nyou set your feet. nothing comes.\nSTRIKE vs bag work's PARRY. whiff.\nbag work's PARRY, 1.\nyou traded blows. 9 dealt, 1 taken.\nbag work's STRIKE, 1.\nyou traded blows. 6 dealt, 1 taken.\nbag work's STRIKE, 1.\nyou traded blows. 7 dealt, 1 taken.\nbag work's STRIKE, 1.\nyou traded blows. 11 dealt, 1 taken.\nbag work's STRIKE, 1.\nSTRIKE vs bag work's PARRY. whiff.\nbag work's PARRY, 1.\nyou traded blows. 6 dealt, 1 taken.\nbag work's STRIKE, 1.\nSTRIKE vs bag work's PARRY. whiff.\nbag work's PARRY, 1.\nSTRIKE vs bag work's PARRY. 6.\nbag work is finished."
   }
 }

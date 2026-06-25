@@ -1,0 +1,74 @@
+{
+  "id": "gym-h3-memory-isolated",
+  "coverage": [
+    "gym-h3",
+    "tier-3-ai",
+    "memory-isolated"
+  ],
+  "npcId": "gym-week-1-h3",
+  "seed": 0,
+  "archetype": "spd",
+  "skills": {
+    "attack": {
+      "level": 10,
+      "xp": 0
+    },
+    "speed": {
+      "level": 12,
+      "xp": 0
+    },
+    "defense": {
+      "level": 8,
+      "xp": 0
+    },
+    "luck": {
+      "level": 8,
+      "xp": 0
+    },
+    "hp": {
+      "level": 10,
+      "xp": 0
+    }
+  },
+  "equippedMoves": [
+    "STRIKE",
+    "SLIP",
+    "PARRY",
+    "CANNON"
+  ],
+  "playerMoves": [
+    "STRIKE",
+    "CANNON",
+    "SLIP",
+    "STRIKE",
+    "CANNON",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE"
+  ],
+  "isolateNpcMemory": true,
+  "expected": {
+    "result": "win",
+    "turns": 7,
+    "playerHp": 20,
+    "enemyHp": 0,
+    "rngDraws": 29,
+    "logDigest": "STRIKE vs corner's PARRY. whiff.\ncorner's PARRY, 9.\nCANNON vs corner's PARRY. whiff.\ncorner's PARRY, 9.\nSLIP vs corner's PARRY. whiff.\ncorner's PARRY, 7.\nyou traded blows. 28 dealt, 18 taken.\ncorner's LOOP, 18.\ncannon. 17!\ncorner's CANNON, 14.\nSTRIKE vs corner's PARRY. 22.\nyou traded blows. 1 dealt, 14 taken.\ncorner is finished."
+  }
+}

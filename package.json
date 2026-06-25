@@ -16,8 +16,11 @@
     "register-variants": "node scripts/register-variant-sheets.mjs",
     "golden-combat": "npx --yes vite-node scripts/golden-combat.ts",
     "golden-combat:record": "npx --yes vite-node scripts/record-golden-fixture.ts",
+    "golden-combat:bootstrap": "npx --yes vite-node scripts/bootstrap-golden-fixtures.ts",
     "build:combat-edge": "node scripts/build-combat-edge-bundle.mjs",
-    "edge-combat-replay-smoke": "npm run build:combat-edge && npx --yes vite-node scripts/edge-combat-replay-smoke.ts"
+    "check:combat-edge-bundle": "node scripts/check-combat-edge-bundle.mjs",
+    "edge-combat-replay-smoke": "npm run build:combat-edge && npx --yes vite-node scripts/edge-combat-replay-smoke.ts",
+    "verify:combat": "npm run check:combat-edge-bundle && npm run golden-combat && npm run edge-combat-replay-smoke"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",

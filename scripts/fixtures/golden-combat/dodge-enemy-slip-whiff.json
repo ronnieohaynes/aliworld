@@ -1,0 +1,66 @@
+{
+  "id": "dodge-enemy-slip-whiff",
+  "coverage": [
+    "dodge:enemy-slip",
+    "dodge:enemy-success"
+  ],
+  "npcId": "gym-week-2-h2",
+  "seed": 0,
+  "skills": {
+    "attack": {
+      "level": 52,
+      "xp": 0
+    },
+    "speed": {
+      "level": 52,
+      "xp": 0
+    },
+    "defense": {
+      "level": 65,
+      "xp": 0
+    },
+    "luck": {
+      "level": 65,
+      "xp": 0
+    },
+    "hp": {
+      "level": 30,
+      "xp": 0
+    }
+  },
+  "playerMoves": [
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE"
+  ],
+  "isolateNpcMemory": true,
+  "expected": {
+    "result": "win",
+    "turns": 3,
+    "playerHp": 135,
+    "enemyHp": 0,
+    "rngDraws": 15,
+    "logDigest": "STRIKE vs lynn's SLIP. whiff.\nlynn's SLIP, 1.\nSTRIKE vs lynn's SLIP. 93.\nSTRIKE vs lynn's SLIP. whiff.\nlynn's SLIP, 1.\nyou traded blows. 17 dealt, 1 taken.\nlynn is finished."
+  }
+}

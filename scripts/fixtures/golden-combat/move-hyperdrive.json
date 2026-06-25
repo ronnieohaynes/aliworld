@@ -1,50 +1,41 @@
 {
-  "id": "gym-h1-atk-baseline",
+  "id": "move-hyperdrive",
   "coverage": [
-    "gym-h1",
-    "move:cannon",
-    "memory-isolated"
+    "move:hyperdrive"
   ],
   "npcId": "gym-week-1-h1",
-  "seed": 305419896,
-  "archetype": "atk",
+  "seed": 0,
   "skills": {
     "attack": {
-      "level": 8,
+      "level": 52,
       "xp": 0
     },
     "speed": {
-      "level": 4,
+      "level": 52,
       "xp": 0
     },
     "defense": {
-      "level": 3,
+      "level": 65,
       "xp": 0
     },
     "luck": {
-      "level": 3,
+      "level": 65,
       "xp": 0
     },
     "hp": {
-      "level": 5,
+      "level": 30,
       "xp": 0
     }
   },
-  "equippedMoves": [
-    "STRIKE",
-    "SLIP",
-    "HOLD",
-    "WHISPER"
-  ],
   "playerMoves": [
+    "HYPERDRIVE",
     "STRIKE",
     "STRIKE",
-    "CANNON",
-    "HOLD",
-    "SLIP",
-    "WHISPER",
     "STRIKE",
-    "CANNON",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
+    "STRIKE",
     "STRIKE",
     "STRIKE",
     "STRIKE",
@@ -66,9 +57,9 @@
   "expected": {
     "result": "win",
     "turns": 2,
-    "playerHp": 50,
+    "playerHp": 135,
     "enemyHp": 0,
-    "rngDraws": 10,
-    "logDigest": "you traded blows. 17 dealt, 6 taken.\nbag work's STRIKE, 6.\nyou traded blows. 16 dealt, 6 taken.\nbag work's STRIKE, 6.\ncannon. 22! crit.\nbag work is finished."
+    "rngDraws": 6,
+    "logDigest": "hyperdrive. 11. next turn you fly.\nbag work's STRIKE, 1.\nyou're exposed. 1 taken.\nyou traded blows. 44 dealt, 1 taken.\nbag work is finished."
   }
 }

@@ -1,50 +1,42 @@
 {
-  "id": "gym-h1-atk-baseline",
+  "id": "move-sealed-fate-miss",
   "coverage": [
-    "gym-h1",
-    "move:cannon",
-    "memory-isolated"
+    "move:sealed-fate",
+    "sealed-fate:miss-self-damage"
   ],
   "npcId": "gym-week-1-h1",
-  "seed": 305419896,
-  "archetype": "atk",
+  "seed": 111,
   "skills": {
     "attack": {
-      "level": 8,
+      "level": 52,
       "xp": 0
     },
     "speed": {
-      "level": 4,
+      "level": 52,
       "xp": 0
     },
     "defense": {
-      "level": 3,
+      "level": 65,
       "xp": 0
     },
     "luck": {
-      "level": 3,
+      "level": 65,
       "xp": 0
     },
     "hp": {
-      "level": 5,
+      "level": 30,
       "xp": 0
     }
   },
-  "equippedMoves": [
-    "STRIKE",
-    "SLIP",
-    "HOLD",
-    "WHISPER"
-  ],
   "playerMoves": [
-    "STRIKE",
-    "STRIKE",
-    "CANNON",
+    "SEALED_FATE",
     "HOLD",
-    "SLIP",
-    "WHISPER",
+    "HOLD",
+    "HOLD",
+    "HOLD",
     "STRIKE",
-    "CANNON",
+    "STRIKE",
+    "STRIKE",
     "STRIKE",
     "STRIKE",
     "STRIKE",
@@ -65,10 +57,10 @@
   "isolateNpcMemory": true,
   "expected": {
     "result": "win",
-    "turns": 2,
-    "playerHp": 50,
+    "turns": 5,
+    "playerHp": 28,
     "enemyHp": 0,
     "rngDraws": 10,
-    "logDigest": "you traded blows. 17 dealt, 6 taken.\nbag work's STRIKE, 6.\nyou traded blows. 16 dealt, 6 taken.\nbag work's STRIKE, 6.\ncannon. 22! crit.\nbag work is finished."
+    "logDigest": "sealed fate marked.\nbag work's STRIKE vs HOLD. 1 chip.\nbrace chip. 2.\nsealed fate slips. it cost you.\nbag work's STRIKE vs HOLD. blocked.\nbrace chip. 2.\nyou set your feet. nothing comes.\nbag work's STRIKE vs HOLD. blocked.\nbrace chip. 2.\nyou traded blows. 49 dealt, 1 taken.\nbag work is finished."
   }
 }

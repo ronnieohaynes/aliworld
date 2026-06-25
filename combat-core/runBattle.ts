@@ -40,6 +40,9 @@ function advanceBusyState(state: BattleState): BattleState {
   if (state.resolveStep === 'pause_after_second') {
     return battleReducer(state, { type: 'RESOLVE_FINISH' })
   }
+  if (state.resolveStep === 'idle' && state.pendingResolve) {
+    return battleReducer(state, { type: 'RESOLVE_FINISH' })
+  }
   return state
 }
 
@@ -58,6 +61,16 @@ export function runBattle(options: RunBattleOptions): RunBattleResult {
   let moveIndex = 0
   let guard = 0
   const maxSteps = 500
+  const turnLogs: string[] = []
+  let lastCaptured = ''
+
+  const captureTurnLog = (s: BattleState) => {
+    const chunk = s.log.join('\n')
+    if (chunk.length > 0 && chunk !== lastCaptured) {
+      turnLogs.push(...s.log)
+      lastCaptured = chunk
+    }
+  }
 
   while (state.phase !== 'ended' && guard < maxSteps) {
     guard += 1
@@ -65,6 +78,9 @@ export function runBattle(options: RunBattleOptions): RunBattleResult {
       const next = advanceBusyState(state)
       if (next === state) break
       state = next
+      if (state.phase === 'player' || state.phase === 'ended') {
+        captureTurnLog(state)
+      }
       continue
     }
 
@@ -74,6 +90,9 @@ export function runBattle(options: RunBattleOptions): RunBattleResult {
       'STRIKE'
     moveIndex += 1
     state = battleReducer(state, { type: 'PLAYER_MOVE', move })
+    if (state.phase === 'player' || state.phase === 'ended') {
+      captureTurnLog(state)
+    }
   }
 
   if (state.phase !== 'ended' || state.result == null) {
@@ -86,6 +105,6 @@ export function runBattle(options: RunBattleOptions): RunBattleResult {
     playerHp: state.playerHp,
     enemyHp: state.enemyHp,
     rngDraws: getCombatRng().draws(),
-    logDigest: state.log.join('\n'),
+    logDigest: turnLogs.join('\n'),
   }
 }
