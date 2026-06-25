@@ -119,6 +119,7 @@ import {
 } from '../store/quest1Store'
 import {
   CLERK_NPC_ID,
+  CROWD_1_NPC_ID,
   CROWD_2_NPC_ID,
   getQuest2Revision,
   isClerkConverted,
@@ -2156,9 +2157,9 @@ export function GameScreen() {
           markGatingNpcTalked(prev.npc.id)
         }
         if (onComplete) onComplete()
-        if (prev.npc.id === CROWD_2_NPC_ID && isE2QuestUnlocked() && !isCrowdAddressed()) {
+        if (prev.npc.id === CROWD_1_NPC_ID && isE2QuestUnlocked() && !isCrowdAddressed()) {
           setCrowdAddressed()
-          trackProgressEvent('npc_converted', { npcId: CROWD_2_NPC_ID })
+          trackProgressEvent('npc_converted', { npcId: CROWD_1_NPC_ID })
         }
         return null
       }
