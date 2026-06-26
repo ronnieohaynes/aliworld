@@ -272,8 +272,8 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  height: 28px;
-  padding: 0 6px;
+  min-height: 28px;
+  padding: 4px 6px;
   background: #0f0d1a;
   border: 1px solid #2e2840;
   border-radius: 6px;
@@ -337,6 +337,43 @@
   background: #534ab7;
   border-radius: 1px;
   transition: width 120ms linear;
+}
+
+.game-shell__volume-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.game-shell__volume-label,
+.game-shell__volume-value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 5px;
+  color: #534ab7;
+  line-height: 1;
+  user-select: none;
+}
+
+.game-shell__volume-value {
+  min-width: 14px;
+  text-align: right;
+  color: #afa9ec;
+}
+
+.game-shell__volume {
+  width: 100%;
+  height: 10px;
+  margin: 0;
+  padding: 0;
+  accent-color: #534ab7;
+  cursor: pointer;
+}
+
+.game-shell__volume:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .game-shell__music--muted .game-shell__track-title,

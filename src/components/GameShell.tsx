@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ChangeEvent,
   type PointerEvent,
   type ReactNode,
   type RefObject,
@@ -15,6 +16,8 @@ import {
   getMusicProgressSnapshot,
   getMusicTrackArtistSnapshot,
   getMusicTrackTitleSnapshot,
+  getMusicVolumePercentSnapshot,
+  setSoundtrackVolumePercent,
   subscribeMusicStore,
   toggleSoundtrackPlaying,
 } from '../store/musicStore'
@@ -366,11 +369,20 @@ function GameShellMusicBar() {
     getMusicProgressSnapshot,
     getMusicProgressSnapshot,
   )
+  const volumePercent = useSyncExternalStore(
+    subscribeMusicStore,
+    getMusicVolumePercentSnapshot,
+    getMusicVolumePercentSnapshot,
+  )
   const hasTrackMeta = trackTitle.length > 0
   const progressPct = Math.round(trackProgress * 10_000) / 100
 
   const toggleMute = useCallback(() => {
     toggleSoundtrackPlaying()
+  }, [])
+
+  const onVolumeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setSoundtrackVolumePercent(Number(e.target.value))
   }, [])
 
   if (cutsceneUi.active) {
@@ -431,6 +443,26 @@ function GameShellMusicBar() {
             style={{ width: `${progressPct}%` }}
           />
         </div>
+        <label className="game-shell__volume-wrap">
+          <span className="game-shell__volume-label">vol</span>
+          <input
+            type="range"
+            className="game-shell__volume"
+            min={1}
+            max={100}
+            step={1}
+            value={volumePercent}
+            onChange={onVolumeChange}
+            disabled={!playerGranted}
+            aria-label="Music volume"
+            aria-valuemin={1}
+            aria-valuemax={100}
+            aria-valuenow={volumePercent}
+          />
+          <span className="game-shell__volume-value" aria-hidden>
+            {volumePercent}
+          </span>
+        </label>
       </div>
       <div className="game-shell__transport">
         <button
