@@ -484,6 +484,20 @@ export function setMusicVolume(level: number): void {
   getManager().setVolume(level)
 }
 
+export function getMusicVolume(): number {
+  return getManager().getVolume()
+}
+
+/** UI volume level 1–100 (mute is separate). */
+export function getMusicVolumePercent(): number {
+  return Math.max(1, Math.min(100, Math.round(getManager().getVolume() * 100)))
+}
+
+export function setMusicVolumePercent(percent: number): void {
+  const clamped = Math.max(1, Math.min(100, Math.round(percent)))
+  setMusicVolume(clamped / 100)
+}
+
 export function getMusicCurrent(): MusicCurrent | null {
   return getManager().current()
 }

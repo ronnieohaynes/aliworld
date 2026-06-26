@@ -8,11 +8,13 @@ import type { MusicCurrent } from '../lib/audioManager'
 import {
   getMusicCurrent,
   getMusicPlaybackProgress,
+  getMusicVolumePercent,
   grantMusicPlayer,
   grantMusicPlayerFromGesture,
   isMusicMuted,
   setMusicContext,
   setMusicMuted,
+  setMusicVolumePercent,
   subscribeAudioManager,
   toggleMusicMuted,
 } from '../lib/audioManager'
@@ -59,6 +61,7 @@ let _muted = hasMusicPlayer() ? isMusicMuted() : false
 let _trackTitle = hasMusicPlayer() ? (getMusicCurrent()?.title ?? '') : ''
 let _trackArtist = hasMusicPlayer() ? (getMusicCurrent()?.artist ?? '') : ''
 let _progress = hasMusicPlayer() ? getMusicPlaybackProgress() : 0
+let _volumePercent = hasMusicPlayer() ? getMusicVolumePercent() : 100
 
 function refreshPrimitiveSnapshots(): void {
   _playerGranted = hasMusicPlayer()
@@ -67,6 +70,7 @@ function refreshPrimitiveSnapshots(): void {
   _trackTitle = current?.title ?? ''
   _trackArtist = current?.artist ?? ''
   _progress = _playerGranted ? getMusicPlaybackProgress() : 0
+  _volumePercent = _playerGranted ? getMusicVolumePercent() : 100
 }
 
 export function subscribeMusicStore(listener: () => void): () => void {
@@ -111,6 +115,15 @@ export function getMusicTrackArtistSnapshot(): string {
 
 export function getMusicProgressSnapshot(): number {
   return _progress
+}
+
+export function getMusicVolumePercentSnapshot(): number {
+  return _volumePercent
+}
+
+export function setSoundtrackVolumePercent(percent: number): void {
+  if (!hasMusicPlayer()) return
+  setMusicVolumePercent(percent)
 }
 
 export function isSoundtrackPlaying(): boolean {
