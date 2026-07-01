@@ -3,7 +3,41 @@ import type { TriggerAction } from '../data/triggerZones'
 import { ADAM_MP3_ARTIFACT_ID, ADAM_NPC, isAdamNpcId } from '../data/adamMp3Handoff'
 import { MARK_NPC, MANDO_NPC, WALKER_NPC, JACLYN_NPC, CROWD_1_NPC, CROWD_2_NPC, TOWN_CRIER_NPC, CLERK_NPC, RESTOCKER_NPC, WALKER_E2_CROWD_NPC, HILLCREST_MARK_NPC, type NpcData } from '../data/npcs'
 import { isE2QuestUnlocked, QUEST_2_CLOSING_TEXT } from '../data/quest2Objectives'
+import { QUEST_3_CLOSING_TEXT, isE3QuestUnlocked } from '../data/quest3Objectives'
 import { E2_ENABLED } from '../store/quest2Store'
+import {
+  DANNY_OBSERVER_NPC,
+  E3_SOUTHSIDE_FIELD_SPAWN,
+  STRANGER_INTERVIEWER_NPC,
+  STRANGER_MONK_NPC,
+  STRANGER_PREACHER_NPC,
+} from '../data/e3Npcs'
+import {
+  E3_ENABLED,
+  getQuest3Revision,
+  isE3Complete,
+  isE3FieldIntroSeen,
+  isE3MassConversionSeen,
+  isE3MoveUnlocked,
+  isE3SigilFlashed,
+  isInterviewerDefeated,
+  isMonkDefeated,
+  isPreacherDefeated,
+  setE3Complete,
+  setE3FieldIntroSeen,
+  setE3MassConversionSeen,
+  setE3MoveUnlocked,
+  setE3SigilFlashed,
+  setInterviewerDefeated,
+  setMonkDefeated,
+  setPreacherDefeated,
+  STRANGER_INTERVIEWER_NPC_ID,
+  STRANGER_MONK_NPC_ID,
+  STRANGER_PREACHER_NPC_ID,
+  subscribeQuest3Store,
+} from '../store/quest3Store'
+import { grantE3EpisodeMoveUnlock } from '../lib/episodeMoveUnlock'
+import { SigilFlashOverlay } from './SigilFlashOverlay'
 import { resolveNpcDialogueLines, type ResolvedDialogueLine } from '../data/npcDialogue'
 import {
   SOUTHSIDE_EXTERIOR_RETURN,
@@ -357,6 +391,8 @@ export function GameScreen() {
   const playerMessagesShowingRef = useRef(false)
   const crierHeraldStartedRef = useRef(false)
   const e2ClosingPhaseRef = useRef<'idle' | 'exit-interior' | 'mob' | 'return-five' | 'cards'>('idle')
+  const e3ClosingPhaseRef = useRef<'idle' | 'cards'>('idle')
+  const e3BeatKickoffRef = useRef(false)
   /** Mob dialogue finished — play E2 video then 5ive return (wired after playCutscene exists). */
   const beginE2ClosingVideoAfterMobRef = useRef<(() => void) | null>(null)
   const questTransitionRef = useRef<QuestTransitionHandle>(null)
@@ -395,6 +431,7 @@ export function GameScreen() {
   const [bugReportScreenshot, setBugReportScreenshot] = useState<string | null>(null)
   const [showBugReport, setShowBugReport] = useState(false)
   const [showGymLeaderboard, setShowGymLeaderboard] = useState(false)
+  const [sigilFlashActive, setSigilFlashActive] = useState(false)
   const [showGhostTraining, setShowGhostTraining] = useState(false)
   const [showTheater, setShowTheater] = useState(false)
   const [showShop, setShowShop] = useState(false)
@@ -436,6 +473,11 @@ export function GameScreen() {
     subscribeQuest2Store,
     getQuest2Revision,
     getQuest2Revision,
+  )
+  const quest3Revision = useSyncExternalStore(
+    subscribeQuest3Store,
+    getQuest3Revision,
+    getQuest3Revision,
   )
   const artifactRevision = useSyncExternalStore(
     subscribeArtifactStore,
@@ -489,9 +531,10 @@ export function GameScreen() {
     void artifactRevision
     void quest1Revision
     void quest2Revision
+    void quest3Revision
     void worldRevision
     return resolveActiveQuestPulseDescriptor(buildQuestObjectiveContext())
-  }, [artifactRevision, quest1Revision, quest2Revision, worldRevision])
+  }, [artifactRevision, quest1Revision, quest2Revision, quest3Revision, worldRevision])
 
   const gymDoorPulseDescriptor = useMemo((): QuestPulseTargetDescriptor | null => {
     void gymRevision
@@ -739,12 +782,23 @@ export function GameScreen() {
           npcs = [...npcs, TOWN_CRIER_NPC]
         }
       }
+      if (isE3QuestUnlocked() && !isE3Complete() && isE3SigilFlashed() && !isInterviewerDefeated()) {
+        npcs = [...npcs, STRANGER_INTERVIEWER_NPC]
+      }
       return { ...baseCityConfig, npcs }
     }
     if (currentCity === 'southside') {
       let npcs = [...baseCityConfig.npcs]
       if (isRestockerDefeated() && !isE2Complete() && !isE2ClosingCrowdDismissed()) {
         npcs = [...npcs, ...E2_CLOSING_MOB_NPCS]
+      }
+      if (isE3QuestUnlocked() && !isE3Complete()) {
+        if (!isE3SigilFlashed()) {
+          npcs = [...npcs, DANNY_OBSERVER_NPC]
+        }
+        if (isE3SigilFlashed() && !isPreacherDefeated()) {
+          npcs = [...npcs, STRANGER_PREACHER_NPC]
+        }
       }
       return { ...baseCityConfig, npcs }
     }
@@ -753,6 +807,9 @@ export function GameScreen() {
       const visited = getWorldMemorySnapshot().citiesVisited.includes('san-bruno')
       if (markDefeated && visited) {
         npcs = [...npcs, HILLCREST_MARK_NPC]
+      }
+      if (isE3QuestUnlocked() && !isE3Complete() && isPreacherDefeated() && !isMonkDefeated()) {
+        npcs = [...npcs, STRANGER_MONK_NPC]
       }
       return { ...baseCityConfig, npcs }
     }
@@ -770,7 +827,7 @@ export function GameScreen() {
       return { ...baseCityConfig, npcs: getScaledGymInteriorNpcs() }
     }
     return baseCityConfig
-  }, [baseCityConfig, currentCity, markDefeated, quest1Revision, quest2Revision, gymRevision, worldRevision])
+  }, [baseCityConfig, currentCity, markDefeated, quest1Revision, quest2Revision, quest3Revision, gymRevision, worldRevision])
 
   const canOpenStartMenu = useCallback(() => {
     const tutorialMenuException = allowsStartMenuDuringLoadoutTutorial(loadoutTutorialStep)
@@ -1462,6 +1519,125 @@ export function GameScreen() {
     trackProgressEvent('episode_complete', { episode: 'e2' })
   }, [])
 
+  const finishE3Episode = useCallback(() => {
+    if (isE3Complete()) return
+    setE3Complete()
+    e3ClosingPhaseRef.current = 'idle'
+    mapTransitionRef.current = null
+    setMapTransition(null)
+    setMapTransitionReady(false)
+    setMapTransitionPending(false)
+    setQuestTransitionActive(false)
+    setDialogue(null)
+    trackProgressEvent('quest_complete', { questId: 'e3-closing' })
+    trackProgressEvent('episode_complete', { episode: 'e3' })
+  }, [])
+
+  const beginE3FieldIntro = useCallback(() => {
+    if (!isE3QuestUnlocked() || isE3FieldIntroSeen()) return
+    showNarration(
+      [
+        'the field is full now. they came because you started something.',
+        'someone is watching from the edge of it.',
+      ],
+      () => {
+        setE3FieldIntroSeen()
+        trackProgressEvent('quest_beat', { episode: 'e3', beat: 'field' })
+        setSigilFlashActive(true)
+      },
+    )
+  }, [showNarration])
+
+  const handleSigilFlashComplete = useCallback(() => {
+    setSigilFlashActive(false)
+    if (!isE3SigilFlashed()) {
+      setE3SigilFlashed()
+      trackProgressEvent('quest_beat', { episode: 'e3', beat: 'sigil' })
+    }
+    showNarration(['you raise the sign.', 'the field goes quiet. then it roars.'])
+  }, [showNarration])
+
+  const beginE3EpisodeStart = useCallback(() => {
+    if (!E3_ENABLED) return
+    markCityVisited('southside')
+    setCurrentCity('southside')
+    const spawn = E3_SOUTHSIDE_FIELD_SPAWN
+    playerRef.current?.setPosition(spawn.x, spawn.y)
+    playerRef.current?.setFacing('down')
+    setLastLocation('southside', spawn.x, spawn.y)
+    setEpisodeWorldReveal('hidden')
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      episodeName: EPISODE_3_NAME,
+      episodeNumber: 3,
+      type: 'episode_start',
+      solidBlackBackdrop: true,
+      onExitFadeStart: () => {
+        setEpisodeWorldReveal('fade-in-pending')
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setEpisodeWorldReveal('fade-in'))
+        })
+      },
+      onComplete: () => {
+        setEpisodeWorldReveal('visible')
+        e3BeatKickoffRef.current = false
+        beginE3FieldIntro()
+      },
+    })
+  }, [beginE3FieldIntro, showQuestTransition])
+
+  const runE3ClosingEpisodeCards = useCallback(() => {
+    if (isE3Complete()) return
+    if (e3ClosingPhaseRef.current === 'cards') {
+      if (!questTransitionActive) {
+        finishE3Episode()
+      }
+      return
+    }
+    e3ClosingPhaseRef.current = 'cards'
+    showQuestTransition({
+      questName: PRELUDE_QUEST_NAME,
+      episodeName: EPISODE_3_NAME,
+      episodeNumber: 3,
+      type: 'episode_complete',
+      onComplete: () => {
+        window.requestAnimationFrame(() => {
+          showQuestTransition({
+            questName: QUEST_3_CLOSING_TEXT,
+            type: 'quest_complete',
+            onComplete: finishE3Episode,
+          })
+        })
+      },
+    })
+  }, [finishE3Episode, questTransitionActive, showQuestTransition])
+
+  const runE3MassConversionClosing = useCallback(() => {
+    if (!isMonkDefeated() || isE3MassConversionSeen() || e3ClosingPhaseRef.current === 'cards') {
+      return
+    }
+    showNarration(
+      [
+        'the questions stop.',
+        'and then everyone, everywhere, all at once, believes.',
+        'it feels like a tide coming in.',
+      ],
+      () => {
+        setE3MassConversionSeen()
+        trackProgressEvent('quest_beat', { episode: 'e3', beat: 'mass-conversion' })
+        if (!isE3MoveUnlocked()) {
+          const lines = grantE3EpisodeMoveUnlock()
+          setE3MoveUnlocked()
+          if (lines.length > 0) {
+            showNarration(lines, () => runE3ClosingEpisodeCards())
+            return
+          }
+        }
+        runE3ClosingEpisodeCards()
+      },
+    )
+  }, [runE3ClosingEpisodeCards, showNarration])
+
   const runE2ClosingEpisodeCards = useCallback(() => {
     if (isE2Complete()) return
     if (e2ClosingPhaseRef.current === 'cards') {
@@ -1477,16 +1653,21 @@ export function GameScreen() {
       episodeNumber: 2,
       type: 'episode_complete',
       onComplete: () => {
+        finishE2Episode()
+        if (E3_ENABLED) {
+          beginE3EpisodeStart()
+          return
+        }
         window.requestAnimationFrame(() => {
           showQuestTransition({
             questName: QUEST_2_CLOSING_TEXT,
             type: 'quest_complete',
-            onComplete: finishE2Episode,
+            onComplete: () => {},
           })
         })
       },
     })
-  }, [finishE2Episode, questTransitionActive, showQuestTransition])
+  }, [beginE3EpisodeStart, finishE2Episode, questTransitionActive, showQuestTransition])
 
   const runE2ClosingMobDialogue = useCallback(() => {
     if (isE2Complete() || e2ClosingPhaseRef.current === 'cards') return
@@ -1623,12 +1804,16 @@ export function GameScreen() {
     if (e2VideoHandoffStartedRef.current && !replayTitleCards) return
     e2VideoHandoffStartedRef.current = true
     setCutsceneQuestHelperHidden(false)
-    trackProgressEvent('episode_complete', { episode: 'e2' })
     setCurrentCity('five')
     markCityVisited('five')
     const fiveCfg = CITY_CONFIGS.five
     playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
     setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
+    if (E3_ENABLED) {
+      setEpisodeWorldReveal('visible')
+      return
+    }
+    trackProgressEvent('episode_complete', { episode: 'e2' })
     setEpisodeWorldReveal('hidden')
     showQuestTransition({
       questName: PRELUDE_QUEST_NAME,
@@ -1854,7 +2039,21 @@ export function GameScreen() {
       setCafeFade('none')
       setCafeSceneLine(0)
       setEpisodeWorldReveal('visible')
+      setSigilFlashActive(false)
+      e3ClosingPhaseRef.current = 'idle'
+      e3BeatKickoffRef.current = false
       applyDevQuestJump(questId)
+      if (questId === 'quest-3-stranger') {
+        markCityVisited('southside')
+        markCityVisited('san-bruno')
+        const spawn = E3_SOUTHSIDE_FIELD_SPAWN
+        setCurrentCity('southside')
+        playerRef.current?.setPosition(spawn.x, spawn.y)
+        playerRef.current?.setFacing('down')
+        setLastLocation('southside', spawn.x, spawn.y)
+        window.requestAnimationFrame(() => beginE3FieldIntro())
+        return
+      }
       const fiveCfg = CITY_CONFIGS.five
       setCurrentCity('five')
       playerRef.current?.setPosition(fiveCfg.spawnX, fiveCfg.spawnY)
@@ -1862,7 +2061,7 @@ export function GameScreen() {
       setLastLocation('five', fiveCfg.spawnX, fiveCfg.spawnY)
       markCityVisited('five')
     },
-    [canSpawnDevSpar, clearEpisodeHandoffTimer],
+    [beginE3FieldIntro, canSpawnDevSpar, clearEpisodeHandoffTimer],
   )
 
   const devModeUi = useDevControls({
@@ -2288,6 +2487,51 @@ export function GameScreen() {
       return
     }
 
+    if (nearbyId === STRANGER_INTERVIEWER_NPC_ID) {
+      if (!isE3SigilFlashed()) {
+        showNotYetDialogue(STRANGER_INTERVIEWER_NPC, 'the field is still ringing.')
+        return
+      }
+      if (isInterviewerDefeated()) {
+        beginNpcDialogue(STRANGER_INTERVIEWER_NPC)
+        return
+      }
+      beginNpcDialogue(STRANGER_INTERVIEWER_NPC, {
+        onComplete: () => startNpcBattle(STRANGER_INTERVIEWER_NPC_ID),
+      })
+      return
+    }
+
+    if (nearbyId === STRANGER_PREACHER_NPC_ID) {
+      if (!isInterviewerDefeated()) {
+        showNotYetDialogue(STRANGER_PREACHER_NPC, 'you already ran from the questions.')
+        return
+      }
+      if (isPreacherDefeated()) {
+        beginNpcDialogue(STRANGER_PREACHER_NPC)
+        return
+      }
+      beginNpcDialogue(STRANGER_PREACHER_NPC, {
+        onComplete: () => startNpcBattle(STRANGER_PREACHER_NPC_ID),
+      })
+      return
+    }
+
+    if (nearbyId === STRANGER_MONK_NPC_ID) {
+      if (!isPreacherDefeated()) {
+        showNotYetDialogue(STRANGER_MONK_NPC, '...')
+        return
+      }
+      if (isMonkDefeated()) {
+        beginNpcDialogue(STRANGER_MONK_NPC)
+        return
+      }
+      beginNpcDialogue(STRANGER_MONK_NPC, {
+        onComplete: () => startNpcBattle(STRANGER_MONK_NPC_ID),
+      })
+      return
+    }
+
     if (nearbyId === FIVE_GYM1_ID || nearbyId === currentGymWeek.leader.npcId) {
       setGymHeadPulseDismissed(true)
       beginNpcDialogue(getCurrentGymHeadNpc(), {
@@ -2317,6 +2561,7 @@ export function GameScreen() {
     if (adamTutorialStep != null) return
     if (blocksWorldInteractDuringLoadoutTutorial(loadoutTutorialStep)) return
     if (cutsceneFlowActive || questTransitionActive) return
+    if (sigilFlashActive) return
     if (cafeFade === 'scene') {
       advanceCafeScene()
       return
@@ -2347,6 +2592,7 @@ export function GameScreen() {
     showGymLeaderboard,
     showStartMenu,
     menuTransition,
+    sigilFlashActive,
     worldEntryActive,
     openNearbyNpcDialogue,
   ])
@@ -2591,6 +2837,44 @@ export function GameScreen() {
     startE2ClosingExitInterior,
   ])
 
+  useEffect(() => {
+    if (!isE3QuestUnlocked() || isE3Complete()) return
+    if (!locationReady || cutsceneFlowActive || questTransitionActive) return
+    if (dialogue || battleNpcId || battleWipePhase || sigilFlashActive) return
+    if (mapTransition || mapTransitionPending) return
+
+    if (isMonkDefeated() && !isE3MassConversionSeen()) {
+      runE3MassConversionClosing()
+      return
+    }
+
+    if (currentCity !== 'southside') return
+
+    if (!isE3FieldIntroSeen() && !e3BeatKickoffRef.current) {
+      e3BeatKickoffRef.current = true
+      beginE3FieldIntro()
+      return
+    }
+
+    if (isE3FieldIntroSeen() && !isE3SigilFlashed()) {
+      setSigilFlashActive(true)
+    }
+  }, [
+    battleNpcId,
+    battleWipePhase,
+    beginE3FieldIntro,
+    currentCity,
+    cutsceneFlowActive,
+    dialogue,
+    locationReady,
+    mapTransition,
+    mapTransitionPending,
+    quest3Revision,
+    questTransitionActive,
+    runE3MassConversionClosing,
+    sigilFlashActive,
+  ])
+
   const handleBattleEntryMidpoint = useCallback(() => {
     setBattleReady(true)
   }, [])
@@ -2795,6 +3079,15 @@ export function GameScreen() {
       return
     }
 
+    if (
+      exit?.result === 'win' &&
+      exit.npcId === STRANGER_MONK_NPC_ID &&
+      !isE3MassConversionSeen()
+    ) {
+      runE3MassConversionClosing()
+      return
+    }
+
     if (exit?.result === 'win' && exit.npcId === WALKER_NPC_ID) {
       if (!isEpisode1TitleCardSeen()) {
         showQuestTransition({
@@ -2818,6 +3111,7 @@ export function GameScreen() {
     showNarration,
     showQuestTransition,
     startE2ClosingExitInterior,
+    runE3MassConversionClosing,
     startNpcBattle,
   ])
 
@@ -2848,6 +3142,18 @@ export function GameScreen() {
       setRestockerDefeated()
       trackProgressEvent('npc_converted', { npcId: RESTOCKER_NPC_ID })
     }
+    if (npcId === STRANGER_INTERVIEWER_NPC_ID) {
+      setInterviewerDefeated()
+      trackProgressEvent('e3_stranger_win', { episode: 'e3', form: 'interviewer', npcId })
+    }
+    if (npcId === STRANGER_PREACHER_NPC_ID) {
+      setPreacherDefeated()
+      trackProgressEvent('e3_stranger_win', { episode: 'e3', form: 'preacher', npcId })
+    }
+    if (npcId === STRANGER_MONK_NPC_ID) {
+      setMonkDefeated()
+      trackProgressEvent('e3_stranger_win', { episode: 'e3', form: 'monk', npcId })
+    }
   }, [])
 
   const handleBattleEnd = useCallback(
@@ -2868,6 +3174,9 @@ export function GameScreen() {
         TOWN_CRIER_NPC_ID,
         CLERK_NPC_ID,
         RESTOCKER_NPC_ID,
+        STRANGER_INTERVIEWER_NPC_ID,
+        STRANGER_PREACHER_NPC_ID,
+        STRANGER_MONK_NPC_ID,
       ])
       const isStoryFight = battleNpcId != null && storyNpcIds.has(battleNpcId)
       const opponentType = isGhost ? 'ghost' : isGym ? 'gym' : isStoryFight ? 'story' : 'world'
@@ -3338,6 +3647,7 @@ export function GameScreen() {
               <span className="game-screen-cafe-scene__continue">tap to continue ▸</span>
             </div>
           )}
+          {sigilFlashActive && <SigilFlashOverlay onComplete={handleSigilFlashComplete} />}
           <div className="game-screen-battle-layer">
             {battleWipePhase === 'enter' && (
               <div className="game-screen-battle-world-fade" aria-hidden />

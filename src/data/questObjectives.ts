@@ -27,11 +27,26 @@ import {
   type Quest2ObjectiveContext,
 } from './quest2Objectives'
 import {
+  buildQuest3ObjectiveContext,
+  getQuest3ActiveStepId,
+  isE3QuestUnlocked,
+  QUEST_3_CLOSING_TEXT,
+  QUEST_3_STEPS,
+  type Quest3ObjectiveContext,
+} from './quest3Objectives'
+import {
   E2_ENABLED,
   RESTOCKER_NPC_ID,
   TOWN_CRIER_NPC_ID,
   CROWD_1_NPC_ID,
 } from '../store/quest2Store'
+import {
+  DANNY_OBSERVER_NPC_ID,
+  E4_ENABLED,
+  STRANGER_INTERVIEWER_NPC_ID,
+  STRANGER_MONK_NPC_ID,
+  STRANGER_PREACHER_NPC_ID,
+} from '../store/quest3Store'
 import type { TriggerAction } from './triggerZones'
 
 /** MP3 player from Adam (quest helper tracks this as the notice step). */
@@ -49,7 +64,7 @@ export type QuestObjectiveContext = {
   inSanBruno: boolean
   /** PART 2: set when cafe / danny beat is seen. */
   cafeSeen: boolean
-} & Quest2ObjectiveContext
+} & Quest2ObjectiveContext & Quest3ObjectiveContext
 
 export function buildQuestObjectiveContext(): QuestObjectiveContext {
   const quest1 = getQuest1Snapshot()
@@ -66,6 +81,7 @@ export function buildQuestObjectiveContext(): QuestObjectiveContext {
     inSanBruno: world.citiesVisited.includes('san-bruno'),
     cafeSeen: isCafeSceneSeen(),
     ...buildQuest2ObjectiveContext(),
+    ...buildQuest3ObjectiveContext(),
   }
 }
 
@@ -150,7 +166,16 @@ export const QUEST_DEFINITIONS: readonly QuestDefinition[] = [
     label: 'quest 2',
     steps: QUEST_2_STEPS,
   },
+  {
+    id: 'quest-3-stranger',
+    label: 'quest 3',
+    steps: QUEST_3_STEPS,
+  },
 ]
+
+function shouldShowQuest3(ctx: QuestObjectiveContext): boolean {
+  return isE3QuestUnlocked() && !ctx.e3Complete
+}
 
 /** Quest 1 last step never completes, e2 unlocks after cafe + mark. */
 function shouldShowQuest2(ctx: QuestObjectiveContext): boolean {
@@ -186,6 +211,32 @@ export function resolvePrimaryQuestObjective(
       questId: 'quest-1-five',
       stepId: 'e1-closing',
       text: E1_CLOSING_OBJECTIVE_TEXT,
+    }
+  }
+
+  if (isE3QuestUnlocked() && ctx.e3Complete && !E4_ENABLED) {
+    return {
+      questId: 'quest-3-stranger',
+      stepId: 'e3-closing',
+      text: QUEST_3_CLOSING_TEXT,
+    }
+  }
+
+  if (shouldShowQuest3(ctx)) {
+    const quest3 = QUEST_DEFINITIONS[2]
+    if (quest3) {
+      for (const step of quest3.steps) {
+        if (!step.isComplete(ctx)) {
+          return { questId: quest3.id, stepId: step.id, text: step.getText(ctx) }
+        }
+      }
+      if (ctx.monkDefeated && !ctx.e3MassConversionSeen) {
+        return {
+          questId: quest3.id,
+          stepId: 'e3-closing-pending',
+          text: 'the doubt is gone.',
+        }
+      }
     }
   }
 
@@ -232,6 +283,10 @@ export function resolvePrimaryQuestObjective(
 /** First incomplete quest step id across active quest, or null when complete. */
 export function getActiveStepId(ctx: QuestObjectiveContext): string | null {
   if (isE1ArcComplete(ctx) && !E2_ENABLED) return null
+  if (isE3QuestUnlocked() && ctx.e3Complete && !E4_ENABLED) return null
+  if (shouldShowQuest3(ctx)) {
+    return getQuest3ActiveStepId(ctx)
+  }
   if (shouldShowQuest2(ctx)) {
     return getQuest2ActiveStepId(ctx)
   }
@@ -292,6 +347,23 @@ export function getQuestPulseTargetDescriptor(
       return ctx.inSouthside
         ? { kind: 'npc', id: 'e2-closing-crier' }
         : { kind: 'zone', action: 'OPEN_BLUE_STORE_EXIT' }
+    case 'e3-field':
+    case 'e3-sigil':
+      return ctx.inSouthside
+        ? { kind: 'npc', id: DANNY_OBSERVER_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
+    case 'e3-interviewer':
+      return ctx.inFive
+        ? { kind: 'npc', id: STRANGER_INTERVIEWER_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
+    case 'e3-preacher':
+      return ctx.inSouthside
+        ? { kind: 'npc', id: STRANGER_PREACHER_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
+    case 'e3-monk':
+      return ctx.inHillcrest
+        ? { kind: 'npc', id: STRANGER_MONK_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
     default:
       return null
   }

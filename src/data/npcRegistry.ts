@@ -72,6 +72,9 @@ export type NpcCombatEntry = {
 const WALKER_SPRITE = publicAsset('Assets/Characters/npcs/Walker-idle.png')
 const JACLYN_SPRITE = publicAsset('Assets/Characters/npcs/jaclyn-idle.png')
 const MARK_SPRITE = publicAsset('Assets/Characters/npcs/mark-idle.png')
+const INTERVIEWER_SPRITE = publicAsset('Assets/Characters/npcs/interviewer-idle.png')
+const PREACHER_SPRITE = publicAsset('Assets/Characters/npcs/preacher-idle.png')
+const MONK_SPRITE = publicAsset('Assets/Characters/npcs/monk-idle.png')
 
 
 function filterMovesForNpcLevel(moves: PlayerMoveId[], level: number, lean: LeanSkill): PlayerMoveId[] {
@@ -222,6 +225,68 @@ const RESTOCKER: NpcCombatEntry = entry({
   battleSizeMult: 1.12,
 })
 
+/** E3 stranger form 1 — interviewer (weakest). */
+const STRANGER_INTERVIEWER: NpcCombatEntry = entry({
+  id: 'stranger-interviewer',
+  displayName: 'stranger',
+  level: 6,
+  moves: ['WHISPER', 'STRIKE', 'SLIP', 'WHISPER'],
+  leanSkill: 'luck',
+  telegraphFlavor: {
+    WHISPER: 'asks',
+    STRIKE: 'points',
+    SLIP: 'sidesteps',
+  },
+  losingLine: "...i'll find you again. i always do.",
+  winningLine: 'no answer. noted.',
+  spriteSrc: INTERVIEWER_SPRITE,
+  battleLocation: 'five',
+  battleSizeMult: 1,
+})
+
+/** E3 stranger form 2 — preacher (stronger). */
+const STRANGER_PREACHER: NpcCombatEntry = entry({
+  id: 'stranger-preacher',
+  displayName: 'stranger',
+  level: 8,
+  moves: ['STRIKE', 'FURY_SWEEP', 'WHISPER', 'DARK_BREAK'],
+  leanSkill: 'attack',
+  telegraphFlavor: {
+    STRIKE: 'condemns',
+    FURY_SWEEP: 'preaches —',
+    WHISPER: 'murmurs judgment',
+    DARK_BREAK: 'breaks through —',
+  },
+  losingLine: '...again. you\'ll see me again.',
+  winningLine: "you're spreading it.",
+  spriteSrc: PREACHER_SPRITE,
+  battleLocation: 'hillside',
+  battleSizeMult: 1.04,
+})
+
+/** E3 stranger form 3 — monk (strongest). */
+const STRANGER_MONK: NpcCombatEntry = entry({
+  id: 'stranger-monk',
+  displayName: 'stranger',
+  level: 11,
+  hpScale: 1.2,
+  moves: ['ANCHOR', 'ANCHOR', 'CANNON', 'SECOND_WIND', 'STRIKE', 'SLIP'],
+  leanSkill: 'defense',
+  telegraphFlavor: {
+    ANCHOR: 'holds still',
+    CANNON: 'unleashes —',
+    SECOND_WIND: 'breathes',
+    STRIKE: 'strikes once',
+    SLIP: 'slides',
+  },
+  guardCounter: { chance: 0.35, damageMult: 1.8 },
+  losingLine: "now there's no one left to ask.",
+  winningLine: '...',
+  spriteSrc: MONK_SPRITE,
+  battleLocation: 'san_bruno',
+  battleSizeMult: 1.08,
+})
+
 function buildGymFighterCombatEntry(fighter: GymFighterConfig): NpcCombatEntry {
   return entry({
     id: fighter.combatId,
@@ -260,6 +325,9 @@ const NPC_REGISTRY: Record<string, NpcCombatEntry> = {
   'town-crier': TOWN_CRIER,
   clerk: CLERK,
   restocker: RESTOCKER,
+  'stranger-interviewer': STRANGER_INTERVIEWER,
+  'stranger-preacher': STRANGER_PREACHER,
+  'stranger-monk': STRANGER_MONK,
 }
 
 const ATTACKING_BEHAVIOR_KINDS = new Set([

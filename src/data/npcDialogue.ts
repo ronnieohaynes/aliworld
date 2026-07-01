@@ -13,13 +13,21 @@ import {
   CLERK_NPC_ID,
   CROWD_1_NPC_ID,
   isClerkConverted,
+  isCrierConverted,
   isCrierSentAhead,
   isCrowdAddressed,
-  isCrierConverted,
   isRestockerDefeated,
   RESTOCKER_NPC_ID,
   TOWN_CRIER_NPC_ID,
 } from '../store/quest2Store'
+import {
+  isInterviewerDefeated,
+  isMonkDefeated,
+  isPreacherDefeated,
+  STRANGER_INTERVIEWER_NPC_ID,
+  STRANGER_MONK_NPC_ID,
+  STRANGER_PREACHER_NPC_ID,
+} from '../store/quest3Store'
 import type { NpcData, NpcDialogueLine } from './npcs'
 
 export type ResolvedDialogueLine = {
@@ -50,6 +58,9 @@ function isNpcConverted(npcId: string): boolean {
   if (npcId === CLERK_NPC_ID) return isClerkConverted()
   if (npcId === RESTOCKER_NPC_ID) return isRestockerDefeated()
   if (npcId === CROWD_1_NPC_ID) return isCrowdAddressed()
+  if (npcId === STRANGER_INTERVIEWER_NPC_ID) return isInterviewerDefeated()
+  if (npcId === STRANGER_PREACHER_NPC_ID) return isPreacherDefeated()
+  if (npcId === STRANGER_MONK_NPC_ID) return isMonkDefeated()
   if (npcId === FIVE_GYM1_ID || npcId === getCurrentGymWeek().leader.npcId) {
     return isCurrentWeeklyGymCleared()
   }

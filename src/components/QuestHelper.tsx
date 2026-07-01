@@ -4,6 +4,7 @@ import { trackProgressEvent } from '../lib/analytics'
 import { getArtifactStoreSnapshot, subscribeArtifactStore } from '../store/artifactStore'
 import { getQuest1Revision, subscribeQuest1Store } from '../store/quest1Store'
 import { getQuest2Revision, subscribeQuest2Store } from '../store/quest2Store'
+import { getQuest3Revision, subscribeQuest3Store } from '../store/quest3Store'
 import { getWorldMemorySnapshot, subscribeWorldMemoryStore } from '../store/worldMemory'
 import './QuestHelper.css'
 
@@ -30,13 +31,20 @@ export function QuestHelper() {
     getQuest2Revision,
   )
 
+  const quest3Revision = useSyncExternalStore(
+    subscribeQuest3Store,
+    getQuest3Revision,
+    getQuest3Revision,
+  )
+
   const objective = useMemo(() => {
     void artifactRevision
     void quest1Revision
     void quest2Revision
+    void quest3Revision
     void worldRevision
     return resolvePrimaryQuestObjective(buildQuestObjectiveContext())
-  }, [artifactRevision, quest1Revision, quest2Revision, worldRevision])
+  }, [artifactRevision, quest1Revision, quest2Revision, quest3Revision, worldRevision])
 
   const prevObjectiveRef = useRef<{ questId: string; stepId: string } | null>(null)
   const [flash, setFlash] = useState(false)

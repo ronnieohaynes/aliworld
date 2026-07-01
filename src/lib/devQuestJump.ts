@@ -22,10 +22,22 @@ import {
   setWorldIntroSeen,
   setXpTutorialSeen,
 } from '../store/quest1Store'
-import { E2_ENABLED, resetQuest2ForDebug } from '../store/quest2Store'
+import {
+  E2_ENABLED,
+  resetQuest2ForDebug,
+  setClerkConverted,
+  setCrierConverted,
+  setCrierSentAhead,
+  setCrowdAddressed,
+  setE2ClosingCrowdDismissed,
+  setE2Complete,
+  setE2CutscenePlayed,
+  setRestockerDefeated,
+} from '../store/quest2Store'
+import { E3_ENABLED, resetQuest3ForDebug } from '../store/quest3Store'
 import { applyState as applyWorldMemoryState } from '../store/worldMemory'
 
-export type DevQuestJumpId = 'quest-1-five' | 'quest-2-southside'
+export type DevQuestJumpId = 'quest-1-five' | 'quest-2-southside' | 'quest-3-stranger'
 
 export type DevJumpableQuest = {
   id: DevQuestJumpId
@@ -40,6 +52,10 @@ export function getDevJumpableQuests(): DevJumpableQuest[] {
       continue
     }
     if (quest.id === 'quest-2-southside' && E2_ENABLED) {
+      out.push({ id: quest.id, label: quest.label })
+      continue
+    }
+    if (quest.id === 'quest-3-stranger' && E3_ENABLED) {
       out.push({ id: quest.id, label: quest.label })
     }
   }
@@ -70,15 +86,28 @@ function applyQuest1EpisodeComplete(): void {
   setEpisode1TitleCardSeen()
 }
 
+/** E2 arc complete — unlocks quest 3 at the southside field without replaying episode 2. */
+function applyQuest2EpisodeComplete(): void {
+  setCrowdAddressed()
+  setCrierConverted()
+  setCrierSentAhead()
+  setClerkConverted()
+  setRestockerDefeated()
+  setE2ClosingCrowdDismissed()
+  setE2CutscenePlayed()
+  setE2Complete()
+}
+
 /** Reset quest + world flags so GameScreen can teleport to the 5ive spawn. */
 export function applyDevQuestJump(questId: DevQuestJumpId): void {
   resetQuest2ForDebug()
+  resetQuest3ForDebug()
   resetGymState()
-  applyWorldMemoryState({ citiesVisited: ['five'], bossesCleared: [] })
 
   if (questId === 'quest-1-five') {
     applyQuest1FreshStart()
     resetArtifactsForDebug()
+    applyWorldMemoryState({ citiesVisited: ['five'], bossesCleared: [] })
     return
   }
 
@@ -86,4 +115,15 @@ export function applyDevQuestJump(questId: DevQuestJumpId): void {
   resetArtifactsForDebug()
   collectArtifact('mp3-player')
   collectArtifact('subway-pass')
+
+  if (questId === 'quest-2-southside') {
+    applyWorldMemoryState({ citiesVisited: ['five'], bossesCleared: [] })
+    return
+  }
+
+  applyQuest2EpisodeComplete()
+  applyWorldMemoryState({
+    citiesVisited: ['five', 'southside', 'san-bruno'],
+    bossesCleared: [],
+  })
 }

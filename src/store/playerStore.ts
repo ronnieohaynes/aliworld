@@ -44,6 +44,12 @@ import {
   type Quest2Serialized,
 } from './quest2Store'
 import {
+  applyState as applyQuest3State,
+  resetState as resetQuest3State,
+  serialize as quest3Serialize,
+  type Quest3Serialized,
+} from './quest3Store'
+import {
   applyState as applyWorldMemoryState,
   resetState as resetWorldMemoryState,
   serialize as worldMemorySerialize,
@@ -73,6 +79,7 @@ type AccountProgression = {
   equippedMoves: PlayerStoreState['equippedMoves']
   quest1?: Partial<Quest1Serialized>
   quest2?: Partial<Quest2Serialized>
+  quest3?: Partial<Quest3Serialized>
   gym?: Partial<GymSerialized>
   worldMemory?: Partial<WorldMemoryState>
   artifacts?: CollectibleArtifactId[]
@@ -88,6 +95,7 @@ type AccountAvatarConfig = {
   skills?: SkillsState
   quest1?: Partial<Quest1Serialized>
   quest2?: Partial<Quest2Serialized>
+  quest3?: Partial<Quest3Serialized>
   gym?: Partial<GymSerialized>
   worldMemory?: Partial<WorldMemoryState>
   artifacts?: unknown
@@ -200,6 +208,7 @@ export async function saveProgressionToAccount(s: PlayerStoreState): Promise<boo
         skills: s.skills,
         quest1: quest1Serialize(),
         quest2: quest2Serialize(),
+        quest3: quest3Serialize(),
         gym: gymSerialize(),
         worldMemory: worldMemorySerialize(),
         artifacts: artifactSerialize(),
@@ -253,6 +262,7 @@ export async function loadProgressionFromAccount(): Promise<Partial<AccountProgr
       skills: avatarConfig?.skills,
       quest1: avatarConfig?.quest1,
       quest2: avatarConfig?.quest2,
+      quest3: avatarConfig?.quest3,
       gym: avatarConfig?.gym,
       worldMemory: avatarConfig?.worldMemory,
       artifacts: normalizeArtifacts(avatarConfig?.artifacts),
@@ -439,6 +449,7 @@ export async function hydrateFromAccount(): Promise<void> {
 
         applyQuest1State(data.quest1 ?? {})
         applyQuest2State(data.quest2 ?? {})
+        applyQuest3State(data.quest3 ?? {})
         applyGymState({
           ...(data.gym ?? {}),
           ...((data.quest1 as { gymTier1Cleared?: boolean } | undefined)?.gymTier1Cleared
@@ -502,6 +513,7 @@ export function resetProgression(): void {
   }
   resetQuest1State()
   resetQuest2State()
+  resetQuest3State()
   resetGymState()
   resetWorldMemoryState()
   resetArtifactState()

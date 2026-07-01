@@ -7,9 +7,7 @@ const STORAGE_KEY = 'aliworld:quest2:v1'
 /** Flip true when episode 2 is ready to ship, gates quest 2, crowd/crier, southside travel. */
 export const E2_ENABLED = true
 
-/** Episode 3 content, off until the e3 build ships. */
-export const E3_ENABLED = false
-
+/** Episode 3 content ships from quest3Store (E3_ENABLED). */
 export const TOWN_CRIER_NPC_ID = 'town-crier'
 export const CLERK_NPC_ID = 'clerk'
 export const RESTOCKER_NPC_ID = 'restocker'

@@ -1,0 +1,126 @@
+.sigil-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  background: rgba(8, 6, 14, 0.35);
+  animation: sigil-flash-backdrop 2.2s ease-out forwards;
+}
+
+.sigil-flash__bleed {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(192, 132, 252, 0.55) 0%,
+    rgba(83, 74, 183, 0.35) 35%,
+    rgba(26, 21, 37, 0.15) 62%,
+    transparent 78%
+  );
+  animation: sigil-flash-bleed 2.2s ease-out forwards;
+}
+
+.sigil-flash__shake {
+  position: relative;
+  z-index: 1;
+  animation: sigil-flash-shake 2.2s ease-out forwards;
+}
+
+.sigil-flash__sigil {
+  width: min(72vw, 280px);
+  height: auto;
+  filter: drop-shadow(0 0 28px rgba(192, 132, 252, 0.85));
+  animation: sigil-flash-hero 2.2s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+  image-rendering: auto;
+}
+
+@keyframes sigil-flash-backdrop {
+  0% {
+    background: rgba(8, 6, 14, 0);
+  }
+  18% {
+    background: rgba(8, 6, 14, 0.72);
+  }
+  55% {
+    background: rgba(26, 21, 37, 0.88);
+  }
+  100% {
+    background: rgba(8, 6, 14, 0);
+  }
+}
+
+@keyframes sigil-flash-bleed {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  55% {
+    opacity: 0.85;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes sigil-flash-hero {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-8deg);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.05) rotate(0deg);
+  }
+  42% {
+    transform: scale(1.28) rotate(2deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45) rotate(-3deg);
+  }
+}
+
+@keyframes sigil-flash-shake {
+  0%,
+  16% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-4px, 2px);
+  }
+  24% {
+    transform: translate(5px, -2px);
+  }
+  28% {
+    transform: translate(-6px, 1px);
+  }
+  32% {
+    transform: translate(4px, -3px);
+  }
+  36% {
+    transform: translate(-3px, 2px);
+  }
+  40% {
+    transform: translate(2px, -1px);
+  }
+  44%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
