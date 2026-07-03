@@ -943,6 +943,8 @@ type Props = {
   requireReplayValidation?: boolean
   /** Scored gym gauntlet — enemy AI ignores localStorage move memory. */
   isolateNpcMemory?: boolean
+  /** Story fights — enter at max HP instead of carrying overworld damage. */
+  freshBattleHp?: boolean
 }
 
 export type BattleEndTelemetry = {
@@ -1067,6 +1069,7 @@ export function BattleScreen({
   serverIssued = false,
   requireReplayValidation = false,
   isolateNpcMemory = false,
+  freshBattleHp = false,
 }: Props) {
   const battleScreenRef = useRef<HTMLDivElement>(null)
   const playfieldRef = useRef<HTMLDivElement>(null)
@@ -1102,14 +1105,14 @@ export function BattleScreen({
 
   const [state, dispatch] = useReducer(
     battleReducer,
-    { npcId, runItBack, combatXpPolicy, battleEndHealing, practiceXpBudget, combatSeed, isolateNpcMemory },
+    { npcId, runItBack, combatXpPolicy, battleEndHealing, practiceXpBudget, combatSeed, isolateNpcMemory, freshBattleHp },
     (init) =>
       createInitialBattleState(init.npcId, {
         runItBack: init.runItBack,
         combatXpPolicy: init.combatXpPolicy,
         battleEndHealing: init.battleEndHealing,
         practiceXpBudget: init.practiceXpBudget,
-        carryHp: getOverworldPlayerHp() ?? undefined,
+        carryHp: init.freshBattleHp ? undefined : getOverworldPlayerHp() ?? undefined,
         combatSeed: init.combatSeed,
         isolateNpcMemory: init.isolateNpcMemory,
       }),

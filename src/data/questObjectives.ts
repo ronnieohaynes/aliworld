@@ -348,6 +348,9 @@ export function getQuestPulseTargetDescriptor(
         ? { kind: 'npc', id: 'e2-closing-crier' }
         : { kind: 'zone', action: 'OPEN_BLUE_STORE_EXIT' }
     case 'e3-field':
+      return ctx.inFive
+        ? { kind: 'npc', id: DANNY_OBSERVER_NPC_ID }
+        : { kind: 'zone', action: 'OPEN_DARKLINE' }
     case 'e3-sigil':
       return ctx.inSouthside
         ? { kind: 'npc', id: DANNY_OBSERVER_NPC_ID }

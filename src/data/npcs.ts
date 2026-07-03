@@ -336,8 +336,8 @@ export const SOUTHSIDE_OVERWORLD_NPCS: readonly NpcData[] = [
   {
     id: 'invader',
     name: 'invader',
-    x: 540,
-    y: 840,
+    x: 1140,
+    y: 680,
     lines: ['southside watches everybody. even the ones who think they blend in.'],
     color: '#9696b0',
     spriteSrc: INVADER_IDLE_SPRITE,

@@ -74,6 +74,7 @@ type DevEpisodeCutscenePreset = Pick<
 const DEV_EPISODE_CUTSCENES: Record<number, DevEpisodeCutscenePreset> = {
   1: { ...EPISODE_CUTSCENE_PRESETS[1], isEpisodeCutscene: true },
   2: { ...EPISODE_CUTSCENE_PRESETS[2], isEpisodeCutscene: true },
+  3: { ...EPISODE_CUTSCENE_PRESETS[3], isEpisodeCutscene: true },
 }
 
 const SHIFT_E_CHORD_MS = 800
@@ -218,7 +219,7 @@ export function useDevControls(options: UseDevControlsOptions): ReactNode {
         clearShiftEChord()
         if (preset && canPlayCutscene()) {
           playCutscene({
-            ...buildEpisodeCutsceneOptions(episode as 1 | 2),
+            ...buildEpisodeCutsceneOptions(episode as 1 | 2 | 3),
             devEpisodePreview: true,
           })
         }

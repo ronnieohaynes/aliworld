@@ -12,7 +12,7 @@ export type EpisodeCutscenePreset = {
 }
 
 /** Shipped episode theater clips (extend as episodes ship). */
-export const EPISODE_CUTSCENE_PRESETS: Record<1 | 2, EpisodeCutscenePreset> = {
+export const EPISODE_CUTSCENE_PRESETS: Record<1 | 2 | 3, EpisodeCutscenePreset> = {
   1: {
     videoId: '6t83Cdmq1fM',
     startSeconds: 74,
@@ -27,10 +27,18 @@ export const EPISODE_CUTSCENE_PRESETS: Record<1 | 2, EpisodeCutscenePreset> = {
     videoTitle: 'ALIWORLD EP. 2: "THE SEQUENCE?" | a cinematic rap series.',
     youtubeCaptions: true,
   },
+  /** Placeholder until the E3 closing clip ships — hook wired for handoff → E4 gate. */
+  3: {
+    videoId: 'y4WdKh9cZsM',
+    startSeconds: 0,
+    endSeconds: 12,
+    videoTitle: 'ALIWORLD EP. 3: "THE HAPPENING?" (placeholder)',
+    youtubeCaptions: false,
+  },
 }
 
 export function buildEpisodeCutsceneOptions(
-  handoff: Extract<EpisodeCutsceneHandoff, 1 | 2>,
+  handoff: Extract<EpisodeCutsceneHandoff, 1 | 2 | 3>,
   onComplete: (meta?: CutsceneCompleteMeta) => void = () => {},
 ): PlayCutsceneOptions {
   const preset = EPISODE_CUTSCENE_PRESETS[handoff]

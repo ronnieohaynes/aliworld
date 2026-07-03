@@ -83,9 +83,10 @@ export const QuestTransition = forwardRef<QuestTransitionHandle>(function QuestT
     runningRef.current = false
     setVisible(false)
     setActive(null)
-    onCompleteRef.current?.()
+    const onComplete = onCompleteRef.current
     onCompleteRef.current = undefined
     onExitFadeStartRef.current = undefined
+    onComplete?.()
   }, [])
 
   useImperativeHandle(

@@ -23,6 +23,7 @@ type Quest3State = {
   monkDefeated: boolean
   e3MassConversionSeen: boolean
   e3MoveUnlocked: boolean
+  e3CutscenePlayed: boolean
   e3Complete: boolean
 }
 
@@ -35,6 +36,7 @@ function emptyQuest3State(): Quest3State {
     monkDefeated: false,
     e3MassConversionSeen: false,
     e3MoveUnlocked: false,
+    e3CutscenePlayed: false,
     e3Complete: false,
   }
 }
@@ -55,6 +57,7 @@ function loadQuest3FromStorage(): Quest3State {
       monkDefeated: o.monkDefeated === true,
       e3MassConversionSeen: o.e3MassConversionSeen === true,
       e3MoveUnlocked: o.e3MoveUnlocked === true,
+      e3CutscenePlayed: o.e3CutscenePlayed === true,
       e3Complete: o.e3Complete === true || o.e3Seen === true,
     }
   } catch {
@@ -172,6 +175,17 @@ export function setE3MoveUnlocked(): void {
   emit()
 }
 
+export function isE3CutscenePlayed(): boolean {
+  return state.e3CutscenePlayed
+}
+
+export function setE3CutscenePlayed(): void {
+  if (state.e3CutscenePlayed) return
+  state = { ...state, e3CutscenePlayed: true }
+  saveQuest3ToStorage()
+  emit()
+}
+
 export function isE3Complete(): boolean {
   return state.e3Complete
 }
@@ -191,6 +205,7 @@ export type Quest3Serialized = {
   monkDefeated?: boolean
   e3MassConversionSeen?: boolean
   e3MoveUnlocked?: boolean
+  e3CutscenePlayed?: boolean
   e3Complete?: boolean
   e3Seen?: boolean
 }
@@ -208,6 +223,7 @@ export function applyState(data: Partial<Quest3Serialized>): void {
     monkDefeated: data.monkDefeated === true,
     e3MassConversionSeen: data.e3MassConversionSeen === true,
     e3MoveUnlocked: data.e3MoveUnlocked === true,
+    e3CutscenePlayed: data.e3CutscenePlayed === true,
     e3Complete: data.e3Complete === true || data.e3Seen === true,
   }
   saveQuest3ToStorage()

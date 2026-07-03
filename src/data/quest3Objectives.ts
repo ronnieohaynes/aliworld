@@ -1,8 +1,9 @@
 /**
- * Quest 3 objectives — the stranger (southside field → sigil → 3 forms → mass conversion).
+ * Quest 3 objectives — the 5ive opening → southside sigil → 3 stranger forms → mass conversion.
  */
 
 import type { QuestObjectiveContext, QuestObjectiveStep } from './questObjectives'
+import { FIVE_DISPLAY_NAME } from './cityConfig'
 import { isE2Complete } from '../store/quest2Store'
 import {
   E3_ENABLED,
@@ -57,7 +58,7 @@ export const QUEST_3_STEPS: readonly QuestObjectiveStep[] = [
   {
     id: 'e3-field',
     isComplete: (ctx) => !ctx.e3Active || ctx.e3FieldIntroSeen,
-    getText: () => "something's wrong in the field. find it.",
+    getText: () => `something's wrong in ${FIVE_DISPLAY_NAME}. find it.`,
   },
   {
     id: 'e3-sigil',
